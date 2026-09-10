@@ -1,6 +1,6 @@
 # Vera 交互式 CLI 会话规格
 
-**状态：** Draft
+**状态：** Accepted
 **日期：** 2026-09-10
 
 ## 目标
@@ -56,6 +56,8 @@ Vera >
 - 启动时展示版本、规范化后的工作区和模型配置名称，不展示 API Key、Base URL 中的凭据或完整环境变量。
 - 工作区不存在、不是目录、模型配置缺失或密钥缺失时，在进入提示符前明确失败。
 - 空输入不创建 run；终端 EOF、`/exit` 和 `/quit` 正常结束会话。
+
+为了让用户从工程目录直接执行 `vera`，CLI 启动时可以读取私有供应商环境文件。默认路径是 `~/.config/vera/deepseek.env`，也可通过 `VERA_PROVIDER_ENV_FILE` 指定其他文件。解析器只接受已知变量的 `NAME=value` 或 `export NAME=value` 行，不执行 Shell、不展开命令、不覆盖当前进程中已经存在的变量；POSIX 平台上文件存在但组或其他用户可读写时必须拒绝加载。
 
 ### 任务驱动
 
@@ -122,7 +124,7 @@ uv tool install --editable /Users/admin/Vera
 
 安装成功后，在新终端中运行 `command -v vera` 和 `vera --help` 必须成功。CLI 命令使用小写 `vera`；产品名称在文案中仍写作 Vera。
 
-安装流程不能复制 API Key，供应商凭据继续由用户私有环境文件或用户配置提供。
+安装流程不能复制 API Key。供应商凭据继续由用户私有环境文件或当前进程环境提供；环境文件内容不能进入 Event、日志、异常详情或终端回显。
 
 ## 失败行为
 
