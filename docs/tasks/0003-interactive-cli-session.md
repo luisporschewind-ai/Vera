@@ -23,6 +23,7 @@
 - 每个自然语言输入创建独立 run；同一 CLI 会话不共享完整模型消息历史。
 - `vera run ... --json` 保持严格非交互，遇到审批必须取消。
 - 供应商环境文件只做严格键值解析，不能 `source`、`eval` 或调用 Shell。
+- 非 live 测试通过全局 fixture 清除供应商变量并把环境文件重定向到临时路径，绝不读取或使用用户真实 API Key。
 - Change Set 和命令审批保持分离，不增加自动批准入口。
 - 人工 iOS 验收暂缓；实施过程只运行 Fake Model 和临时工作区自动测试。
 - 每项生产行为必须先观察对应测试按预期失败，再写最小实现并观察通过。
@@ -346,7 +347,8 @@ git commit -m "feat: drive runs through repeated approvals"
 
 - Modify: `src/vera/workspace/checkpoint.py`
 - Modify: `src/vera/runtime/engine.py`
-- Modify: `src/vera/persistence/journal.py`
+- Modify: `src/vera/cli.py`
+- Modify: `tests/conftest.py`
 - Modify: `tests/runtime/test_safe_editing_flow.py`
 - Modify: `tests/cli/test_rollback.py`
 
@@ -356,7 +358,7 @@ git commit -m "feat: drive runs through repeated approvals"
 - Consumes: `RollbackRun(run_id=...)` on a newly created `VeraRuntime`
 - Guarantee: 回滚冲突不覆盖用户后续修改
 
-- [ ] **Step 1：编写新 Runtime 实例回滚的失败测试**
+- [x] **Step 1：编写新 Runtime 实例回滚的失败测试**
 
 ```python
 first_runtime = make_runtime(state_dir, scripted_change)
@@ -369,13 +371,13 @@ assert target.read_text(encoding="utf-8") == "old\n"
 
 另测修改后的目标已被用户再次编辑时，返回 `rollback.conflicted` 且保留用户字节；不存在 run 时 CLI 明确输出“未找到可回滚的 Checkpoint”并返回非零，不创建伪造的 run 目录。
 
-- [ ] **Step 2：运行目标测试并确认新 Runtime 找不到内存 context**
+- [x] **Step 2：运行目标测试并确认新 Runtime 找不到内存 context**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/runtime/test_safe_editing_flow.py tests/cli/test_rollback.py -v
 ```
 
-- [ ] **Step 3：从 Manifest 重建回滚所需边界**
+- [x] **Step 3：从 Manifest 重建回滚所需边界**
 
 当 `self.runs` 没有 context 时，`VeraRuntime._rollback` 直接读取 Manifest：
 
@@ -390,7 +392,7 @@ yield journal.append(event_type, payload)
 
 只恢复文件和追加回滚 Event，不重建模型消息、待审批或状态机。Manifest 缺失时 Runtime 不创建新 Journal，CLI 将空结果映射为“未找到可回滚的 Checkpoint”和退出码 `5`；Manifest 损坏或工作区不存在时，在既有 Journal 追加 `rollback.conflicted`，Payload 状态为 `recovery_required`。
 
-- [ ] **Step 4：运行回滚、Journal 和 Workspace 测试**
+- [x] **Step 4：运行回滚、Journal 和 Workspace 测试**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/runtime/test_safe_editing_flow.py tests/cli/test_rollback.py tests/persistence tests/workspace -v
@@ -398,10 +400,10 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src/vera/runtime src/v
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Task 4**
+- [x] **Step 5：提交 Task 4**
 
 ```bash
-git add src/vera/runtime/engine.py src/vera/persistence/journal.py src/vera/workspace/checkpoint.py tests/runtime/test_safe_editing_flow.py tests/cli/test_rollback.py docs/tasks/0003-interactive-cli-session.md
+git add src/vera/cli.py src/vera/runtime/engine.py src/vera/workspace/checkpoint.py tests/conftest.py tests/runtime/test_safe_editing_flow.py tests/cli/test_rollback.py docs/tasks/0003-interactive-cli-session.md
 git commit -m "feat: rollback persisted runs after restart"
 ```
 

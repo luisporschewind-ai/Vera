@@ -239,3 +239,94 @@ def test_run_started_records_workspace_and_model_profile(tmp_path: Path) -> None
 
     assert events[0].payload["workspace_root"] == str(tmp_path)
     assert events[0].payload["model_profile"] == "fake"
+
+
+def test_new_runtime_rolls_back_persisted_checkpoint(tmp_path: Path) -> None:
+    (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
+    state_dir = tmp_path / "state"
+    first_runtime = VeraRuntime(
+        FakeModelAdapter(
+            [
+                ModelTurn(
+                    finish_reason="tool_calls",
+                    tool_calls=(
+                        ModelToolCall(
+                            call_id="1",
+                            name="propose_changeset",
+                            arguments={
+                                "summary": "edit",
+                                "changes": [
+                                    {
+                                        "operation": "update",
+                                        "path": "hello.txt",
+                                        "after_content": "new\n",
+                                    }
+                                ],
+                            },
+                        ),
+                    ),
+                )
+            ]
+        ),
+        ToolRegistry(),
+        state_dir,
+    )
+    start_events = list(
+        first_runtime.handle(
+            StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake")
+        )
+    )
+    approval = next(event for event in start_events if event.type == "approval.required")
+    list(first_runtime.handle(resolve(approval, "approve")))
+    second_runtime = VeraRuntime(FakeModelAdapter([]), ToolRegistry(), state_dir)
+
+    events = list(second_runtime.handle(RollbackRun(run_id=start_events[0].run_id)))
+
+    assert events[-1].type == "rollback.completed"
+    assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "old\n"
+
+
+def test_new_runtime_persisted_rollback_preserves_later_user_edit(tmp_path: Path) -> None:
+    (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
+    state_dir = tmp_path / "state"
+    first_runtime = VeraRuntime(
+        FakeModelAdapter(
+            [
+                ModelTurn(
+                    finish_reason="tool_calls",
+                    tool_calls=(
+                        ModelToolCall(
+                            call_id="1",
+                            name="propose_changeset",
+                            arguments={
+                                "summary": "edit",
+                                "changes": [
+                                    {
+                                        "operation": "update",
+                                        "path": "hello.txt",
+                                        "after_content": "new\n",
+                                    }
+                                ],
+                            },
+                        ),
+                    ),
+                )
+            ]
+        ),
+        ToolRegistry(),
+        state_dir,
+    )
+    start_events = list(
+        first_runtime.handle(
+            StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake")
+        )
+    )
+    approval = next(event for event in start_events if event.type == "approval.required")
+    list(first_runtime.handle(resolve(approval, "approve")))
+    (tmp_path / "hello.txt").write_text("user edit\n", encoding="utf-8")
+    second_runtime = VeraRuntime(FakeModelAdapter([]), ToolRegistry(), state_dir)
+
+    events = list(second_runtime.handle(RollbackRun(run_id=start_events[0].run_id)))
+
+    assert events[-1].type == "rollback.conflicted"
+    assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "user edit\n"

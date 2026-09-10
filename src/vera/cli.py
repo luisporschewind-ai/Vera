@@ -34,7 +34,13 @@ def _exit_code(events: list[EventEnvelope]) -> int:
     if not events:
         return 5
     terminal = events[-1].type
-    return {"run.completed": 0, "run.cancelled": 2, "run.failed": 4}.get(terminal, 0)
+    return {
+        "run.completed": 0,
+        "run.cancelled": 2,
+        "run.failed": 4,
+        "rollback.completed": 0,
+        "rollback.conflicted": 4,
+    }.get(terminal, 0)
 
 
 def execute_run(
@@ -98,6 +104,9 @@ def show_run(run_id: str) -> None:
 def rollback(run_id: str = typer.Argument(...)) -> None:
     deps = build_runtime(Path.cwd())
     events = list(deps.runtime.handle(RollbackRun(run_id=run_id)))
+    if not events:
+        typer.echo(f"未找到可回滚的 Checkpoint：{run_id}")
+        raise typer.Exit(5)
     _render(events, False)
     raise typer.Exit(_exit_code(events))
 

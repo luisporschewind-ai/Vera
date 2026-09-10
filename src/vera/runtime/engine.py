@@ -322,16 +322,25 @@ class VeraRuntime:
                 ):
                     context = candidate
                     break
-        if context is None:
+        if context is not None:
+            run_id = context.run_id
+            manifest = CheckpointStore.load_manifest(self.state_dir, run_id)
+            journal = context.journal
+        elif command.run_id is not None:
+            run_id = command.run_id
+            try:
+                manifest = CheckpointStore.load_manifest(self.state_dir, run_id)
+            except (OSError, ValueError):
+                return
+            journal = EventJournal(self.state_dir, run_id, Redactor([]))
+        else:
             return
-        paths = WorkspacePaths(context.command.workspace_root)
-        manifest = CheckpointStore(self.state_dir, paths).load_for_run(context.run_id)
+        paths = WorkspacePaths(manifest.workspace_root)
         result = ChangeApplier(paths, CheckpointStore(self.state_dir, paths)).rollback(manifest)
         if result.status is RollbackStatus.ROLLED_BACK:
-            yield self._event(context, "rollback.completed", {"paths": list(result.paths)})
+            yield journal.append("rollback.completed", {"paths": list(result.paths)})
         else:
-            yield self._event(
-                context,
+            yield journal.append(
                 "rollback.conflicted",
                 {"status": result.status.value, "paths": list(result.paths)},
             )
