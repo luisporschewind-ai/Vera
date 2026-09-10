@@ -597,7 +597,7 @@ git commit -m "feat: add private run configuration and event journal"
 - Produces: `ToolRegistry.execute(name: str, arguments: dict[str, JsonValue]) -> ToolResult`
 - Produces: `list_directory`, `search_text`, `read_file` 工具
 
-- [ ] **Step 1：编写路径越界和符号链接失败测试**
+- [x] **Step 1：编写路径越界和符号链接失败测试**
 
 ```python
 def test_read_rejects_symlink_that_escapes_workspace(tmp_path: Path) -> None:
@@ -619,7 +619,7 @@ def test_mutation_rejects_all_symlinks(tmp_path: Path) -> None:
 
 同时覆盖绝对路径、`..`、不存在父目录中的符号链接，以及 `.env`、私钥和真实凭据文件。
 
-- [ ] **Step 2：实现路径规范化和敏感文件策略**
+- [x] **Step 2：实现路径规范化和敏感文件策略**
 
 ```python
 BUILT_IN_PROTECTED_NAMES = frozenset({".env", ".npmrc", ".pypirc", "credentials"})
@@ -629,7 +629,7 @@ SAFE_ENV_TEMPLATES = frozenset({".env.example", ".env.sample", ".env.template"})
 
 `WorkspacePaths` 的公开签名固定为 `__init__(root: Path, protected: ProtectedPathPolicy | None = None)`、`resolve_read(relative_path: str) -> Path` 和 `resolve_mutation(relative_path: str) -> Path`。先规范化分隔符并拒绝空路径、绝对路径和 `..`，再解析真实路径并使用 `Path.is_relative_to(root)` 校验。任何修改路径只要路径本身或已存在父目录包含符号链接就拒绝。
 
-- [ ] **Step 3：编写只读工具限制测试**
+- [x] **Step 3：编写只读工具限制测试**
 
 ```python
 def test_read_file_marks_truncation(tmp_path: Path) -> None:
@@ -641,7 +641,7 @@ def test_read_file_marks_truncation(tmp_path: Path) -> None:
 
 测试目录排序稳定、搜索结果按路径和行号排序、二进制文件拒绝、默认忽略 `.git`、`.venv`、`node_modules`、`dist`、`build`、`.vera`。
 
-- [ ] **Step 4：实现 Tool Registry 和只读工具**
+- [x] **Step 4：实现 Tool Registry 和只读工具**
 
 ```python
 class ToolDefinition(BaseModel):
@@ -685,7 +685,7 @@ class ToolRegistry:
 
 Registry 拒绝未知工具和不符合 Pydantic 输入 Model 的参数。文件读取使用严格 UTF-8；无法解码时返回 `binary_or_non_utf8`，不猜测编码。
 
-- [ ] **Step 5：运行检查并提交 Task 4**
+- [x] **Step 5：运行检查并提交 Task 4**
 
 ```bash
 uv run pytest tests/workspace/test_paths.py tests/tools -v

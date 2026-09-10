@@ -9,7 +9,7 @@
 - 工作目录：`/Users/admin/Vera`
 - 当前开发分支：`codex/core-safe-editing`
 - 初始检查点：仓库治理与 SDD 基线
-- Agent 实现：仅有任务 1 的 Python 包骨架
+- Agent 实现：任务 1–4 的 Python Core 基础、契约、状态、持久化和安全只读工具
 - 依赖清单：`pyproject.toml`、`.python-version`、`uv.lock`
 
 ## 已完成任务
@@ -21,7 +21,7 @@
 ## 活动任务
 
 - [任务 0002：Core 安全编辑垂直切片](tasks/0002-core-safe-editing-vertical-slice.md)
-- 当前检查点：任务 3 配置、脱敏和 Event Journal 已通过 8 项测试，准备提交
+- 当前检查点：任务 4 Workspace 边界与只读工具已通过 8 项测试，准备提交
 
 ## 最近验证
 
@@ -32,6 +32,9 @@
 - Git 状态：治理与实施计划检查点 `a1aaffb` 位于 `main`；功能开发在 `codex/core-safe-editing`
 - `uv 0.12.10`：通过官方独立安装器安装，项目环境同步完成
 - 任务 1 包测试：1 项通过；Ruff 和 Mypy 通过
+- 任务 2 契约与状态机：10 项测试通过；Ruff 和 Mypy 通过
+- 任务 3 配置、脱敏和 Event Journal：8 项测试通过；Ruff 和 Mypy 通过
+- 任务 4 Workspace 边界与只读工具：8 项测试通过；Ruff 和 Mypy 通过
 
 ## 已接受方向
 
@@ -50,4 +53,4 @@
 
 ## 下一检查点
 
-完成任务 1 治理与包基础，再在任务 2 实现版本化 Core 契约和状态机。
+完成任务 4 Workspace 边界与只读工具，再在任务 5 实现 ChangeSet 生成与审批完整性。
