@@ -2,7 +2,9 @@
 
 > **供执行 Agent 使用：** 必须使用 `superpowers:subagent-driven-development`（推荐）或 `superpowers:executing-plans`，按任务逐项实施本计划。每个步骤使用复选框跟踪；未经用户明确选择，不得自行派发子 Agent。
 
-**状态：** Planned
+**状态：** In progress
+
+**当前执行分支：** `codex/core-safe-editing`
 
 **目标：** 实现一个可安装的 Python `vera` CLI，由 `VeraRuntime` 完成一次“上下文收集 → Change Set 审批 → Checkpoint → 写入 → 验证 → 手动回滚”的安全编辑闭环。
 
@@ -33,7 +35,7 @@
 
 - Git 分支：`main`；计划编写前工作区干净。
 - 当前没有 Agent 源码、Python 依赖清单或远程仓库。
-- 本机没有 `uv`。执行 Task 1 前，先取得用户安装授权，再运行 `brew install uv` 和 `uv --version`。
+- 本机为 Intel macOS；Homebrew 会回退到 Rust 源码构建。执行 Task 1 前，使用 uv 官方独立安装器安装 `0.12.10`，再运行 `uv --version`；后续机器若有可用 bottle，可使用 Homebrew。
 - uv 使用 `pyproject.toml` 管理依赖并提交跨平台 `uv.lock`；每次验证使用 `uv run`。
 - OpenAI-compatible Adapter 使用 OpenAI Python Client 的 Chat Completions 形状，因为 DeepSeek 和 GLM 官方接口均支持该兼容形式；供应商 Base URL 和模型名保留为本地配置。
 
@@ -137,18 +139,19 @@ tests/
 - Produces: `vera` Console Script，入口暂指向 `vera.cli:app`
 - Produces: 三份 Accepted ADR，后续任务以其为技术约束
 
-- [ ] **Step 1：安装并验证 uv**
+- [x] **Step 1：安装并验证 uv**
 
-先取得用户对本机工具安装的授权，然后运行：
+先取得用户对本机工具安装的授权，然后运行官方独立安装器：
 
 ```bash
-brew install uv
+curl -LsSf https://astral.sh/uv/0.12.10/install.sh | sh
+exec zsh -l
 uv --version
 ```
 
 预期：`uv --version` 退出码为 `0`。
 
-- [ ] **Step 2：编写包版本失败测试**
+- [x] **Step 2：编写包版本失败测试**
 
 先创建 `src/vera/__init__.py`：
 
@@ -166,7 +169,7 @@ def test_package_exposes_version() -> None:
     assert vera.__version__ == "0.1.0"
 ```
 
-- [ ] **Step 3：建立项目清单并确认测试先失败**
+- [x] **Step 3：建立项目清单并确认测试先失败**
 
 创建 `.python-version`，内容为 `3.12`。创建 `pyproject.toml`：
 
@@ -228,7 +231,7 @@ uv run pytest tests/test_package.py -v
 
 预期：FAIL，错误包含 `AttributeError: module 'vera' has no attribute '__version__'`。
 
-- [ ] **Step 4：实现最小包并通过测试**
+- [x] **Step 4：实现最小包并通过测试**
 
 修改 `src/vera/__init__.py`：
 

@@ -23,6 +23,13 @@ coverage/
 .cache/
 .turbo/
 *.tsbuildinfo
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+__pycache__/
+*.py[cod]
 
 # Logs and temporary files
 *.log

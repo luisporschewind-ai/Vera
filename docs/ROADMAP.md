@@ -1,63 +1,63 @@
-# Vera Roadmap
+# Vera 路线图
 
-**Status:** Active
-**Updated:** 2026-09-10
+**状态：** Active
+**更新日期：** 2026-09-10
 
-The roadmap defines order and exit criteria. It does not preselect technologies that still require an accepted decision.
+路线图规定阶段顺序和退出条件，不提前锁定尚未完成决策的技术方案。
 
-## Phase 0 — Repository governance
+## 阶段 0——仓库治理
 
-**State:** Complete
+**状态：** Complete
 
-- Establish the formal repository, shared Agent instructions, product boundary, roadmap, status log, specifications, decisions, and task records.
-- Make the first recoverable Git checkpoint without Agent feature code.
+- 建立正式仓库、共享 Agent 指引、产品边界、路线图、状态记录、规格、决策和任务记录。
+- 在没有 Agent 功能代码的前提下，建立第一个可恢复的 Git 检查点。
 
-**Exit:** The baseline is reviewed, validation passes, and `chore: bootstrap Vera repository` is committed.
+**退出条件：** 基线完成审阅、验证通过，并提交 `chore: bootstrap Vera repository`。
 
-## Phase 1 — Core contract and vertical slice
+## 阶段 1——Core 契约与安全编辑垂直切片
 
-**State:** Design in progress
+**状态：** In progress
 
-- Specify the Core boundary, lifecycle, commands, structured events, and model adapter.
-- Select the minimum runtime and dependency set through accepted decisions.
-- Build one CLI-driven, end-to-end coding task with durable logs and deterministic tests around owned logic.
+- 固化 Python 3.12 Core 边界、生命周期、Command、结构化 Event 和可替换 ModelAdapter。
+- 完成一条 CLI 驱动的安全编辑闭环：上下文收集 → Change Set 审批 → Checkpoint → 写入 → 验证 → 手动回滚。
+- 让 Runtime 状态、审批、工作区边界、Diff、验证证据和私有日志由同一个 Core 权威统一管理。
 
-**Exit:** The internal CLI runs one fixed task through the same public Core contract intended for the desktop client.
+**退出条件：** 内部 CLI 通过面向未来桌面客户端的同一套公共 Core 契约，完成一个有界安全编辑任务，并具备确定性离线测试和可审阅的审批证据。
 
-## Phase 2 — Safe coding loop
+## 阶段 2——恢复、兼容性与策略扩展
 
-**State:** Not started
+**状态：** Not started
 
-- Add context controls, workspace-constrained tools, approvals, Diff review, verification, checkpoints, rollback, cancellation, persistence, and recovery.
-- Test failure paths and restart behavior, not only happy paths.
+- 增加重启恢复、Journal resume、兼容性迁移、取消流程加固、策略扩展和更完整的失败路径覆盖。
+- 扩展供应商兼容性与评测证据，同时不削弱 Core 安全边界。
 
-**Exit:** Core behavior is recoverable, inspectable, and verified across representative local repositories.
+**退出条件：** Core 在中断后可恢复，跨版本行为可检查，并在代表性本地仓库上完成验证。
 
-## Phase 3 — Evals and internal readiness
+## 阶段 3——评测与内部就绪
 
-**State:** Not started
+**状态：** Not started
 
-- Define a repeatable eval harness and a fixed set of 10–20 coding tasks.
-- Track correctness, safety, recovery, latency, and model cost.
-- Resolve failures through specs, tests, and focused implementation tasks.
+- 定义可重复的评测工具和固定的 10–20 个编码任务集合。
+- 跟踪正确性、安全性、恢复能力、延迟和模型成本。
+- 通过规格、测试和聚焦实施任务解决失败项。
 
-**Exit:** The CLI repeatedly completes the accepted eval set with logs, Diff, approval, and verification evidence.
+**退出条件：** CLI 能重复完成已接受的评测集合，并提供日志、Diff、审批和验证证据。
 
-## Phase 4 — Desktop integration
+## 阶段 4——桌面集成
 
-**State:** Not started
+**状态：** Not started
 
-- Prototype desktop shells against the stable Core contract.
-- Compare security boundary, packaging, process control, performance, size, and maintenance cost.
-- Select a framework through an accepted decision and build the desktop workflow.
+- 基于稳定 Core 契约制作桌面壳原型。
+- 比较安全边界、打包、进程控制、性能、体积和维护成本。
+- 通过新的架构决策选择桌面框架并实现桌面工作流。
 
-**Exit:** The desktop client completes the Core workflow without duplicating runtime logic or parsing CLI output.
+**退出条件：** 桌面客户端完成 Core 工作流，不复制 Runtime 逻辑，也不解析 CLI 输出。
 
-## Phase 5 — Private preview and public preparation
+## 阶段 5——私有预览与公开准备
 
-**State:** Not started
+**状态：** Not started
 
-- Validate with trusted users and real projects.
-- Complete threat modeling, CI, release packaging, documentation, update strategy, secret and Git-history audits, license, security policy, and contribution guidance.
+- 使用可信用户和真实项目进行验证。
+- 完成威胁建模、CI、发布打包、文档、更新策略、密钥与 Git 历史审计、许可证、安全策略和贡献指南。
 
-**Exit:** A release checklist demonstrates that Vera is safe, maintainable, reproducible, and suitable for a public GitHub repository.
+**退出条件：** 发布检查清单证明 Vera 安全、可维护、可复现，并适合公开 GitHub 仓库。

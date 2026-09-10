@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vera-agent"
+version = "0.1.0"
+description = "Local, inspectable, and recoverable coding agent core"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "openai>=2,<3",
+  "platformdirs>=4,<5",
+  "pydantic>=2,<3",
+  "rich>=14,<15",
+  "typer>=0.16,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "mypy>=1,<2",
+  "pytest>=8,<10",
+  "pytest-cov>=6,<8",
+  "ruff>=0.12,<1",
+]
+
+[project.scripts]
+vera = "vera.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vera"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["live: requires an explicitly selected real provider and API key"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["vera"]
