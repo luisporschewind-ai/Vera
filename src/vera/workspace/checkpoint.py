@@ -32,6 +32,8 @@ class CheckpointStore:
             if target.exists():
                 data = target.read_bytes()
                 content_hash = sha256_bytes(data)
+                if change.before_hash != content_hash:
+                    raise ValueError(f"before hash changed: {change.path}")
                 blob = blobs / f"{content_hash}.bin"
                 if not blob.exists():
                     blob.write_bytes(data)
@@ -42,6 +44,8 @@ class CheckpointStore:
                     mode=target.stat().st_mode & 0o777,
                 )
             else:
+                if change.before_hash != "0" * 64:
+                    raise ValueError(f"before existence changed: {change.path}")
                 before[change.path] = CheckpointFile(existed=False)
         manifest = CheckpointManifest(
             checkpoint_id=f"checkpoint_{change_set.changeset_id}",

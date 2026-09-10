@@ -1173,7 +1173,7 @@ git commit -m "feat: drive bounded VeraRuntime discovery loop"
 - Produces: 完整终态 `COMPLETED | VERIFICATION_FAILED | CANCELLED | STALE | FAILED | RECOVERY_REQUIRED`
 - Produces: `VeraRuntime.rollback(command: RollbackRun) -> Iterator[EventEnvelope]`
 
-- [ ] **Step 1：编写批准后的完整流程失败测试**
+- [x] **Step 1：编写批准后的完整流程失败测试**
 
 ```python
 def test_approved_changeset_checkpoints_applies_and_verifies(runtime_fixture: RuntimeFixture) -> None:
@@ -1190,15 +1190,15 @@ def test_approved_changeset_checkpoints_applies_and_verifies(runtime_fixture: Ru
     ]
 ```
 
-- [ ] **Step 2：实现 Change Set 审批后的编排**
+- [x] **Step 2：实现 Change Set 审批后的编排**
 
 批准后严格执行：再次校验 `target_hash` → 状态进入 CHECKPOINTING → `CheckpointStore.create` → 输出 `checkpoint.created` → `ChangeApplier.apply(built, manifest)` → 输出 `changeset.applied` → 逐条验证 → 输出结果 → 生成终态 Event。拒绝时输出 `approval.resolved` 和 `run.cancelled`，不创建 Checkpoint。
 
-- [ ] **Step 3：实现验证命令审批中断**
+- [x] **Step 3：实现验证命令审批中断**
 
 验证阶段复用 Task 9 的命令路径：`ALLOWED` 直接执行；`APPROVAL_REQUIRED` 创建 command 审批并返回控制权；`FORBIDDEN` 生成拒绝证据且不提供批准入口。再次收到匹配的 `ResolveApproval` 后，只执行哈希绑定的 argv 和 cwd。
 
-- [ ] **Step 4：覆盖全部失败终态**
+- [x] **Step 4：覆盖全部失败终态**
 
 测试并实现：
 
@@ -1209,7 +1209,7 @@ def test_approved_changeset_checkpoints_applies_and_verifies(runtime_fixture: Ru
 - verification 非零或超时 → `verification.completed` + `run.completed`，Payload 状态为 `VERIFICATION_FAILED`；
 - 所有持久化 Payload 经过 Redactor。
 
-- [ ] **Step 5：编写并实现 Runtime 回滚**
+- [x] **Step 5：编写并实现 Runtime 回滚**
 
 ```python
 def test_runtime_rollback_emits_completed_and_restores_bytes(applied_runtime: RuntimeFixture) -> None:
@@ -1220,7 +1220,7 @@ def test_runtime_rollback_emits_completed_and_restores_bytes(applied_runtime: Ru
 
 冲突时输出 `rollback.conflicted`，任何目标文件都不改变。
 
-- [ ] **Step 6：运行检查并提交 Task 10**
+- [x] **Step 6：运行检查并提交 Task 10**
 
 ```bash
 uv run pytest tests/runtime -v
