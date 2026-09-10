@@ -18,6 +18,10 @@ class UnsafeProjectConfig(ValueError):
     """Raised when project configuration attempts to bypass a safety boundary."""
 
 
+class UnsafeProviderEnvironment(ValueError):
+    """Raised when a private provider environment file is unsafe or malformed."""
+
+
 class Limits(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -66,6 +70,54 @@ _PROJECT_FORBIDDEN_KEYS = {
     "allowed_command_prefixes",
     "safe_commands",
 }
+
+_PROVIDER_ENV_KEYS = frozenset(
+    {
+        "DEEPSEEK_API_KEY",
+        "VERA_DEEPSEEK_BASE_URL",
+        "VERA_DEEPSEEK_MODEL",
+        "GLM_API_KEY",
+        "VERA_GLM_BASE_URL",
+        "VERA_GLM_MODEL",
+    }
+)
+
+
+def load_provider_environment(path: Path | None = None) -> None:
+    """Load known provider values from a private key-value file without a shell."""
+
+    source = path or Path(
+        os.environ.get(
+            "VERA_PROVIDER_ENV_FILE",
+            str(Path.home() / ".config" / "vera" / "deepseek.env"),
+        )
+    )
+    if not source.exists():
+        return
+    if not source.is_file():
+        raise UnsafeProviderEnvironment("provider environment path must be a file")
+    if os.name == "posix" and source.stat().st_mode & 0o077:
+        raise UnsafeProviderEnvironment("provider environment file must use mode 0600")
+
+    for line_number, raw in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[7:].strip()
+        name, separator, raw_value = line.partition("=")
+        if not separator or name not in _PROVIDER_ENV_KEYS:
+            raise UnsafeProviderEnvironment(
+                f"invalid provider setting at line {line_number}"
+            )
+        value = raw_value.strip()
+        if any(token in value for token in ("`", "$(", "${")):
+            raise UnsafeProviderEnvironment(f"shell syntax is forbidden at line {line_number}")
+        if value.startswith(("'", '"')) or value.endswith(("'", '"')):
+            if len(value) < 2 or value[0] != value[-1]:
+                raise UnsafeProviderEnvironment(f"unmatched quote at line {line_number}")
+            value = value[1:-1]
+        os.environ.setdefault(name, value)
 
 
 def _read_toml(path: Path) -> dict[str, Any]:

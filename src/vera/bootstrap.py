@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from vera.config import VeraConfig, load_config
+from vera.config import VeraConfig, load_config, load_provider_environment
 from vera.models.base import ModelAdapter
 from vera.models.openai_compatible import OpenAICompatibleAdapter
 from vera.runtime.engine import VeraRuntime
@@ -19,6 +19,7 @@ class RuntimeDependencies:
 
 
 def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeDependencies:
+    load_provider_environment()
     config = load_config(workspace, {})
     profile = model_profile or next(iter(config.providers), None)
     if profile is None or profile not in config.providers:

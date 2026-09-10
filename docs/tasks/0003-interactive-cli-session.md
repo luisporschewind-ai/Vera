@@ -2,7 +2,7 @@
 
 > **供执行 Agent 使用：** 必须使用 `superpowers:executing-plans` 按任务逐项实施本计划；用户已明确要求不派发子 Agent。每个步骤使用复选框跟踪。
 
-**状态：** Planned
+**状态：** In progress
 
 **当前执行分支：** `codex/interactive-cli-session`
 
@@ -75,7 +75,7 @@ tests/
 - Consumes: `VERA_PROVIDER_ENV_FILE`、默认 `~/.config/vera/deepseek.env`
 - Guarantee: 当前进程已有变量优先；文件内容不回显；不执行 Shell
 
-- [ ] **Step 1：编写严格解析和权限失败测试**
+- [x] **Step 1：编写严格解析和权限失败测试**
 
 ```python
 def test_provider_environment_loads_known_values_without_overwriting_existing(
@@ -111,7 +111,7 @@ def test_provider_environment_rejects_shell_syntax(tmp_path: Path) -> None:
         load_provider_environment(source)
 ```
 
-- [ ] **Step 2：运行测试并确认因接口不存在而失败**
+- [x] **Step 2：运行测试并确认因接口不存在而失败**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/test_config.py -v
@@ -119,7 +119,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/test_config.py -v
 
 预期：FAIL，导入 `load_provider_environment` 或 `UnsafeProviderEnvironment` 失败。
 
-- [ ] **Step 3：实现无 Shell 的已知键解析器**
+- [x] **Step 3：实现无 Shell 的已知键解析器**
 
 在 `config.py` 中定义允许键集合：
 
@@ -167,7 +167,7 @@ def load_provider_environment(path: Path | None = None) -> None:
 
 `bootstrap.build_runtime` 在 `load_config` 前调用此函数。解析器不得支持变量展开、命令替换、多行值或未知变量。
 
-- [ ] **Step 4：运行测试、Ruff 和 Mypy**
+- [x] **Step 4：运行测试、Ruff 和 Mypy**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/test_config.py -v
@@ -175,7 +175,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src/vera/config.py src
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Task 1**
+- [x] **Step 5：提交 Task 1**
 
 ```bash
 git add src/vera/config.py src/vera/bootstrap.py tests/test_config.py docs/tasks/0003-interactive-cli-session.md
