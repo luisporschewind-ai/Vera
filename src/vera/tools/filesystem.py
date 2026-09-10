@@ -73,9 +73,7 @@ def search_text(paths: WorkspacePaths, query: str, path: str = ".") -> SearchRes
     matches: list[SearchMatch] = []
     for file_path in sorted(root.rglob("*")):
         relative = file_path.relative_to(paths.root)
-        if not file_path.is_file() or any(
-            part in _IGNORED_DIRECTORIES for part in relative.parts
-        ):
+        if not file_path.is_file() or any(part in _IGNORED_DIRECTORIES for part in relative.parts):
             continue
         if paths.protected.is_protected(relative):
             continue

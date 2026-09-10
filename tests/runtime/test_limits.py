@@ -10,9 +10,7 @@ from vera.tools.registry import ToolRegistry
 def test_three_identical_tool_calls_fail_without_writes(tmp_path: Path) -> None:
     turn = ModelTurn(
         finish_reason="tool_calls",
-        tool_calls=(
-            ModelToolCall(call_id="1", name="missing", arguments={"path": "hello.txt"}),
-        ),
+        tool_calls=(ModelToolCall(call_id="1", name="missing", arguments={"path": "hello.txt"}),),
     )
     events = list(
         VeraRuntime(

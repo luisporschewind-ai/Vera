@@ -2,7 +2,7 @@
 
 Vera is a local desktop Coding Agent in development. It is intended to help people inspect, change, verify, and recover work in a local codebase through a transparent, approval-aware workflow.
 
-This repository is Vera's formal product workspace. It currently contains only the project-governance and specification baseline; no Agent runtime has been implemented here yet.
+This repository is Vera's formal product workspace. The first Python Core safe-editing slice and an internal CLI are implemented on the active development branch; real-provider and human acceptance remain explicit gates.
 
 ## Direction
 
@@ -27,7 +27,17 @@ The CLI is an internal development surface, not Vera's final product identity. T
 
 ## Development state
 
-Vera is private and pre-implementation. The next product step is to specify the first Core contract and vertical slice before adding dependencies or feature code.
+Vera is private and in Core-first implementation. The current CLI is an internal development surface for inspecting, proposing, approving, applying, verifying, and rolling back changes.
+
+## CLI quick start
+
+```bash
+uv sync --extra dev
+uv run vera --help
+uv run vera config show
+```
+
+Provider credentials and live tests are intentionally opt-in; no API key is printed by the CLI.
 
 `/Users/admin/Coding-harness` is a retired Vera prototype. It may be inspected for lessons and evidence, but it is not an implementation base and must not be modified from this repository.
 

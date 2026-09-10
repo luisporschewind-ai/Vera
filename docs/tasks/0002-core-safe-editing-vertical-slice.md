@@ -1347,7 +1347,7 @@ git commit -m "feat: expose VeraRuntime through the CLI"
 - Produces: 确定性 Git Fixture 证据、真实供应商证据、人工验收记录
 - Produces: Phase 1 垂直切片完成或明确未完成的状态
 
-- [ ] **Step 1：编写临时 Git 仓库端到端失败测试**
+- [x] **Step 1：编写临时 Git 仓库端到端失败测试**
 
 ```python
 def test_full_safe_editing_and_rollback_in_git_fixture(tmp_path: Path) -> None:
@@ -1364,11 +1364,11 @@ def test_full_safe_editing_and_rollback_in_git_fixture(tmp_path: Path) -> None:
 
 测试通过测试专用依赖注入选择 `FakeModelAdapter`，不能通过生产 CLI 参数暴露任意 Fake Adapter。
 
-- [ ] **Step 2：增加拒绝和冲突端到端测试**
+- [x] **Step 2：增加拒绝和冲突端到端测试**
 
 拒绝分支断言字节快照与 `git status --short` 完全不变。冲突分支在 apply 后人工写入新内容，再运行 rollback，断言退出非零、输出 `rollback.conflicted` 且用户内容保留。
 
-- [ ] **Step 3：运行完整离线验收**
+- [x] **Step 3：运行完整离线验收**
 
 ```bash
 uv run pytest -m "not live" --cov=vera --cov-report=term-missing
@@ -1396,7 +1396,7 @@ VERA_LIVE_PROVIDER=glm uv run pytest tests/live/test_providers.py tests/live/tes
 
 取得用户指定且可恢复的项目副本路径，先记录其 Git 状态和字节快照，再运行一次 `vera run`。用户亲自检查并批准 Diff；验证完成后运行 `vera rollback <run-id>`，再次比较字节和 Git 状态。原始有价值工作副本不作为首次目标。
 
-- [ ] **Step 6：记录证据并关闭或保留任务**
+- [x] **Step 6：记录证据并关闭或保留任务**
 
 创建 `docs/evals/phase-1-safe-editing.md`，逐项记录规格十条验收标准的命令、日期和结果。只有十条全部满足时，才把本任务状态改为 `Done`，把 `docs/STATUS.md` 的 Phase 1 垂直切片标记为完成，并在 README 增加已验证 CLI 用法。任何真实供应商或人工验收缺失时，任务保持 `In progress` 并准确列出缺口。
 

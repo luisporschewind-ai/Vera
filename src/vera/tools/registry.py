@@ -30,6 +30,9 @@ class ToolRegistry:
     def definitions(self) -> tuple[str, ...]:
         return tuple(sorted(self._tools))
 
+    def get(self, name: str) -> Tool | None:
+        return self._tools.get(name)
+
     def execute(self, name: str, arguments: dict[str, Any]) -> ToolResult:
         tool = self._tools.get(name)
         if tool is None:

@@ -12,11 +12,7 @@ def _applied(tmp_path: Path, state_dir: Path) -> tuple[ChangeApplier, object]:
     built = ChangeSetBuilder(paths).build(
         "run_1",
         "edit",
-        [
-            ChangeProposal(
-                operation="update", path="hello.txt", after_content="new\n"
-            )
-        ],
+        [ChangeProposal(operation="update", path="hello.txt", after_content="new\n")],
         [],
     )
     store = CheckpointStore(state_dir, paths)

@@ -54,9 +54,9 @@ def test_adapter_normalizes_provider_tool_call() -> None:
         ],
         usage=SimpleNamespace(prompt_tokens=2, completion_tokens=3, total_tokens=5),
     )
-    turn = OpenAICompatibleAdapter(
-        provider(), client=FakeOpenAIClient(response)
-    ).complete(request())
+    turn = OpenAICompatibleAdapter(provider(), client=FakeOpenAIClient(response)).complete(
+        request()
+    )
     assert turn.tool_calls == (
         ModelToolCall(call_id="call_1", name="read_file", arguments={"path": "README.md"}),
     )

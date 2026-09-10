@@ -33,16 +33,20 @@ def test_approved_changeset_checkpoints_applies_and_completes(tmp_path: Path) ->
             ModelTurn(
                 finish_reason="tool_calls",
                 tool_calls=(
-                    ModelToolCall(call_id="1", name="propose_changeset", arguments={
-                        "summary": "edit",
-                        "changes": [
-                            {
-                                "operation": "update",
-                                "path": "hello.txt",
-                                "after_content": "new\n",
-                            }
-                        ],
-                    }),
+                    ModelToolCall(
+                        call_id="1",
+                        name="propose_changeset",
+                        arguments={
+                            "summary": "edit",
+                            "changes": [
+                                {
+                                    "operation": "update",
+                                    "path": "hello.txt",
+                                    "after_content": "new\n",
+                                }
+                            ],
+                        },
+                    ),
                 ),
             )
         ]
@@ -50,18 +54,14 @@ def test_approved_changeset_checkpoints_applies_and_completes(tmp_path: Path) ->
     registry = ToolRegistry()
     runtime = VeraRuntime(adapter, registry, tmp_path / "state")
     events = list(
-        runtime.handle(
-            StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake")
-        )
+        runtime.handle(StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake"))
     )
     approval = next(event for event in events if event.type == "approval.required")
     follow_up = list(
         runtime.handle(
             ResolveApproval(
                 run_id=str(
-                    approval.payload["run_id"]
-                    if "run_id" in approval.payload
-                    else events[0].run_id
+                    approval.payload["run_id"] if "run_id" in approval.payload else events[0].run_id
                 ),
                 approval_id=str(approval.payload["approval_id"]),
                 target_hash=str(approval.payload["target_hash"]),

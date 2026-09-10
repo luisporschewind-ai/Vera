@@ -44,9 +44,13 @@ class CommandPolicy:
             return CommandDecision(
                 CommandDecisionKind.FORBIDDEN, "shell, deletion, or privilege command"
             )
-        if executable == "git" and len(argv) >= 2 and (
-            argv[1] in {"clean", "checkout", "restore"}
-            or (argv[1] == "reset" and "--hard" in argv[2:])
+        if (
+            executable == "git"
+            and len(argv) >= 2
+            and (
+                argv[1] in {"clean", "checkout", "restore"}
+                or (argv[1] == "reset" and "--hard" in argv[2:])
+            )
         ):
             return CommandDecision(CommandDecisionKind.FORBIDDEN, "destructive git command")
         if argv in self._safe_commands:

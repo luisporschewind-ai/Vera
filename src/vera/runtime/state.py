@@ -35,9 +35,7 @@ ALLOWED_TRANSITIONS: dict[RunState, frozenset[RunState]] = {
         {RunState.CHECKPOINTING, RunState.CANCELLED, RunState.STALE}
     ),
     RunState.CHECKPOINTING: frozenset({RunState.APPLYING, RunState.STALE, RunState.FAILED}),
-    RunState.APPLYING: frozenset(
-        {RunState.VERIFYING, RunState.FAILED, RunState.RECOVERY_REQUIRED}
-    ),
+    RunState.APPLYING: frozenset({RunState.VERIFYING, RunState.FAILED, RunState.RECOVERY_REQUIRED}),
     RunState.VERIFYING: frozenset(
         {RunState.COMPLETED, RunState.VERIFICATION_FAILED, RunState.RECOVERY_REQUIRED}
     ),
