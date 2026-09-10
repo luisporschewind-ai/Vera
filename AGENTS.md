@@ -13,6 +13,12 @@ Follow, in order:
 
 When these disagree, stop and resolve the conflict in the relevant document before implementation. Keep documentation and code changes in the same task.
 
+## 文档语言
+
+- 产品规格、任务记录、架构决策、状态更新和实施计划默认使用中文，便于用户准确审阅。
+- 代码标识、命令、协议字段、事件名称和其他技术字面量保留其规范形式。
+- 只有用户当前请求明确指定其他语言时，才使用其他文档语言。
+
 ## Fixed project boundaries
 
 - `/Users/admin/Vera` is the only formal Vera product workspace.
