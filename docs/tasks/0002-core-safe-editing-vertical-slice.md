@@ -802,7 +802,7 @@ git commit -m "feat: build tamper-evident change sets"
 - Produces: `ChangeApplier.apply(built: BuiltChangeSet, manifest: CheckpointManifest) -> ApplyResult`
 - Produces: `ChangeApplier.rollback(manifest: CheckpointManifest) -> RollbackResult`
 
-- [ ] **Step 1：编写 Checkpoint 字节与权限失败测试**
+- [x] **Step 1：编写 Checkpoint 字节与权限失败测试**
 
 ```python
 def test_checkpoint_records_original_bytes_and_absent_files(tmp_path: Path, state_dir: Path) -> None:
@@ -815,11 +815,11 @@ def test_checkpoint_records_original_bytes_and_absent_files(tmp_path: Path, stat
 
 测试 Checkpoint 目录位于 `state_dir/runs/<run-id>/checkpoint/`，不在工作区内，并检查 POSIX 权限。
 
-- [ ] **Step 2：实现 Checkpoint Store**
+- [x] **Step 2：实现 Checkpoint Store**
 
 实现 `CheckpointStore.create(change_set: ChangeSet) -> CheckpointManifest` 和 `CheckpointStore.load_for_run(run_id: str) -> CheckpointManifest`。清单写入 `manifest.json`；原始字节按路径哈希命名存储，避免状态目录路径穿越。先写临时文件并 `os.replace`，完成后才返回清单。
 
-- [ ] **Step 3：编写应用失败恢复测试**
+- [x] **Step 3：编写应用失败恢复测试**
 
 ```python
 def test_apply_failure_restores_every_touched_file(tmp_path: Path, checkpoint_store: CheckpointStore) -> None:
@@ -835,11 +835,11 @@ def test_apply_failure_restores_every_touched_file(tmp_path: Path, checkpoint_st
 
 同时测试审批后文件哈希变化时在 Checkpoint 前和 apply 前均拒绝、create/update/delete 成功、多文件预检失败时零写入。
 
-- [ ] **Step 4：实现预检、同目录原子替换和失败恢复**
+- [x] **Step 4：实现预检、同目录原子替换和失败恢复**
 
 定义 `FileWriter` Protocol，包含 `replace(path: Path, content: bytes, mode: int | None) -> None` 和 `delete(path: Path) -> None`；生产实现使用同目录临时文件与 `os.replace`，测试使用 `FailingFileWriter` 注入失败，不在生产类中增加测试开关。`apply` 不创建 Checkpoint，只接受并核对 Runtime 已创建的 `CheckpointManifest`。顺序必须固定：验证清单与 Change Set 对应 → 验证全部 before hash → 验证所有目标路径 → 对 create/update 原子替换 → 执行 delete。捕获任一应用异常后使用传入清单恢复全部已触及路径并返回明确状态；恢复本身失败时返回 `RECOVERY_REQUIRED` 和路径列表。
 
-- [ ] **Step 5：编写并实现回滚冲突保护**
+- [x] **Step 5：编写并实现回滚冲突保护**
 
 ```python
 def test_rollback_refuses_to_overwrite_user_edit(tmp_path: Path, applied_run: AppliedRun) -> None:
@@ -851,7 +851,7 @@ def test_rollback_refuses_to_overwrite_user_edit(tmp_path: Path, applied_run: Ap
 
 回滚先检查全部当前哈希；任一冲突时所有文件保持不变。没有冲突时恢复原始字节、存在性和平台支持的权限位。
 
-- [ ] **Step 6：运行检查并提交 Task 6**
+- [x] **Step 6：运行检查并提交 Task 6**
 
 ```bash
 uv run pytest tests/workspace/test_checkpoint.py tests/workspace/test_apply.py tests/workspace/test_rollback.py -v
