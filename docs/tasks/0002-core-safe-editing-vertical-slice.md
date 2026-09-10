@@ -4,7 +4,7 @@
 
 **状态：** In progress
 
-**当前执行分支：** `codex/core-safe-editing`
+**当前执行分支：** `main`
 
 **目标：** 实现一个可安装的 Python `vera` CLI，由 `VeraRuntime` 完成一次“上下文收集 → Change Set 审批 → Checkpoint → 写入 → 验证 → 手动回滚”的安全编辑闭环。
 
@@ -445,7 +445,7 @@ ALLOWED_TRANSITIONS: dict[RunState, frozenset[RunState]] = {
 
 终止状态的目标集合为空。
 
-- [ ] **Step 5：运行检查并提交 Task 2**
+- [x] **Step 5：运行检查并提交 Task 2**
 
 ```bash
 uv run pytest tests/contracts tests/runtime/test_state.py -v
@@ -561,7 +561,7 @@ def test_journal_assigns_monotonic_sequence_and_persists_jsonl(tmp_path: Path) -
 `append` 必须先以 UTF-8 JSON Lines 写入并 `flush`，再返回 Event。文件创建权限在 POSIX 上断言为 `0o600`，运行目录断言为 `0o700`。
 重新打开同一 run 的 Journal 时，必须从现有最后一条合法 Event 恢复 sequence；损坏或不连续的 JSON Lines 记录必须明确报错，不能从 `1` 静默覆盖顺序。
 
-- [ ] **Step 5：运行检查并提交 Task 3**
+- [x] **Step 5：运行检查并提交 Task 3**
 
 ```bash
 uv run pytest tests/test_config.py tests/test_redaction.py tests/persistence -v

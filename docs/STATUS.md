@@ -2,19 +2,20 @@
 
 **更新日期：** 2026-09-10
 **当前阶段：** 阶段 1——Core 契约与安全编辑垂直切片
-**仓库状态：** 治理基线和实施计划已提交到 `main`；当前开发在 `codex/core-safe-editing`；暂无远程仓库。
+**仓库状态：** 离线 Core 垂直切片已合并到 `main`；暂无远程仓库。
 
 ## 已验证基线
 
 - 工作目录：`/Users/admin/Vera`
-- 当前开发分支：`codex/core-safe-editing`
+- 当前开发分支：`main`
 - 初始检查点：仓库治理与 SDD 基线
-- Agent 实现：任务 1–4 的 Python Core 基础、契约、状态、持久化和安全只读工具
+- Agent 实现：任务 1–11 的 Python Core、Runtime 和内部 CLI；任务 12 离线验收已完成
 - 依赖清单：`pyproject.toml`、`.python-version`、`uv.lock`
 
 ## 已完成任务
 
 - [任务 0001：建立 Vera 仓库](tasks/0001-bootstrap-repository.md)
+- 任务 0002 的离线实现与验收步骤已完成；真实供应商和人工验收仍开放
 
 阶段 1 的 Core 契约和安全编辑垂直切片范围已经接受；实现正在通过活动任务记录推进。
 
@@ -28,8 +29,8 @@
 - 必需文件和文档链接目标：通过
 - 占位符与行尾空白扫描：通过
 - `git diff --check`：通过
-- Agent 源码与依赖清单扫描：任务 1 骨架已建立
-- Git 状态：治理与实施计划检查点 `a1aaffb` 位于 `main`；功能开发在 `codex/core-safe-editing`
+- Agent 源码与依赖清单扫描：Python Core 与 CLI 已建立
+- Git 状态：合并提交 `b8604eb` 位于 `main`；工作树干净
 - `uv 0.12.10`：通过官方独立安装器安装，项目环境同步完成
 - 任务 1 包测试：1 项通过；Ruff 和 Mypy 通过
 - 任务 2 契约与状态机：10 项测试通过；Ruff 和 Mypy 通过
