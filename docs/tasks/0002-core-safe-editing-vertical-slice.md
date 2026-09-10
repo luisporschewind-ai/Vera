@@ -1253,7 +1253,7 @@ git commit -m "feat: orchestrate approved edits verification and rollback"
 - Produces: `vera run`, `vera runs list`, `vera runs show`, `vera rollback`, `vera config show`
 - Produces: 退出状态码 `0/2/3/4/5`
 
-- [ ] **Step 1：编写 CLI 帮助和配置脱敏失败测试**
+- [x] **Step 1：编写 CLI 帮助和配置脱敏失败测试**
 
 ```python
 def test_config_show_never_prints_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1266,7 +1266,7 @@ def test_config_show_never_prints_api_key(monkeypatch: pytest.MonkeyPatch) -> No
 
 测试 `vera --help` 包含五个正式命令。
 
-- [ ] **Step 2：实现依赖组装和 Typer 命令树**
+- [x] **Step 2：实现依赖组装和 Typer 命令树**
 
 ```python
 app = typer.Typer(no_args_is_help=True)
@@ -1294,7 +1294,7 @@ def run(
 
 `bootstrap.py` 是唯一组装点：加载配置、读取指定 API Key 环境变量、创建 Redactor、Adapter、Workspace、Journal、CheckpointStore、Verifier 和 Runtime。`execute_run(goal: str, workspace: Path, model_profile: str | None, json_output: bool) -> int` 负责驱动 Runtime 和渲染器，并返回规格定义的退出码。
 
-- [ ] **Step 3：编写并实现交互审批和渲染**
+- [x] **Step 3：编写并实现交互审批和渲染**
 
 人类模式用 Rich 展示状态、文件列表、完整统一 Diff、验证命令、风险和 run ID。收到 `approval.required` 时只接受明确的 `approve` 或 `reject`；将 Event 中的 `approval_id` 和 `target_hash` 原样放入 `ResolveApproval`。
 
@@ -1304,15 +1304,15 @@ if decision not in {"approve", "reject"}:
     raise typer.BadParameter("必须明确输入 approve 或 reject")
 ```
 
-- [ ] **Step 4：实现 JSON 和非交互行为**
+- [x] **Step 4：实现 JSON 和非交互行为**
 
 JSON 模式每行只输出 `event.model_dump_json()`，不输出 ANSI 或提示文字。`json_output is True` 或 `not sys.stdin.isatty()` 时不发起文本提示；遇到审批后向 Runtime 发送 `CancelRun`，输出 `run.cancelled`，状态码为 `2`，并证明目标文件未变化。
 
-- [ ] **Step 5：实现 runs、rollback 和退出码映射**
+- [x] **Step 5：实现 runs、rollback 和退出码映射**
 
 `runs list` 按最近事件时间倒序显示 run ID、工作区、目标摘要和终态；`runs show` 输出已脱敏 Event；`rollback` 调用 `RollbackRun` 并展示成功或冲突。终态到退出码使用一个只读映射，不在命令函数中分散判断。
 
-- [ ] **Step 6：运行检查并提交 Task 11**
+- [x] **Step 6：运行检查并提交 Task 11**
 
 ```bash
 uv run pytest tests/cli -v

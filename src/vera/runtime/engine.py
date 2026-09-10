@@ -9,7 +9,7 @@ from uuid import uuid4
 from pydantic import BaseModel
 
 from vera.config import Limits
-from vera.contracts.commands import CoreCommand, ResolveApproval, RollbackRun, StartRun
+from vera.contracts.commands import CancelRun, CoreCommand, ResolveApproval, RollbackRun, StartRun
 from vera.contracts.events import EventEnvelope
 from vera.contracts.verification import VerificationCommand
 from vera.models.base import ModelAdapter, ModelMessage, ModelRequest, ModelToolCall
@@ -362,6 +362,13 @@ class VeraRuntime:
             context.machine.transition(RunState.DISCOVERING)
 
     def handle(self, command: CoreCommand) -> Iterator[EventEnvelope]:
+        if isinstance(command, CancelRun):
+            context = self.runs.get(command.run_id)
+            if context is not None:
+                with suppress(Exception):
+                    context.machine.transition(RunState.CANCELLED)
+                yield self._event(context, "run.cancelled", {"reason": "cancelled_by_user"})
+            return
         if isinstance(command, ResolveApproval):
             yield from self._resolve_approval(command)
             return
