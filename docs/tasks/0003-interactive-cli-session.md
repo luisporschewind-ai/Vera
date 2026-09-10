@@ -198,7 +198,7 @@ git commit -m "feat: load private provider environment"
 - Produces: `RunContext.verification_failed: bool`
 - Guarantee: 每条验证命令只执行或拒绝一次，审批后从下一条继续
 
-- [ ] **Step 1：编写批准验证命令后正常终止的失败测试**
+- [x] **Step 1：编写批准验证命令后正常终止的失败测试**
 
 创建包含一项需要审批的 `VerificationCommand` 的 Change Set。批准 Change Set 后取得第二个 `approval.required`，再批准命令：
 
@@ -214,13 +214,13 @@ assert not any(event.type == "approval.required" for event in command_events)
 
 另写拒绝命令测试，断言命令未执行、文件保持已应用状态、最后为 `run.completed` 且状态是 `verification_failed`。
 
-- [ ] **Step 2：运行目标测试并确认重复审批或非法状态失败**
+- [x] **Step 2：运行目标测试并确认重复审批或非法状态失败**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/runtime/test_safe_editing_flow.py -v
 ```
 
-- [ ] **Step 3：用显式验证游标实现续跑**
+- [x] **Step 3：用显式验证游标实现续跑**
 
 `_verify` 从 `context.verification_index` 开始。自动允许、禁止、批准或拒绝一条命令后都把游标推进一次；失败状态累计到 `verification_failed`。命令审批拒绝不能进入通用 Change Set 取消分支：
 
@@ -239,7 +239,7 @@ if request.kind == ApprovalKind.COMMAND.value:
 
 `run.started` Payload 同时记录 `workspace_root` 和 `model_profile`，使 run 摘要与持久化诊断准确。
 
-- [ ] **Step 4：运行 Runtime 测试和静态检查**
+- [x] **Step 4：运行 Runtime 测试和静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/runtime -v
@@ -247,7 +247,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src/vera/runtime tests
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Task 2**
+- [x] **Step 5：提交 Task 2**
 
 ```bash
 git add src/vera/runtime/context.py src/vera/runtime/engine.py tests/runtime/test_safe_editing_flow.py docs/tasks/0003-interactive-cli-session.md

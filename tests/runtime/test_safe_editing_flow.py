@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -24,6 +25,58 @@ class ReadTool:
 
     def execute(self, arguments: ReadInput) -> ToolResult:
         return read_file(self.paths, arguments.path)
+
+
+def runtime_with_approved_verification(tmp_path: Path) -> VeraRuntime:
+    return VeraRuntime(
+        FakeModelAdapter(
+            [
+                ModelTurn(
+                    finish_reason="tool_calls",
+                    tool_calls=(
+                        ModelToolCall(
+                            call_id="1",
+                            name="propose_changeset",
+                            arguments={
+                                "summary": "edit and verify",
+                                "changes": [
+                                    {
+                                        "operation": "update",
+                                        "path": "hello.txt",
+                                        "after_content": "new\n",
+                                    }
+                                ],
+                                "verification": [
+                                    {
+                                        "argv": [
+                                            sys.executable,
+                                            "-c",
+                                            "from pathlib import Path; "
+                                            "p=Path('verified.txt'); "
+                                            "old=p.read_text() if p.exists() else ''; "
+                                            "p.write_text(old + 'x')",
+                                        ],
+                                        "cwd": ".",
+                                    }
+                                ],
+                            },
+                        ),
+                    ),
+                )
+            ]
+        ),
+        ToolRegistry(),
+        tmp_path / "state",
+    )
+
+
+def resolve(event, decision: str) -> ResolveApproval:
+    return ResolveApproval(
+        run_id=event.run_id,
+        approval_id=str(event.payload["approval_id"]),
+        target_hash=str(event.payload["target_hash"]),
+        decision=decision,
+    )
 
 
 def test_approved_changeset_checkpoints_applies_and_completes(tmp_path: Path) -> None:
@@ -121,3 +174,68 @@ def test_runtime_rollback_restores_original_bytes(tmp_path: Path) -> None:
     rollback_events = list(runtime.handle(RollbackRun(run_id=events[0].run_id)))
     assert rollback_events[-1].type == "rollback.completed"
     assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "old\n"
+
+
+def test_approved_verification_command_runs_once_and_completes(tmp_path: Path) -> None:
+    (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
+    runtime = runtime_with_approved_verification(tmp_path)
+    start_events = list(
+        runtime.handle(StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake"))
+    )
+    changeset_approval = next(
+        event for event in start_events if event.type == "approval.required"
+    )
+    apply_events = list(runtime.handle(resolve(changeset_approval, "approve")))
+    command_approval = next(
+        event for event in apply_events if event.type == "approval.required"
+    )
+
+    command_events = list(runtime.handle(resolve(command_approval, "approve")))
+
+    assert [event.type for event in command_events] == [
+        "approval.resolved",
+        "verification.completed",
+        "run.completed",
+    ]
+    assert (tmp_path / "verified.txt").read_text(encoding="utf-8") == "x"
+    assert command_events[-1].payload["state"] == "completed"
+
+
+def test_rejected_verification_command_keeps_change_and_finishes_failed(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
+    runtime = runtime_with_approved_verification(tmp_path)
+    start_events = list(
+        runtime.handle(StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake"))
+    )
+    changeset_approval = next(
+        event for event in start_events if event.type == "approval.required"
+    )
+    apply_events = list(runtime.handle(resolve(changeset_approval, "approve")))
+    command_approval = next(
+        event for event in apply_events if event.type == "approval.required"
+    )
+
+    command_events = list(runtime.handle(resolve(command_approval, "reject")))
+
+    assert [event.type for event in command_events] == [
+        "approval.resolved",
+        "verification.completed",
+        "run.completed",
+    ]
+    assert command_events[-1].payload["state"] == "verification_failed"
+    assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "new\n"
+    assert not (tmp_path / "verified.txt").exists()
+
+
+def test_run_started_records_workspace_and_model_profile(tmp_path: Path) -> None:
+    (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
+    runtime = runtime_with_approved_verification(tmp_path)
+
+    events = list(
+        runtime.handle(StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake"))
+    )
+
+    assert events[0].payload["workspace_root"] == str(tmp_path)
+    assert events[0].payload["model_profile"] == "fake"
