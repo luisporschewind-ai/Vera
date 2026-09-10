@@ -21,7 +21,7 @@
 ## 活动任务
 
 - [任务 0002：Core 安全编辑垂直切片](tasks/0002-core-safe-editing-vertical-slice.md)
-- 当前检查点：任务 4 Workspace 边界与只读工具已通过 8 项测试，准备提交
+- 当前检查点：任务 5 ChangeSet 生成与审批完整性已通过 5 项测试，准备提交
 
 ## 最近验证
 
@@ -35,6 +35,7 @@
 - 任务 2 契约与状态机：10 项测试通过；Ruff 和 Mypy 通过
 - 任务 3 配置、脱敏和 Event Journal：8 项测试通过；Ruff 和 Mypy 通过
 - 任务 4 Workspace 边界与只读工具：8 项测试通过；Ruff 和 Mypy 通过
+- 任务 5 ChangeSet 生成与审批完整性：5 项测试通过；Ruff 和 Mypy 通过
 
 ## 已接受方向
 
@@ -53,4 +54,4 @@
 
 ## 下一检查点
 
-完成任务 4 Workspace 边界与只读工具，再在任务 5 实现 ChangeSet 生成与审批完整性。
+完成任务 5 ChangeSet 生成与审批完整性，再在任务 6 实现 Checkpoint、原子应用与冲突安全回滚。

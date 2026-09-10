@@ -717,7 +717,7 @@ git commit -m "feat: enforce workspace boundaries for read tools"
 - Produces: `ApprovalGate.require(kind, target_id, target_hash, description, risk) -> ApprovalRequest`
 - Produces: `ApprovalGate.resolve(command: ResolveApproval) -> Literal["approve", "reject"]`
 
-- [ ] **Step 1：编写 Runtime 生成 Diff 和哈希失败测试**
+- [x] **Step 1：编写 Runtime 生成 Diff 和哈希失败测试**
 
 ```python
 def test_changeset_hash_covers_files_and_verification(tmp_path: Path) -> None:
@@ -731,7 +731,7 @@ def test_changeset_hash_covers_files_and_verification(tmp_path: Path) -> None:
 
 增加 create、update、delete、多文件排序和相同输入产生相同哈希的测试。
 
-- [ ] **Step 2：实现权威 Change Set Builder**
+- [x] **Step 2：实现权威 Change Set Builder**
 
 ```python
 class ChangeProposal(BaseModel):
@@ -747,7 +747,7 @@ class BuiltChangeSet(BaseModel):
 
 实现 `ChangeSetBuilder.build(self, run_id: str, summary: str, proposals: Sequence[ChangeProposal], verification: Sequence[VerificationCommand]) -> BuiltChangeSet`。`create` 要求目标不存在且提供内容；`update` 要求目标是普通文本文件且提供内容；`delete` 要求目标存在且 `after_content is None`。哈希只覆盖文件操作、路径、前后哈希和验证计划，不覆盖随机 ID 或展示摘要；使用排序键固定的 UTF-8 JSON 和 SHA-256。统一 Diff 使用 `difflib.unified_diff`，路径固定为 `a/<path>` 与 `b/<path>`，同时把精确写入字节保存在 `BuiltChangeSet.intended_bytes`。
 
-- [ ] **Step 3：编写审批重放和篡改失败测试**
+- [x] **Step 3：编写审批重放和篡改失败测试**
 
 ```python
 def test_approval_rejects_changed_target_hash() -> None:
@@ -765,11 +765,11 @@ def test_approval_rejects_changed_target_hash() -> None:
 
 同时测试旧审批 ID 重放、错误 run ID、拒绝决定和已解决审批二次提交。
 
-- [ ] **Step 4：实现一次性审批门**
+- [x] **Step 4：实现一次性审批门**
 
 `ApprovalGate` 保存唯一 `pending_approval`。`require` 计算并返回 `ApprovalRequest`；`resolve` 先比较 run、approval、target hash，再以原子状态变化清除请求并返回决定。拒绝决定不能被解释为工具错误或隐式批准。
 
-- [ ] **Step 5：运行检查并提交 Task 5**
+- [x] **Step 5：运行检查并提交 Task 5**
 
 ```bash
 uv run pytest tests/workspace/test_changeset.py tests/runtime/test_approval.py -v
