@@ -320,7 +320,7 @@ git commit -m "chore: establish Vera Python Core foundation"
 - Produces: `EventEnvelope`, `ChangeSet`, `FileChange`, `ApprovalRequest`, `VerificationCommand`, `VerificationResult`
 - Produces: `RunState` 与 `RunStateMachine.transition(target: RunState) -> None`
 
-- [ ] **Step 1：编写契约序列化失败测试**
+- [x] **Step 1：编写契约序列化失败测试**
 
 ```python
 from pathlib import Path
@@ -339,7 +339,7 @@ def test_start_run_serializes_schema_version_and_workspace(tmp_path: Path) -> No
 
 预期：FAIL，原因是 `vera.contracts` 尚不存在。
 
-- [ ] **Step 2：实现 Command、Change Set、Approval 和 Verification Model**
+- [x] **Step 2：实现 Command、Change Set、Approval 和 Verification Model**
 
 使用 `ConfigDict(frozen=True, extra="forbid")`。核心签名必须为：
 
@@ -401,7 +401,7 @@ class VerificationResult(BaseModel):
 
 `ApprovalRequest` 包含 `approval_id`、`run_id`、`kind`、`target_id`、`target_hash`、`description` 和 `risk`。`CheckpointManifest` 包含 `checkpoint_id`、`run_id`、工作区根目录、路径到修改前状态的映射，以及路径到应用后哈希的映射。`CancelRun` 只含 `run_id`；`RollbackRun` 接受且只能接受 `run_id` 或 `checkpoint_id` 其中之一。为所有非法额外字段添加拒绝测试。
 
-- [ ] **Step 3：实现 Event Model 并验证顺序字段**
+- [x] **Step 3：实现 Event Model 并验证顺序字段**
 
 ```python
 class EventEnvelope(BaseModel):
@@ -418,7 +418,7 @@ class EventEnvelope(BaseModel):
 
 测试 JSON round-trip 后对象相等，并测试 `sequence=0` 被拒绝。
 
-- [ ] **Step 4：编写并实现状态转换测试**
+- [x] **Step 4：编写并实现状态转换测试**
 
 ```python
 def test_runtime_rejects_apply_before_checkpoint() -> None:
