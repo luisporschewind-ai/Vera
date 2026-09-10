@@ -21,7 +21,7 @@
 ## 活动任务
 
 - [任务 0002：Core 安全编辑垂直切片](tasks/0002-core-safe-editing-vertical-slice.md)
-- 当前检查点：任务 8 可替换 ModelAdapter 已通过 2 项非 live 测试，准备提交
+- 当前检查点：任务 9 VeraRuntime 发现循环已通过 2 项测试，准备提交
 
 ## 最近验证
 
@@ -39,6 +39,7 @@
 - 任务 6 Checkpoint、原子应用与冲突安全回滚：4 项测试通过；Ruff 和 Mypy 通过
 - 任务 7 命令策略与验证证据：7 项测试通过；Ruff 和 Mypy 通过
 - 任务 8 可替换 ModelAdapter：2 项非 live 测试通过；Ruff 和 Mypy 通过；live 测试未联网
+- 任务 9 VeraRuntime 发现循环：2 项测试通过；Ruff 和 Mypy 通过
 
 ## 已接受方向
 
@@ -57,4 +58,4 @@
 
 ## 下一检查点
 
-完成任务 8 可替换 ModelAdapter，再在任务 9 实现 VeraRuntime 发现循环与 Change Set 暂停点。
+完成任务 9 VeraRuntime 发现循环，再在任务 10 实现审批、应用、验证与回滚编排。

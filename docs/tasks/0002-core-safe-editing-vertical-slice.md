@@ -1085,7 +1085,7 @@ git commit -m "feat: add replaceable OpenAI-compatible model adapter"
 - Produces: `VeraRuntime.handle(command: CoreCommand) -> Iterator[EventEnvelope]`
 - Produces: `VeraRuntime` 在 Change Set 审批点保持内存态，等待 `ResolveApproval`
 
-- [ ] **Step 1：编写读取、搜索、提案流程失败测试**
+- [x] **Step 1：编写读取、搜索、提案流程失败测试**
 
 ```python
 def test_runtime_reaches_changeset_approval_without_writing(runtime_fixture: RuntimeFixture) -> None:
@@ -1100,13 +1100,13 @@ def test_runtime_reaches_changeset_approval_without_writing(runtime_fixture: Run
 
 断言 Event 顺序包含 `run.started`、`model.requested/completed`、`tool.started/completed`，并验证供应商原生对象没有进入 Payload。
 
-- [ ] **Step 2：实现固定系统策略和模型工具 Schema**
+- [x] **Step 2：实现固定系统策略和模型工具 Schema**
 
 `prompts.py` 的系统策略明确：只能使用注册工具；不得声称执行成功；读取足够上下文后调用一次 `propose_changeset`；不得输出秘密；无法形成安全修改时返回原因。Runtime 收到无 Tool Call 的终止响应后以 `run.failed` 和 `reason=no_changes_proposed` 结束。工具 Schema 从 Pydantic 输入 Model 生成，不维护第二份手写参数定义。
 
 模型工具中包含特殊工具 `run_command` 和 `propose_changeset`。它们的参数分别复用 `VerificationCommand` 和 Change Set 提案 Model，但由 Runtime 直接协调，不能绕过 CommandPolicy 或进入普通 Tool Registry 的自由执行路径。
 
-- [ ] **Step 3：实现 StartRun 到审批点的 Runtime 驱动**
+- [x] **Step 3：实现 StartRun 到审批点的 Runtime 驱动**
 
 ```python
 @dataclass
@@ -1129,7 +1129,7 @@ class RunContext:
 
 发现阶段的 `run_command` 先经过 CommandPolicy：`ALLOWED` 才直接交给 VerificationRunner；`APPROVAL_REQUIRED` 输出包含 argv、cwd、哈希和非沙箱风险的 `approval.required` 后暂停；`FORBIDDEN` 直接向模型返回拒绝结果。匹配的 `ResolveApproval` 到达后，Runtime 执行原哈希绑定命令、输出 `tool.completed`，再继续模型循环。
 
-- [ ] **Step 4：编写并实现上下文和循环限制**
+- [x] **Step 4：编写并实现上下文和循环限制**
 
 ```python
 def test_three_identical_tool_calls_fail_without_writes(runtime_fixture: RuntimeFixture) -> None:
@@ -1142,7 +1142,7 @@ def test_three_identical_tool_calls_fail_without_writes(runtime_fixture: Runtime
 
 分别测试 20 轮、50 次工具、单文件、单输出和总上下文字节限制。截断结果必须有 `truncated=true`；达到上限时在审批和写入前终止。
 
-- [ ] **Step 5：运行检查并提交 Task 9**
+- [x] **Step 5：运行检查并提交 Task 9**
 
 ```bash
 uv run pytest tests/runtime/test_discovery_loop.py tests/runtime/test_limits.py -v
