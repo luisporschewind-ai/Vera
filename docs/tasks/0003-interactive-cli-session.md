@@ -272,7 +272,7 @@ git commit -m "fix: continue runs across verification approvals"
 - Consumes: `Callable[[EventEnvelope], ApprovalDecision]`
 - Consumes: `Callable[[tuple[EventEnvelope, ...]], None]`，每个 Event batch 产生后立即调用
 
-- [ ] **Step 1：编写连续两道审批的驱动器失败测试**
+- [x] **Step 1：编写连续两道审批的驱动器失败测试**
 
 使用真实 `VeraRuntime`、Fake Model 和临时工作区，脚本化决定为 `approve, approve`：
 
@@ -285,13 +285,13 @@ assert target.read_text(encoding="utf-8") == "new\n"
 
 再测试 `cancel` 映射为 `CancelRun`，目标文件保持不变。
 
-- [ ] **Step 2：运行测试并确认模块不存在**
+- [x] **Step 2：运行测试并确认模块不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/cli/test_driver.py -v
 ```
 
-- [ ] **Step 3：实现无终端依赖的驱动循环**
+- [x] **Step 3：实现无终端依赖的驱动循环**
 
 ```python
 def drive_run(
@@ -323,7 +323,7 @@ def drive_run(
 
 实现必须把每个 batch 立即交给可选的 `on_events` 回调，保证用户在输入审批前已经看到 Diff；不能等整个 run 结束才统一渲染。`cli.execute_run` 改为复用该驱动器，JSON 模式的决定函数固定返回 `cancel`。
 
-- [ ] **Step 4：运行驱动器和既有 CLI 测试**
+- [x] **Step 4：运行驱动器和既有 CLI 测试**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/cli -v
@@ -331,7 +331,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src/vera/cli.py src/ve
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Task 3**
+- [x] **Step 5：提交 Task 3**
 
 ```bash
 git add src/vera/cli.py src/vera/cli_driver.py tests/cli docs/tasks/0003-interactive-cli-session.md

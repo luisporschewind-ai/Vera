@@ -3,13 +3,14 @@
 import json
 import sys
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, cast
 
 import typer
 
 from vera.bootstrap import RuntimeDependencies, build_runtime
+from vera.cli_driver import ApprovalDecision, drive_run
 from vera.config import load_config
-from vera.contracts.commands import CancelRun, ResolveApproval, RollbackRun, StartRun
+from vera.contracts.commands import RollbackRun, StartRun
 from vera.contracts.events import EventEnvelope
 from vera.persistence.run_store import RunStore
 
@@ -48,32 +49,25 @@ def execute_run(
     except Exception as exc:
         typer.echo(str(exc), err=True)
         return 5
-    events = list(
-        deps.runtime.handle(
-            StartRun(goal=goal, workspace_root=workspace, model_profile=model_profile or "default")
-        )
-    )
-    if any(event.type == "approval.required" for event in events):
-        run_id = events[0].run_id
+    def decide(_request: EventEnvelope) -> ApprovalDecision:
         if json_output or not sys.stdin.isatty():
-            events.extend(deps.runtime.handle(CancelRun(run_id=run_id)))
-        else:
-            request = next(event for event in events if event.type == "approval.required")
-            decision = typer.prompt("输入 approve 批准，或 reject 拒绝")
-            if decision not in {"approve", "reject"}:
-                raise typer.BadParameter("必须明确输入 approve 或 reject")
-            events.extend(
-                deps.runtime.handle(
-                    ResolveApproval(
-                        run_id=run_id,
-                        approval_id=str(request.payload["approval_id"]),
-                        target_hash=str(request.payload["target_hash"]),
-                        decision=decision,
-                    )
-                )
-            )
-    _render(events, json_output)
-    return _exit_code(events)
+            return "cancel"
+        decision = typer.prompt("输入 approve 批准，或 reject 拒绝")
+        if decision not in {"approve", "reject"}:
+            raise typer.BadParameter("必须明确输入 approve 或 reject")
+        return cast(ApprovalDecision, decision)
+
+    events = drive_run(
+        deps.runtime,
+        StartRun(
+            goal=goal,
+            workspace_root=workspace,
+            model_profile=model_profile or "default",
+        ),
+        decide,
+        lambda batch: _render(list(batch), json_output),
+    )
+    return _exit_code(list(events))
 
 
 @app.command()
