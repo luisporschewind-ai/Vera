@@ -21,7 +21,7 @@
 ## 活动任务
 
 - [任务 0002：Core 安全编辑垂直切片](tasks/0002-core-safe-editing-vertical-slice.md)
-- 当前检查点：任务 1 的 RED/GREEN 包骨架与治理同步
+- 当前检查点：任务 1 已提交（`60bc60a`），准备实现任务 2 的契约与状态机
 
 ## 最近验证
 

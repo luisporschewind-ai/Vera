@@ -252,7 +252,7 @@ uv run mypy src
 
 预期：测试 PASS，Ruff 和 Mypy 退出码均为 `0`，`uv.lock` 已生成。
 
-- [ ] **Step 5：同步治理文档**
+- [x] **Step 5：同步治理文档**
 
 三份 ADR 均使用中文，状态为 `Accepted`：
 
@@ -274,7 +274,7 @@ __pycache__/
 *.py[cod]
 ```
 
-- [ ] **Step 6：检查并提交 Task 1**
+- [x] **Step 6：检查并提交 Task 1**
 
 运行：
 
