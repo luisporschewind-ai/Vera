@@ -484,7 +484,7 @@ git commit -m "feat: define versioned Vera Core contracts"
 - Produces: `RunStore.list_runs() -> tuple[RunSummary, ...]`
 - Produces: `RunStore.read_events(run_id: str) -> tuple[EventEnvelope, ...]`
 
-- [ ] **Step 1：编写配置优先级和安全限制失败测试**
+- [x] **Step 1：编写配置优先级和安全限制失败测试**
 
 ```python
 def test_project_config_can_lower_but_not_raise_limits(tmp_path: Path) -> None:
@@ -498,7 +498,7 @@ def test_project_config_can_lower_but_not_raise_limits(tmp_path: Path) -> None:
 
 同时测试 CLI > 环境变量 > 项目 > 用户 > 内置默认值，以及项目配置包含 `api_key` 或安全命令声明时被拒绝。
 
-- [ ] **Step 2：实现不可变配置 Model 和 TOML 合并**
+- [x] **Step 2：实现不可变配置 Model 和 TOML 合并**
 
 ```python
 class Limits(BaseModel):
@@ -536,7 +536,7 @@ class RunSummary(BaseModel):
 
 用户配置路径由 `platformdirs.user_config_path("Vera")` 生成；状态目录由 `platformdirs.user_state_path("Vera")` 生成；测试通过环境注入临时路径，不访问真实用户目录。
 
-- [ ] **Step 3：编写并实现递归脱敏测试**
+- [x] **Step 3：编写并实现递归脱敏测试**
 
 ```python
 def test_redactor_removes_secret_from_nested_payload() -> None:
@@ -547,7 +547,7 @@ def test_redactor_removes_secret_from_nested_payload() -> None:
 
 同时覆盖键名 `api_key`、`authorization`、`token`、`password`；这些键的值整体替换为 `[REDACTED]`。
 
-- [ ] **Step 4：编写 Event Journal 失败测试并实现追加语义**
+- [x] **Step 4：编写 Event Journal 失败测试并实现追加语义**
 
 ```python
 def test_journal_assigns_monotonic_sequence_and_persists_jsonl(tmp_path: Path) -> None:

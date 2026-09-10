@@ -21,7 +21,7 @@
 ## 活动任务
 
 - [任务 0002：Core 安全编辑垂直切片](tasks/0002-core-safe-editing-vertical-slice.md)
-- 当前检查点：任务 2 契约与状态机已通过 10 项测试，准备提交
+- 当前检查点：任务 3 配置、脱敏和 Event Journal 已通过 8 项测试，准备提交
 
 ## 最近验证
 
