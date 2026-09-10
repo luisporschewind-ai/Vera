@@ -968,7 +968,7 @@ git commit -m "feat: classify commands and capture verification evidence"
 - Produces: `OpenAICompatibleAdapter`
 - Produces: `FakeModelAdapter`，供后续 Runtime 测试使用
 
-- [ ] **Step 1：编写标准化 Tool Call 转换失败测试**
+- [x] **Step 1：编写标准化 Tool Call 转换失败测试**
 
 ```python
 def test_adapter_normalizes_provider_tool_call(fake_openai_client: FakeOpenAIClient) -> None:
@@ -982,7 +982,7 @@ def test_adapter_normalizes_provider_tool_call(fake_openai_client: FakeOpenAICli
 
 同时测试纯文本、无效 JSON 参数、未知 finish reason、usage 缺失和供应商异常转换为 Vera 错误。
 
-- [ ] **Step 2：定义稳定 ModelAdapter 协议**
+- [x] **Step 2：定义稳定 ModelAdapter 协议**
 
 ```python
 class ModelMessage(BaseModel):
@@ -1024,11 +1024,11 @@ class ModelAdapter(Protocol):
 
 `ModelTurn` 包含 `assistant_text`、标准化 `tool_calls`、`finish_reason`、可选 `usage` 和经过脱敏的 `provider_metadata`。
 
-- [ ] **Step 3：实现 OpenAI-compatible Adapter**
+- [x] **Step 3：实现 OpenAI-compatible Adapter**
 
 构造客户端时显式传入 `api_key`、`base_url`、`timeout=120.0`、`max_retries=0`，避免 SDK 隐式重试造成不可见成本。调用 `client.chat.completions.create`，只在 `models/` 内访问供应商对象；Tool Call 参数使用 `json.loads` 后再通过本地模型校验。
 
-- [ ] **Step 4：实现可脚本化 FakeModelAdapter**
+- [x] **Step 4：实现可脚本化 FakeModelAdapter**
 
 ```python
 class FakeModelAdapter:
@@ -1043,7 +1043,7 @@ class FakeModelAdapter:
         return self._turns.popleft()
 ```
 
-- [ ] **Step 5：添加显式在线冒烟测试入口**
+- [x] **Step 5：添加显式在线冒烟测试入口**
 
 `tests/live/test_providers.py` 只在同时存在 `VERA_LIVE_PROVIDER`、对应 API Key 环境变量、Base URL 和模型名时运行；否则使用 `pytest.skip`。DeepSeek 使用 `DEEPSEEK_API_KEY`、`VERA_DEEPSEEK_BASE_URL`、`VERA_DEEPSEEK_MODEL`；GLM 使用 `GLM_API_KEY`、`VERA_GLM_BASE_URL`、`VERA_GLM_MODEL`。测试断言一次文本响应和一次 Tool Call 均能标准化，并且任何失败输出都通过 Redactor。
 
@@ -1053,7 +1053,7 @@ class FakeModelAdapter:
 uv run pytest tests/models tests/live -m "not live" -v
 ```
 
-- [ ] **Step 6：运行检查并提交 Task 8**
+- [x] **Step 6：运行检查并提交 Task 8**
 
 ```bash
 uv run pytest tests/models tests/live -m "not live" -v
