@@ -2,7 +2,9 @@
 
 > **供执行 Agent 使用：** 必须使用 `superpowers:subagent-driven-development`（推荐）或 `superpowers:executing-plans`，按任务逐项实施本计划。每个步骤使用复选框跟踪；未经用户明确选择，不得自行派发子 Agent。
 
-**状态：** Planned
+**状态：** In progress
+
+**当前执行分支：** `codex/core-safe-editing`
 
 **目标：** 实现一个可安装的 Python `vera` CLI，由 `VeraRuntime` 完成一次“上下文收集 → Change Set 审批 → Checkpoint → 写入 → 验证 → 手动回滚”的安全编辑闭环。
 
@@ -33,7 +35,7 @@
 
 - Git 分支：`main`；计划编写前工作区干净。
 - 当前没有 Agent 源码、Python 依赖清单或远程仓库。
-- 本机没有 `uv`。执行 Task 1 前，先取得用户安装授权，再运行 `brew install uv` 和 `uv --version`。
+- 本机为 Intel macOS；Homebrew 会回退到 Rust 源码构建。执行 Task 1 前，使用 uv 官方独立安装器安装 `0.12.10`，再运行 `uv --version`；后续机器若有可用 bottle，可使用 Homebrew。
 - uv 使用 `pyproject.toml` 管理依赖并提交跨平台 `uv.lock`；每次验证使用 `uv run`。
 - OpenAI-compatible Adapter 使用 OpenAI Python Client 的 Chat Completions 形状，因为 DeepSeek 和 GLM 官方接口均支持该兼容形式；供应商 Base URL 和模型名保留为本地配置。
 
@@ -137,18 +139,19 @@ tests/
 - Produces: `vera` Console Script，入口暂指向 `vera.cli:app`
 - Produces: 三份 Accepted ADR，后续任务以其为技术约束
 
-- [ ] **Step 1：安装并验证 uv**
+- [x] **Step 1：安装并验证 uv**
 
-先取得用户对本机工具安装的授权，然后运行：
+先取得用户对本机工具安装的授权，然后运行官方独立安装器：
 
 ```bash
-brew install uv
+curl -LsSf https://astral.sh/uv/0.12.10/install.sh | sh
+exec zsh -l
 uv --version
 ```
 
 预期：`uv --version` 退出码为 `0`。
 
-- [ ] **Step 2：编写包版本失败测试**
+- [x] **Step 2：编写包版本失败测试**
 
 先创建 `src/vera/__init__.py`：
 
@@ -166,7 +169,7 @@ def test_package_exposes_version() -> None:
     assert vera.__version__ == "0.1.0"
 ```
 
-- [ ] **Step 3：建立项目清单并确认测试先失败**
+- [x] **Step 3：建立项目清单并确认测试先失败**
 
 创建 `.python-version`，内容为 `3.12`。创建 `pyproject.toml`：
 
@@ -228,7 +231,7 @@ uv run pytest tests/test_package.py -v
 
 预期：FAIL，错误包含 `AttributeError: module 'vera' has no attribute '__version__'`。
 
-- [ ] **Step 4：实现最小包并通过测试**
+- [x] **Step 4：实现最小包并通过测试**
 
 修改 `src/vera/__init__.py`：
 
@@ -249,7 +252,7 @@ uv run mypy src
 
 预期：测试 PASS，Ruff 和 Mypy 退出码均为 `0`，`uv.lock` 已生成。
 
-- [ ] **Step 5：同步治理文档**
+- [x] **Step 5：同步治理文档**
 
 三份 ADR 均使用中文，状态为 `Accepted`：
 
@@ -271,7 +274,7 @@ __pycache__/
 *.py[cod]
 ```
 
-- [ ] **Step 6：检查并提交 Task 1**
+- [x] **Step 6：检查并提交 Task 1**
 
 运行：
 
@@ -317,7 +320,7 @@ git commit -m "chore: establish Vera Python Core foundation"
 - Produces: `EventEnvelope`, `ChangeSet`, `FileChange`, `ApprovalRequest`, `VerificationCommand`, `VerificationResult`
 - Produces: `RunState` 与 `RunStateMachine.transition(target: RunState) -> None`
 
-- [ ] **Step 1：编写契约序列化失败测试**
+- [x] **Step 1：编写契约序列化失败测试**
 
 ```python
 from pathlib import Path
@@ -336,7 +339,7 @@ def test_start_run_serializes_schema_version_and_workspace(tmp_path: Path) -> No
 
 预期：FAIL，原因是 `vera.contracts` 尚不存在。
 
-- [ ] **Step 2：实现 Command、Change Set、Approval 和 Verification Model**
+- [x] **Step 2：实现 Command、Change Set、Approval 和 Verification Model**
 
 使用 `ConfigDict(frozen=True, extra="forbid")`。核心签名必须为：
 
@@ -398,7 +401,7 @@ class VerificationResult(BaseModel):
 
 `ApprovalRequest` 包含 `approval_id`、`run_id`、`kind`、`target_id`、`target_hash`、`description` 和 `risk`。`CheckpointManifest` 包含 `checkpoint_id`、`run_id`、工作区根目录、路径到修改前状态的映射，以及路径到应用后哈希的映射。`CancelRun` 只含 `run_id`；`RollbackRun` 接受且只能接受 `run_id` 或 `checkpoint_id` 其中之一。为所有非法额外字段添加拒绝测试。
 
-- [ ] **Step 3：实现 Event Model 并验证顺序字段**
+- [x] **Step 3：实现 Event Model 并验证顺序字段**
 
 ```python
 class EventEnvelope(BaseModel):
@@ -415,7 +418,7 @@ class EventEnvelope(BaseModel):
 
 测试 JSON round-trip 后对象相等，并测试 `sequence=0` 被拒绝。
 
-- [ ] **Step 4：编写并实现状态转换测试**
+- [x] **Step 4：编写并实现状态转换测试**
 
 ```python
 def test_runtime_rejects_apply_before_checkpoint() -> None:
@@ -481,7 +484,7 @@ git commit -m "feat: define versioned Vera Core contracts"
 - Produces: `RunStore.list_runs() -> tuple[RunSummary, ...]`
 - Produces: `RunStore.read_events(run_id: str) -> tuple[EventEnvelope, ...]`
 
-- [ ] **Step 1：编写配置优先级和安全限制失败测试**
+- [x] **Step 1：编写配置优先级和安全限制失败测试**
 
 ```python
 def test_project_config_can_lower_but_not_raise_limits(tmp_path: Path) -> None:
@@ -495,7 +498,7 @@ def test_project_config_can_lower_but_not_raise_limits(tmp_path: Path) -> None:
 
 同时测试 CLI > 环境变量 > 项目 > 用户 > 内置默认值，以及项目配置包含 `api_key` 或安全命令声明时被拒绝。
 
-- [ ] **Step 2：实现不可变配置 Model 和 TOML 合并**
+- [x] **Step 2：实现不可变配置 Model 和 TOML 合并**
 
 ```python
 class Limits(BaseModel):
@@ -533,7 +536,7 @@ class RunSummary(BaseModel):
 
 用户配置路径由 `platformdirs.user_config_path("Vera")` 生成；状态目录由 `platformdirs.user_state_path("Vera")` 生成；测试通过环境注入临时路径，不访问真实用户目录。
 
-- [ ] **Step 3：编写并实现递归脱敏测试**
+- [x] **Step 3：编写并实现递归脱敏测试**
 
 ```python
 def test_redactor_removes_secret_from_nested_payload() -> None:
@@ -544,7 +547,7 @@ def test_redactor_removes_secret_from_nested_payload() -> None:
 
 同时覆盖键名 `api_key`、`authorization`、`token`、`password`；这些键的值整体替换为 `[REDACTED]`。
 
-- [ ] **Step 4：编写 Event Journal 失败测试并实现追加语义**
+- [x] **Step 4：编写 Event Journal 失败测试并实现追加语义**
 
 ```python
 def test_journal_assigns_monotonic_sequence_and_persists_jsonl(tmp_path: Path) -> None:
@@ -594,7 +597,7 @@ git commit -m "feat: add private run configuration and event journal"
 - Produces: `ToolRegistry.execute(name: str, arguments: dict[str, JsonValue]) -> ToolResult`
 - Produces: `list_directory`, `search_text`, `read_file` 工具
 
-- [ ] **Step 1：编写路径越界和符号链接失败测试**
+- [x] **Step 1：编写路径越界和符号链接失败测试**
 
 ```python
 def test_read_rejects_symlink_that_escapes_workspace(tmp_path: Path) -> None:
@@ -616,7 +619,7 @@ def test_mutation_rejects_all_symlinks(tmp_path: Path) -> None:
 
 同时覆盖绝对路径、`..`、不存在父目录中的符号链接，以及 `.env`、私钥和真实凭据文件。
 
-- [ ] **Step 2：实现路径规范化和敏感文件策略**
+- [x] **Step 2：实现路径规范化和敏感文件策略**
 
 ```python
 BUILT_IN_PROTECTED_NAMES = frozenset({".env", ".npmrc", ".pypirc", "credentials"})
@@ -626,7 +629,7 @@ SAFE_ENV_TEMPLATES = frozenset({".env.example", ".env.sample", ".env.template"})
 
 `WorkspacePaths` 的公开签名固定为 `__init__(root: Path, protected: ProtectedPathPolicy | None = None)`、`resolve_read(relative_path: str) -> Path` 和 `resolve_mutation(relative_path: str) -> Path`。先规范化分隔符并拒绝空路径、绝对路径和 `..`，再解析真实路径并使用 `Path.is_relative_to(root)` 校验。任何修改路径只要路径本身或已存在父目录包含符号链接就拒绝。
 
-- [ ] **Step 3：编写只读工具限制测试**
+- [x] **Step 3：编写只读工具限制测试**
 
 ```python
 def test_read_file_marks_truncation(tmp_path: Path) -> None:
@@ -638,7 +641,7 @@ def test_read_file_marks_truncation(tmp_path: Path) -> None:
 
 测试目录排序稳定、搜索结果按路径和行号排序、二进制文件拒绝、默认忽略 `.git`、`.venv`、`node_modules`、`dist`、`build`、`.vera`。
 
-- [ ] **Step 4：实现 Tool Registry 和只读工具**
+- [x] **Step 4：实现 Tool Registry 和只读工具**
 
 ```python
 class ToolDefinition(BaseModel):
@@ -682,7 +685,7 @@ class ToolRegistry:
 
 Registry 拒绝未知工具和不符合 Pydantic 输入 Model 的参数。文件读取使用严格 UTF-8；无法解码时返回 `binary_or_non_utf8`，不猜测编码。
 
-- [ ] **Step 5：运行检查并提交 Task 4**
+- [x] **Step 5：运行检查并提交 Task 4**
 
 ```bash
 uv run pytest tests/workspace/test_paths.py tests/tools -v
@@ -714,7 +717,7 @@ git commit -m "feat: enforce workspace boundaries for read tools"
 - Produces: `ApprovalGate.require(kind, target_id, target_hash, description, risk) -> ApprovalRequest`
 - Produces: `ApprovalGate.resolve(command: ResolveApproval) -> Literal["approve", "reject"]`
 
-- [ ] **Step 1：编写 Runtime 生成 Diff 和哈希失败测试**
+- [x] **Step 1：编写 Runtime 生成 Diff 和哈希失败测试**
 
 ```python
 def test_changeset_hash_covers_files_and_verification(tmp_path: Path) -> None:
@@ -728,7 +731,7 @@ def test_changeset_hash_covers_files_and_verification(tmp_path: Path) -> None:
 
 增加 create、update、delete、多文件排序和相同输入产生相同哈希的测试。
 
-- [ ] **Step 2：实现权威 Change Set Builder**
+- [x] **Step 2：实现权威 Change Set Builder**
 
 ```python
 class ChangeProposal(BaseModel):
@@ -744,7 +747,7 @@ class BuiltChangeSet(BaseModel):
 
 实现 `ChangeSetBuilder.build(self, run_id: str, summary: str, proposals: Sequence[ChangeProposal], verification: Sequence[VerificationCommand]) -> BuiltChangeSet`。`create` 要求目标不存在且提供内容；`update` 要求目标是普通文本文件且提供内容；`delete` 要求目标存在且 `after_content is None`。哈希只覆盖文件操作、路径、前后哈希和验证计划，不覆盖随机 ID 或展示摘要；使用排序键固定的 UTF-8 JSON 和 SHA-256。统一 Diff 使用 `difflib.unified_diff`，路径固定为 `a/<path>` 与 `b/<path>`，同时把精确写入字节保存在 `BuiltChangeSet.intended_bytes`。
 
-- [ ] **Step 3：编写审批重放和篡改失败测试**
+- [x] **Step 3：编写审批重放和篡改失败测试**
 
 ```python
 def test_approval_rejects_changed_target_hash() -> None:
@@ -762,11 +765,11 @@ def test_approval_rejects_changed_target_hash() -> None:
 
 同时测试旧审批 ID 重放、错误 run ID、拒绝决定和已解决审批二次提交。
 
-- [ ] **Step 4：实现一次性审批门**
+- [x] **Step 4：实现一次性审批门**
 
 `ApprovalGate` 保存唯一 `pending_approval`。`require` 计算并返回 `ApprovalRequest`；`resolve` 先比较 run、approval、target hash，再以原子状态变化清除请求并返回决定。拒绝决定不能被解释为工具错误或隐式批准。
 
-- [ ] **Step 5：运行检查并提交 Task 5**
+- [x] **Step 5：运行检查并提交 Task 5**
 
 ```bash
 uv run pytest tests/workspace/test_changeset.py tests/runtime/test_approval.py -v
@@ -799,7 +802,7 @@ git commit -m "feat: build tamper-evident change sets"
 - Produces: `ChangeApplier.apply(built: BuiltChangeSet, manifest: CheckpointManifest) -> ApplyResult`
 - Produces: `ChangeApplier.rollback(manifest: CheckpointManifest) -> RollbackResult`
 
-- [ ] **Step 1：编写 Checkpoint 字节与权限失败测试**
+- [x] **Step 1：编写 Checkpoint 字节与权限失败测试**
 
 ```python
 def test_checkpoint_records_original_bytes_and_absent_files(tmp_path: Path, state_dir: Path) -> None:
@@ -812,11 +815,11 @@ def test_checkpoint_records_original_bytes_and_absent_files(tmp_path: Path, stat
 
 测试 Checkpoint 目录位于 `state_dir/runs/<run-id>/checkpoint/`，不在工作区内，并检查 POSIX 权限。
 
-- [ ] **Step 2：实现 Checkpoint Store**
+- [x] **Step 2：实现 Checkpoint Store**
 
 实现 `CheckpointStore.create(change_set: ChangeSet) -> CheckpointManifest` 和 `CheckpointStore.load_for_run(run_id: str) -> CheckpointManifest`。清单写入 `manifest.json`；原始字节按路径哈希命名存储，避免状态目录路径穿越。先写临时文件并 `os.replace`，完成后才返回清单。
 
-- [ ] **Step 3：编写应用失败恢复测试**
+- [x] **Step 3：编写应用失败恢复测试**
 
 ```python
 def test_apply_failure_restores_every_touched_file(tmp_path: Path, checkpoint_store: CheckpointStore) -> None:
@@ -832,11 +835,11 @@ def test_apply_failure_restores_every_touched_file(tmp_path: Path, checkpoint_st
 
 同时测试审批后文件哈希变化时在 Checkpoint 前和 apply 前均拒绝、create/update/delete 成功、多文件预检失败时零写入。
 
-- [ ] **Step 4：实现预检、同目录原子替换和失败恢复**
+- [x] **Step 4：实现预检、同目录原子替换和失败恢复**
 
 定义 `FileWriter` Protocol，包含 `replace(path: Path, content: bytes, mode: int | None) -> None` 和 `delete(path: Path) -> None`；生产实现使用同目录临时文件与 `os.replace`，测试使用 `FailingFileWriter` 注入失败，不在生产类中增加测试开关。`apply` 不创建 Checkpoint，只接受并核对 Runtime 已创建的 `CheckpointManifest`。顺序必须固定：验证清单与 Change Set 对应 → 验证全部 before hash → 验证所有目标路径 → 对 create/update 原子替换 → 执行 delete。捕获任一应用异常后使用传入清单恢复全部已触及路径并返回明确状态；恢复本身失败时返回 `RECOVERY_REQUIRED` 和路径列表。
 
-- [ ] **Step 5：编写并实现回滚冲突保护**
+- [x] **Step 5：编写并实现回滚冲突保护**
 
 ```python
 def test_rollback_refuses_to_overwrite_user_edit(tmp_path: Path, applied_run: AppliedRun) -> None:
@@ -848,7 +851,7 @@ def test_rollback_refuses_to_overwrite_user_edit(tmp_path: Path, applied_run: Ap
 
 回滚先检查全部当前哈希；任一冲突时所有文件保持不变。没有冲突时恢复原始字节、存在性和平台支持的权限位。
 
-- [ ] **Step 6：运行检查并提交 Task 6**
+- [x] **Step 6：运行检查并提交 Task 6**
 
 ```bash
 uv run pytest tests/workspace/test_checkpoint.py tests/workspace/test_apply.py tests/workspace/test_rollback.py -v
@@ -878,7 +881,7 @@ git commit -m "feat: checkpoint and safely roll back file changes"
 - Produces: `CommandPolicy.classify(command: VerificationCommand) -> CommandDecision`
 - Produces: `VerificationRunner.run(command: VerificationCommand) -> VerificationResult`
 
-- [ ] **Step 1：编写命令分类失败测试**
+- [x] **Step 1：编写命令分类失败测试**
 
 ```python
 @pytest.mark.parametrize("argv", [("sh", "-c", "echo x"), ("sudo", "true"), ("rm", "-rf", ".")])
@@ -895,11 +898,11 @@ def test_exact_user_prefix_is_policy_allowed() -> None:
 
 内置安全命令仅包含 `git status --short` 和 `git diff --check`。其他命令默认为 `APPROVAL_REQUIRED`。Shell 可执行文件、提权命令、直接删除工具、`git clean`、`git reset --hard`、`git checkout` 和 `git restore` 永久禁止。
 
-- [ ] **Step 2：实现命令策略**
+- [x] **Step 2：实现命令策略**
 
 策略先验证非空 argv、工作目录和每个参数不含 NUL，再按“永久禁止 → 精确内置允许 → 用户级前缀允许 → 需要审批”顺序判定。项目配置不进入允许前缀输入。
 
-- [ ] **Step 3：编写验证执行和截断失败测试**
+- [x] **Step 3：编写验证执行和截断失败测试**
 
 ```python
 def test_runner_captures_exit_code_and_truncates_output(tmp_path: Path) -> None:
@@ -916,7 +919,7 @@ def test_runner_captures_exit_code_and_truncates_output(tmp_path: Path) -> None:
 
 同时测试非零退出码、默认 120 秒策略限制、测试注入的短超时、stderr、无法启动和工作目录越界。
 
-- [ ] **Step 4：实现无 Shell 的 VerificationRunner**
+- [x] **Step 4：实现无 Shell 的 VerificationRunner**
 
 使用：
 
@@ -933,7 +936,7 @@ completed = subprocess.run(
 
 环境变量只保留 `PATH`、`LANG`、`LC_ALL`、`TMPDIR` 以及用户配置明确允许的名称，不把 Vera 供应商密钥传给子进程。`APPROVAL_REQUIRED` 的风险说明必须包含“该进程以当前系统用户权限运行，Vera 第一版不提供 OS 沙箱”。结果统一解码为 UTF-8 并使用替换字符处理无效字节；记录开始时间、结束时间和单调时钟时长。
 
-- [ ] **Step 5：运行检查并提交 Task 7**
+- [x] **Step 5：运行检查并提交 Task 7**
 
 ```bash
 uv run pytest tests/tools/test_command_policy.py tests/verification -v
@@ -965,7 +968,7 @@ git commit -m "feat: classify commands and capture verification evidence"
 - Produces: `OpenAICompatibleAdapter`
 - Produces: `FakeModelAdapter`，供后续 Runtime 测试使用
 
-- [ ] **Step 1：编写标准化 Tool Call 转换失败测试**
+- [x] **Step 1：编写标准化 Tool Call 转换失败测试**
 
 ```python
 def test_adapter_normalizes_provider_tool_call(fake_openai_client: FakeOpenAIClient) -> None:
@@ -979,7 +982,7 @@ def test_adapter_normalizes_provider_tool_call(fake_openai_client: FakeOpenAICli
 
 同时测试纯文本、无效 JSON 参数、未知 finish reason、usage 缺失和供应商异常转换为 Vera 错误。
 
-- [ ] **Step 2：定义稳定 ModelAdapter 协议**
+- [x] **Step 2：定义稳定 ModelAdapter 协议**
 
 ```python
 class ModelMessage(BaseModel):
@@ -1021,11 +1024,11 @@ class ModelAdapter(Protocol):
 
 `ModelTurn` 包含 `assistant_text`、标准化 `tool_calls`、`finish_reason`、可选 `usage` 和经过脱敏的 `provider_metadata`。
 
-- [ ] **Step 3：实现 OpenAI-compatible Adapter**
+- [x] **Step 3：实现 OpenAI-compatible Adapter**
 
 构造客户端时显式传入 `api_key`、`base_url`、`timeout=120.0`、`max_retries=0`，避免 SDK 隐式重试造成不可见成本。调用 `client.chat.completions.create`，只在 `models/` 内访问供应商对象；Tool Call 参数使用 `json.loads` 后再通过本地模型校验。
 
-- [ ] **Step 4：实现可脚本化 FakeModelAdapter**
+- [x] **Step 4：实现可脚本化 FakeModelAdapter**
 
 ```python
 class FakeModelAdapter:
@@ -1040,7 +1043,7 @@ class FakeModelAdapter:
         return self._turns.popleft()
 ```
 
-- [ ] **Step 5：添加显式在线冒烟测试入口**
+- [x] **Step 5：添加显式在线冒烟测试入口**
 
 `tests/live/test_providers.py` 只在同时存在 `VERA_LIVE_PROVIDER`、对应 API Key 环境变量、Base URL 和模型名时运行；否则使用 `pytest.skip`。DeepSeek 使用 `DEEPSEEK_API_KEY`、`VERA_DEEPSEEK_BASE_URL`、`VERA_DEEPSEEK_MODEL`；GLM 使用 `GLM_API_KEY`、`VERA_GLM_BASE_URL`、`VERA_GLM_MODEL`。测试断言一次文本响应和一次 Tool Call 均能标准化，并且任何失败输出都通过 Redactor。
 
@@ -1050,7 +1053,7 @@ class FakeModelAdapter:
 uv run pytest tests/models tests/live -m "not live" -v
 ```
 
-- [ ] **Step 6：运行检查并提交 Task 8**
+- [x] **Step 6：运行检查并提交 Task 8**
 
 ```bash
 uv run pytest tests/models tests/live -m "not live" -v
@@ -1082,7 +1085,7 @@ git commit -m "feat: add replaceable OpenAI-compatible model adapter"
 - Produces: `VeraRuntime.handle(command: CoreCommand) -> Iterator[EventEnvelope]`
 - Produces: `VeraRuntime` 在 Change Set 审批点保持内存态，等待 `ResolveApproval`
 
-- [ ] **Step 1：编写读取、搜索、提案流程失败测试**
+- [x] **Step 1：编写读取、搜索、提案流程失败测试**
 
 ```python
 def test_runtime_reaches_changeset_approval_without_writing(runtime_fixture: RuntimeFixture) -> None:
@@ -1097,13 +1100,13 @@ def test_runtime_reaches_changeset_approval_without_writing(runtime_fixture: Run
 
 断言 Event 顺序包含 `run.started`、`model.requested/completed`、`tool.started/completed`，并验证供应商原生对象没有进入 Payload。
 
-- [ ] **Step 2：实现固定系统策略和模型工具 Schema**
+- [x] **Step 2：实现固定系统策略和模型工具 Schema**
 
 `prompts.py` 的系统策略明确：只能使用注册工具；不得声称执行成功；读取足够上下文后调用一次 `propose_changeset`；不得输出秘密；无法形成安全修改时返回原因。Runtime 收到无 Tool Call 的终止响应后以 `run.failed` 和 `reason=no_changes_proposed` 结束。工具 Schema 从 Pydantic 输入 Model 生成，不维护第二份手写参数定义。
 
 模型工具中包含特殊工具 `run_command` 和 `propose_changeset`。它们的参数分别复用 `VerificationCommand` 和 Change Set 提案 Model，但由 Runtime 直接协调，不能绕过 CommandPolicy 或进入普通 Tool Registry 的自由执行路径。
 
-- [ ] **Step 3：实现 StartRun 到审批点的 Runtime 驱动**
+- [x] **Step 3：实现 StartRun 到审批点的 Runtime 驱动**
 
 ```python
 @dataclass
@@ -1126,7 +1129,7 @@ class RunContext:
 
 发现阶段的 `run_command` 先经过 CommandPolicy：`ALLOWED` 才直接交给 VerificationRunner；`APPROVAL_REQUIRED` 输出包含 argv、cwd、哈希和非沙箱风险的 `approval.required` 后暂停；`FORBIDDEN` 直接向模型返回拒绝结果。匹配的 `ResolveApproval` 到达后，Runtime 执行原哈希绑定命令、输出 `tool.completed`，再继续模型循环。
 
-- [ ] **Step 4：编写并实现上下文和循环限制**
+- [x] **Step 4：编写并实现上下文和循环限制**
 
 ```python
 def test_three_identical_tool_calls_fail_without_writes(runtime_fixture: RuntimeFixture) -> None:
@@ -1139,7 +1142,7 @@ def test_three_identical_tool_calls_fail_without_writes(runtime_fixture: Runtime
 
 分别测试 20 轮、50 次工具、单文件、单输出和总上下文字节限制。截断结果必须有 `truncated=true`；达到上限时在审批和写入前终止。
 
-- [ ] **Step 5：运行检查并提交 Task 9**
+- [x] **Step 5：运行检查并提交 Task 9**
 
 ```bash
 uv run pytest tests/runtime/test_discovery_loop.py tests/runtime/test_limits.py -v
@@ -1170,7 +1173,7 @@ git commit -m "feat: drive bounded VeraRuntime discovery loop"
 - Produces: 完整终态 `COMPLETED | VERIFICATION_FAILED | CANCELLED | STALE | FAILED | RECOVERY_REQUIRED`
 - Produces: `VeraRuntime.rollback(command: RollbackRun) -> Iterator[EventEnvelope]`
 
-- [ ] **Step 1：编写批准后的完整流程失败测试**
+- [x] **Step 1：编写批准后的完整流程失败测试**
 
 ```python
 def test_approved_changeset_checkpoints_applies_and_verifies(runtime_fixture: RuntimeFixture) -> None:
@@ -1187,15 +1190,15 @@ def test_approved_changeset_checkpoints_applies_and_verifies(runtime_fixture: Ru
     ]
 ```
 
-- [ ] **Step 2：实现 Change Set 审批后的编排**
+- [x] **Step 2：实现 Change Set 审批后的编排**
 
 批准后严格执行：再次校验 `target_hash` → 状态进入 CHECKPOINTING → `CheckpointStore.create` → 输出 `checkpoint.created` → `ChangeApplier.apply(built, manifest)` → 输出 `changeset.applied` → 逐条验证 → 输出结果 → 生成终态 Event。拒绝时输出 `approval.resolved` 和 `run.cancelled`，不创建 Checkpoint。
 
-- [ ] **Step 3：实现验证命令审批中断**
+- [x] **Step 3：实现验证命令审批中断**
 
 验证阶段复用 Task 9 的命令路径：`ALLOWED` 直接执行；`APPROVAL_REQUIRED` 创建 command 审批并返回控制权；`FORBIDDEN` 生成拒绝证据且不提供批准入口。再次收到匹配的 `ResolveApproval` 后，只执行哈希绑定的 argv 和 cwd。
 
-- [ ] **Step 4：覆盖全部失败终态**
+- [x] **Step 4：覆盖全部失败终态**
 
 测试并实现：
 
@@ -1206,7 +1209,7 @@ def test_approved_changeset_checkpoints_applies_and_verifies(runtime_fixture: Ru
 - verification 非零或超时 → `verification.completed` + `run.completed`，Payload 状态为 `VERIFICATION_FAILED`；
 - 所有持久化 Payload 经过 Redactor。
 
-- [ ] **Step 5：编写并实现 Runtime 回滚**
+- [x] **Step 5：编写并实现 Runtime 回滚**
 
 ```python
 def test_runtime_rollback_emits_completed_and_restores_bytes(applied_runtime: RuntimeFixture) -> None:
@@ -1217,7 +1220,7 @@ def test_runtime_rollback_emits_completed_and_restores_bytes(applied_runtime: Ru
 
 冲突时输出 `rollback.conflicted`，任何目标文件都不改变。
 
-- [ ] **Step 6：运行检查并提交 Task 10**
+- [x] **Step 6：运行检查并提交 Task 10**
 
 ```bash
 uv run pytest tests/runtime -v
@@ -1250,7 +1253,7 @@ git commit -m "feat: orchestrate approved edits verification and rollback"
 - Produces: `vera run`, `vera runs list`, `vera runs show`, `vera rollback`, `vera config show`
 - Produces: 退出状态码 `0/2/3/4/5`
 
-- [ ] **Step 1：编写 CLI 帮助和配置脱敏失败测试**
+- [x] **Step 1：编写 CLI 帮助和配置脱敏失败测试**
 
 ```python
 def test_config_show_never_prints_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1263,7 +1266,7 @@ def test_config_show_never_prints_api_key(monkeypatch: pytest.MonkeyPatch) -> No
 
 测试 `vera --help` 包含五个正式命令。
 
-- [ ] **Step 2：实现依赖组装和 Typer 命令树**
+- [x] **Step 2：实现依赖组装和 Typer 命令树**
 
 ```python
 app = typer.Typer(no_args_is_help=True)
@@ -1291,7 +1294,7 @@ def run(
 
 `bootstrap.py` 是唯一组装点：加载配置、读取指定 API Key 环境变量、创建 Redactor、Adapter、Workspace、Journal、CheckpointStore、Verifier 和 Runtime。`execute_run(goal: str, workspace: Path, model_profile: str | None, json_output: bool) -> int` 负责驱动 Runtime 和渲染器，并返回规格定义的退出码。
 
-- [ ] **Step 3：编写并实现交互审批和渲染**
+- [x] **Step 3：编写并实现交互审批和渲染**
 
 人类模式用 Rich 展示状态、文件列表、完整统一 Diff、验证命令、风险和 run ID。收到 `approval.required` 时只接受明确的 `approve` 或 `reject`；将 Event 中的 `approval_id` 和 `target_hash` 原样放入 `ResolveApproval`。
 
@@ -1301,15 +1304,15 @@ if decision not in {"approve", "reject"}:
     raise typer.BadParameter("必须明确输入 approve 或 reject")
 ```
 
-- [ ] **Step 4：实现 JSON 和非交互行为**
+- [x] **Step 4：实现 JSON 和非交互行为**
 
 JSON 模式每行只输出 `event.model_dump_json()`，不输出 ANSI 或提示文字。`json_output is True` 或 `not sys.stdin.isatty()` 时不发起文本提示；遇到审批后向 Runtime 发送 `CancelRun`，输出 `run.cancelled`，状态码为 `2`，并证明目标文件未变化。
 
-- [ ] **Step 5：实现 runs、rollback 和退出码映射**
+- [x] **Step 5：实现 runs、rollback 和退出码映射**
 
 `runs list` 按最近事件时间倒序显示 run ID、工作区、目标摘要和终态；`runs show` 输出已脱敏 Event；`rollback` 调用 `RollbackRun` 并展示成功或冲突。终态到退出码使用一个只读映射，不在命令函数中分散判断。
 
-- [ ] **Step 6：运行检查并提交 Task 11**
+- [x] **Step 6：运行检查并提交 Task 11**
 
 ```bash
 uv run pytest tests/cli -v
@@ -1344,7 +1347,7 @@ git commit -m "feat: expose VeraRuntime through the CLI"
 - Produces: 确定性 Git Fixture 证据、真实供应商证据、人工验收记录
 - Produces: Phase 1 垂直切片完成或明确未完成的状态
 
-- [ ] **Step 1：编写临时 Git 仓库端到端失败测试**
+- [x] **Step 1：编写临时 Git 仓库端到端失败测试**
 
 ```python
 def test_full_safe_editing_and_rollback_in_git_fixture(tmp_path: Path) -> None:
@@ -1361,11 +1364,11 @@ def test_full_safe_editing_and_rollback_in_git_fixture(tmp_path: Path) -> None:
 
 测试通过测试专用依赖注入选择 `FakeModelAdapter`，不能通过生产 CLI 参数暴露任意 Fake Adapter。
 
-- [ ] **Step 2：增加拒绝和冲突端到端测试**
+- [x] **Step 2：增加拒绝和冲突端到端测试**
 
 拒绝分支断言字节快照与 `git status --short` 完全不变。冲突分支在 apply 后人工写入新内容，再运行 rollback，断言退出非零、输出 `rollback.conflicted` 且用户内容保留。
 
-- [ ] **Step 3：运行完整离线验收**
+- [x] **Step 3：运行完整离线验收**
 
 ```bash
 uv run pytest -m "not live" --cov=vera --cov-report=term-missing
@@ -1393,7 +1396,7 @@ VERA_LIVE_PROVIDER=glm uv run pytest tests/live/test_providers.py tests/live/tes
 
 取得用户指定且可恢复的项目副本路径，先记录其 Git 状态和字节快照，再运行一次 `vera run`。用户亲自检查并批准 Diff；验证完成后运行 `vera rollback <run-id>`，再次比较字节和 Git 状态。原始有价值工作副本不作为首次目标。
 
-- [ ] **Step 6：记录证据并关闭或保留任务**
+- [x] **Step 6：记录证据并关闭或保留任务**
 
 创建 `docs/evals/phase-1-safe-editing.md`，逐项记录规格十条验收标准的命令、日期和结果。只有十条全部满足时，才把本任务状态改为 `Done`，把 `docs/STATUS.md` 的 Phase 1 垂直切片标记为完成，并在 README 增加已验证 CLI 用法。任何真实供应商或人工验收缺失时，任务保持 `In progress` 并准确列出缺口。
 
