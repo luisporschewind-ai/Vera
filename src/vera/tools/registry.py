@@ -2,8 +2,6 @@
 
 from typing import Any, Protocol
 
-from pydantic import BaseModel
-
 from vera.tools.definitions import ToolResult
 
 
@@ -13,9 +11,9 @@ class DuplicateToolError(ValueError):
 
 class Tool(Protocol):
     name: str
-    input_model: type[BaseModel]
+    input_model: type[Any]
 
-    def execute(self, arguments: BaseModel) -> Any: ...
+    def execute(self, arguments: Any) -> Any: ...
 
 
 class ToolRegistry:

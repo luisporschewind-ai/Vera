@@ -32,6 +32,18 @@ def test_project_config_rejects_secrets_and_command_policy(tmp_path: Path) -> No
     with pytest.raises(UnsafeProjectConfig):
         load_config(tmp_path, {})
 
+
+def test_deepseek_environment_config_registers_provider(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-only-secret")
+    monkeypatch.setenv("VERA_DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+    monkeypatch.setenv("VERA_DEEPSEEK_MODEL", "deepseek-flash")
+    config = load_config(tmp_path, {})
+    assert str(config.providers["deepseek"].base_url) == "https://api.deepseek.com/"
+    assert config.providers["deepseek"].model == "deepseek-flash"
+    assert config.providers["deepseek"].api_key_env == "DEEPSEEK_API_KEY"
+
     write_toml(
         tmp_path / ".vera" / "config.toml",
         'user_allowed_command_prefixes = [["rm"]]\n',

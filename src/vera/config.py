@@ -111,6 +111,20 @@ def _env_limits() -> dict[str, object]:
     return values
 
 
+def _env_providers() -> dict[str, object]:
+    providers: dict[str, object] = {}
+    if all(
+        os.environ.get(name)
+        for name in ("DEEPSEEK_API_KEY", "VERA_DEEPSEEK_BASE_URL", "VERA_DEEPSEEK_MODEL")
+    ):
+        providers["deepseek"] = {
+            "base_url": os.environ["VERA_DEEPSEEK_BASE_URL"],
+            "model": os.environ["VERA_DEEPSEEK_MODEL"],
+            "api_key_env": "DEEPSEEK_API_KEY",
+        }
+    return providers
+
+
 def load_config(workspace: Path, cli_overrides: Mapping[str, object]) -> VeraConfig:
     """Load defaults, user config, project config, environment, then CLI overrides."""
 
@@ -139,6 +153,7 @@ def load_config(workspace: Path, cli_overrides: Mapping[str, object]) -> VeraCon
 
     merged = _merge(defaults, user_config)
     merged = _merge(merged, project_config)
+    merged["providers"] = _merge(merged.get("providers", {}), _env_providers())
     merged["limits"] = _merge(merged.get("limits", {}), _env_limits())
     merged = _merge(merged, cli_overrides)
     state_dir = os.environ.get("VERA_STATE_DIR")

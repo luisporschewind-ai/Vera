@@ -119,7 +119,16 @@ class VeraRuntime:
             {
                 "changeset_id": change_set.changeset_id,
                 "content_hash": change_set.content_hash,
-                "files": [item.path for item in change_set.files],
+                "files": [
+                    {
+                        "path": item.path,
+                        "operation": item.operation,
+                        "before_hash": item.before_hash,
+                        "after_hash": item.after_hash,
+                        "unified_diff": item.unified_diff,
+                    }
+                    for item in change_set.files
+                ],
             },
         )
         context.machine.transition(RunState.AWAITING_APPROVAL)
@@ -346,6 +355,13 @@ class VeraRuntime:
                 context,
                 "model.completed",
                 {"finish_reason": turn.finish_reason, "tool_call_count": len(turn.tool_calls)},
+            )
+            context.messages.append(
+                ModelMessage(
+                    role="assistant",
+                    content=turn.assistant_text or "",
+                    tool_calls=turn.tool_calls,
+                )
             )
             if not turn.tool_calls:
                 yield from self._fail(context, "no_changes_proposed")

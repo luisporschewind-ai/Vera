@@ -29,8 +29,13 @@ class EventJournal:
         self._events = self._load()
 
     def _load(self) -> list[EventEnvelope]:
+        return self.load_events(self.path, self.run_id)
+
+    @staticmethod
+    def load_events(path: Path, run_id: str) -> list[EventEnvelope]:
+        """Load and validate an existing journal without touching the filesystem."""
         events: list[EventEnvelope] = []
-        with self.path.open("r", encoding="utf-8") as handle:
+        with path.open("r", encoding="utf-8") as handle:
             for line_number, line in enumerate(handle, start=1):
                 if not line.strip():
                     continue
@@ -39,7 +44,7 @@ class EventJournal:
                 except Exception as exc:
                     raise JournalCorrupt(f"invalid event at line {line_number}") from exc
                 expected = len(events) + 1
-                if event.run_id != self.run_id or event.sequence != expected:
+                if event.run_id != run_id or event.sequence != expected:
                     raise JournalCorrupt(f"non-continuous event at line {line_number}")
                 events.append(event)
         return events
