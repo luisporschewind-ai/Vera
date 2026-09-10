@@ -22,7 +22,7 @@
 ## 活动任务
 
 - [任务 0002：Core 安全编辑垂直切片](tasks/0002-core-safe-editing-vertical-slice.md)
-- 当前检查点：任务 12 离线 E2E 与构建已通过；真实供应商和人工验收未执行
+- 当前检查点：任务 12 离线 E2E、DeepSeek CLI 提案 smoke 和 iOS 基线构建已通过；人工批准写入/验证/回滚仍未执行
 
 ## 最近验证
 
@@ -30,7 +30,7 @@
 - 占位符与行尾空白扫描：通过
 - `git diff --check`：通过
 - Agent 源码与依赖清单扫描：Python Core 与 CLI 已建立
-- Git 状态：合并提交 `b8604eb` 位于 `main`；工作树干净
+- Git 状态：合并提交 `b8604eb` 位于 `main`；本轮 DeepSeek 接线与只读 Journal 修复待提交
 - `uv 0.12.10`：通过官方独立安装器安装，项目环境同步完成
 - 任务 1 包测试：1 项通过；Ruff 和 Mypy 通过
 - 任务 2 契约与状态机：10 项测试通过；Ruff 和 Mypy 通过
@@ -43,7 +43,9 @@
 - 任务 9 VeraRuntime 发现循环：2 项测试通过；Ruff 和 Mypy 通过
 - 任务 10 审批、应用、验证与回滚编排：11 项 Runtime 测试通过；Ruff 和 Mypy 通过
 - 任务 11 CLI 人类/JSON 模式：4 项 CLI 测试通过；`vera --help`、Ruff 和 Mypy 通过
-- 任务 12 离线验收：55 项非 live 测试通过，覆盖率 84%；Ruff/格式/Mypy/build 通过
+- 任务 12 离线验收：58 项非 live 测试通过，2 项 live 测试未执行；Ruff/格式/Mypy 通过
+- 真实验证：DeepSeek `deepseek-flash` 最小请求通过；CLI 已提出并展示 `.blue -> .green` Diff，非交互审批安全取消；未输出 API Key
+- 外部目标基线：`/Users/admin/Desktop/VeraTestDemo` generic iOS build 通过，未启用签名
 
 ## 已接受方向
 
@@ -62,4 +64,4 @@
 
 ## 下一检查点
 
-离线 Core 垂直切片已具备证据；下一检查点是用户明确选择并授权一次真实供应商验证，以及指定可恢复项目副本完成人工验收。任务保持 In progress。
+离线 Core 垂直切片和一次真实 DeepSeek CLI 提案已具备证据；下一检查点是用户批准当前具体 Diff，完成一次真实项目副本的应用、验证与回滚，并补齐正式 live 测试断言。任务保持 In progress。

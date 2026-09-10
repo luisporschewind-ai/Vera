@@ -7,7 +7,9 @@ from vera.config import VeraConfig, load_config
 from vera.models.base import ModelAdapter
 from vera.models.openai_compatible import OpenAICompatibleAdapter
 from vera.runtime.engine import VeraRuntime
+from vera.tools.builtin import ListDirectoryTool, ReadFileTool, SearchTextTool
 from vera.tools.registry import ToolRegistry
+from vera.workspace.paths import WorkspacePaths
 
 
 @dataclass(frozen=True)
@@ -23,5 +25,10 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
         raise ValueError("no model provider configured")
     provider = config.providers[profile]
     adapter: ModelAdapter = OpenAICompatibleAdapter(provider)
-    runtime = VeraRuntime(adapter, ToolRegistry(), config.state_dir, config.limits)
+    paths = WorkspacePaths(workspace)
+    registry = ToolRegistry()
+    registry.register(ReadFileTool(paths, config.limits.max_file_bytes))
+    registry.register(ListDirectoryTool(paths))
+    registry.register(SearchTextTool(paths))
+    runtime = VeraRuntime(adapter, registry, config.state_dir, config.limits)
     return RuntimeDependencies(runtime=runtime, config=config)

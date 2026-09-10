@@ -10,12 +10,21 @@ from vera.contracts import JsonValue
 from vera.tools.definitions import ToolDefinition
 
 
+class ModelToolCall(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    call_id: str
+    name: str
+    arguments: dict[str, JsonValue]
+
+
 class ModelMessage(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     role: Literal["system", "user", "assistant", "tool"]
     content: str
     tool_call_id: str | None = None
+    tool_calls: tuple[ModelToolCall, ...] = ()
 
 
 class ModelRequest(BaseModel):
@@ -24,14 +33,6 @@ class ModelRequest(BaseModel):
     messages: tuple[ModelMessage, ...]
     tools: tuple[ToolDefinition, ...] = ()
     max_output_tokens: int = Field(ge=1)
-
-
-class ModelToolCall(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    call_id: str
-    name: str
-    arguments: dict[str, JsonValue]
 
 
 class ModelUsage(BaseModel):

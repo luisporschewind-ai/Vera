@@ -7,7 +7,6 @@ from pathlib import Path
 from vera.config import RunSummary
 from vera.contracts.events import EventEnvelope
 from vera.persistence.journal import EventJournal
-from vera.redaction import Redactor
 
 
 class RunStore:
@@ -15,7 +14,10 @@ class RunStore:
         self.state_dir = state_dir
 
     def read_events(self, run_id: str) -> tuple[EventEnvelope, ...]:
-        return EventJournal(self.state_dir, run_id, Redactor([])).read_all()
+        path = self.state_dir / "runs" / run_id / "events.jsonl"
+        if not path.is_file():
+            return ()
+        return tuple(EventJournal.load_events(path, run_id))
 
     def list_runs(self) -> tuple[RunSummary, ...]:
         runs_dir = self.state_dir / "runs"

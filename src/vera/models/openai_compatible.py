@@ -49,11 +49,38 @@ class OpenAICompatibleAdapter:
             for tool in request.tools
         ]
 
+    @staticmethod
+    def _messages(request: ModelRequest) -> list[dict[str, object]]:
+        messages: list[dict[str, object]] = []
+        for message in request.messages:
+            item: dict[str, object] = {
+                "role": message.role,
+                "content": message.content,
+            }
+            if message.tool_call_id is not None:
+                item["tool_call_id"] = message.tool_call_id
+            if message.tool_calls:
+                item["tool_calls"] = [
+                    {
+                        "id": call.call_id,
+                        "type": "function",
+                        "function": {
+                            "name": call.name,
+                            "arguments": json.dumps(
+                                call.arguments, ensure_ascii=False, separators=(",", ":")
+                            ),
+                        },
+                    }
+                    for call in message.tool_calls
+                ]
+            messages.append(item)
+        return messages
+
     def complete(self, request: ModelRequest) -> ModelTurn:
         try:
             kwargs: dict[str, object] = {
                 "model": self.provider.model,
-                "messages": [message.model_dump(exclude_none=True) for message in request.messages],
+                "messages": self._messages(request),
                 "max_tokens": request.max_output_tokens,
             }
             if request.tools:
