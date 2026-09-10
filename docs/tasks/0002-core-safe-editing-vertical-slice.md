@@ -881,7 +881,7 @@ git commit -m "feat: checkpoint and safely roll back file changes"
 - Produces: `CommandPolicy.classify(command: VerificationCommand) -> CommandDecision`
 - Produces: `VerificationRunner.run(command: VerificationCommand) -> VerificationResult`
 
-- [ ] **Step 1：编写命令分类失败测试**
+- [x] **Step 1：编写命令分类失败测试**
 
 ```python
 @pytest.mark.parametrize("argv", [("sh", "-c", "echo x"), ("sudo", "true"), ("rm", "-rf", ".")])
@@ -898,11 +898,11 @@ def test_exact_user_prefix_is_policy_allowed() -> None:
 
 内置安全命令仅包含 `git status --short` 和 `git diff --check`。其他命令默认为 `APPROVAL_REQUIRED`。Shell 可执行文件、提权命令、直接删除工具、`git clean`、`git reset --hard`、`git checkout` 和 `git restore` 永久禁止。
 
-- [ ] **Step 2：实现命令策略**
+- [x] **Step 2：实现命令策略**
 
 策略先验证非空 argv、工作目录和每个参数不含 NUL，再按“永久禁止 → 精确内置允许 → 用户级前缀允许 → 需要审批”顺序判定。项目配置不进入允许前缀输入。
 
-- [ ] **Step 3：编写验证执行和截断失败测试**
+- [x] **Step 3：编写验证执行和截断失败测试**
 
 ```python
 def test_runner_captures_exit_code_and_truncates_output(tmp_path: Path) -> None:
@@ -919,7 +919,7 @@ def test_runner_captures_exit_code_and_truncates_output(tmp_path: Path) -> None:
 
 同时测试非零退出码、默认 120 秒策略限制、测试注入的短超时、stderr、无法启动和工作目录越界。
 
-- [ ] **Step 4：实现无 Shell 的 VerificationRunner**
+- [x] **Step 4：实现无 Shell 的 VerificationRunner**
 
 使用：
 
@@ -936,7 +936,7 @@ completed = subprocess.run(
 
 环境变量只保留 `PATH`、`LANG`、`LC_ALL`、`TMPDIR` 以及用户配置明确允许的名称，不把 Vera 供应商密钥传给子进程。`APPROVAL_REQUIRED` 的风险说明必须包含“该进程以当前系统用户权限运行，Vera 第一版不提供 OS 沙箱”。结果统一解码为 UTF-8 并使用替换字符处理无效字节；记录开始时间、结束时间和单调时钟时长。
 
-- [ ] **Step 5：运行检查并提交 Task 7**
+- [x] **Step 5：运行检查并提交 Task 7**
 
 ```bash
 uv run pytest tests/tools/test_command_policy.py tests/verification -v
