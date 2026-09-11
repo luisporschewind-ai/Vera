@@ -2,7 +2,7 @@
 
 > **供 Agent 执行（For agentic workers）：** REQUIRED SUB-SKILL: 使用 `superpowers:executing-plans` 按 Task 顺序实施；只使用一个主实现 Agent，每个生产增量独立提交。
 
-**状态：** Planned
+**状态：** Done
 
 **目标分支：** `feature/streaming-runtime-output`
 
@@ -44,7 +44,7 @@
 - Produces: `RuntimeOutput = EventEnvelope | StreamFrame`
 - Produces: `is_transient(output: RuntimeOutput) -> TypeGuard[StreamFrame]`
 
-- [ ] **Step 1：编写 round-trip、非法索引和 payload 测试**
+- [x] **Step 1：编写 round-trip、非法索引和 payload 测试**
 
 ```python
 def test_stream_frame_round_trips() -> None:
@@ -73,14 +73,14 @@ def test_assistant_delta_requires_non_empty_text() -> None:
 
 再覆盖负 index、空 run/stream ID、未知 type、非字符串 text 和额外字段拒绝。
 
-- [ ] **Step 2：运行测试并确认类型不存在**
+- [x] **Step 2：运行测试并确认类型不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
   tests/contracts/test_streaming.py tests/contracts/test_models.py -v
 ```
 
-- [ ] **Step 3：实现冻结契约**
+- [x] **Step 3：实现冻结契约**
 
 ```python
 class StreamFrameType(StrEnum):
@@ -107,7 +107,7 @@ class StreamFrame(ContractModel):
 
 `RuntimeOutput` 只定义联合类型，不给 Stream Frame 增加 Event sequence、timestamp 或持久标志。
 
-- [ ] **Step 4：运行契约与静态检查**
+- [x] **Step 4：运行契约与静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/contracts -v
@@ -115,7 +115,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src/vera/contracts tes
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交契约**
+- [x] **Step 5：提交契约**
 
 ```bash
 git add src/vera/contracts tests/contracts docs/tasks/0010-streaming-runtime-output.md
@@ -142,7 +142,7 @@ git commit -m "feat: define transient stream frames"
 - Extends: `ModelAdapter` Protocol with optional `stream(request) -> Iterator[ModelStreamItem]`
 - Produces: `ModelStreamAccumulator.push(chunk) / finish() -> ModelTurn`
 
-- [ ] **Step 1：编写默认 Adapter 与聚合器测试**
+- [x] **Step 1：编写默认 Adapter 与聚合器测试**
 
 ```python
 def test_default_stream_wraps_complete(fake_adapter, request) -> None:
@@ -166,13 +166,13 @@ def test_accumulator_never_exposes_partial_tool_call() -> None:
 
 再测试中文 delta 顺序、多个 Tool Call index、重复 finish、缺失 finish、非法 JSON 参数和 usage/request ID 只在完成时出现。
 
-- [ ] **Step 2：运行测试并观察接口缺失**
+- [x] **Step 2：运行测试并观察接口缺失**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/models/test_streaming.py -v
 ```
 
-- [ ] **Step 3：实现默认兼容流和纯聚合器**
+- [x] **Step 3：实现默认兼容流和纯聚合器**
 
 ```python
 class ModelAdapter(Protocol):
@@ -187,7 +187,7 @@ class ModelAdapter(Protocol):
 
 `FakeModelAdapter.stream()` 同样默认包装 `complete()`。聚合器只接收已规范化 chunk，不依赖 OpenAI SDK 类型；`finish()` 对不完整 Tool Call 抛脱敏 `ModelProviderError(code=INVALID_RESPONSE)`。
 
-- [ ] **Step 4：运行模型回归与静态检查**
+- [x] **Step 4：运行模型回归与静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/models tests/runtime -v
@@ -195,7 +195,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src/vera/models tests/
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Adapter 接口**
+- [x] **Step 5：提交 Adapter 接口**
 
 ```bash
 git add src/vera/models tests/models \
@@ -222,7 +222,7 @@ git commit -m "feat: add model streaming interface"
 - Produces: `OpenAICompatibleAdapter.stream(request)`
 - Guarantee: Provider 对象和原始异常文本不离开 Adapter
 
-- [ ] **Step 1：编写离线 Fixture conformance 测试**
+- [x] **Step 1：编写离线 Fixture conformance 测试**
 
 ```python
 @pytest.mark.parametrize("provider", ["deepseek", "glm"])
@@ -240,18 +240,18 @@ def test_provider_stream_reconstructs_final_text(provider, stream_client) -> Non
 
 Tool Call Fixture 断言 name/arguments 可跨 chunk 聚合，且 Adapter 不产生可执行的中间 Tool Call。再覆盖 timeout、rate limit、空 choices 和连接中断后的标准错误码。
 
-- [ ] **Step 2：运行测试并确认仍走 complete**
+- [x] **Step 2：运行测试并确认仍走 complete**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
   tests/models/test_openai_compatible.py -k stream -v
 ```
 
-- [ ] **Step 3：实现 SDK chunk 到规范化 item 的单向转换**
+- [x] **Step 3：实现 SDK chunk 到规范化 item 的单向转换**
 
 使用 `client.chat.completions.create(..., stream=True)`。每个非空文本 chunk 产生 `ModelTextDelta` 并进入聚合器；Tool Call delta 只进入聚合器。收到 finish reason 后产生唯一 `ModelStreamCompleted`。异常继续复用阶段二标准化错误映射和 RetryPolicy，不把原异常字符串放入 item。
 
-- [ ] **Step 4：运行供应商离线回归**
+- [x] **Step 4：运行供应商离线回归**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/models -v
@@ -259,7 +259,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src/vera/models tests/
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交兼容实现**
+- [x] **Step 5：提交兼容实现**
 
 ```bash
 git add src/vera/models/openai_compatible.py tests/models tests/fixtures/providers \
@@ -286,7 +286,7 @@ git commit -m "feat: stream OpenAI-compatible turns"
 - Preserves: `VeraRuntime.handle(command: CoreCommand) -> Iterator[EventEnvelope]`
 - Produces: `drive_run_stream(runtime, command, decide, emit) -> tuple[EventEnvelope, ...]`
 
-- [ ] **Step 1：编写流式、Journal 和兼容测试**
+- [x] **Step 1：编写流式、Journal 和兼容测试**
 
 ```python
 def test_stream_emits_transient_deltas_and_one_durable_message(runtime_fixture) -> None:
@@ -304,14 +304,14 @@ def test_stream_emits_transient_deltas_and_one_durable_message(runtime_fixture) 
 
 再断言 `tuple(runtime.handle(command))` 与旧 Fake complete 路径的持久 Event 完全一致；stream 中断产生 run.failed，partial 不进入 ConversationContext；Tool Call 只执行一次；Retry 不重复已经完成的本地副作用。
 
-- [ ] **Step 2：运行测试并确认 stream 不存在**
+- [x] **Step 2：运行测试并确认 stream 不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
   tests/runtime/test_streaming_output.py tests/runtime/test_discovery_loop.py -v
 ```
 
-- [ ] **Step 3：提取单一执行生成器**
+- [x] **Step 3：提取单一执行生成器**
 
 ```python
 def handle(self, command: CoreCommand) -> Iterator[EventEnvelope]:
@@ -322,7 +322,7 @@ def handle(self, command: CoreCommand) -> Iterator[EventEnvelope]:
 
 `stream()` 成为唯一 Agent loop 实现。它为每个 assistant turn 生成 `stream_id`，按接收顺序发 Frame，只有 `ModelStreamCompleted` 才创建持久 `assistant.message`。Approval、Checkpoint、Apply、Verification、Recovery 继续只产生持久 Event。
 
-- [ ] **Step 4：运行 Runtime、恢复与 CLI 回归**
+- [x] **Step 4：运行 Runtime、恢复与 CLI 回归**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/runtime tests/recovery tests/cli -v
@@ -330,7 +330,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src tests/runtime test
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Runtime 流**
+- [x] **Step 5：提交 Runtime 流**
 
 ```bash
 git add src/vera/runtime src/vera/cli_driver.py tests/runtime tests/recovery tests/cli \
@@ -352,7 +352,7 @@ git commit -m "feat: stream transient runtime output"
 
 - Evidence: 契约、Adapter、Runtime、恢复隔离和旧接口兼容结果
 
-- [ ] **Step 1：运行完整质量门禁**
+- [x] **Step 1：运行完整质量门禁**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -364,7 +364,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv build
 git diff --check
 ```
 
-- [ ] **Step 2：记录真实证据并提交**
+- [x] **Step 2：记录真实证据并提交**
 
 记录测试数、覆盖率、Fixture、未运行 live 和已知限制；将本任务标记 Done。
 
@@ -374,7 +374,7 @@ git add docs/evals/streaming-runtime-output.md docs/STATUS.md \
 git commit -m "test: verify streaming runtime output"
 ```
 
-- [ ] **Step 3：本地合并并复核**
+- [x] **Step 3：本地合并并复核**
 
 ```bash
 git switch main
