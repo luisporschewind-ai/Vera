@@ -19,5 +19,7 @@
 - [ADR-0006：版本化 Codec 与非破坏迁移](ADR-0006-versioned-state-codecs.md)
 - [ADR-0007：统一 PolicyEngine 与策略指纹](ADR-0007-unified-policy-engine.md)
 - [ADR-0008：ModelAdapter 能力、错误与有限重试](ADR-0008-model-capabilities-and-errors.md)
+- [ADR-0009：使用 Textual 构建富交互 Terminal UI](ADR-0009-textual-terminal-ui.md)
+- [ADR-0010：以瞬时 Stream Frame 承载模型流式输出](ADR-0010-transient-stream-frames.md)
 
 Core Runtime、协议、持久化模型、关键依赖、安全边界或桌面框架等长期选择应建立决策记录；常规实现细节写入任务记录。

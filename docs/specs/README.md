@@ -18,3 +18,4 @@
 - [交互式 CLI 会话](2026-09-10-interactive-cli-session.md)
 - [普通对话、会话上下文与状态命令](2026-09-11-conversational-cli-and-session-status.md)
 - [阶段二：恢复、兼容性与策略扩展](2026-09-11-phase-2-recovery-compatibility-policy.md)
+- [阶段三：富交互 Terminal UI](2026-09-11-rich-terminal-ui.md)
