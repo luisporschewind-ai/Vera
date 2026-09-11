@@ -110,7 +110,7 @@ git commit -m "feat: define Vera evaluation contracts"
 - Produces: `EvalCodec.encode_report()`、`encode_suite_report()`、`canonical_report()`
 - Produces: `EvalCodecError(code, source, message)`
 
-- [ ] **Step 1：编写未知 schema、损坏 JSON 和 canonical 测试**
+- [x] **Step 1：编写未知 schema、损坏 JSON 和 canonical 测试**
 
 ```python
 def test_codec_rejects_future_schema_without_partial_decode() -> None:
@@ -129,17 +129,17 @@ def test_canonical_report_excludes_nondeterministic_fields(report) -> None:
 
 再覆盖 UTF-8、额外字段、非对象根节点、稳定 key 排序和 `usage=None` 编码为 JSON `null`。
 
-- [ ] **Step 2：运行失败测试**
+- [x] **Step 2：运行失败测试**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_codec.py -v
 ```
 
-- [ ] **Step 3：实现显式 Codec 分派**
+- [x] **Step 3：实现显式 Codec 分派**
 
 Codec 只能调用固定 Pydantic 类型，错误消息不得包含原始 JSON 全文。canonical projection 保留 `case_id/status/scores/reason_codes/before_files/after_files/event_types/usage`，对映射 key、文件事实、case 和 reason code 排序。
 
-- [ ] **Step 4：验证并提交**
+- [x] **Step 4：验证并提交**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_contracts.py tests/evals/test_codec.py -v
