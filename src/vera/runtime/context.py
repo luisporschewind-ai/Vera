@@ -5,6 +5,7 @@ from datetime import datetime
 
 from vera.contracts.checkpoints import CheckpointManifest
 from vera.contracts.commands import StartRun
+from vera.contracts.recovery import RecoveryPlan
 from vera.contracts.verification import VerificationCommand
 from vera.models.base import ModelMessage
 from vera.persistence.journal import EventJournal
@@ -32,3 +33,4 @@ class RunContext:
     checkpoint_manifest: CheckpointManifest | None = None
     workspace_write_started: bool = False
     snapshot_created_at: datetime | None = None
+    pending_recovery_plan: RecoveryPlan | None = None

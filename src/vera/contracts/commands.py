@@ -49,4 +49,16 @@ class InspectRecovery(ContractModel):
     run_id: str | None = None
 
 
-type CoreCommand = StartRun | ResolveApproval | CancelRun | RollbackRun | InspectRecovery
+class ResumeRun(ContractModel):
+    schema_version: Literal[1] = 1
+    run_id: str
+
+
+class AbandonRun(ContractModel):
+    schema_version: Literal[1] = 1
+    run_id: str
+
+
+type CoreCommand = (
+    StartRun | ResolveApproval | CancelRun | RollbackRun | InspectRecovery | ResumeRun | AbandonRun
+)

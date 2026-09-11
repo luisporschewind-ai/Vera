@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from vera.contracts.approvals import ApprovalRequest
 from vera.contracts.changes import ChangeSet
 from vera.contracts.commands import StartRun
-from vera.contracts.recovery import RecoveryStage
+from vera.contracts.recovery import RecoveryPlan, RecoveryStage
 from vera.workspace.changeset import BuiltChangeSet
 
 
@@ -90,6 +90,7 @@ class RecoverySnapshot(FrozenPrivateModel):
     verification_failed: bool = False
     verification_in_flight: bool = False
     workspace_write_started: bool = False
+    recovery_plan: RecoveryPlan | None = None
     created_at: datetime
     updated_at: datetime
     vera_version: str

@@ -3,11 +3,19 @@ from pathlib import Path
 
 from vera.contracts.approvals import ApprovalRequest
 from vera.contracts.changes import ChangeSet, FileChange
-from vera.contracts.commands import CoreCommand, InspectRecovery, StartRun
+from vera.contracts.commands import (
+    AbandonRun,
+    CoreCommand,
+    InspectRecovery,
+    ResumeRun,
+    StartRun,
+)
 from vera.contracts.recovery import (
     FileRecoveryState,
     RecoveryClassification,
     RecoveryEvidence,
+    RecoveryPlan,
+    RecoveryPlanFile,
     RecoveryReport,
     RecoveryStage,
 )
@@ -98,3 +106,35 @@ def test_recovery_snapshot_round_trips() -> None:
     )
     assert RecoverySnapshot.model_validate_json(snapshot.model_dump_json()) == snapshot
     assert snapshot.snapshot_version == 1
+
+
+def test_resume_and_abandon_are_core_commands() -> None:
+    commands: tuple[CoreCommand, ...] = (
+        ResumeRun(run_id="run_1"),
+        AbandonRun(run_id="run_1"),
+    )
+    assert [item.model_dump()["schema_version"] for item in commands] == [1, 1]
+
+
+def test_recovery_plan_hash_is_stable() -> None:
+    files = (
+        RecoveryPlanFile(
+            path="b.py",
+            before_hash="1" * 64,
+            after_hash="2" * 64,
+            current_hash="2" * 64,
+            action="restore_before",
+        ),
+        RecoveryPlanFile(
+            path="a.py",
+            before_hash="3" * 64,
+            after_hash="4" * 64,
+            current_hash="3" * 64,
+            action="keep_before",
+        ),
+    )
+    first = RecoveryPlan.create("rec_1", "run_1", "ident", files)
+    second = RecoveryPlan.create("rec_1", "run_1", "ident", files[::-1])
+    assert first.recovery_hash == second.recovery_hash
+    assert first.files[0].path == "a.py"
+    assert RecoveryPlan.model_validate_json(first.model_dump_json()) == first

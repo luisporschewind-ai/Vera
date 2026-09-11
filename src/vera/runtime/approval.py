@@ -11,6 +11,7 @@ from vera.contracts.commands import ResolveApproval
 class ApprovalKind(StrEnum):
     CHANGESET = "changeset"
     COMMAND = "command"
+    RECOVERY = "recovery"
 
 
 class ApprovalMismatch(ValueError):
@@ -56,3 +57,9 @@ class ApprovalGate:
             raise ApprovalMismatch("approval does not match pending request")
         self.pending_approval = None
         return command.decision
+
+    @classmethod
+    def restore(cls, request: ApprovalRequest) -> "ApprovalGate":
+        gate = cls(request.run_id)
+        gate.pending_approval = request
+        return gate

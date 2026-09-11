@@ -1,5 +1,6 @@
 import pytest
 
+from vera.contracts.approvals import ApprovalRequest
 from vera.contracts.commands import ResolveApproval
 from vera.runtime.approval import ApprovalGate, ApprovalKind, ApprovalMismatch
 
@@ -47,3 +48,36 @@ def test_approval_rejects_second_pending_request_and_wrong_run() -> None:
                 decision="approve",
             )
         )
+
+
+def test_restored_gate_rejects_wrong_recovery_hash() -> None:
+    request = ApprovalRequest(
+        approval_id="approval_1",
+        run_id="run_1",
+        kind="recovery",
+        target_id="rec_1",
+        target_hash="expected",
+        description="restore",
+        risk="high",
+    )
+    gate = ApprovalGate.restore(request)
+    with pytest.raises(ApprovalMismatch):
+        gate.resolve(
+            ResolveApproval(
+                run_id="run_1",
+                approval_id=request.approval_id,
+                target_hash="wrong",
+                decision="approve",
+            )
+        )
+    assert (
+        gate.resolve(
+            ResolveApproval(
+                run_id="run_1",
+                approval_id=request.approval_id,
+                target_hash="expected",
+                decision="approve",
+            )
+        )
+        == "approve"
+    )

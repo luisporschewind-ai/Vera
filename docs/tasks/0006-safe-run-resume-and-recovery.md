@@ -2,7 +2,7 @@
 
 > **供 Cursor Agent 执行：** 使用单一主实现 Agent，按顺序执行。每项行为先写失败测试，再做最小实现并独立提交；禁止并行编辑同一工作树。
 
-**状态：** Planned
+**状态：** In progress
 
 **目标分支：** `feature/safe-run-resume-recovery`
 
@@ -73,7 +73,7 @@ tests/
 - Produces: `RecoverySnapshot.recovery_plan: RecoveryPlan | None = None`
 - Produces: `RunContext.pending_recovery_plan: RecoveryPlan | None = None`
 
-- [ ] **Step 1：编写契约与恢复审批失败测试**
+- [x] **Step 1：编写契约与恢复审批失败测试**
 
 ```python
 def test_resume_and_abandon_are_core_commands() -> None:
@@ -97,18 +97,18 @@ def test_restored_gate_rejects_wrong_recovery_hash(recovery_request) -> None:
         )
 ```
 
-- [ ] **Step 2：运行测试并确认命令和 kind 不存在**
+- [x] **Step 2：运行测试并确认命令和 kind 不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
   tests/contracts/test_recovery_models.py tests/runtime/test_approval.py -v
 ```
 
-- [ ] **Step 3：实现向后兼容扩展**
+- [x] **Step 3：实现向后兼容扩展**
 
 `ApprovalRequest.kind` 扩为 `Literal["changeset", "command", "recovery"]`。`ApprovalGate.restore()` 校验 request.run_id 与 gate run_id，不生成新 ID。`RecoveryPlan.recovery_hash` 对规范化 workspace identity、有序 path、before/after/current hash 和目标动作计算 SHA-256。
 
-- [ ] **Step 4：运行契约与静态检查**
+- [x] **Step 4：运行契约与静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/contracts tests/runtime/test_approval.py -v
