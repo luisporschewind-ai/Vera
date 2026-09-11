@@ -43,3 +43,36 @@ def test_command_policy_precedence(argv, prefixes, expected, reason_code) -> Non
     decision = engine.decide(command_action(argv))
     assert decision.decision.value == expected
     assert decision.reason_code == reason_code
+
+
+def test_tool_and_changeset_actions_cover_engine_branches() -> None:
+    engine = PolicyEngine(
+        EffectivePolicySnapshot(
+            workspace_identity="ws",
+            project_denied_tools=("search_text",),
+        )
+    )
+    deny_tool = engine.decide(
+        PolicyAction(
+            kind=PolicyActionKind.TOOL_EXECUTE,
+            workspace_identity="ws",
+            resource="search_text",
+        )
+    )
+    assert deny_tool.decision.value == "deny"
+    allow_tool = engine.decide(
+        PolicyAction(
+            kind=PolicyActionKind.TOOL_EXECUTE,
+            workspace_identity="ws",
+            resource="read_file",
+        )
+    )
+    assert allow_tool.decision.value == "allow"
+    changeset = engine.decide(
+        PolicyAction(
+            kind=PolicyActionKind.CHANGESET_APPLY,
+            workspace_identity="ws",
+            resource="cs_1",
+        )
+    )
+    assert changeset.decision.value == "approval_required"

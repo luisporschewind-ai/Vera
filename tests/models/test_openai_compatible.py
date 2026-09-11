@@ -4,7 +4,8 @@ import pytest
 
 from vera.config import ProviderConfig
 from vera.models.base import ModelMessage, ModelRequest, ModelToolCall
-from vera.models.openai_compatible import ModelAdapterError, OpenAICompatibleAdapter
+from vera.models.errors import ModelProviderError
+from vera.models.openai_compatible import OpenAICompatibleAdapter
 from vera.tools.definitions import ToolDefinition
 
 
@@ -81,5 +82,5 @@ def test_adapter_rejects_invalid_tool_json() -> None:
         ],
         usage=None,
     )
-    with pytest.raises(ModelAdapterError):
+    with pytest.raises(ModelProviderError):
         OpenAICompatibleAdapter(provider(), client=FakeOpenAIClient(response)).complete(request())

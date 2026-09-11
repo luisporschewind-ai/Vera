@@ -1,0 +1,1 @@
+{"id":"chatcmpl-glm-text","choices":[{"finish_reason":"stop","message":{"role":"assistant","content":"hello from glm"}}],"usage":{"prompt_tokens":2,"completion_tokens":3,"total_tokens":5}}

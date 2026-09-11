@@ -2,7 +2,7 @@
 
 > **供 Cursor Agent 执行：** 使用单一主实现 Agent，严格按 TDD 顺序执行。每个生产增量独立提交；最后完成阶段二全链路验收和本地合并。
 
-**状态：** Planned
+**状态：** Done
 
 **目标分支：** `feature/model-resilience-phase2`
 
@@ -80,7 +80,7 @@ tests/
 - Produces: `ProviderConfig.capabilities`
 - Extends: `ModelAdapter.capabilities: ModelCapabilities`
 
-- [ ] **Step 1：编写能力和错误序列化测试**
+- [x] **Step 1：编写能力和错误序列化测试**
 
 ```python
 def test_coding_capability_requires_tool_calling() -> None:
@@ -101,14 +101,14 @@ def test_provider_error_never_exposes_cause_text() -> None:
 
 配置测试覆盖默认 OpenAI-compatible profile `tool_calling=True`、用户显式关闭、非法负 token 上限、项目配置不能声明 Provider capability。
 
-- [ ] **Step 2：运行测试并确认类型不存在**
+- [x] **Step 2：运行测试并确认类型不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
   tests/models/test_capabilities.py tests/models/test_errors.py tests/test_config.py -v
 ```
 
-- [ ] **Step 3：实现冻结能力和稳定错误码**
+- [x] **Step 3：实现冻结能力和稳定错误码**
 
 ```python
 class ModelErrorCode(StrEnum):
@@ -124,7 +124,7 @@ class ModelErrorCode(StrEnum):
 
 ModelProviderError 只接收已脱敏 message；映射时使用 `raise mapped_error from provider_exception` 保留本进程异常链，但异常链不进入 Event。`retryable` 仅对 NETWORK/TIMEOUT/RATE_LIMITED 及 status>=500 的 SERVICE 为 True。`safe_error_payload()` 只返回 code、message、attempt、status_code、request_id 和 retry_after_seconds。
 
-- [ ] **Step 4：运行模型、配置与静态检查**
+- [x] **Step 4：运行模型、配置与静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/models tests/test_config.py -v
@@ -132,7 +132,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src/vera/models src/ve
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交能力契约**
+- [x] **Step 5：提交能力契约**
 
 ```bash
 git add src/vera/models src/vera/config.py tests/models tests/test_config.py \
@@ -160,7 +160,7 @@ git commit -m "feat: define model capabilities and errors"
 - Produces: `ModelTurn.provider_request_id: str | None = None`
 - Guarantee: Adapter 只抛 `ModelProviderError`
 
-- [ ] **Step 1：编写供应商 Fixture conformance 测试**
+- [x] **Step 1：编写供应商 Fixture conformance 测试**
 
 ```python
 @pytest.mark.parametrize("provider", ["deepseek", "glm"])
@@ -175,20 +175,20 @@ def test_fixture_tool_call_conforms(provider: str, fixture_client) -> None:
 
 错误映射参数化覆盖 OpenAI Client 的 AuthenticationError、APITimeoutError、APIConnectionError、RateLimitError、APIStatusError(500)，以及空 choices、未知 finish_reason、非法 tool arguments。断言错误码、retryable、status/request ID 和消息脱敏。
 
-- [ ] **Step 2：运行测试并确认当前只返回 ModelAdapterError**
+- [x] **Step 2：运行测试并确认当前只返回 ModelAdapterError**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
   tests/models/test_openai_compatible.py tests/models/test_adapter_conformance.py -v
 ```
 
-- [ ] **Step 3：实现异常映射**
+- [x] **Step 3：实现异常映射**
 
 按最具体异常到一般异常排序捕获 OpenAI SDK 类型；从 SDK 对象只提取 status code、合法 Retry-After 和 request ID。未知异常映射 NETWORK 仅限连接类；其他未知异常映射 SERVICE 且默认不重试。解析错误统一 INVALID_RESPONSE。
 
 `ModelTurn.provider_request_id` 从响应 `_request_id` 或 headers 安全提取；不存在为 None。Fixture 必须完全脱敏，不复制真实响应正文。
 
-- [ ] **Step 4：运行模型全回归**
+- [x] **Step 4：运行模型全回归**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/models -v
@@ -196,7 +196,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src/vera/models tests/
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交适配器标准化**
+- [x] **Step 5：提交适配器标准化**
 
 ```bash
 git add src/vera/models tests/models tests/fixtures/providers \
@@ -222,7 +222,7 @@ git commit -m "feat: normalize compatible model providers"
 - Produces: `delay_seconds(error, attempt) -> float`
 - Produces: `Limits.max_model_attempts: int = 2`
 
-- [ ] **Step 1：编写重试表和退避上限测试**
+- [x] **Step 1：编写重试表和退避上限测试**
 
 ```python
 @pytest.mark.parametrize(
@@ -245,17 +245,17 @@ def test_retry_matrix(code, status, expected) -> None:
 
 测试 Retry-After 0.5 使用 0.5，Retry-After 60 截到 2.0，指数退避不超过 2.0，max_attempts 小于 1 配置失败，项目配置只能降低。
 
-- [ ] **Step 2：运行测试并确认 RetryPolicy 不存在**
+- [x] **Step 2：运行测试并确认 RetryPolicy 不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/models/test_retry.py tests/test_config.py -v
 ```
 
-- [ ] **Step 3：实现纯重试计算**
+- [x] **Step 3：实现纯重试计算**
 
 Policy 不调用 sleep，只返回决定和延迟。Runtime 注入 `sleep: Callable[[float], None]` 后执行等待，测试使用记录器。随机 jitter 本阶段不加入，保证确定性。
 
-- [ ] **Step 4：运行配置与模型回归**
+- [x] **Step 4：运行配置与模型回归**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/models tests/test_config.py -v
@@ -263,7 +263,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src/vera/models src/ve
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 RetryPolicy**
+- [x] **Step 5：提交 RetryPolicy**
 
 ```bash
 git add src/vera/models/retry.py src/vera/config.py \
@@ -290,7 +290,7 @@ git commit -m "feat: bound model request retries"
 - Extends: `model.requested.payload.attempt`
 - Extends: `model.completed.payload` usage/request_id/duration_ms
 
-- [ ] **Step 1：编写能力失败与有限重试测试**
+- [x] **Step 1：编写能力失败与有限重试测试**
 
 ```python
 def test_transient_failure_retries_once_without_repeating_tools(runtime_factory) -> None:
@@ -311,14 +311,14 @@ def test_transient_failure_retries_once_without_repeating_tools(runtime_factory)
 
 再测试认证不重试、两次 timeout 后 model.failed、Tool Calling capability mismatch 在 adapter 调用前失败、compact 可使用无 tool 能力、成功 Event 的 null usage、request ID 和 duration。
 
-- [ ] **Step 2：运行测试并确认 Runtime 折叠为 model_error**
+- [x] **Step 2：运行测试并确认 Runtime 折叠为 model_error**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
   tests/runtime/test_model_resilience.py tests/runtime/test_discovery_loop.py -v
 ```
 
-- [ ] **Step 3：实现单模型调用边界**
+- [x] **Step 3：实现单模型调用边界**
 
 提取：
 
@@ -344,7 +344,7 @@ def _complete_with_retry(
 
 调用方使用 `turn = yield from self._complete_with_retry(context, request)`，返回 None 时结束当前 run。能力检查发生在首次 model.requested 前。成功 model.completed 记录 finish_reason、tool count、usage 可空字段、request ID、attempt 和 duration_ms。任何原异常字符串不得进入 Payload。
 
-- [ ] **Step 4：运行 Runtime、恢复与模型回归**
+- [x] **Step 4：运行 Runtime、恢复与模型回归**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/runtime tests/recovery tests/models -v
@@ -352,7 +352,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src tests/runtime test
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Runtime 韧性**
+- [x] **Step 5：提交 Runtime 韧性**
 
 ```bash
 git add src/vera/runtime/engine.py src/vera/bootstrap.py src/vera/cli_presenter.py \
@@ -375,7 +375,7 @@ git commit -m "feat: retry transient model failures safely"
 - Modify: `docs/tasks/phase-2-execution-order.md`
 - Modify: `docs/tasks/0009-model-resilience-and-phase-2-acceptance.md`
 
-- [ ] **Step 1：编写阶段二 12 条退出条件 E2E 对照**
+- [x] **Step 1：编写阶段二 12 条退出条件 E2E 对照**
 
 `tests/e2e/test_phase_2_reliability.py` 使用临时工作区、临时状态目录、Fake Model、Fake Clock 和 failpoint。至少包含：审批恢复、验证恢复、partial apply 批准恢复、UNKNOWN 停止、重复 resume 幂等、legacy 查看、future reject、策略变化审批失效、DeepSeek/GLM Fixture、瞬时重试不重复工具、JSON recovery、普通对话/安全编辑回归。
 
@@ -390,7 +390,7 @@ def test_retry_then_resume_never_duplicates_local_side_effects(phase2_fixture) -
     assert phase2_fixture.verifier.count == 1
 ```
 
-- [ ] **Step 2：运行完整质量门禁**
+- [x] **Step 2：运行完整质量门禁**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -404,15 +404,15 @@ git diff --check
 
 全部退出码为 0，覆盖率至少 90%，live 测试明确排除。
 
-- [ ] **Step 3：执行仓库外离线 CLI 验收**
+- [x] **Step 3：执行仓库外离线 CLI 验收**
 
 使用 editable 安装、假的完整 Provider 环境和临时 `VERA_STATE_DIR`。只执行本地 `/status`、`/recover`、`vera recover list --json`、legacy 查看、迁移 dry-run 和 `/permissions`；不输入自然语言，不发网络请求。输出不得出现测试 Key、Base URL、Snapshot 正文或绝对私有状态文件内容。
 
-- [ ] **Step 4：更新阶段文档**
+- [x] **Step 4：更新阶段文档**
 
 验收记录逐条对应总规格 12 条退出条件，记录每份任务提交、测试数、覆盖率、静态检查、构建、仓库外验收、未执行 live 和已知限制。将任务 0009、阶段二执行索引标记 Complete；ROADMAP 阶段一和阶段二标记 Complete，阶段三为下一阶段；STATUS 记录真实分支和无 remote 状态。
 
-- [ ] **Step 5：提交阶段二验收**
+- [x] **Step 5：提交阶段二验收**
 
 ```bash
 git add tests/e2e/test_phase_2_reliability.py README.md docs/ROADMAP.md \
@@ -422,7 +422,7 @@ git add tests/e2e/test_phase_2_reliability.py README.md docs/ROADMAP.md \
 git commit -m "test: verify phase two reliability core"
 ```
 
-- [ ] **Step 6：合并回 main 并最终复核**
+- [x] **Step 6：合并回 main 并最终复核**
 
 ```bash
 git switch main
