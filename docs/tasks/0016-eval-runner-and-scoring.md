@@ -2,7 +2,7 @@
 
 > **供 Agent 执行：** REQUIRED SUB-SKILL: 使用 `superpowers:executing-plans` 按 Task 顺序实施；只使用一个主实现 Agent，每个生产增量独立提交。
 
-**状态：** Planned
+**状态：** Done
 
 **目标分支：** `feature/eval-runner-scoring`
 
@@ -41,7 +41,7 @@
 - Produces: `Scorer.score(case, expect, before_files, after_files, events, metrics) -> tuple[EvalScore, ...]`
 - Produces: stable reason codes `file_hash_mismatch`、`unexpected_file_change`、`terminal_event_mismatch`、`required_event_missing`、`forbidden_event_seen`
 
-- [ ] **Step 1：编写文件增删改和终态评分测试**
+- [x] **Step 1：编写文件增删改和终态评分测试**
 
 ```python
 def test_safety_fails_for_change_outside_allowlist(tmp_path: Path) -> None:
@@ -57,17 +57,17 @@ def test_safety_fails_for_change_outside_allowlist(tmp_path: Path) -> None:
 
 另测新增、删除、目录变文件、特殊文件、期望不存在、SHA-256 不符、必需 Event 缺失、禁止 Event 出现，以及未声明维度为 `not_applicable`。
 
-- [ ] **Step 2：运行失败测试**
+- [x] **Step 2：运行失败测试**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_files.py tests/evals/test_scoring.py -v
 ```
 
-- [ ] **Step 3：实现确定排序的文件事实与评分**
+- [x] **Step 3：实现确定排序的文件事实与评分**
 
 `FileInventory` 使用 `lstat()`，拒绝跟随 symlink；常规文件分块计算 SHA-256，目录只记录 kind，不遍历 corpus 之外路径。Scorer 不读取磁盘，按 `(path, kind, sha256)` 映射比较，并按维度名和 reason code 排序输出。
 
-- [ ] **Step 4：验证并提交**
+- [x] **Step 4：验证并提交**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_files.py tests/evals/test_scoring.py -v
@@ -96,7 +96,7 @@ git commit -m "feat: score evaluation file and event facts"
 - Produces: `EvalExecutionError(code, message)`
 - Consumes: `$VERA_EVAL_PYTHON` only inside verification argv
 
-- [ ] **Step 1：编写无 Provider、审批耗尽和替换占位符测试**
+- [x] **Step 1：编写无 Provider、审批耗尽和替换占位符测试**
 
 ```python
 def test_factory_uses_fake_adapter_and_never_provider_loader(loaded_case, isolated, monkeypatch) -> None:
@@ -112,19 +112,19 @@ def test_driver_fails_closed_when_approval_script_is_exhausted(runtime, loaded_c
 
 再覆盖未知工具、剩余未消费 ModelTurn、剩余审批决定、`cancel` 转 `CancelRun`、`reject`/`approve` 绑定动态 approval ID/hash，以及非 `$VERA_EVAL_PYTHON` 环境语法拒绝。
 
-- [ ] **Step 2：运行失败测试**
+- [x] **Step 2：运行失败测试**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_runtime_factory.py tests/evals/test_script_driver.py -v
 ```
 
-- [ ] **Step 3：实现与 bootstrap 同边界的离线装配**
+- [x] **Step 3：实现与 bootstrap 同边界的离线装配**
 
 Factory 注册 `ReadFileTool`、`ListDirectoryTool`、`SearchTextTool`，使用临时 WorkspacePaths、固定 `installation_id=f"eval-{case_id}"`、临时 RecoverySnapshotStore、PolicyEngine 和只允许 `(sys.executable, "-c")` 的 CommandPolicy。Driver 只调用 `drive_run()`/`runtime.handle()`，标准场景从 `StartRun` 开始；本任务对非 `standard` 场景返回 `unsupported_scenario`。
 
 `EvalExecution.event_types` 是全部 Event 的顺序投影；`event_types_after_restart` 从 `restart_event_offset` 切片。没有重启时 `runtime_instance_count=1`、offset 为 `None`。副作用计数使用稳定 key（例如 `changeset.applied`、`rollback.completed`），供恢复评分使用。
 
-- [ ] **Step 4：验证并提交**
+- [x] **Step 4：验证并提交**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_runtime_factory.py tests/evals/test_script_driver.py tests/runtime -v
@@ -149,7 +149,7 @@ git commit -m "feat: drive scripted evaluations through Vera core"
 - Produces: module entry `python -m vera.evals.worker --request <path> --result <path>`
 - Guarantee: Worker 不向 stdout 写协议，不加载用户 Provider 配置
 
-- [ ] **Step 1：编写成功、Runtime 异常和结果原子写测试**
+- [x] **Step 1：编写成功、Runtime 异常和结果原子写测试**
 
 ```python
 def test_worker_returns_report_from_core_facts(worker_request) -> None:
@@ -168,17 +168,17 @@ def test_worker_maps_uncaught_runtime_error(worker_request, monkeypatch) -> None
 
 再测 request schema 错误、result 目标已存在、部分写失败、没有 Event、source manifest 在运行后改变和 stderr 不包含 fixture 正文。
 
-- [ ] **Step 2：运行失败测试**
+- [x] **Step 2：运行失败测试**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_worker.py -v
 ```
 
-- [ ] **Step 3：实现单 case Worker**
+- [x] **Step 3：实现单 case Worker**
 
 Worker 顺序固定：解码 request → 重新校验 corpus → 捕获 before → 构造 Runtime → 执行脚本 → 捕获 after → 提取最小 metrics → 评分 → 验证源 hash → 原子写 result。任何异常映射稳定 code，不序列化 traceback、环境或原始文件正文。
 
-- [ ] **Step 4：验证并提交**
+- [x] **Step 4：验证并提交**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_worker.py tests/evals/test_script_driver.py -v
@@ -203,7 +203,7 @@ git commit -m "feat: add isolated evaluation worker"
 - Produces: `sanitized_worker_environment(source: Mapping[str, str]) -> dict[str, str]`
 - Produces: reason codes `case_timeout`、`worker_exit_error`、`worker_protocol_error`
 
-- [ ] **Step 1：编写环境清除、timeout 和坏结果测试**
+- [x] **Step 1：编写环境清除、timeout 和坏结果测试**
 
 ```python
 def test_worker_environment_removes_all_provider_values(monkeypatch) -> None:
@@ -225,17 +225,17 @@ def test_timeout_terminates_exact_worker_and_returns_timeout(fake_process, reque
 
 另测 TERM 后正常退出不 kill、TERM 无效才 kill、非零退出、缺失/损坏 result、stdout/stderr 上限和后续 case 仍可运行。
 
-- [ ] **Step 2：运行失败测试**
+- [x] **Step 2：运行失败测试**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_process_runner.py -v
 ```
 
-- [ ] **Step 3：实现 `shell=False` Worker 启动**
+- [x] **Step 3：实现 `shell=False` Worker 启动**
 
 argv 固定为 `[sys.executable, "-m", "vera.evals.worker", "--request", ..., "--result", ...]`。环境只保留运行 Python 所需的明确 allowlist；cwd 固定为隔离 workspace；request/result 文件权限 `0600`。不得使用进程名匹配或 kill 进程组之外的对象。
 
-- [ ] **Step 4：验证并提交**
+- [x] **Step 4：验证并提交**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_process_runner.py -v
@@ -266,7 +266,7 @@ git commit -m "feat: enforce evaluation worker timeouts"
 - Produces: `EvalSuiteRunner.run_case(case_id, output_root=None) -> EvalReport`
 - Produces: `EvalSuiteRunner.run_suite(case_ids, output_root=None) -> EvalSuiteReport`
 
-- [ ] **Step 1：编写不覆盖、权限、排序和套件继续测试**
+- [x] **Step 1：编写不覆盖、权限、排序和套件继续测试**
 
 ```python
 def test_suite_continues_after_failed_case(runner) -> None:
@@ -286,11 +286,11 @@ def test_evidence_writer_never_overwrites_existing_directory(writer, result, tmp
 
 再测 `0700/0600`、原子 rename、events/files 不含正文、失败 result 仍有 report、suite-report case 排序和 output 写失败返回结构化错误。
 
-- [ ] **Step 2：实现 Runner 与 Writer**
+- [x] **Step 2：实现 Runner 与 Writer**
 
 SuiteRunner 对每个 case 重新调用 CorpusLoader 和 FixtureIsolator，不能复用 workspace/state。EvidenceWriter 先写同父目录临时目录，fsync 后原子 rename 到 `<output_root>/<evaluation_id>`；只删除自己创建的临时目录。
 
-- [ ] **Step 3：运行完整质量门禁**
+- [x] **Step 3：运行完整质量门禁**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest -m "not live" --cov=vera --cov-report=term-missing
@@ -301,7 +301,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv build
 git diff --check
 ```
 
-- [ ] **Step 4：记录证据、提交并本地合并**
+- [x] **Step 4：记录证据、提交并本地合并**
 
 ```bash
 git add src/vera/evals tests/evals docs/evals/eval-runner-and-scoring.md docs/STATUS.md docs/tasks/0016-eval-runner-and-scoring.md
