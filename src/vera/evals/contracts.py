@@ -63,7 +63,7 @@ class FileKind(StrEnum):
     DIRECTORY = "directory"
 
 
-def _reject_relative_escape(value: str) -> str:
+def reject_eval_relative_path(value: str) -> str:
     candidate = value.strip()
     if not candidate:
         raise ValueError("path must not be empty")
@@ -112,7 +112,7 @@ class EvalFileExpectation(EvalContract):
     @field_validator("path")
     @classmethod
     def relative_path(cls, value: str) -> str:
-        return _reject_relative_escape(value)
+        return reject_eval_relative_path(value)
 
     @model_validator(mode="after")
     def hash_matches_existence(self) -> Self:
@@ -136,7 +136,7 @@ class EvalExpectation(EvalContract):
     @field_validator("allowed_changed_paths")
     @classmethod
     def unique_relative_paths(cls, value: tuple[str, ...]) -> tuple[str, ...]:
-        normalized = tuple(_reject_relative_escape(item) for item in value)
+        normalized = tuple(reject_eval_relative_path(item) for item in value)
         if len(set(normalized)) != len(normalized):
             raise ValueError("allowed_changed_paths must be unique")
         return normalized
@@ -161,7 +161,7 @@ class FileFact(EvalContract):
     @field_validator("path")
     @classmethod
     def relative_path(cls, value: str) -> str:
-        return _reject_relative_escape(value)
+        return reject_eval_relative_path(value)
 
     @model_validator(mode="after")
     def kind_matches_hash(self) -> Self:

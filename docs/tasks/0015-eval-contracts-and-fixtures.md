@@ -172,7 +172,7 @@ git commit -m "feat: add evaluation codecs"
 - Produces: `CorpusValidation(manifest_hash, case_ids, file_count)`
 - Produces: `CorpusError(code, source, message)`
 
-- [ ] **Step 1：编写 manifest、路径和秘密拒绝测试**
+- [x] **Step 1：编写 manifest、路径和秘密拒绝测试**
 
 ```python
 def test_loader_validates_manifest_and_returns_sorted_cases(valid_corpus) -> None:
@@ -190,17 +190,17 @@ def test_loader_rejects_hash_mismatch(valid_corpus) -> None:
 
 另测未登记文件、重复 case ID、目录名不匹配、符号链接、FIFO、绝对路径、`..`、`DEEPSEEK_API_KEY`/`GLM_API_KEY`/Bearer-like secret 和非 UTF-8 JSON。
 
-- [ ] **Step 2：运行失败测试**
+- [x] **Step 2：运行失败测试**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_corpus.py -v
 ```
 
-- [ ] **Step 3：实现只读 Loader**
+- [x] **Step 3：实现只读 Loader**
 
 manifest 结构固定为 `schema_version=1`、`files[{path,sha256}]`。Loader 先验证完整文件集合和 hash，再解析 case；遍历与输出始终按相对路径排序。默认资源根由 `importlib.resources.files("vera.evals").joinpath("corpus")` 获取，但测试可注入 Path。
 
-- [ ] **Step 4：验证并提交**
+- [x] **Step 4：验证并提交**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_corpus.py -v
