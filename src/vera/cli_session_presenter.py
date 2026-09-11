@@ -44,6 +44,11 @@ class SessionPresenter:
         self._write(f"Approval mode     {status.approval_mode}")
         self._write(f"Change Set        {status.changeset_approval}")
         self._write(f"Command policy    {status.command_policy}")
+        self._write(f"Policy version    {status.policy_version}")
+        if status.policy_hash_prefix:
+            self._write(f"Policy hash       {status.policy_hash_prefix}")
+        if status.hard_denies:
+            self._write(f"Hard denies       {', '.join(status.hard_denies)}")
         if status.user_allowed_prefixes:
             for prefix in status.user_allowed_prefixes:
                 self._write(f"Allowed prefix    {' '.join(prefix)}")

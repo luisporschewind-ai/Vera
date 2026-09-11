@@ -14,3 +14,5 @@ class ApprovalRequest(ContractModel):
     target_hash: str
     description: str
     risk: Literal["low", "medium", "high"]
+    workspace_identity: str | None = None
+    policy_hash: str | None = None

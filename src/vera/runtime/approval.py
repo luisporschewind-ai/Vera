@@ -30,6 +30,9 @@ class ApprovalGate:
         target_hash: str,
         description: str,
         risk: Literal["low", "medium", "high"],
+        *,
+        workspace_identity: str | None = None,
+        policy_hash: str | None = None,
     ) -> ApprovalRequest:
         if self.pending_approval is not None:
             raise ApprovalMismatch("an approval is already pending")
@@ -41,6 +44,8 @@ class ApprovalGate:
             target_hash=target_hash,
             description=description,
             risk=risk,
+            workspace_identity=workspace_identity,
+            policy_hash=policy_hash,
         )
         self.pending_approval = request
         return request

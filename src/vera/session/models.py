@@ -27,6 +27,9 @@ class PermissionStatus(BaseModel):
     user_allowed_prefixes: tuple[tuple[str, ...], ...]
     execution_boundary: str
     os_sandbox: bool
+    policy_version: int = 1
+    policy_hash_prefix: str = ""
+    hard_denies: tuple[str, ...] = ()
 
 
 class GitStatus(BaseModel):

@@ -34,6 +34,8 @@ from vera.persistence.journal import EventJournal
 from vera.persistence.migration import StateMigrationService
 from vera.persistence.recovery_snapshot import RecoverySnapshotError, RecoverySnapshotStore
 from vera.persistence.run_store import RunStore
+from vera.policy.engine import PolicyEngine
+from vera.policy.snapshot import EffectivePolicySnapshot
 from vera.recovery.coordinator import RecoveryCoordinator
 from vera.recovery.hydrator import RecoveryHydrationError, RecoveryHydrator
 from vera.recovery.models import PersistedChangeSet, RecoverySnapshot
@@ -82,21 +84,59 @@ class VeraRuntime:
         installation_id: str | None = None,
         recovery_coordinator: RecoveryCoordinator | None = None,
         file_writer: FileWriter | None = None,
+        policy_engine: PolicyEngine | None = None,
     ) -> None:
         self.adapter = adapter
         self.registry = registry
         self.state_dir = state_dir
         self.limits = limits or Limits()
-        self.command_policy = command_policy or CommandPolicy()
+        self.installation_id = installation_id or "local"
+        if policy_engine is not None:
+            self.policy_engine = policy_engine
+        elif command_policy is not None:
+            self.policy_engine = command_policy.engine
+        else:
+            self.policy_engine = PolicyEngine(EffectivePolicySnapshot(workspace_identity="default"))
+        self.command_policy = command_policy or CommandPolicy(
+            self.policy_engine.snapshot.user_allowed_command_prefixes,
+            policy_engine=self.policy_engine,
+            workspace_identity=self.policy_engine.snapshot.workspace_identity,
+        )
         self.runs: dict[str, RunContext] = {}
         self.snapshot_store = snapshot_store or RecoverySnapshotStore(state_dir)
-        self.installation_id = installation_id or "local"
         self.file_writer = file_writer
         self.coordinator = recovery_coordinator or RecoveryCoordinator(
             state_dir,
             self.installation_id,
             snapshot_store=self.snapshot_store,
         )
+
+    def _policy_binding(self, root: Path) -> tuple[str, str]:
+        identity = workspace_identity(root, self.installation_id)
+        return identity, self.policy_engine.policy_hash
+
+    def _approval_payload(
+        self, request: ApprovalRequest, context: RunContext | None = None
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "approval_id": request.approval_id,
+            "run_id": request.run_id,
+            "kind": request.kind,
+            "target_id": request.target_id,
+            "target_hash": request.target_hash,
+            "description": request.description,
+            "risk": request.risk,
+            "workspace_identity": request.workspace_identity,
+            "policy_hash": request.policy_hash,
+        }
+        if (
+            context is not None
+            and request.kind == ApprovalKind.COMMAND.value
+            and context.pending_command is not None
+        ):
+            payload["argv"] = list(context.pending_command.argv)
+            payload["cwd"] = context.pending_command.cwd
+        return payload
 
     def _event(
         self, context: RunContext, event_type: str, payload: dict[str, Any]
@@ -259,19 +299,13 @@ class VeraRuntime:
             change_set.content_hash,
             change_set.summary,
             risk,
+            workspace_identity=self._policy_binding(context.command.workspace_root)[0],
+            policy_hash=self.policy_engine.policy_hash,
         )
         yield self._stable_event(
             context,
             "approval.required",
-            {
-                "approval_id": request.approval_id,
-                "run_id": context.run_id,
-                "kind": request.kind,
-                "target_id": request.target_id,
-                "target_hash": request.target_hash,
-                "description": request.description,
-                "risk": request.risk,
-            },
+            self._approval_payload(request),
             RecoveryStage.AWAITING_CHANGESET_APPROVAL,
         )
 
@@ -304,20 +338,15 @@ class VeraRuntime:
                     built.change_set.content_hash,
                     "执行验证命令",
                     "medium",
+                    workspace_identity=self._policy_binding(context.command.workspace_root)[0],
+                    policy_hash=self.policy_engine.policy_hash,
                 )
+                payload = self._approval_payload(request)
+                payload.update({"argv": list(command.argv), "cwd": command.cwd})
                 yield self._stable_event(
                     context,
                     "approval.required",
-                    {
-                        "run_id": context.run_id,
-                        "approval_id": request.approval_id,
-                        "kind": request.kind,
-                        "target_id": request.target_id,
-                        "target_hash": request.target_hash,
-                        "argv": list(command.argv),
-                        "cwd": command.cwd,
-                        "risk": request.risk,
-                    },
+                    payload,
                     RecoveryStage.AWAITING_VERIFICATION_APPROVAL,
                 )
                 return
@@ -360,6 +389,33 @@ class VeraRuntime:
         if context is None or context.approval_gate.pending_approval is None:
             return
         request = context.approval_gate.pending_approval
+        identity, current_hash = self._policy_binding(context.command.workspace_root)
+        if request.policy_hash is not None and request.policy_hash != current_hash:
+            context.approval_gate.pending_approval = None
+            yield self._stable_event(
+                context,
+                "approval.invalidated",
+                {
+                    "approval_id": request.approval_id,
+                    "run_id": context.run_id,
+                    "reason_code": "policy_changed",
+                },
+                RecoveryStage.AWAITING_CHANGESET_APPROVAL,
+            )
+            return
+        if request.workspace_identity is not None and request.workspace_identity != identity:
+            context.approval_gate.pending_approval = None
+            yield self._stable_event(
+                context,
+                "approval.invalidated",
+                {
+                    "approval_id": request.approval_id,
+                    "run_id": context.run_id,
+                    "reason_code": "workspace_identity_changed",
+                },
+                RecoveryStage.AWAITING_CHANGESET_APPROVAL,
+            )
+            return
         try:
             decision = context.approval_gate.resolve(command)
         except Exception as exc:
@@ -734,24 +790,6 @@ class VeraRuntime:
             payload=payload,
         )
 
-    def _approval_payload(self, context: RunContext) -> dict[str, Any]:
-        request = context.approval_gate.pending_approval
-        if request is None:
-            raise RuntimeError("missing pending approval")
-        payload: dict[str, Any] = {
-            "approval_id": request.approval_id,
-            "run_id": context.run_id,
-            "kind": request.kind,
-            "target_id": request.target_id,
-            "target_hash": request.target_hash,
-            "description": request.description,
-            "risk": request.risk,
-        }
-        if request.kind == ApprovalKind.COMMAND.value and context.pending_command is not None:
-            payload["argv"] = list(context.pending_command.argv)
-            payload["cwd"] = context.pending_command.cwd
-        return payload
-
     def _inspect_recovery(self, command: InspectRecovery) -> Iterator[EventEnvelope]:
         reports = self.coordinator.scan(command.run_id)
         for sequence, report in enumerate(reports, start=1):
@@ -893,7 +931,7 @@ class VeraRuntime:
                 yield self._ephemeral_event(
                     existing.run_id,
                     "approval.required",
-                    self._approval_payload(existing),
+                    self._approval_payload(existing.approval_gate.pending_approval, existing),
                     2,
                 )
             return
@@ -920,7 +958,7 @@ class VeraRuntime:
             yield self._stable_event(
                 context,
                 "approval.required",
-                self._approval_payload(context),
+                self._approval_payload(context.approval_gate.pending_approval, context),
                 stage,
             )
             yield self._stable_event(
@@ -969,6 +1007,8 @@ class VeraRuntime:
                 plan.recovery_hash,
                 "恢复部分应用的 Change Set",
                 "high",
+                workspace_identity=self._policy_binding(context.command.workspace_root)[0],
+                policy_hash=self.policy_engine.policy_hash,
             )
         else:
             context.pending_recovery_plan = current
@@ -984,6 +1024,8 @@ class VeraRuntime:
         )
         plan = context.pending_recovery_plan
         assert plan is not None
+        pending = context.approval_gate.pending_approval
+        assert pending is not None
         yield self._stable_event(
             context,
             "recovery.restore_proposed",
@@ -998,7 +1040,7 @@ class VeraRuntime:
         yield self._stable_event(
             context,
             "approval.required",
-            self._approval_payload(context),
+            self._approval_payload(pending, context),
             stage,
         )
 

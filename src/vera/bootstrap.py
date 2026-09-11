@@ -12,7 +12,10 @@ from vera.config import VeraConfig, load_config, load_provider_environment
 from vera.models.base import ModelAdapter
 from vera.models.openai_compatible import OpenAICompatibleAdapter
 from vera.persistence.recovery_snapshot import RecoverySnapshotStore
+from vera.policy.engine import PolicyEngine
+from vera.policy.snapshot import EffectivePolicySnapshot
 from vera.recovery.coordinator import RecoveryCoordinator
+from vera.recovery.probe import workspace_identity
 from vera.runtime.engine import VeraRuntime
 from vera.tools.builtin import ListDirectoryTool, ReadFileTool, SearchTextTool
 from vera.tools.command_policy import CommandPolicy
@@ -74,8 +77,20 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
     registry.register(ReadFileTool(paths, config.limits.max_file_bytes))
     registry.register(ListDirectoryTool(paths))
     registry.register(SearchTextTool(paths))
-    policy = CommandPolicy(config.user_allowed_command_prefixes)
+    policy_prefixes = config.user_allowed_command_prefixes
     installation_id = load_or_create_installation_id(config.state_dir)
+    identity = workspace_identity(workspace, installation_id)
+    engine = PolicyEngine(
+        EffectivePolicySnapshot(
+            workspace_identity=identity,
+            user_allowed_command_prefixes=policy_prefixes,
+        )
+    )
+    policy = CommandPolicy(
+        policy_prefixes,
+        policy_engine=engine,
+        workspace_identity=identity,
+    )
     snapshot_store = RecoverySnapshotStore(config.state_dir)
     coordinator = RecoveryCoordinator(
         config.state_dir,
@@ -91,5 +106,6 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
         snapshot_store=snapshot_store,
         installation_id=installation_id,
         recovery_coordinator=coordinator,
+        policy_engine=engine,
     )
     return RuntimeDependencies(runtime=runtime, config=config)
