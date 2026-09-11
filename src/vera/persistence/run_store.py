@@ -19,7 +19,7 @@ class RunStore:
             return ()
         return tuple(EventJournal.load_events(path, run_id))
 
-    def list_runs(self) -> tuple[RunSummary, ...]:
+    def list_runs(self, *, include_internal: bool = False) -> tuple[RunSummary, ...]:
         runs_dir = self.state_dir / "runs"
         if not runs_dir.exists():
             return ()
@@ -31,6 +31,8 @@ class RunStore:
             if not events:
                 continue
             started = next((event for event in events if event.type == "run.started"), events[0])
+            if not include_internal and started.payload.get("kind") == "compaction":
+                continue
             goal = str(started.payload.get("goal", ""))
             workspace = Path(str(started.payload.get("workspace_root", ".")))
             terminal_event = next(

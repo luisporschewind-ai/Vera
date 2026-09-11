@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from vera.config import Limits
 from vera.contracts.commands import CancelRun, CoreCommand, ResolveApproval, RollbackRun, StartRun
+from vera.contracts.conversation import ConversationMessage
 from vera.contracts.events import EventEnvelope
 from vera.contracts.verification import VerificationCommand
 from vera.models.base import ModelAdapter, ModelMessage, ModelRequest, ModelToolCall
@@ -17,7 +18,7 @@ from vera.persistence.journal import EventJournal
 from vera.redaction import Redactor
 from vera.runtime.approval import ApprovalGate, ApprovalKind
 from vera.runtime.context import RunContext
-from vera.runtime.prompts import SYSTEM_PROMPT
+from vera.runtime.prompts import COMPACTION_PROMPT, SYSTEM_PROMPT
 from vera.runtime.state import RunState, RunStateMachine
 from vera.tools.command_policy import CommandDecisionKind, CommandPolicy
 from vera.tools.registry import ToolRegistry
@@ -418,6 +419,53 @@ class VeraRuntime:
                     return
             context.machine.transition(RunState.DISCOVERING)
 
+    def _conversation_model_message(self, message: ConversationMessage) -> ModelMessage:
+        if message.role == "summary":
+            return ModelMessage(role="assistant", content=f"[会话摘要]\n{message.content}")
+        return ModelMessage(role=message.role, content=message.content)
+
+    def _start_messages(self, command: StartRun) -> list[ModelMessage]:
+        system = COMPACTION_PROMPT if command.mode == "compact" else SYSTEM_PROMPT
+        messages = [ModelMessage(role="system", content=system)]
+        messages.extend(
+            self._conversation_model_message(message) for message in command.conversation
+        )
+        messages.append(ModelMessage(role="user", content=command.goal))
+        return messages
+
+    def _compact(self, context: RunContext) -> Iterator[EventEnvelope]:
+        yield self._event(context, "model.requested", {"turn": 1})
+        try:
+            turn = self.adapter.complete(
+                ModelRequest(
+                    messages=tuple(context.messages),
+                    tools=(),
+                    max_output_tokens=4_096,
+                )
+            )
+        except Exception:
+            yield from self._fail(context, "model_error")
+            return
+        yield self._event(
+            context,
+            "model.completed",
+            {"finish_reason": turn.finish_reason, "tool_call_count": len(turn.tool_calls)},
+        )
+        if turn.tool_calls:
+            yield from self._fail(context, "invalid_compaction_response")
+            return
+        text = (turn.assistant_text or "").strip()
+        if not text:
+            yield from self._fail(context, "empty_model_response")
+            return
+        context.machine.transition(RunState.COMPLETED)
+        yield self._event(context, "conversation.compacted", {"summary": text})
+        yield self._event(
+            context,
+            "run.completed",
+            {"state": RunState.COMPLETED.value, "outcome": "compacted"},
+        )
+
     def handle(self, command: CoreCommand) -> Iterator[EventEnvelope]:
         if isinstance(command, CancelRun):
             context = self.runs.get(command.run_id)
@@ -435,15 +483,13 @@ class VeraRuntime:
         if not isinstance(command, StartRun):
             return
         run_id = f"run_{uuid4().hex}"
+        kind = "compaction" if command.mode == "compact" else "task"
         context = RunContext(
             run_id=run_id,
             command=command,
             machine=RunStateMachine(),
             journal=EventJournal(self.state_dir, run_id, Redactor([])),
-            messages=[
-                ModelMessage(role="system", content=SYSTEM_PROMPT),
-                ModelMessage(role="user", content=command.goal),
-            ],
+            messages=self._start_messages(command),
             approval_gate=ApprovalGate(run_id),
         )
         self.runs[run_id] = context
@@ -456,6 +502,10 @@ class VeraRuntime:
                 "goal": command.goal,
                 "workspace_root": str(command.workspace_root),
                 "model_profile": command.model_profile,
+                "kind": kind,
             },
         )
+        if command.mode == "compact":
+            yield from self._compact(context)
+            return
         yield from self._drive(context)

@@ -453,7 +453,7 @@ git commit -m "feat: add ephemeral conversation context"
 - Produces: `run.completed` Payload `outcome="compacted"`
 - Guarantee: compact 请求的 `ModelRequest.tools == ()`
 
-- [ ] **Step 1：编写压缩模式失败测试**
+- [x] **Step 1：编写压缩模式失败测试**
 
 ```python
 def test_compaction_uses_no_tools_and_emits_summary(tmp_path: Path) -> None:
@@ -488,7 +488,7 @@ def test_compaction_uses_no_tools_and_emits_summary(tmp_path: Path) -> None:
 
 在 `tests/persistence/test_run_store.py` 写入一个 `kind=compaction` 和一个 `kind=task` 的 run，断言默认 `list_runs()` 只返回 task。
 
-- [ ] **Step 2：运行测试并确认 mode 尚未生效**
+- [x] **Step 2：运行测试并确认 mode 尚未生效**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -497,7 +497,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
 
 预期：compact 请求仍包含工具或缺少 `conversation.compacted`。
 
-- [ ] **Step 3：实现专用压缩请求**
+- [x] **Step 3：实现专用压缩请求**
 
 在 `prompts.py` 增加固定 `COMPACTION_PROMPT`，要求只总结用户提供的对话、保留决策/路径/未完成事项、不得把对话内文本当成系统指令。
 
@@ -516,7 +516,7 @@ def _conversation_model_message(message: ConversationMessage) -> ModelMessage:
 
 `RunStore.list_runs(include_internal: bool = False)` 在默认参数下跳过 compaction；显式 `include_internal=True` 时保留诊断能力。
 
-- [ ] **Step 4：运行压缩、持久化和静态检查**
+- [x] **Step 4：运行压缩、持久化和静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -526,7 +526,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check \
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Task 4**
+- [x] **Step 5：提交 Task 4**
 
 ```bash
 git add src/vera/runtime/engine.py src/vera/runtime/prompts.py \

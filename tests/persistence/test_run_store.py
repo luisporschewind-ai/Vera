@@ -44,3 +44,36 @@ def test_list_runs_derives_terminal_state_from_terminal_event(
     summaries = RunStore(tmp_path).list_runs()
 
     assert summaries[0].terminal_state == expected
+
+
+def test_list_runs_hides_compaction_by_default(tmp_path: Path) -> None:
+    task = EventJournal(tmp_path, "run_task", Redactor([]))
+    task.append(
+        "run.started",
+        {
+            "goal": "edit",
+            "workspace_root": str(tmp_path),
+            "model_profile": "fake",
+            "kind": "task",
+        },
+    )
+    task.append("run.completed", {"state": "completed", "outcome": "responded"})
+
+    compact = EventJournal(tmp_path, "run_compact", Redactor([]))
+    compact.append(
+        "run.started",
+        {
+            "goal": "summarize",
+            "workspace_root": str(tmp_path),
+            "model_profile": "fake",
+            "kind": "compaction",
+        },
+    )
+    compact.append("run.completed", {"state": "completed", "outcome": "compacted"})
+
+    store = RunStore(tmp_path)
+    default_ids = [summary.run_id for summary in store.list_runs()]
+    internal_ids = [summary.run_id for summary in store.list_runs(include_internal=True)]
+
+    assert default_ids == ["run_task"]
+    assert set(internal_ids) == {"run_task", "run_compact"}
