@@ -1,7 +1,9 @@
 """In-memory state for a run paused at an approval boundary."""
 
 from dataclasses import dataclass, field
+from datetime import datetime
 
+from vera.contracts.checkpoints import CheckpointManifest
 from vera.contracts.commands import StartRun
 from vera.contracts.verification import VerificationCommand
 from vera.models.base import ModelMessage
@@ -27,3 +29,6 @@ class RunContext:
     verification_index: int = 0
     verification_failed: bool = False
     repeated_calls: dict[str, int] = field(default_factory=dict)
+    checkpoint_manifest: CheckpointManifest | None = None
+    workspace_write_started: bool = False
+    snapshot_created_at: datetime | None = None

@@ -327,7 +327,7 @@ git commit -m "feat: classify recovery evidence"
 - Produces: `VeraRuntime(adapter, registry, state_dir, limits=None, command_policy=None, *, snapshot_store: RecoverySnapshotStore | None = None, installation_id: str | None = None)`
 - Guarantee: `snapshot.last_event_sequence` 等于最近稳定 Event sequence
 
-- [ ] **Step 1：编写边界顺序与失败关闭测试**
+- [x] **Step 1：编写边界顺序与失败关闭测试**
 
 ```python
 def test_changeset_approval_snapshot_references_required_event(runtime_fixture) -> None:
@@ -344,14 +344,14 @@ def test_changeset_approval_snapshot_references_required_event(runtime_fixture) 
 
 再覆盖 started、checkpoint.created、changeset.applied、验证命令 approval.required、verification.started、每条 verification.completed、所有终止 Event。`verification.started` 快照设置 `verification_in_flight=True`，完成后恢复 False。注入 save 失败，断言不进入下一副作用并产生 `run.failed(reason="snapshot_write_failed")`。
 
-- [ ] **Step 2：运行测试并确认 Runtime 不写 Snapshot**
+- [x] **Step 2：运行测试并确认 Runtime 不写 Snapshot**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
   tests/runtime/test_recovery_snapshots.py -v
 ```
 
-- [ ] **Step 3：实现 `_stable_event`**
+- [x] **Step 3：实现 `_stable_event`**
 
 ```python
 def _stable_event(
@@ -371,7 +371,7 @@ def _stable_event(
 
 若 Snapshot 保存失败，Runtime 使用不经过 `_stable_event` 的原始 Journal append 记录一次 `run.failed(reason="snapshot_write_failed")`，随后立即停止；失败路径不得递归尝试再写 Snapshot，也不得进入下一项副作用。
 
-- [ ] **Step 4：运行 Runtime 全回归**
+- [x] **Step 4：运行 Runtime 全回归**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -380,7 +380,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src tests/runtime test
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Runtime 集成**
+- [x] **Step 5：提交 Runtime 集成**
 
 ```bash
 git add src/vera/runtime/context.py src/vera/runtime/engine.py \
