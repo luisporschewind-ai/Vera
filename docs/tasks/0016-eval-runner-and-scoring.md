@@ -2,7 +2,7 @@
 
 > **供 Agent 执行：** REQUIRED SUB-SKILL: 使用 `superpowers:executing-plans` 按 Task 顺序实施；只使用一个主实现 Agent，每个生产增量独立提交。
 
-**状态：** Planned
+**状态：** Done
 
 **目标分支：** `feature/eval-runner-scoring`
 
@@ -203,7 +203,7 @@ git commit -m "feat: add isolated evaluation worker"
 - Produces: `sanitized_worker_environment(source: Mapping[str, str]) -> dict[str, str]`
 - Produces: reason codes `case_timeout`、`worker_exit_error`、`worker_protocol_error`
 
-- [ ] **Step 1：编写环境清除、timeout 和坏结果测试**
+- [x] **Step 1：编写环境清除、timeout 和坏结果测试**
 
 ```python
 def test_worker_environment_removes_all_provider_values(monkeypatch) -> None:
@@ -225,17 +225,17 @@ def test_timeout_terminates_exact_worker_and_returns_timeout(fake_process, reque
 
 另测 TERM 后正常退出不 kill、TERM 无效才 kill、非零退出、缺失/损坏 result、stdout/stderr 上限和后续 case 仍可运行。
 
-- [ ] **Step 2：运行失败测试**
+- [x] **Step 2：运行失败测试**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_process_runner.py -v
 ```
 
-- [ ] **Step 3：实现 `shell=False` Worker 启动**
+- [x] **Step 3：实现 `shell=False` Worker 启动**
 
 argv 固定为 `[sys.executable, "-m", "vera.evals.worker", "--request", ..., "--result", ...]`。环境只保留运行 Python 所需的明确 allowlist；cwd 固定为隔离 workspace；request/result 文件权限 `0600`。不得使用进程名匹配或 kill 进程组之外的对象。
 
-- [ ] **Step 4：验证并提交**
+- [x] **Step 4：验证并提交**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_process_runner.py -v
@@ -266,7 +266,7 @@ git commit -m "feat: enforce evaluation worker timeouts"
 - Produces: `EvalSuiteRunner.run_case(case_id, output_root=None) -> EvalReport`
 - Produces: `EvalSuiteRunner.run_suite(case_ids, output_root=None) -> EvalSuiteReport`
 
-- [ ] **Step 1：编写不覆盖、权限、排序和套件继续测试**
+- [x] **Step 1：编写不覆盖、权限、排序和套件继续测试**
 
 ```python
 def test_suite_continues_after_failed_case(runner) -> None:
@@ -286,11 +286,11 @@ def test_evidence_writer_never_overwrites_existing_directory(writer, result, tmp
 
 再测 `0700/0600`、原子 rename、events/files 不含正文、失败 result 仍有 report、suite-report case 排序和 output 写失败返回结构化错误。
 
-- [ ] **Step 2：实现 Runner 与 Writer**
+- [x] **Step 2：实现 Runner 与 Writer**
 
 SuiteRunner 对每个 case 重新调用 CorpusLoader 和 FixtureIsolator，不能复用 workspace/state。EvidenceWriter 先写同父目录临时目录，fsync 后原子 rename 到 `<output_root>/<evaluation_id>`；只删除自己创建的临时目录。
 
-- [ ] **Step 3：运行完整质量门禁**
+- [x] **Step 3：运行完整质量门禁**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest -m "not live" --cov=vera --cov-report=term-missing
@@ -301,7 +301,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv build
 git diff --check
 ```
 
-- [ ] **Step 4：记录证据、提交并本地合并**
+- [x] **Step 4：记录证据、提交并本地合并**
 
 ```bash
 git add src/vera/evals tests/evals docs/evals/eval-runner-and-scoring.md docs/STATUS.md docs/tasks/0016-eval-runner-and-scoring.md
