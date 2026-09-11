@@ -108,3 +108,26 @@ def test_show_and_rollback_commands_do_not_call_model(tmp_path: Path) -> None:
     output = "\n".join(io.output)
     assert "未找到 run：missing" in output
     assert "未找到可回滚的 Checkpoint：missing" in output
+
+
+def test_keyboard_interrupt_at_prompt_preserves_session(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    io = ScriptedIO([KeyboardInterrupt(), "/exit"])
+
+    assert InteractiveSession(dependencies(workspace, []), workspace, "fake", io).run() == 0
+    assert "当前输入已清空" in "\n".join(io.output)
+    assert io.output.count("Vera > ") == 2
+
+
+def test_keyboard_interrupt_at_approval_cancels_run(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    target = workspace / "hello.txt"
+    target.write_text("old\n", encoding="utf-8")
+    deps = dependencies(workspace, [proposal("proposal-1", "new\n")])
+    io = ScriptedIO(["edit", KeyboardInterrupt(), "/exit"])
+
+    assert InteractiveSession(deps, workspace, "fake", io).run() == 0
+    assert target.read_text(encoding="utf-8") == "old\n"
+    assert "任务已取消" in "\n".join(io.output)

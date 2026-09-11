@@ -1,6 +1,10 @@
 from pathlib import Path
 
+import pytest
+
+from vera.persistence.journal import EventJournal
 from vera.persistence.run_store import RunStore
+from vera.redaction import Redactor
 
 
 def test_read_events_does_not_modify_existing_journal(tmp_path: Path, monkeypatch) -> None:
@@ -21,3 +25,22 @@ def test_read_events_does_not_modify_existing_journal(tmp_path: Path, monkeypatc
     events = RunStore(tmp_path).read_events("run_1")
 
     assert [event.type for event in events] == ["run.started"]
+
+
+@pytest.mark.parametrize(
+    ("event_type", "expected"),
+    [("run.cancelled", "cancelled"), ("run.failed", "failed")],
+)
+def test_list_runs_derives_terminal_state_from_terminal_event(
+    tmp_path: Path, event_type: str, expected: str
+) -> None:
+    journal = EventJournal(tmp_path, "run_1", Redactor([]))
+    journal.append(
+        "run.started",
+        {"goal": "edit", "workspace_root": str(tmp_path), "model_profile": "fake"},
+    )
+    journal.append(event_type, {"reason": "test"})
+
+    summaries = RunStore(tmp_path).list_runs()
+
+    assert summaries[0].terminal_state == expected

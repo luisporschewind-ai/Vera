@@ -2,7 +2,7 @@
 
 > **供执行 Agent 使用：** 必须使用 `superpowers:executing-plans` 按任务逐项实施本计划；用户已明确要求不派发子 Agent。每个步骤使用复选框跟踪。
 
-**状态：** In progress
+**状态：** Complete
 
 **当前执行分支：** `codex/interactive-cli-session`
 
@@ -610,7 +610,7 @@ git commit -m "feat: enter interactive mode with vera"
 - Consumes: 完成交互 CLI 的 Python 包
 - Produces: 可从仓库外执行的 `vera` 命令和可复核验收证据
 
-- [ ] **Step 1：运行完整非 live 验收**
+- [x] **Step 1：运行完整非 live 验收**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest -m "not live" --cov=vera --cov-report=term-missing
@@ -623,7 +623,7 @@ git diff --check
 
 预期：全部命令退出码为 `0`；live 测试以明确 deselected 或 skip 形式保留；`VeraTestDemo` 未被自动测试触碰。
 
-- [ ] **Step 2：安装 editable tool 并从临时工程验证启动**
+- [x] **Step 2：安装 editable tool 并从临时工程验证启动**
 
 ```bash
 uv tool install --editable /Users/admin/Vera
@@ -634,11 +634,11 @@ vera --help
 
 创建 `/private/tmp/vera-cli-acceptance` 只能使用临时目录。启动交互会话后输入 `/help`、`/runs`、`/exit`，不得调用真实模型或修改真实工程。真实 DeepSeek 和 iOS 人工验收留给用户后续明确开始测试时执行。
 
-- [ ] **Step 3：记录证据并更新状态**
+- [x] **Step 3：记录证据并更新状态**
 
 `docs/evals/interactive-cli-session.md` 记录：测试数量、静态检查、构建、安装路径、仓库外启动结果、未执行的 live/iOS 人工验收，以及当前已知限制。规格 13 条验收标准逐项标记通过或未完成。
 
-- [ ] **Step 4：检查文档一致性**
+- [x] **Step 4：检查文档一致性**
 
 ```bash
 rg -n "Draf[t]|TB[D]|TOD[O]|一次性 CL[I].*已完成|交互式 CL[I].*未实现" docs README.md
@@ -648,7 +648,7 @@ git status --short --branch
 
 修正所有与实际行为矛盾的状态；不要删除历史验收记录。
 
-- [ ] **Step 5：最终提交 Task 8**
+- [x] **Step 5：最终提交 Task 8**
 
 ```bash
 git add README.md docs/STATUS.md docs/evals/interactive-cli-session.md docs/tasks/0003-interactive-cli-session.md
