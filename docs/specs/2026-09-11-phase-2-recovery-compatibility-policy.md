@@ -1,6 +1,6 @@
 # Vera 阶段二：恢复、兼容性与策略扩展规格
 
-**状态：** Draft
+**状态：** Accepted
 **日期：** 2026-09-11
 
 ## 目标
@@ -516,3 +516,9 @@ Fixture 不包含真实工程数据或供应商凭据。
 - [ADR-0006：版本化 Codec 与非破坏迁移](../decisions/ADR-0006-versioned-state-codecs.md)
 - [ADR-0007：统一 PolicyEngine 与策略指纹](../decisions/ADR-0007-unified-policy-engine.md)
 - [ADR-0008：ModelAdapter 能力、错误与有限重试](../decisions/ADR-0008-model-capabilities-and-errors.md)
+- [阶段二执行顺序](../tasks/phase-2-execution-order.md)
+- [任务 0005：恢复事实与只读分类](../tasks/0005-recovery-facts-and-classification.md)
+- [任务 0006：安全续跑与部分写入恢复](../tasks/0006-safe-run-resume-and-recovery.md)
+- [任务 0007：版本化 Codec 与兼容迁移](../tasks/0007-versioned-codecs-and-migration.md)
+- [任务 0008：统一 PolicyEngine 与审批指纹](../tasks/0008-unified-policy-engine.md)
+- [任务 0009：ModelAdapter 韧性与阶段二验收](../tasks/0009-model-resilience-and-phase-2-acceptance.md)

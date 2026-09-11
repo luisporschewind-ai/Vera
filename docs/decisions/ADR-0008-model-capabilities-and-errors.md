@@ -1,6 +1,6 @@
 # ADR-0008：ModelAdapter 能力、错误与有限重试
 
-**状态：** Proposed
+**状态：** Accepted
 **日期：** 2026-09-11
 
 ## 背景

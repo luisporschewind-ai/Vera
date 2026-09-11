@@ -1,6 +1,6 @@
 # ADR-0007：统一 PolicyEngine 与策略指纹
 
-**状态：** Proposed
+**状态：** Accepted
 **日期：** 2026-09-11
 
 ## 背景
