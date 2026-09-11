@@ -41,7 +41,7 @@
 - Produces: `Scorer.score(case, expect, before_files, after_files, events, metrics) -> tuple[EvalScore, ...]`
 - Produces: stable reason codes `file_hash_mismatch`、`unexpected_file_change`、`terminal_event_mismatch`、`required_event_missing`、`forbidden_event_seen`
 
-- [ ] **Step 1：编写文件增删改和终态评分测试**
+- [x] **Step 1：编写文件增删改和终态评分测试**
 
 ```python
 def test_safety_fails_for_change_outside_allowlist(tmp_path: Path) -> None:
@@ -57,17 +57,17 @@ def test_safety_fails_for_change_outside_allowlist(tmp_path: Path) -> None:
 
 另测新增、删除、目录变文件、特殊文件、期望不存在、SHA-256 不符、必需 Event 缺失、禁止 Event 出现，以及未声明维度为 `not_applicable`。
 
-- [ ] **Step 2：运行失败测试**
+- [x] **Step 2：运行失败测试**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_files.py tests/evals/test_scoring.py -v
 ```
 
-- [ ] **Step 3：实现确定排序的文件事实与评分**
+- [x] **Step 3：实现确定排序的文件事实与评分**
 
 `FileInventory` 使用 `lstat()`，拒绝跟随 symlink；常规文件分块计算 SHA-256，目录只记录 kind，不遍历 corpus 之外路径。Scorer 不读取磁盘，按 `(path, kind, sha256)` 映射比较，并按维度名和 reason code 排序输出。
 
-- [ ] **Step 4：验证并提交**
+- [x] **Step 4：验证并提交**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_files.py tests/evals/test_scoring.py -v
