@@ -2,9 +2,9 @@
 
 > **供 Agent 执行（For agentic workers）：** REQUIRED SUB-SKILL: 使用 `superpowers:executing-plans` 按 Task 顺序实施；只使用一个主实现 Agent。
 
-**状态：** Planned
+**状态：** Complete
 
-**目标分支：** `feature/tui-conversation-timeline`
+**目标分支：** `cursor/tui-timeline-disclosure-b138`
 
 **目标：** 实现可滚动的结构化对话时间线，固定工具/日志折叠、Diff/审批展开、失败自动展开规则，并让流式 Markdown 稳定刷新。
 

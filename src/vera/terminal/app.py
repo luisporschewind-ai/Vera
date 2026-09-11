@@ -9,9 +9,12 @@ from textual.events import Resize
 from textual.geometry import Size
 from textual.widgets import Static
 
+from vera.contracts.streaming import RuntimeOutput
+from vera.presentation.projector import TimelineProjector, UpdateBlock
 from vera.session.actions import CancelActiveRun, ExecuteSlashCommand, SubmitPrompt
 from vera.session.controller import SessionController
 from vera.terminal.bridge import RuntimeOutputReceived, TerminalBridge, WorkerStopped
+from vera.terminal.widgets.blocks import TimelineBlockWidget
 from vera.terminal.widgets.composer import PromptComposer
 from vera.terminal.widgets.header import VeraHeader
 from vera.terminal.widgets.status_line import VeraStatusLine
@@ -42,6 +45,7 @@ class VeraTerminalApp(App[int]):
         self.model_profile = model_profile
         self.animations = animations
         self.bridge = TerminalBridge(self, controller)
+        self.projector = TimelineProjector()
         self.received_sequences: list[int] = []
         self._too_small = Static(
             "终端太小：请调整到至少 60×16",
@@ -94,9 +98,30 @@ class VeraTerminalApp(App[int]):
         sequence = getattr(output, "sequence", None)
         if isinstance(sequence, int):
             self.received_sequences.append(sequence)
+        mutations = self.projector.apply(output)
+        timeline = self.query_one(ConversationTimeline)
+        streaming_updates = [
+            item.block
+            for item in mutations
+            if isinstance(item, UpdateBlock) and item.block.kind.value == "assistant"
+        ]
+        if streaming_updates and all(isinstance(item, UpdateBlock) for item in mutations):
+            for block in streaming_updates:
+                timeline.apply_streaming_update(block)
+        else:
+            timeline.apply(mutations)
         status = self.query_one(VeraStatusLine)
         kind = getattr(output, "type", type(output).__name__)
-        status.set_status(f"收到 {kind}")
+        pending = timeline.pending_update_count
+        suffix = f" · {pending} 条新消息 ↓" if pending else ""
+        status.set_status(f"收到 {kind}{suffix}")
+
+    def block(self, block_id: str) -> TimelineBlockWidget:
+        return self.query_one(ConversationTimeline).block_widget(block_id)
+
+    def append_output(self, output: RuntimeOutput) -> None:
+        mutations = self.projector.apply(output)
+        self.query_one(ConversationTimeline).apply(mutations)
 
     def on_worker_stopped(self, message: WorkerStopped) -> None:
         status = self.query_one(VeraStatusLine)
