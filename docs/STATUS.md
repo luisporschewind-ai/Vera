@@ -7,7 +7,7 @@
 ## 已验证基线
 
 - 工作目录：`/Users/admin/Vera`
-- 当前开发分支：`codex/interactive-cli-session`
+- 当前分支：`main`
 - 初始检查点：仓库治理与 SDD 基线
 - Agent 实现：任务 1–11 的 Python Core、Runtime 和内部 CLI；任务 12 离线验收已完成
 - 依赖清单：`pyproject.toml`、`.python-version`、`uv.lock`
@@ -49,6 +49,8 @@
 - 任务 0003 交互式 CLI：裸 `vera` 持续会话、多审批驱动、人类可读 Diff/风险展示、斜杠命令和跨进程回滚已实现
 - 任务 0003 离线验收：84 项非 live 测试通过、2 项 live 排除，覆盖率 89%；Ruff、格式、Mypy、包构建和仓库外 editable 启动通过
 - 凭据边界：本轮没有读取或使用用户 DeepSeek API Key，没有运行 live 测试；自动测试强制隔离真实供应商环境
+- 任务 0003 用户人工验收：在 `/Users/admin/Desktop/VeraTestDemo` 中通过真实 DeepSeek 完成 `.green -> .red` Diff、双重审批、Checkpoint、写入及 `grep` 验证；用户确认结果符合预期
+- 已知 CLI 体验缺口：普通问候 `Hello` 因没有 Change Set 被标记为 `no_changes_proposed`；启动横幅尚未显示模型、版本和安全模式等会话状态
 - 真实验证：DeepSeek `deepseek-flash` 最小请求通过；CLI 已提出并展示 `.blue -> .green` Diff，非交互审批安全取消；未输出 API Key
 - 外部目标基线：`/Users/admin/Desktop/VeraTestDemo` generic iOS build 通过，未启用签名
 
@@ -69,4 +71,4 @@
 
 ## 下一检查点
 
-下一检查点是由用户明确启动真实模型与 iOS 工程人工验收：`cd 工程 -> vera -> 自然语言任务 -> Diff 审批 -> 写入 -> 验证 -> Xcode 观察结果`。本阶段不执行该验收。
+下一检查点是为普通对话终态和 CLI 启动状态面板建立中文规格，确认后以新任务实施。

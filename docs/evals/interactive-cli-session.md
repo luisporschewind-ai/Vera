@@ -4,9 +4,22 @@
 
 ## 结论
 
-交互式 CLI 的本阶段离线实现与验收通过。用户现在可以从工程目录执行 `vera` 进入持续会话；自然语言任务、重复审批、Diff 展示、Checkpoint、验证、历史查询和跨进程安全回滚均复用同一个 Core 契约。
+交互式 CLI 的本阶段离线实现、仓库外启动和真实 iOS 工程人工验收通过。用户现在可以从工程目录执行 `vera` 进入持续会话；自然语言任务、重复审批、Diff 展示、Checkpoint、验证、历史查询和跨进程安全回滚均复用同一个 Core 契约。
 
-本次验收没有读取或使用用户的 DeepSeek API Key，没有运行 live 测试，没有向 DeepSeek 或其他模型供应商发起请求，也没有读取或修改 `/Users/admin/Desktop/VeraTestDemo`。真实模型与 iOS 工程人工验收继续保留为后续单独步骤。
+自动验收没有读取或使用用户的 DeepSeek API Key，没有运行 live 测试，也没有读取或修改 `/Users/admin/Desktop/VeraTestDemo`。随后由用户本人在本机终端使用其私有配置完成真实 DeepSeek 与 iOS 工程人工验收；该操作不是自动测试，也未向 Agent 暴露 API Key。
+
+## 用户人工验收证据
+
+- 日期：2026-09-11；执行者：用户本人。
+- 工作区：`/Users/admin/Desktop/VeraTestDemo`。
+- 启动方式：进入工程目录后执行 `vera`，CLI 正确显示规范化工作区并进入持续提示符。
+- 任务：读取 `ViewController.swift`，把 `viewDidLoad` 中的背景色从 `.green` 修改为 `.red`。
+- 发现过程：模型依次使用 `list_directory`、`search_text` 和 `read_file`，然后调用 `propose_changeset`。
+- 审阅证据：CLI 展示完整 `.green -> .red` 统一 Diff 和内容哈希 `ffd3799135c47ec0dacf37a1f29d7792bbd338d793c2a324be8e6a81fc47bc1f`。
+- 写入边界：用户明确批准 Change Set 后创建 Checkpoint，再应用文件修改。
+- 验证边界：`grep -n backgroundColor VeraTestDemo/ViewController.swift` 被单独展示并再次取得用户批准。
+- 结果：验证状态为 `passed`，run `run_98492fd8757646058118201dfd612db2` 以 `completed` 结束并返回 `Vera >`；用户确认实际结果符合预期。
+- 同次操作发现：输入普通问候 `Hello` 时，模型完成请求但没有提出 Change Set，当前 Runtime 以 `no_changes_proposed` 失败；普通对话正常完成语义列为下一增量。
 
 ## 自动验证证据
 
@@ -41,11 +54,11 @@
 10. 通过：JSON 一次性模式遇审批自动取消，不输出交互提示符。
 11. 通过：自动测试只使用 Fake Model 和临时工作区。
 12. 通过：非 live 测试、Ruff、格式、Mypy、构建和 Diff 检查成功。
-13. 通过：editable tool 可从仓库外执行；验收仅使用假的占位 Key，真实 Key 未加载。
+13. 通过：editable tool 可从仓库外执行；自动验收仅使用假的占位 Key，用户人工验收使用其本机私有配置且 Key 未暴露。
 
 ## 已知限制与后续人工验收
 
 - Vera 第一版的验证子进程使用当前系统用户权限，没有 OS 级沙箱；CLI 会在命令审批前明确提示。
 - 进程重启后支持手动回滚，但不恢复未完成的模型消息或待审批请求。
-- 本阶段没有运行真实 DeepSeek 任务，也没有对 iOS 模拟器或真机做视觉验收。
+- 真实 DeepSeek 驱动的 iOS 源码修改与命令验证已由用户本人通过；模拟器或真机视觉自动验收仍未纳入本阶段。
 - 仓库尚未配置 Git remote，因此本阶段只能本地合并，不能推送远程。
