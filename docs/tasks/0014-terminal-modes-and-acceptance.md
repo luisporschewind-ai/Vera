@@ -2,9 +2,9 @@
 
 > **供 Agent 执行（For agentic workers）：** REQUIRED SUB-SKILL: 使用 `superpowers:executing-plans` 按 Task 顺序实施；只使用一个主实现 Agent。
 
-**状态：** Planned
+**状态：** Complete
 
-**目标分支：** `feature/terminal-modes-acceptance`
+**目标分支：** `cursor/terminal-modes-acceptance-b138`
 
 **目标：** 完成 `vera --plain`、`vera --json`、旧一次性 JSON 的兼容边界，并通过真实 PTY、尺寸、颜色、性能和安全矩阵收口阶段三。
 
