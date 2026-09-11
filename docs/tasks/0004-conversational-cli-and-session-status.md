@@ -662,7 +662,7 @@ git commit -m "fix: expose effective runtime permissions"
 - Produces: `SessionStatusService.snapshot(...) -> SessionStatus`
 - Guarantee: Git 只通过固定 argv、无 Shell、只读、3 秒超时执行
 
-- [ ] **Step 1：编写状态服务失败测试**
+- [x] **Step 1：编写状态服务失败测试**
 
 使用注入 runner，不能让单元测试依赖本机 Git 状态：
 
@@ -697,7 +697,7 @@ def test_status_contains_safe_session_fields(tmp_path: Path) -> None:
 
 再测试：非 Git 返回 `available=False`；branch 查询失败、status 查询超时或版本读取失败分别降级为 `unavailable`，且 `snapshot()` 不抛异常。
 
-- [ ] **Step 2：运行测试并确认状态服务不存在**
+- [x] **Step 2：运行测试并确认状态服务不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/session/test_status.py -v
@@ -705,7 +705,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/session/test_status.
 
 预期：导入 `SessionStatusService` 失败。
 
-- [ ] **Step 3：实现固定 argv 状态探测**
+- [x] **Step 3：实现固定 argv 状态探测**
 
 实际 Git runner 只允许：
 
@@ -718,7 +718,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/session/test_status.
 
 `SessionStatusService` 只组合显式传入的模型名、ConversationStats 和 PermissionStatus，不读取环境变量，不接收 API Key 或 Base URL。
 
-- [ ] **Step 4：运行状态、配置和静态检查**
+- [x] **Step 4：运行状态、配置和静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -728,7 +728,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check \
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Task 6**
+- [x] **Step 5：提交 Task 6**
 
 ```bash
 git add src/vera/session/models.py src/vera/session/status.py \

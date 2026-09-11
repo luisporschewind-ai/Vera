@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -25,3 +27,23 @@ class PermissionStatus(BaseModel):
     user_allowed_prefixes: tuple[tuple[str, ...], ...]
     execution_boundary: str
     os_sandbox: bool
+
+
+class GitStatus(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    available: bool
+    branch: str | None
+    dirty: bool | None
+
+
+class SessionStatus(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    version: str
+    model_profile: str
+    model_name: str
+    workspace: Path
+    git: GitStatus
+    context: ConversationStats
+    permissions: PermissionStatus
