@@ -262,7 +262,7 @@ git commit -m "feat: persist atomic recovery snapshots"
 - Produces: `WorkspaceEvidenceProbe.inspect(snapshot: RecoverySnapshot) -> tuple[RecoveryEvidence, ...]`
 - Produces: `RecoveryClassifier.classify(snapshot, evidence) -> RecoveryReport`
 
-- [ ] **Step 1：编写 before/after/unknown 与分类表测试**
+- [x] **Step 1：编写 before/after/unknown 与分类表测试**
 
 ```python
 def test_probe_classifies_exact_hashes(tmp_path: Path, snapshot_factory) -> None:
@@ -281,20 +281,20 @@ def test_probe_classifies_exact_hashes(tmp_path: Path, snapshot_factory) -> None
 
 参数化分类固定 STARTED/空证据 → safe_to_abandon，审批/全 BEFORE → resumable_approval，验证/全 AFTER 且 `verification_in_flight=False` → resumable_verification，Checkpoint/BEFORE+AFTER → recoverable_partial_apply，任意 UNKNOWN 或 `verification_in_flight=True` → manual_required。再覆盖 create/delete、工作区缺失、身份不符、符号链接逃逸和路径集合矛盾。
 
-- [ ] **Step 2：运行测试并确认接口不存在**
+- [x] **Step 2：运行测试并确认接口不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
   tests/recovery/test_probe.py tests/recovery/test_classifier.py -v
 ```
 
-- [ ] **Step 3：实现只读 Probe 和穷尽分类**
+- [x] **Step 3：实现只读 Probe 和穷尽分类**
 
 `workspace_identity` 对 `installation_id + "\0" + str(workspace.resolve())` 计算 SHA-256。Probe 使用 `WorkspacePaths.resolve_mutation()` 重新验证路径，只读取字节并与 before/after hash 比较；不存在使用 `ABSENT_HASH`。异常生成 UNKNOWN，不执行 Git、Shell 或模型。
 
 Classifier 不访问文件系统。UNKNOWN、身份错误、Checkpoint 缺失或证据矛盾优先 manual_required；只有所有条件都满足时返回可恢复状态。
 
-- [ ] **Step 4：运行恢复和 Workspace 回归**
+- [x] **Step 4：运行恢复和 Workspace 回归**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -304,7 +304,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check \
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交证据分类**
+- [x] **Step 5：提交证据分类**
 
 ```bash
 git add src/vera/recovery tests/recovery \
