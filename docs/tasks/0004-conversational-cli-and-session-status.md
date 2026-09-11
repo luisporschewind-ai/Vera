@@ -756,7 +756,7 @@ git commit -m "feat: report structured Vera session status"
 - Produces: `SessionPresenter.write_permissions(status: PermissionStatus) -> None`
 - Consumes: 注入的 `write: Callable[[str], None]`
 
-- [ ] **Step 1：编写人类展示失败测试**
+- [x] **Step 1：编写人类展示失败测试**
 
 ```python
 def test_presenter_displays_plain_assistant_message() -> None:
@@ -772,7 +772,7 @@ def test_presenter_displays_plain_assistant_message() -> None:
 
 上下文展示只允许统计字段：测试消息正文使用 `must-not-render`，确认输出中不存在该字符串。权限展示必须逐项显示 Change Set 审批、命令策略、有效前缀和执行边界。
 
-- [ ] **Step 2：运行测试并确认新增 Event 回退为事件名**
+- [x] **Step 2：运行测试并确认新增 Event 回退为事件名**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -781,7 +781,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
 
 预期：`assistant.message` 只显示事件名，且 `SessionPresenter` 不存在。
 
-- [ ] **Step 3：实现稳定的纯展示层**
+- [x] **Step 3：实现稳定的纯展示层**
 
 `HumanPresenter` 对 `assistant.message` 只读取 `payload["content"]`；对 `conversation.compacted` 显示“上下文已压缩”和摘要字节数，不重复打印整份摘要。
 
@@ -801,7 +801,7 @@ Execution   current user · no OS sandbox
 
 非 Git 显示 `not a repository`，失败字段显示 `unavailable`。展示类不读取文件、环境或 Git。
 
-- [ ] **Step 4：运行展示与静态检查**
+- [x] **Step 4：运行展示与静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -811,7 +811,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check \
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Task 7**
+- [x] **Step 5：提交 Task 7**
 
 ```bash
 git add src/vera/cli_presenter.py src/vera/cli_session_presenter.py \

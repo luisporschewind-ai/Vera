@@ -88,5 +88,12 @@ class HumanPresenter:
             self._write(f"回滚完成：{event.run_id}")
         elif event.type == "rollback.conflicted":
             self._write(f"回滚存在冲突：{event.run_id}")
+        elif event.type == "assistant.message":
+            content = payload.get("content", "")
+            self._write(f"Vera：{content if isinstance(content, str) else ''}")
+        elif event.type == "conversation.compacted":
+            summary = payload.get("summary", "")
+            size = len(summary.encode("utf-8")) if isinstance(summary, str) else 0
+            self._write(f"上下文已压缩（{size} bytes）")
         else:
             self._write(event.type)

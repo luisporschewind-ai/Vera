@@ -102,3 +102,25 @@ def test_presenter_keeps_tool_output_compact_and_shows_terminal_state() -> None:
     assert "read_file：成功" in text
     assert "must-not-be-rendered" not in text
     assert "任务完成：run-1（completed）" in text
+
+
+def test_presenter_displays_plain_assistant_message() -> None:
+    output: list[str] = []
+    presenter = HumanPresenter(output.append)
+
+    presenter.write_events((event("assistant.message", {"content": "你好"}),))
+
+    assert output == ["Vera：你好"]
+
+
+def test_presenter_reports_compaction_without_reprinting_summary() -> None:
+    output: list[str] = []
+    presenter = HumanPresenter(output.append)
+    summary = "很长的摘要内容" * 20
+
+    presenter.write_events((event("conversation.compacted", {"summary": summary}),))
+
+    text = "\n".join(output)
+    assert "上下文已压缩" in text
+    assert str(len(summary.encode("utf-8"))) in text
+    assert summary not in text
