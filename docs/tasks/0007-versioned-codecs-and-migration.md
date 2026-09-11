@@ -2,7 +2,7 @@
 
 > **供 Cursor Agent 执行：** 使用一个主实现 Agent，按任务顺序执行 TDD、独立提交和验证。禁止并行编辑同一工作树。
 
-**状态：** Planned
+**状态：** Done
 
 **目标分支：** `feature/versioned-state-codecs`
 
@@ -70,7 +70,7 @@ tests/
 - Produces: `ContractCodec.encode_event(event) -> bytes`
 - Produces: `ContractCodec.decode_event(data) -> EventEnvelope`
 
-- [ ] **Step 1：编写当前、旧版和未来版本测试**
+- [x] **Step 1：编写当前、旧版和未来版本测试**
 
 ```python
 def test_command_codec_round_trips_each_type(tmp_path: Path) -> None:
@@ -90,13 +90,13 @@ def test_codec_rejects_future_schema_version() -> None:
 
 参数化覆盖现有全部 CoreCommand；Event 覆盖 version 1、非法 JSON、缺失版本、未来版本。
 
-- [ ] **Step 2：运行测试并确认 Codec 不存在**
+- [x] **Step 2：运行测试并确认 Codec 不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/contracts/test_codec.py -v
 ```
 
-- [ ] **Step 3：实现显式版本注册表**
+- [x] **Step 3：实现显式版本注册表**
 
 `CommandType` 使用稳定字符串：`start_run`、`resolve_approval`、`cancel_run`、`rollback_run`、`inspect_recovery`、`resume_run`、`abandon_run`。Codec 先使用标准库 JSON 只读取 `schema_version`，再按 `(command_type, version)` 选择模型；不通过字段猜测命令类型。
 
@@ -109,7 +109,7 @@ _COMMAND_DECODERS: dict[tuple[CommandType, int], type[ContractModel]] = {
 
 补齐全部已支持命令。编码使用当前对象声明版本；不存在注册项统一抛 ContractVersionError。
 
-- [ ] **Step 4：运行契约回归**
+- [x] **Step 4：运行契约回归**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/contracts -v
@@ -117,7 +117,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src/vera/contracts tes
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 ContractCodec**
+- [x] **Step 5：提交 ContractCodec**
 
 ```bash
 git add src/vera/contracts/codec.py src/vera/contracts/commands.py \
@@ -146,7 +146,7 @@ git commit -m "feat: decode versioned core contracts"
 - Produces: `JournalCodec.decode_line(data, run_id, expected_sequence) -> EventEnvelope`
 - Produces: `SnapshotCodec.decode(data) -> RecoverySnapshot`
 
-- [ ] **Step 1：编写格式版本与未来拒绝测试**
+- [x] **Step 1：编写格式版本与未来拒绝测试**
 
 ```python
 def test_snapshot_codec_rejects_future_version() -> None:
@@ -164,7 +164,7 @@ def test_manifest_is_written_before_first_event(tmp_path: Path) -> None:
 
 再测试 future journal format、manifest run_id 不匹配、sequence 不连续、Snapshot version 缺失和损坏 JSON。
 
-- [ ] **Step 2：运行测试并确认专用 Codec 不存在**
+- [x] **Step 2：运行测试并确认专用 Codec 不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -172,11 +172,11 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
   tests/persistence/test_snapshot_codec.py -v
 ```
 
-- [ ] **Step 3：实现独立格式分派**
+- [x] **Step 3：实现独立格式分派**
 
 RunManifest 保存到 run 目录 `manifest.json`，权限 `0600`，原子写入。EventJournal 新 run 在首次 append 前确保 manifest 存在；加载旧目录时不自动写 manifest。JournalCodec 使用 ContractCodec 解 Event，再检查 run_id 和 sequence。RecoverySnapshotStore 通过 SnapshotCodec 解码，不再直接调用当前 Pydantic 模型。
 
-- [ ] **Step 4：运行持久化与恢复回归**
+- [x] **Step 4：运行持久化与恢复回归**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/persistence tests/recovery -v
@@ -184,7 +184,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src/vera/persistence t
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 State Codec**
+- [x] **Step 5：提交 State Codec**
 
 ```bash
 git add src/vera/persistence tests/persistence \
@@ -209,7 +209,7 @@ git commit -m "feat: version Vera state formats"
 - Produces: `RunFormatStatus.CURRENT | LEGACY | CORRUPT | UNSUPPORTED`
 - Produces: `RunStore.format_status(run_id) -> RunFormatStatus`
 
-- [ ] **Step 1：添加冻结 legacy Fixture 与读取测试**
+- [x] **Step 1：添加冻结 legacy Fixture 与读取测试**
 
 Fixture 从提交 `08b1017` 后的阶段一真实 Event 结构构造，固定 run.started、changeset.proposed、approval.required，不含 manifest/Snapshot/秘密。
 
@@ -225,18 +225,18 @@ def test_legacy_run_remains_visible_but_not_resumable(copied_legacy_state) -> No
 
 再放置一个截断 JSONL、一个 future manifest；断言列表其他 run 正常，损坏项和不支持项有独立状态。
 
-- [ ] **Step 2：运行测试并确认 legacy 缺少统一状态**
+- [x] **Step 2：运行测试并确认 legacy 缺少统一状态**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
   tests/persistence/test_legacy_state.py tests/recovery/test_coordinator.py -v
 ```
 
-- [ ] **Step 3：实现只读 legacy Decoder**
+- [x] **Step 3：实现只读 legacy Decoder**
 
 无 manifest 但 events.jsonl 存在时按 journal format 1 只读；不可生成 RecoverySnapshot。RunStore 的 list/read 分别隔离 JournalCorrupt 和 StateVersionError，返回结构化诊断，不用空元组掩盖损坏。
 
-- [ ] **Step 4：运行历史与 CLI 回归**
+- [x] **Step 4：运行历史与 CLI 回归**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/persistence tests/recovery tests/cli -v
@@ -244,7 +244,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src tests/persistence 
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 legacy 兼容**
+- [x] **Step 5：提交 legacy 兼容**
 
 ```bash
 git add tests/fixtures/state src/vera/persistence/run_store.py \
@@ -276,7 +276,7 @@ git commit -m "feat: read legacy Vera run state"
 - Produces: `StateMigrationService.plan/apply`
 - Produces: `state.migration_planned|completed|failed`
 
-- [ ] **Step 1：编写 dry-run、备份和失败原样测试**
+- [x] **Step 1：编写 dry-run、备份和失败原样测试**
 
 ```python
 def test_migration_apply_never_rewrites_journal(legacy_state) -> None:
@@ -294,20 +294,20 @@ def test_migration_apply_never_rewrites_journal(legacy_state) -> None:
 
 注入 manifest replace 失败，断言旧状态和备份可读；错误 migration_hash、future state、重复 apply 不产生重复修改。
 
-- [ ] **Step 2：运行测试并确认迁移服务不存在**
+- [x] **Step 2：运行测试并确认迁移服务不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
   tests/persistence/test_migration.py tests/cli/test_state_migration.py -v
 ```
 
-- [ ] **Step 3：实现 Core 驱动迁移**
+- [x] **Step 3：实现 Core 驱动迁移**
 
 Plan 只读并计算 `migration_hash`。Apply 只接受完全匹配计划：先复制原相关文件到 run 内 `migration-backup/<migration-id>/`，fsync，再原子写派生 manifest，最后用 Codec 复读。任何失败发 state.migration_failed，不删除备份、不改 Journal。
 
 CLI 提供 `vera state inspect`、`vera state migrate <run-id> --dry-run` 和显式 `--apply --migration-hash <hash>`；默认永远 dry-run。JSON 只输出 Event。
 
-- [ ] **Step 4：运行完整离线验收**
+- [x] **Step 4：运行完整离线验收**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -321,7 +321,7 @@ git diff --check
 
 保持覆盖率至少 90%，并确认无 live 请求。
 
-- [ ] **Step 5：记录、提交和合并**
+- [x] **Step 5：记录、提交和合并**
 
 验收记录列出三类版本、legacy、future reject、损坏隔离、dry-run、备份、失败原样和 Journal 字节未变。任务改 Complete，STATUS 指向 0008。
 
