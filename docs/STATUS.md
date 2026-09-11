@@ -2,14 +2,14 @@
 
 **更新日期：** 2026-09-11
 **当前阶段：** 阶段 1——Core 契约、安全编辑垂直切片与对话式 CLI
-**仓库状态：** 普通对话、会话上下文与状态命令已在 `feature/conversational-cli-session` 完成离线验收，准备本地合并回 `main`；暂无远程仓库。
+**仓库状态：** 普通对话、会话上下文与状态命令已本地合并到 `main`；暂无远程仓库，未推送。
 
 ## 已验证基线
 
 - 工作目录：`/Users/admin/Vera`
-- 当前分支：`feature/conversational-cli-session`
+- 当前分支：`main`
 - 初始检查点：仓库治理与 SDD 基线
-- Agent 实现：任务 0002–0004 的 Python Core、Runtime 和内部 CLI；任务 0004 离线验收已完成
+- Agent 实现：任务 0002–0004 的 Python Core、Runtime 和内部 CLI；任务 0004 离线验收与本地合并已完成
 - 依赖清单：`pyproject.toml`、`.python-version`、`uv.lock`
 
 ## 已完成任务
@@ -27,10 +27,12 @@
 
 - 任务 0004：普通文本 `assistant.message` + `outcome=responded`；进程内 `ConversationContext`；`/new`、`/clear`、`/context`、`/status`、`/permissions`、`/compact`、`/model`
 - 任务 0004 离线验收：129 项非 live 测试通过、2 项 live 排除，覆盖率 90%；Ruff、格式、Mypy、包构建通过
+- 合并后复核：`pytest -m "not live"` 129 通过；Ruff、Mypy 通过
 - 凭据边界：本轮没有读取或使用用户 DeepSeek API Key，没有运行 live 测试；自动测试强制隔离真实供应商环境
 - 仓库外启动：`uv tool install --editable` 后仅执行本地 Slash Command，输出不含测试 Key/Base URL
 - 历史现象：普通问候曾以 `no_changes_proposed` 失败，现已修复为正常对话完成语义
 - 真实验证：DeepSeek 与 iOS 工程回归仍留给用户后续明确执行
+- Git：已本地合并 `feature/conversational-cli-session`，未推送（无 remote）
 
 ## 已接受方向
 
@@ -50,4 +52,4 @@
 
 ## 下一检查点
 
-本地合并 `feature/conversational-cli-session` 回 `main` 后，由用户决定是否进行真实 DeepSeek 普通对话与 iOS 工程回归验收。
+由用户决定是否进行真实 DeepSeek 普通对话与 iOS 工程回归验收，或开始下一阶段增量。
