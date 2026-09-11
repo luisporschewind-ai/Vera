@@ -3,21 +3,59 @@
 import json
 import sys
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, cast
 
 import typer
 
 from vera.bootstrap import RuntimeDependencies, build_runtime
+from vera.cli_driver import ApprovalDecision, drive_run
+from vera.cli_presenter import HumanPresenter
+from vera.cli_session import InteractiveSession
 from vera.config import load_config
-from vera.contracts.commands import CancelRun, ResolveApproval, RollbackRun, StartRun
+from vera.contracts.commands import RollbackRun, StartRun
 from vera.contracts.events import EventEnvelope
 from vera.persistence.run_store import RunStore
 
-app = typer.Typer(no_args_is_help=True, help="Vera local coding-agent Core")
+app = typer.Typer(
+    invoke_without_command=True,
+    no_args_is_help=False,
+    help="Vera local coding-agent Core",
+)
 runs_app = typer.Typer(help="inspect private run records")
 config_app = typer.Typer(help="inspect effective configuration")
 app.add_typer(runs_app, name="runs")
 app.add_typer(config_app, name="config")
+
+
+class _ConsoleSessionIO:
+    def read(self, prompt: str) -> str:
+        return cast(str, typer.prompt(prompt, prompt_suffix=""))
+
+    def write(self, text: str) -> None:
+        typer.echo(text)
+
+
+@app.callback()
+def main(
+    ctx: typer.Context,
+    workspace: Annotated[Path, typer.Option()] = Path("."),
+    model: Annotated[str | None, typer.Option()] = None,
+) -> None:
+    """Start an interactive session when no subcommand is supplied."""
+
+    if ctx.invoked_subcommand is not None:
+        return
+    resolved = workspace.resolve()
+    if not resolved.is_dir():
+        typer.echo(f"工作区必须是现有目录：{resolved}")
+        raise typer.Exit(2)
+    try:
+        deps = build_runtime(resolved, model)
+    except Exception as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(5) from exc
+    selected_model = model or next(iter(deps.config.providers), "default")
+    raise typer.Exit(InteractiveSession(deps, resolved, selected_model, _ConsoleSessionIO()).run())
 
 
 def _render(events: list[EventEnvelope], json_output: bool) -> None:
@@ -25,15 +63,20 @@ def _render(events: list[EventEnvelope], json_output: bool) -> None:
         for event in events:
             typer.echo(event.model_dump_json())
         return
-    for event in events:
-        typer.echo(f"{event.type}: {json.dumps(event.payload, ensure_ascii=False)}")
+    HumanPresenter(typer.echo).write_events(events)
 
 
 def _exit_code(events: list[EventEnvelope]) -> int:
     if not events:
         return 5
     terminal = events[-1].type
-    return {"run.completed": 0, "run.cancelled": 2, "run.failed": 4}.get(terminal, 0)
+    return {
+        "run.completed": 0,
+        "run.cancelled": 2,
+        "run.failed": 4,
+        "rollback.completed": 0,
+        "rollback.conflicted": 4,
+    }.get(terminal, 0)
 
 
 def execute_run(
@@ -48,32 +91,27 @@ def execute_run(
     except Exception as exc:
         typer.echo(str(exc), err=True)
         return 5
-    events = list(
-        deps.runtime.handle(
-            StartRun(goal=goal, workspace_root=workspace, model_profile=model_profile or "default")
-        )
-    )
-    if any(event.type == "approval.required" for event in events):
-        run_id = events[0].run_id
+    presenter = HumanPresenter(typer.echo)
+
+    def decide(request: EventEnvelope) -> ApprovalDecision:
         if json_output or not sys.stdin.isatty():
-            events.extend(deps.runtime.handle(CancelRun(run_id=run_id)))
-        else:
-            request = next(event for event in events if event.type == "approval.required")
-            decision = typer.prompt("输入 approve 批准，或 reject 拒绝")
-            if decision not in {"approve", "reject"}:
-                raise typer.BadParameter("必须明确输入 approve 或 reject")
-            events.extend(
-                deps.runtime.handle(
-                    ResolveApproval(
-                        run_id=run_id,
-                        approval_id=str(request.payload["approval_id"]),
-                        target_hash=str(request.payload["target_hash"]),
-                        decision=decision,
-                    )
-                )
-            )
-    _render(events, json_output)
-    return _exit_code(events)
+            return "cancel"
+        decision = typer.prompt(presenter.approval_prompt(request))
+        if decision not in {"approve", "reject", "cancel"}:
+            raise typer.BadParameter("必须明确输入 approve、reject 或 cancel")
+        return cast(ApprovalDecision, decision)
+
+    events = drive_run(
+        deps.runtime,
+        StartRun(
+            goal=goal,
+            workspace_root=workspace,
+            model_profile=model_profile or "default",
+        ),
+        decide,
+        lambda batch: _render(list(batch), json_output),
+    )
+    return _exit_code(list(events))
 
 
 @app.command()
@@ -104,6 +142,9 @@ def show_run(run_id: str) -> None:
 def rollback(run_id: str = typer.Argument(...)) -> None:
     deps = build_runtime(Path.cwd())
     events = list(deps.runtime.handle(RollbackRun(run_id=run_id)))
+    if not events:
+        typer.echo(f"未找到可回滚的 Checkpoint：{run_id}")
+        raise typer.Exit(5)
     _render(events, False)
     raise typer.Exit(_exit_code(events))
 

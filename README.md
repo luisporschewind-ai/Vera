@@ -33,11 +33,25 @@ Vera is private and in Core-first implementation. The current CLI is an internal
 
 ```bash
 uv sync --extra dev
-uv run vera --help
+uv run vera
 uv run vera config show
 ```
 
-Provider credentials and live tests are intentionally opt-in; no API key is printed by the CLI.
+To expose the command outside this checkout during development:
+
+```bash
+uv tool install --editable /Users/admin/Vera
+cd /path/to/your/project
+vera
+```
+
+Run `vera` from the project directory you want to edit. The bare command opens a
+persistent `Vera >` session; enter a natural-language task, review the emitted
+Diff, and explicitly type `approve`, `reject`, or `cancel` at each approval
+boundary. Use `/help` inside the session to list `/runs`, `/show`, `/rollback`,
+and exit commands. The one-shot `vera run "goal"` command remains available.
+
+Provider credentials and live tests are intentionally opt-in; no API key is printed by the CLI. Verification commands run with the current system user's permissions and always retain a separate approval boundary when required by policy.
 
 `/Users/admin/Coding-harness` is a retired Vera prototype. It may be inspected for lessons and evidence, but it is not an implementation base and must not be modified from this repository.
 

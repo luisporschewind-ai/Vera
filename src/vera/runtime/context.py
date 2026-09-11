@@ -25,4 +25,5 @@ class RunContext:
     built_change_set: BuiltChangeSet | None = None
     pending_command: VerificationCommand | None = None
     verification_index: int = 0
+    verification_failed: bool = False
     repeated_calls: dict[str, int] = field(default_factory=dict)

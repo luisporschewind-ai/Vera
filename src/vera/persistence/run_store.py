@@ -33,14 +33,19 @@ class RunStore:
             started = next((event for event in events if event.type == "run.started"), events[0])
             goal = str(started.payload.get("goal", ""))
             workspace = Path(str(started.payload.get("workspace_root", ".")))
-            terminal = next(
+            terminal_event = next(
                 (
-                    event.payload.get("state")
+                    event
                     for event in reversed(events)
                     if event.type in {"run.completed", "run.failed", "run.cancelled"}
                 ),
                 None,
             )
+            terminal = None
+            if terminal_event is not None:
+                terminal = terminal_event.payload.get("state") or terminal_event.type.removeprefix(
+                    "run."
+                )
             summaries.append(
                 RunSummary(
                     run_id=run_dir.name,

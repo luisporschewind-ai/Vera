@@ -1,13 +1,13 @@
 # Vera 状态
 
-**更新日期：** 2026-09-10
-**当前阶段：** 阶段 1——Core 契约与安全编辑垂直切片
-**仓库状态：** 离线 Core 垂直切片已合并到 `main`；暂无远程仓库。
+**更新日期：** 2026-09-11
+**当前阶段：** 阶段 1——Core 契约、安全编辑垂直切片与交互式 CLI
+**仓库状态：** Core 垂直切片已合并到 `main`；交互式 CLI 实现和离线验收已完成，将随当前任务合并回 `main`；暂无远程仓库。
 
 ## 已验证基线
 
 - 工作目录：`/Users/admin/Vera`
-- 当前开发分支：`main`
+- 当前开发分支：`codex/interactive-cli-session`
 - 初始检查点：仓库治理与 SDD 基线
 - Agent 实现：任务 1–11 的 Python Core、Runtime 和内部 CLI；任务 12 离线验收已完成
 - 依赖清单：`pyproject.toml`、`.python-version`、`uv.lock`
@@ -22,7 +22,9 @@
 ## 活动任务
 
 - [任务 0002：Core 安全编辑垂直切片](tasks/0002-core-safe-editing-vertical-slice.md)
-- 当前检查点：任务 12 离线 E2E、DeepSeek CLI 提案 smoke 和 iOS 基线构建已通过；人工批准写入/验证/回滚仍未执行
+- [交互式 CLI 会话规格](specs/2026-09-10-interactive-cli-session.md)
+- [任务 0003：交互式 CLI 会话](tasks/0003-interactive-cli-session.md)
+- 当前检查点：交互式 CLI 实现与离线验收完成
 
 ## 最近验证
 
@@ -30,7 +32,7 @@
 - 占位符与行尾空白扫描：通过
 - `git diff --check`：通过
 - Agent 源码与依赖清单扫描：Python Core 与 CLI 已建立
-- Git 状态：合并提交 `b8604eb` 位于 `main`；本轮 DeepSeek 接线与只读 Journal 修复待提交
+- Git 状态：DeepSeek CLI 接线已通过 `b82b968` 合并到 `main`；当前在 `codex/interactive-cli-session` 编写交互式 CLI 规格
 - `uv 0.12.10`：通过官方独立安装器安装，项目环境同步完成
 - 任务 1 包测试：1 项通过；Ruff 和 Mypy 通过
 - 任务 2 契约与状态机：10 项测试通过；Ruff 和 Mypy 通过
@@ -44,6 +46,9 @@
 - 任务 10 审批、应用、验证与回滚编排：11 项 Runtime 测试通过；Ruff 和 Mypy 通过
 - 任务 11 CLI 人类/JSON 模式：4 项 CLI 测试通过；`vera --help`、Ruff 和 Mypy 通过
 - 任务 12 离线验收：58 项非 live 测试通过，2 项 live 测试未执行；Ruff/格式/Mypy 通过
+- 任务 0003 交互式 CLI：裸 `vera` 持续会话、多审批驱动、人类可读 Diff/风险展示、斜杠命令和跨进程回滚已实现
+- 任务 0003 离线验收：84 项非 live 测试通过、2 项 live 排除，覆盖率 89%；Ruff、格式、Mypy、包构建和仓库外 editable 启动通过
+- 凭据边界：本轮没有读取或使用用户 DeepSeek API Key，没有运行 live 测试；自动测试强制隔离真实供应商环境
 - 真实验证：DeepSeek `deepseek-flash` 最小请求通过；CLI 已提出并展示 `.blue -> .green` Diff，非交互审批安全取消；未输出 API Key
 - 外部目标基线：`/Users/admin/Desktop/VeraTestDemo` generic iOS build 通过，未启用签名
 
@@ -64,4 +69,4 @@
 
 ## 下一检查点
 
-离线 Core 垂直切片和一次真实 DeepSeek CLI 提案已具备证据；下一检查点是用户批准当前具体 Diff，完成一次真实项目副本的应用、验证与回滚，并补齐正式 live 测试断言。任务保持 In progress。
+下一检查点是由用户明确启动真实模型与 iOS 工程人工验收：`cd 工程 -> vera -> 自然语言任务 -> Diff 审批 -> 写入 -> 验证 -> Xcode 观察结果`。本阶段不执行该验收。

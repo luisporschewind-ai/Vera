@@ -64,7 +64,15 @@ class CheckpointStore:
         return manifest
 
     def load_for_run(self, run_id: str) -> CheckpointManifest:
-        manifest_path = self.state_dir / "runs" / run_id / "checkpoint" / "manifest.json"
+        return self.load_manifest(self.state_dir, run_id)
+
+    @staticmethod
+    def load_manifest(state_dir: Path, run_id: str) -> CheckpointManifest:
+        if Path(run_id).name != run_id:
+            raise FileNotFoundError(run_id)
+        manifest_path = (
+            state_dir.expanduser().resolve() / "runs" / run_id / "checkpoint" / "manifest.json"
+        )
         return CheckpointManifest.model_validate_json(manifest_path.read_text(encoding="utf-8"))
 
     def read_original(self, manifest: CheckpointManifest, path: str) -> bytes:

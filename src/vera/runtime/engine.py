@@ -164,16 +164,18 @@ class VeraRuntime:
             return
         runner = VerificationRunner(context.command.workspace_root)
         policy = CommandPolicy()
-        verification_failed = False
-        for index, command in enumerate(built.change_set.verification):
+        while context.verification_index < len(built.change_set.verification):
+            index = context.verification_index
+            command = built.change_set.verification[index]
             decision = policy.classify(command)
             if decision.kind is CommandDecisionKind.FORBIDDEN:
-                verification_failed = True
+                context.verification_failed = True
                 yield self._event(
                     context,
                     "verification.completed",
                     {"index": index, "status": "rejected", "reason": decision.reason},
                 )
+                context.verification_index += 1
                 continue
             if decision.kind is CommandDecisionKind.APPROVAL_REQUIRED:
                 context.pending_command = command
@@ -205,7 +207,7 @@ class VeraRuntime:
                 {"index": index, "argv": list(command.argv), "cwd": command.cwd},
             )
             result = runner.run(command)
-            verification_failed = verification_failed or result.status != "passed"
+            context.verification_failed = context.verification_failed or result.status != "passed"
             yield self._event(
                 context,
                 "verification.completed",
@@ -219,7 +221,10 @@ class VeraRuntime:
                     "stderr_truncated": result.stderr_truncated,
                 },
             )
-        terminal = RunState.VERIFICATION_FAILED if verification_failed else RunState.COMPLETED
+            context.verification_index += 1
+        terminal = (
+            RunState.VERIFICATION_FAILED if context.verification_failed else RunState.COMPLETED
+        )
         context.machine.transition(terminal)
         yield self._event(context, "run.completed", {"state": context.machine.state.value})
 
@@ -238,22 +243,39 @@ class VeraRuntime:
             "approval.resolved",
             {"approval_id": request.approval_id, "decision": decision, "kind": request.kind},
         )
-        if decision == "reject":
-            context.machine.transition(RunState.CANCELLED)
-            yield self._event(context, "run.cancelled", {"reason": "approval_rejected"})
-            return
         if request.kind == ApprovalKind.COMMAND.value:
-            if context.pending_command is not None:
+            if decision == "reject":
+                context.verification_failed = True
+                context.pending_command = None
+                yield self._event(
+                    context,
+                    "verification.completed",
+                    {"index": context.verification_index, "status": "rejected"},
+                )
+                context.verification_index += 1
+            elif context.pending_command is not None:
                 result = VerificationRunner(context.command.workspace_root).run(
                     context.pending_command
+                )
+                context.verification_failed = (
+                    context.verification_failed or result.status != "passed"
                 )
                 yield self._event(
                     context,
                     "verification.completed",
-                    {"status": result.status, "exit_code": result.exit_code},
+                    {
+                        "index": context.verification_index,
+                        "status": result.status,
+                        "exit_code": result.exit_code,
+                    },
                 )
                 context.pending_command = None
+                context.verification_index += 1
             yield from self._verify(context)
+            return
+        if decision == "reject":
+            context.machine.transition(RunState.CANCELLED)
+            yield self._event(context, "run.cancelled", {"reason": "approval_rejected"})
             return
         built = context.built_change_set
         if built is None:
@@ -298,16 +320,25 @@ class VeraRuntime:
                 ):
                     context = candidate
                     break
-        if context is None:
+        if context is not None:
+            run_id = context.run_id
+            manifest = CheckpointStore.load_manifest(self.state_dir, run_id)
+            journal = context.journal
+        elif command.run_id is not None:
+            run_id = command.run_id
+            try:
+                manifest = CheckpointStore.load_manifest(self.state_dir, run_id)
+            except (OSError, ValueError):
+                return
+            journal = EventJournal(self.state_dir, run_id, Redactor([]))
+        else:
             return
-        paths = WorkspacePaths(context.command.workspace_root)
-        manifest = CheckpointStore(self.state_dir, paths).load_for_run(context.run_id)
+        paths = WorkspacePaths(manifest.workspace_root)
         result = ChangeApplier(paths, CheckpointStore(self.state_dir, paths)).rollback(manifest)
         if result.status is RollbackStatus.ROLLED_BACK:
-            yield self._event(context, "rollback.completed", {"paths": list(result.paths)})
+            yield journal.append("rollback.completed", {"paths": list(result.paths)})
         else:
-            yield self._event(
-                context,
+            yield journal.append(
                 "rollback.conflicted",
                 {"status": result.status.value, "paths": list(result.paths)},
             )
@@ -407,5 +438,14 @@ class VeraRuntime:
         )
         self.runs[run_id] = context
         context.machine.transition(RunState.DISCOVERING)
-        yield self._event(context, "run.started", {"run_id": run_id, "goal": command.goal})
+        yield self._event(
+            context,
+            "run.started",
+            {
+                "run_id": run_id,
+                "goal": command.goal,
+                "workspace_root": str(command.workspace_root),
+                "model_profile": command.model_profile,
+            },
+        )
         yield from self._drive(context)

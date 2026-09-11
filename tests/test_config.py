@@ -1,8 +1,15 @@
+import os
 from pathlib import Path
 
 import pytest
 
-from vera.config import UnsafeProjectConfig, load_config
+from vera.bootstrap import build_runtime
+from vera.config import (
+    UnsafeProjectConfig,
+    UnsafeProviderEnvironment,
+    load_config,
+    load_provider_environment,
+)
 
 
 def write_toml(path: Path, content: str) -> None:
@@ -32,6 +39,13 @@ def test_project_config_rejects_secrets_and_command_policy(tmp_path: Path) -> No
     with pytest.raises(UnsafeProjectConfig):
         load_config(tmp_path, {})
 
+    write_toml(
+        tmp_path / ".vera" / "config.toml",
+        'user_allowed_command_prefixes = [["rm"]]\n',
+    )
+    with pytest.raises(UnsafeProjectConfig):
+        load_config(tmp_path, {})
+
 
 def test_deepseek_environment_config_registers_provider(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -44,9 +58,61 @@ def test_deepseek_environment_config_registers_provider(
     assert config.providers["deepseek"].model == "deepseek-flash"
     assert config.providers["deepseek"].api_key_env == "DEEPSEEK_API_KEY"
 
-    write_toml(
-        tmp_path / ".vera" / "config.toml",
-        'user_allowed_command_prefixes = [["rm"]]\n',
+
+def test_provider_environment_loads_known_values_without_overwriting_existing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "deepseek.env"
+    source.write_text(
+        "export DEEPSEEK_API_KEY=file-secret\n"
+        "VERA_DEEPSEEK_BASE_URL=https://api.deepseek.com\n"
+        "VERA_DEEPSEEK_MODEL=deepseek-flash\n",
+        encoding="utf-8",
     )
-    with pytest.raises(UnsafeProjectConfig):
-        load_config(tmp_path, {})
+    source.chmod(0o600)
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "process-secret")
+
+    load_provider_environment(source)
+
+    assert os.environ["DEEPSEEK_API_KEY"] == "process-secret"
+    assert os.environ["VERA_DEEPSEEK_BASE_URL"] == "https://api.deepseek.com"
+    assert os.environ["VERA_DEEPSEEK_MODEL"] == "deepseek-flash"
+
+
+def test_provider_environment_rejects_public_permissions(tmp_path: Path) -> None:
+    source = tmp_path / "deepseek.env"
+    source.write_text("DEEPSEEK_API_KEY=secret\n", encoding="utf-8")
+    source.chmod(0o644)
+
+    with pytest.raises(UnsafeProviderEnvironment, match="mode 0600"):
+        load_provider_environment(source)
+
+
+def test_provider_environment_rejects_shell_syntax(tmp_path: Path) -> None:
+    source = tmp_path / "deepseek.env"
+    source.write_text("DEEPSEEK_API_KEY=$(whoami)\n", encoding="utf-8")
+    source.chmod(0o600)
+
+    with pytest.raises(UnsafeProviderEnvironment, match="shell syntax"):
+        load_provider_environment(source)
+
+
+def test_build_runtime_loads_provider_environment_before_config(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "deepseek.env"
+    source.write_text(
+        "DEEPSEEK_API_KEY=test-secret\n"
+        "VERA_DEEPSEEK_BASE_URL=https://api.deepseek.com\n"
+        "VERA_DEEPSEEK_MODEL=deepseek-flash\n",
+        encoding="utf-8",
+    )
+    source.chmod(0o600)
+    monkeypatch.setenv("VERA_PROVIDER_ENV_FILE", str(source))
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    monkeypatch.delenv("VERA_DEEPSEEK_BASE_URL", raising=False)
+    monkeypatch.delenv("VERA_DEEPSEEK_MODEL", raising=False)
+
+    dependencies = build_runtime(tmp_path)
+
+    assert dependencies.config.providers["deepseek"].model == "deepseek-flash"
