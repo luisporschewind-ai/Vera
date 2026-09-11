@@ -116,7 +116,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src/vera/contracts src
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交恢复动作契约**
+- [x] **Step 5：提交恢复动作契约**
 
 ```bash
 git add src/vera/contracts src/vera/recovery/models.py src/vera/runtime/context.py \
@@ -141,7 +141,7 @@ git commit -m "feat: define resumable recovery commands"
 - Produces: `PersistedChangeSet.to_built() -> BuiltChangeSet`
 - Produces: `RecoveryHydrator.hydrate(snapshot, journal) -> RunContext`
 
-- [ ] **Step 1：编写审批与验证边界重建测试**
+- [x] **Step 1：编写审批与验证边界重建测试**
 
 ```python
 def test_hydrate_changeset_approval_restores_exact_context(snapshot, journal) -> None:
@@ -160,19 +160,19 @@ def test_hydrate_refuses_in_flight_verification(snapshot_factory, journal) -> No
 
 再覆盖 verification_index、verification_failed、checkpoint manifest 缺失、Journal sequence 与 Snapshot 不一致、intended bytes hash 不符。
 
-- [ ] **Step 2：运行测试并确认 Hydrator 不存在**
+- [x] **Step 2：运行测试并确认 Hydrator 不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/recovery/test_hydrator.py -v
 ```
 
-- [ ] **Step 3：实现最小重建**
+- [x] **Step 3：实现最小重建**
 
 Hydrator 只接受 `resumable_approval` 和 `resumable_verification` 对应 Snapshot。审批阶段恢复 `RunState.AWAITING_APPROVAL`；验证阶段恢复 `RunState.VERIFYING`。不恢复 model messages 或 tool loop；`messages=[]`，因为续跑路径禁止进入 `_drive()`。
 
 `PersistedChangeSet.to_built()` 严格 Base64 解码 intended bytes，并再次核对 FileChange.after_hash。
 
-- [ ] **Step 4：运行恢复与 ChangeSet 回归**
+- [x] **Step 4：运行恢复与 ChangeSet 回归**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -181,7 +181,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src/vera/recovery src/
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Hydrator**
+- [x] **Step 5：提交 Hydrator**
 
 ```bash
 git add src/vera/recovery/hydrator.py src/vera/workspace/changeset.py \
