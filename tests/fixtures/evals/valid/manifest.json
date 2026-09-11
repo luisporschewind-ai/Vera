@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "path": "plain-answer/case.json",
+      "sha256": "edd110801f4924874727f11799f9402b6e4dc8bb3ae9df2358a70b10b5f28ed8"
+    },
+    {
+      "path": "plain-answer/expect.json",
+      "sha256": "ab9089034cc3f0b10eb73cfea0aae8300128d9cd3bbcd4020fff6d57b64de612"
+    },
+    {
+      "path": "plain-answer/script.json",
+      "sha256": "15cba80c2375a900bf142f9161279a07095ef1114d0e89f596d0ba75c686d290"
+    },
+    {
+      "path": "plain-answer/workspace/README.md",
+      "sha256": "e80b71cd14d3cbd65f4173abcbfcf01a545dbca32a72d575108b553a648cc96f"
+    }
+  ]
+}
