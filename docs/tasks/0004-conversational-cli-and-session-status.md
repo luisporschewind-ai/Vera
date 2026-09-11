@@ -225,7 +225,7 @@ git commit -m "feat: define conversational run contracts"
 - Produces: `run.completed` Payload 包含 `state="completed"`、`outcome="responded"`
 - Guarantee: 非空文本无工具调用是成功；空文本无工具调用才失败
 
-- [ ] **Step 1：编写普通文本终态失败测试**
+- [x] **Step 1：编写普通文本终态失败测试**
 
 创建 `tests/runtime/test_conversation_response.py`：
 
@@ -271,7 +271,7 @@ def test_empty_model_response_fails_explicitly(tmp_path: Path) -> None:
 
 再添加“调用 `read_file` 后第二轮返回文本”的测试，断言最终正常完成且没有 `changeset.proposed`、`approval.required`、`checkpoint.created`。
 
-- [ ] **Step 2：运行测试并确认当前 `no_changes_proposed` 行为失败**
+- [x] **Step 2：运行测试并确认当前 `no_changes_proposed` 行为失败**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -280,7 +280,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
 
 预期：当前 Runtime 产生 `run.failed(reason=no_changes_proposed)`；既有 CLI 失败测试也需要更新语义。
 
-- [ ] **Step 3：实现文本成功终态**
+- [x] **Step 3：实现文本成功终态**
 
 把 Agent System Prompt 调整为：允许对普通问题直接给出文本；项目事实不足时先使用只读工具；只有需要修改文件时才调用 `propose_changeset`；不得声称未执行操作成功。
 
@@ -305,7 +305,7 @@ return
 
 更新 `tests/cli/test_session.py` 中原来把非空文本视为失败的用例：改为断言显示助手文本、返回提示符且 run 完成。
 
-- [ ] **Step 4：运行 Runtime、CLI 与静态检查**
+- [x] **Step 4：运行 Runtime、CLI 与静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -315,7 +315,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check \
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Task 2**
+- [x] **Step 5：提交 Task 2**
 
 ```bash
 git add src/vera/runtime/engine.py src/vera/runtime/prompts.py \

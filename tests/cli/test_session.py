@@ -85,15 +85,30 @@ def test_session_eof_exits_cleanly(tmp_path: Path) -> None:
     assert InteractiveSession(dependencies(workspace, []), workspace, "fake", io).run() == 0
 
 
-def test_failed_goal_returns_to_prompt(tmp_path: Path) -> None:
+def test_plain_goal_completes_and_returns_to_prompt(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    io = ScriptedIO(["Hello", "/exit"])
+    turn = ModelTurn(assistant_text="你好，我是 Vera。", finish_reason="stop")
+
+    assert InteractiveSession(dependencies(workspace, [turn]), workspace, "fake", io).run() == 0
+    output = "\n".join(io.output)
+    assert "任务完成" in output
+    assert "任务失败" not in output
+    assert "assistant.message" in output
+    assert output.count("Vera > ") == 2
+
+
+def test_empty_goal_response_fails_and_returns_to_prompt(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     io = ScriptedIO(["fail task", "/exit"])
-    turn = ModelTurn(assistant_text="cannot edit", finish_reason="stop")
+    turn = ModelTurn(assistant_text="", finish_reason="stop")
 
     assert InteractiveSession(dependencies(workspace, [turn]), workspace, "fake", io).run() == 0
     output = "\n".join(io.output)
     assert "任务失败" in output
+    assert "empty_model_response" in output
     assert output.count("Vera > ") == 2
 
 

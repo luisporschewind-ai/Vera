@@ -395,7 +395,17 @@ class VeraRuntime:
                 )
             )
             if not turn.tool_calls:
-                yield from self._fail(context, "no_changes_proposed")
+                text = (turn.assistant_text or "").strip()
+                if not text:
+                    yield from self._fail(context, "empty_model_response")
+                    return
+                context.machine.transition(RunState.COMPLETED)
+                yield self._event(context, "assistant.message", {"content": text})
+                yield self._event(
+                    context,
+                    "run.completed",
+                    {"state": RunState.COMPLETED.value, "outcome": "responded"},
+                )
                 return
             context.machine.transition(RunState.GENERATING)
             for call in turn.tool_calls:
