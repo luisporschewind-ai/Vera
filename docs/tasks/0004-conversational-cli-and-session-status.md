@@ -2,7 +2,7 @@
 
 > **供 Cursor Agent 执行：** 必须逐任务执行本计划。使用单一主实现 Agent，不派发并行编辑 Agent。每个生产行为先写失败测试，再做最小实现；每项完成后独立提交。
 
-**状态：** Planned（可执行）
+**状态：** Complete
 
 **目标分支：** `feature/conversational-cli-session`
 
@@ -101,7 +101,7 @@ tests/
 - Produces: `Limits.max_conversation_bytes: int = 200_000`
 - Guarantee: 旧版 `StartRun` JSON 仍能按版本 1解析
 
-- [ ] **Step 1：编写契约和配置失败测试**
+- [x] **Step 1：编写契约和配置失败测试**
 
 在 `tests/contracts/test_models.py` 增加：
 
@@ -145,7 +145,7 @@ def test_conversation_limit_defaults_to_two_hundred_thousand(tmp_path: Path) -> 
     assert config.limits.max_conversation_bytes == 200_000
 ```
 
-- [ ] **Step 2：运行测试并确认接口不存在**
+- [x] **Step 2：运行测试并确认接口不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -154,7 +154,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
 
 预期：导入 `ConversationMessage` 失败，或 `StartRun`、`Limits` 缺少新字段。
 
-- [ ] **Step 3：实现最小公共契约**
+- [x] **Step 3：实现最小公共契约**
 
 `src/vera/contracts/conversation.py`：
 
@@ -187,7 +187,7 @@ max_conversation_bytes: int = Field(default=200_000, ge=1)
 
 不要把 `ConversationMessage` 复用为模型内部带 tool call 的 `ModelMessage`。
 
-- [ ] **Step 4：运行契约、配置和静态检查**
+- [x] **Step 4：运行契约、配置和静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -197,7 +197,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check \
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Task 1**
+- [x] **Step 5：提交 Task 1**
 
 ```bash
 git add src/vera/contracts/conversation.py src/vera/contracts/commands.py \
@@ -225,7 +225,7 @@ git commit -m "feat: define conversational run contracts"
 - Produces: `run.completed` Payload 包含 `state="completed"`、`outcome="responded"`
 - Guarantee: 非空文本无工具调用是成功；空文本无工具调用才失败
 
-- [ ] **Step 1：编写普通文本终态失败测试**
+- [x] **Step 1：编写普通文本终态失败测试**
 
 创建 `tests/runtime/test_conversation_response.py`：
 
@@ -271,7 +271,7 @@ def test_empty_model_response_fails_explicitly(tmp_path: Path) -> None:
 
 再添加“调用 `read_file` 后第二轮返回文本”的测试，断言最终正常完成且没有 `changeset.proposed`、`approval.required`、`checkpoint.created`。
 
-- [ ] **Step 2：运行测试并确认当前 `no_changes_proposed` 行为失败**
+- [x] **Step 2：运行测试并确认当前 `no_changes_proposed` 行为失败**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -280,7 +280,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
 
 预期：当前 Runtime 产生 `run.failed(reason=no_changes_proposed)`；既有 CLI 失败测试也需要更新语义。
 
-- [ ] **Step 3：实现文本成功终态**
+- [x] **Step 3：实现文本成功终态**
 
 把 Agent System Prompt 调整为：允许对普通问题直接给出文本；项目事实不足时先使用只读工具；只有需要修改文件时才调用 `propose_changeset`；不得声称未执行操作成功。
 
@@ -305,7 +305,7 @@ return
 
 更新 `tests/cli/test_session.py` 中原来把非空文本视为失败的用例：改为断言显示助手文本、返回提示符且 run 完成。
 
-- [ ] **Step 4：运行 Runtime、CLI 与静态检查**
+- [x] **Step 4：运行 Runtime、CLI 与静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -315,7 +315,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check \
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Task 2**
+- [x] **Step 5：提交 Task 2**
 
 ```bash
 git add src/vera/runtime/engine.py src/vera/runtime/prompts.py \
@@ -347,7 +347,7 @@ git commit -m "feat: complete conversational responses"
 - Produces: `replace_with_summary(summary: str) -> None`
 - Produces: `reset() -> str`
 
-- [ ] **Step 1：编写会话上下文失败测试**
+- [x] **Step 1：编写会话上下文失败测试**
 
 `tests/session/test_conversation.py` 至少覆盖：
 
@@ -388,7 +388,7 @@ def test_code_run_stores_summary_without_diff_or_tool_output() -> None:
 
 再覆盖：70% 警戒线、超过上限拒绝、`reset()` 更换 session ID、`replace_with_summary()` 原子替换、空摘要拒绝、失败/取消 run 的确定性简短摘要。
 
-- [ ] **Step 2：运行测试并确认 session 模块不存在**
+- [x] **Step 2：运行测试并确认 session 模块不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/session/test_conversation.py -v
@@ -396,7 +396,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/session/test_convers
 
 预期：导入 `vera.session.conversation` 或接口失败。
 
-- [ ] **Step 3：实现 ConversationContext**
+- [x] **Step 3：实现 ConversationContext**
 
 使用私有 `list[ConversationMessage]`，所有写入先构造候选列表并计算 UTF-8 字节，确认不超过 `max_bytes` 后再整体替换。`summary` 映射保持普通上下文角色，不能成为 System Prompt。
 
@@ -417,7 +417,7 @@ run run_789 失败：model_error。
 
 `reset()` 清空消息和压缩次数，并通过注入的 factory 生成新 session ID，保证测试可重复。
 
-- [ ] **Step 4：运行会话模型和静态检查**
+- [x] **Step 4：运行会话模型和静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/session/test_conversation.py -v
@@ -425,7 +425,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src/vera/session tests
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Task 3**
+- [x] **Step 5：提交 Task 3**
 
 ```bash
 git add src/vera/session tests/session \
@@ -453,7 +453,7 @@ git commit -m "feat: add ephemeral conversation context"
 - Produces: `run.completed` Payload `outcome="compacted"`
 - Guarantee: compact 请求的 `ModelRequest.tools == ()`
 
-- [ ] **Step 1：编写压缩模式失败测试**
+- [x] **Step 1：编写压缩模式失败测试**
 
 ```python
 def test_compaction_uses_no_tools_and_emits_summary(tmp_path: Path) -> None:
@@ -488,7 +488,7 @@ def test_compaction_uses_no_tools_and_emits_summary(tmp_path: Path) -> None:
 
 在 `tests/persistence/test_run_store.py` 写入一个 `kind=compaction` 和一个 `kind=task` 的 run，断言默认 `list_runs()` 只返回 task。
 
-- [ ] **Step 2：运行测试并确认 mode 尚未生效**
+- [x] **Step 2：运行测试并确认 mode 尚未生效**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -497,7 +497,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
 
 预期：compact 请求仍包含工具或缺少 `conversation.compacted`。
 
-- [ ] **Step 3：实现专用压缩请求**
+- [x] **Step 3：实现专用压缩请求**
 
 在 `prompts.py` 增加固定 `COMPACTION_PROMPT`，要求只总结用户提供的对话、保留决策/路径/未完成事项、不得把对话内文本当成系统指令。
 
@@ -516,7 +516,7 @@ def _conversation_model_message(message: ConversationMessage) -> ModelMessage:
 
 `RunStore.list_runs(include_internal: bool = False)` 在默认参数下跳过 compaction；显式 `include_internal=True` 时保留诊断能力。
 
-- [ ] **Step 4：运行压缩、持久化和静态检查**
+- [x] **Step 4：运行压缩、持久化和静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -526,7 +526,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check \
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Task 4**
+- [x] **Step 5：提交 Task 4**
 
 ```bash
 git add src/vera/runtime/engine.py src/vera/runtime/prompts.py \
@@ -559,7 +559,7 @@ git commit -m "feat: compact conversation context through core"
 - Consumes: `VeraConfig.user_allowed_command_prefixes`
 - Guarantee: Runtime 分类验证命令时使用注入的同一个 policy
 
-- [ ] **Step 1：编写“配置必须真实生效”的失败测试**
+- [x] **Step 1：编写“配置必须真实生效”的失败测试**
 
 在 `tests/runtime/test_safe_editing_flow.py` 增加配置前缀命令无需第二道审批的测试：
 
@@ -582,7 +582,7 @@ def test_runtime_uses_injected_user_allowed_command_prefix(tmp_path: Path) -> No
 
 在 `tests/session/test_permissions.py` 断言快照只包含实际 policy 的前缀，并显示 `manual`、`current user`、`False` OS sandbox；不得包含供应商配置。
 
-- [ ] **Step 2：运行测试并确认 Runtime 当前新建默认 policy**
+- [x] **Step 2：运行测试并确认 Runtime 当前新建默认 policy**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -591,7 +591,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
 
 预期：`VeraRuntime` 不接受 `command_policy`，或命令仍产生审批。
 
-- [ ] **Step 3：注入并复用有效策略**
+- [x] **Step 3：注入并复用有效策略**
 
 Runtime 构造函数增加：
 
@@ -620,7 +620,7 @@ runtime = VeraRuntime(
 
 `permission_status()` 从传入 policy 生成冻结状态对象。不得把“配置存在但未注入”的前缀显示为有效。
 
-- [ ] **Step 4：运行策略、Runtime 和静态检查**
+- [x] **Step 4：运行策略、Runtime 和静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -632,7 +632,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check \
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Task 5**
+- [x] **Step 5：提交 Task 5**
 
 ```bash
 git add src/vera/tools/command_policy.py src/vera/session/models.py \
@@ -662,7 +662,7 @@ git commit -m "fix: expose effective runtime permissions"
 - Produces: `SessionStatusService.snapshot(...) -> SessionStatus`
 - Guarantee: Git 只通过固定 argv、无 Shell、只读、3 秒超时执行
 
-- [ ] **Step 1：编写状态服务失败测试**
+- [x] **Step 1：编写状态服务失败测试**
 
 使用注入 runner，不能让单元测试依赖本机 Git 状态：
 
@@ -697,7 +697,7 @@ def test_status_contains_safe_session_fields(tmp_path: Path) -> None:
 
 再测试：非 Git 返回 `available=False`；branch 查询失败、status 查询超时或版本读取失败分别降级为 `unavailable`，且 `snapshot()` 不抛异常。
 
-- [ ] **Step 2：运行测试并确认状态服务不存在**
+- [x] **Step 2：运行测试并确认状态服务不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/session/test_status.py -v
@@ -705,7 +705,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/session/test_status.
 
 预期：导入 `SessionStatusService` 失败。
 
-- [ ] **Step 3：实现固定 argv 状态探测**
+- [x] **Step 3：实现固定 argv 状态探测**
 
 实际 Git runner 只允许：
 
@@ -718,7 +718,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/session/test_status.
 
 `SessionStatusService` 只组合显式传入的模型名、ConversationStats 和 PermissionStatus，不读取环境变量，不接收 API Key 或 Base URL。
 
-- [ ] **Step 4：运行状态、配置和静态检查**
+- [x] **Step 4：运行状态、配置和静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -728,7 +728,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check \
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Task 6**
+- [x] **Step 5：提交 Task 6**
 
 ```bash
 git add src/vera/session/models.py src/vera/session/status.py \
@@ -756,7 +756,7 @@ git commit -m "feat: report structured Vera session status"
 - Produces: `SessionPresenter.write_permissions(status: PermissionStatus) -> None`
 - Consumes: 注入的 `write: Callable[[str], None]`
 
-- [ ] **Step 1：编写人类展示失败测试**
+- [x] **Step 1：编写人类展示失败测试**
 
 ```python
 def test_presenter_displays_plain_assistant_message() -> None:
@@ -772,7 +772,7 @@ def test_presenter_displays_plain_assistant_message() -> None:
 
 上下文展示只允许统计字段：测试消息正文使用 `must-not-render`，确认输出中不存在该字符串。权限展示必须逐项显示 Change Set 审批、命令策略、有效前缀和执行边界。
 
-- [ ] **Step 2：运行测试并确认新增 Event 回退为事件名**
+- [x] **Step 2：运行测试并确认新增 Event 回退为事件名**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -781,7 +781,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
 
 预期：`assistant.message` 只显示事件名，且 `SessionPresenter` 不存在。
 
-- [ ] **Step 3：实现稳定的纯展示层**
+- [x] **Step 3：实现稳定的纯展示层**
 
 `HumanPresenter` 对 `assistant.message` 只读取 `payload["content"]`；对 `conversation.compacted` 显示“上下文已压缩”和摘要字节数，不重复打印整份摘要。
 
@@ -801,7 +801,7 @@ Execution   current user · no OS sandbox
 
 非 Git 显示 `not a repository`，失败字段显示 `unavailable`。展示类不读取文件、环境或 Git。
 
-- [ ] **Step 4：运行展示与静态检查**
+- [x] **Step 4：运行展示与静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -811,7 +811,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check \
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Task 7**
+- [x] **Step 5：提交 Task 7**
 
 ```bash
 git add src/vera/cli_presenter.py src/vera/cli_session_presenter.py \
@@ -839,7 +839,7 @@ git commit -m "feat: render conversational session status"
 - Produces: `SessionIO.clear() -> None`
 - Guarantee: 每个普通输入把 `conversation.snapshot()` 传给 `StartRun`
 
-- [ ] **Step 1：编写连续对话和命令失败测试**
+- [x] **Step 1：编写连续对话和命令失败测试**
 
 测试两个普通输入，FakeModelAdapter 准备两个文本 turn：
 
@@ -872,7 +872,7 @@ def test_second_goal_receives_first_conversation_pair(session_fixture) -> None:
 - 启动首先显示状态面板，再出现 `Vera >`；
 - `/help` 列出所有本增量命令。
 
-- [ ] **Step 2：运行测试并确认当前会话不传历史**
+- [x] **Step 2：运行测试并确认当前会话不传历史**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -881,7 +881,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
 
 预期：第二个 ModelRequest 不含第一轮消息，Slash Command 未识别。
 
-- [ ] **Step 3：接入上下文与只读命令**
+- [x] **Step 3：接入上下文与只读命令**
 
 `InteractiveSession` 构造函数显式接收或创建：
 
@@ -913,7 +913,7 @@ self.conversation.record_run(goal, events)
 
 `/status` 每次从服务重新组合状态；`/permissions` 传入 Runtime 的实际 `command_policy`；不得读取配置副本冒充有效策略。
 
-- [ ] **Step 4：运行全部会话测试和静态检查**
+- [x] **Step 4：运行全部会话测试和静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -925,7 +925,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check \
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Task 8**
+- [x] **Step 5：提交 Task 8**
 
 ```bash
 git add src/vera/cli.py src/vera/cli_session.py \
@@ -954,7 +954,7 @@ git commit -m "feat: retain in-process Vera conversation"
 - Produces: `/model [profile]`
 - Guarantee: 压缩与模型切换都是事务式，失败保留原上下文和 Runtime
 
-- [ ] **Step 1：编写压缩和模型切换失败测试**
+- [x] **Step 1：编写压缩和模型切换失败测试**
 
 压缩成功测试：
 
@@ -979,7 +979,7 @@ def test_compact_replaces_context_only_after_success(session_fixture) -> None:
 
 再测试：空上下文 `/compact` 不调用模型；压缩失败后 snapshot 完全相等；`/model` 显示当前 profile/model；有效 profile 候选构建成功后才替换 Runtime；未知 profile 或 builder 抛错时保留原 Runtime、profile、ConversationContext。
 
-- [ ] **Step 2：运行测试并确认命令未知**
+- [x] **Step 2：运行测试并确认命令未知**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/cli/test_session.py -v
@@ -987,7 +987,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/cli/test_session.py 
 
 预期：`/compact`、`/model` 被报告为未知或不改变状态。
 
-- [ ] **Step 3：实现事务式压缩和模型切换**
+- [x] **Step 3：实现事务式压缩和模型切换**
 
 `InteractiveSession` 接收 `runtime_builder`，默认使用 `build_runtime`。`/model <profile>` 先构建局部候选：
 
@@ -1004,7 +1004,7 @@ self.store = RunStore(candidate.config.state_dir)
 
 压缩 run 使用当前 profile，不能走审批，不能包含任何工具定义。空上下文直接显示“当前上下文为空”，不创建 run。
 
-- [ ] **Step 4：运行全部 CLI、压缩和静态检查**
+- [x] **Step 4：运行全部 CLI、压缩和静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -1014,7 +1014,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff format --check src tests
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Task 9**
+- [x] **Step 5：提交 Task 9**
 
 ```bash
 git add src/vera/bootstrap.py src/vera/cli.py src/vera/cli_session.py \
@@ -1042,7 +1042,7 @@ git commit -m "feat: manage Vera context and model commands"
 - Preserves: `vera run ... --json` 无提示符、无 ANSI、审批时安全取消
 - Produces: 可复核的完整非 live 验收记录
 
-- [ ] **Step 1：补充回归与秘密边界测试**
+- [x] **Step 1：补充回归与秘密边界测试**
 
 新增测试断言：
 
@@ -1068,7 +1068,7 @@ def test_json_plain_response_contains_events_without_human_output(
 
 状态和命令输出测试设置假的 `DEEPSEEK_API_KEY=must-not-render`、假的 Base URL，断言完整 CLI 输出不包含二者。现有 JSON 审批取消、回滚和历史命令测试必须继续通过。
 
-- [ ] **Step 2：运行完整非 live 验收**
+- [x] **Step 2：运行完整非 live 验收**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -1082,7 +1082,7 @@ git diff --check
 
 全部命令必须退出码为 0。若 `uv build` 只因沙箱 DNS 无法解析 PyPI 失败，应记录该环境证据并由用户在本机重跑；不能把网络失败伪装成构建通过。
 
-- [ ] **Step 3：仓库外离线启动验收**
+- [x] **Step 3：仓库外离线启动验收**
 
 ```bash
 uv tool install --editable /Users/admin/Vera
@@ -1106,13 +1106,13 @@ vera
 
 验证启动状态包含工作区、模型、会话和安全边界，输出中没有测试 Key 或 Base URL。真实 DeepSeek 普通对话与 iOS 工程回归留给用户后续明确执行。
 
-- [ ] **Step 4：更新中文文档与验收记录**
+- [x] **Step 4：更新中文文档与验收记录**
 
 `README.md` 增加普通对话、会话内上下文和 Slash Command 示例。`docs/evals/conversational-cli-and-session-status.md` 逐项记录规格 16 条验收标准、测试数量、覆盖率、静态检查、构建、仓库外启动、未执行 live 测试和已知限制。
 
 `docs/STATUS.md` 更新当前分支、已完成能力、验证证据和下一检查点。任务状态改为 `Complete`，但只有所有检查成功后才能勾选本任务。
 
-- [ ] **Step 5：检查文档一致性和工作树**
+- [x] **Step 5：检查文档一致性和工作树**
 
 ```bash
 rg -n "Draf[t]|TB[D]|TOD[O]|no_changes_proposed|普通对话.*未实现|会话上下文.*未实现" \
@@ -1123,7 +1123,7 @@ git status --short --branch
 
 允许 `no_changes_proposed` 只出现在历史验收记录中，并必须标明它是已修复前的历史现象。不要删除历史证据。
 
-- [ ] **Step 6：提交 Task 10**
+- [x] **Step 6：提交 Task 10**
 
 ```bash
 git add README.md docs/STATUS.md \
@@ -1133,7 +1133,7 @@ git add README.md docs/STATUS.md \
 git commit -m "test: verify conversational Vera CLI"
 ```
 
-- [ ] **Step 7：合并回 main**
+- [x] **Step 7：合并回 main**
 
 在功能分支工作区干净且完整验证通过后：
 

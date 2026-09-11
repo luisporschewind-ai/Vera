@@ -8,8 +8,40 @@ from vera.contracts.approvals import ApprovalRequest
 from vera.contracts.changes import ChangeSet, FileChange
 from vera.contracts.checkpoints import CheckpointFile, CheckpointManifest
 from vera.contracts.commands import CancelRun, ResolveApproval, RollbackRun, StartRun
+from vera.contracts.conversation import ConversationMessage
 from vera.contracts.events import EventEnvelope
 from vera.contracts.verification import VerificationCommand, VerificationResult
+
+
+def test_start_run_accepts_conversation_and_round_trips() -> None:
+    command = StartRun(
+        goal="continue",
+        workspace_root=Path("/tmp/project"),
+        model_profile="fake",
+        conversation=(
+            ConversationMessage(role="user", content="inspect entry"),
+            ConversationMessage(role="assistant", content="The entry is app.py"),
+        ),
+    )
+
+    restored = StartRun.model_validate_json(command.model_dump_json())
+
+    assert restored == command
+    assert restored.mode == "agent"
+
+
+def test_legacy_start_run_defaults_to_empty_agent_conversation() -> None:
+    restored = StartRun.model_validate(
+        {
+            "schema_version": 1,
+            "goal": "inspect",
+            "workspace_root": "/tmp/project",
+            "model_profile": "fake",
+        }
+    )
+
+    assert restored.conversation == ()
+    assert restored.mode == "agent"
 
 
 def test_start_run_serializes_schema_version_and_workspace(tmp_path: Path) -> None:

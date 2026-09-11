@@ -46,10 +46,24 @@ vera
 ```
 
 Run `vera` from the project directory you want to edit. The bare command opens a
-persistent `Vera >` session; enter a natural-language task, review the emitted
-Diff, and explicitly type `approve`, `reject`, or `cancel` at each approval
-boundary. Use `/help` inside the session to list `/runs`, `/show`, `/rollback`,
-and exit commands. The one-shot `vera run "goal"` command remains available.
+persistent `Vera >` session with a compact status panel (version, model,
+workspace, Git, session, and approval boundary). You can ask ordinary questions,
+keep in-process conversation context, or request safe code changes. Review any
+emitted Diff and explicitly type `approve`, `reject`, or `cancel` at each
+approval boundary.
+
+Useful session commands:
+
+- `/help` — list commands
+- `/status` / `/context` / `/permissions` — inspect session state
+- `/new` / `/clear` — reset conversation context
+- `/compact [focus]` — summarize context through Core without tools
+- `/model [profile]` — show or switch the current model profile
+- `/runs` / `/show` / `/rollback` — inspect or roll back prior runs
+- `/exit` — leave the session
+
+The one-shot `vera run "goal"` command remains available, including `--json`
+for non-interactive Event output.
 
 Provider credentials and live tests are intentionally opt-in; no API key is printed by the CLI. Verification commands run with the current system user's permissions and always retain a separate approval boundary when required by policy.
 

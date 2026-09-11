@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import Field, model_validator
 
 from vera.contracts import ContractModel, JsonValue
+from vera.contracts.conversation import ConversationMessage
 
 
 class StartRun(ContractModel):
@@ -14,6 +15,8 @@ class StartRun(ContractModel):
     workspace_root: Path
     model_profile: str
     verification_overrides: dict[str, JsonValue] = Field(default_factory=dict)
+    conversation: tuple[ConversationMessage, ...] = ()
+    mode: Literal["agent", "compact"] = "agent"
 
 
 class ResolveApproval(ContractModel):

@@ -32,6 +32,7 @@ def test_bare_vera_starts_session_in_resolved_workspace(tmp_path: Path, monkeypa
     assert result.exit_code == 0
     assert str(workspace.resolve()) in result.stdout
     assert "Vera >" in result.stdout
+    assert "Model" in result.stdout or "Workspace" in result.stdout
 
 
 def test_bare_vera_rejects_non_directory_workspace(tmp_path: Path) -> None:
@@ -41,3 +42,22 @@ def test_bare_vera_rejects_non_directory_workspace(tmp_path: Path) -> None:
 
     assert result.exit_code != 0
     assert "工作区必须是现有目录" in result.stdout
+
+
+def test_status_and_commands_hide_provider_secrets(tmp_path: Path, monkeypatch) -> None:
+    workspace = tmp_path / "project"
+    workspace.mkdir()
+    deps = fake_dependencies(workspace, tmp_path / "state")
+    monkeypatch.setattr("vera.cli.build_runtime", lambda *_args, **_kwargs: deps)
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "must-not-render")
+    monkeypatch.setenv("VERA_DEEPSEEK_BASE_URL", "https://must-not-render.example")
+
+    result = CliRunner().invoke(
+        app,
+        ["--workspace", str(workspace), "--model", "fake"],
+        input="/status\n/context\n/permissions\n/model\n/exit\n",
+    )
+
+    assert result.exit_code == 0
+    assert "must-not-render" not in result.stdout
+    assert "https://must-not-render.example" not in result.stdout

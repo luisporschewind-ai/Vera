@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from vera.contracts.commands import ResolveApproval, RollbackRun, StartRun
 from vera.models.base import FakeModelAdapter, ModelToolCall, ModelTurn
 from vera.runtime.engine import VeraRuntime
+from vera.tools.command_policy import CommandPolicy
 from vera.tools.definitions import ToolResult
 from vera.tools.filesystem import read_file
 from vera.tools.registry import ToolRegistry
@@ -27,7 +28,12 @@ class ReadTool:
         return read_file(self.paths, arguments.path)
 
 
-def runtime_with_approved_verification(tmp_path: Path) -> VeraRuntime:
+def runtime_with_verification_command(
+    tmp_path: Path,
+    argv: tuple[str, ...],
+    *,
+    command_policy: CommandPolicy | None = None,
+) -> VeraRuntime:
     return VeraRuntime(
         FakeModelAdapter(
             [
@@ -48,14 +54,7 @@ def runtime_with_approved_verification(tmp_path: Path) -> VeraRuntime:
                                 ],
                                 "verification": [
                                     {
-                                        "argv": [
-                                            sys.executable,
-                                            "-c",
-                                            "from pathlib import Path; "
-                                            "p=Path('verified.txt'); "
-                                            "old=p.read_text() if p.exists() else ''; "
-                                            "p.write_text(old + 'x')",
-                                        ],
+                                        "argv": list(argv),
                                         "cwd": ".",
                                     }
                                 ],
@@ -67,6 +66,21 @@ def runtime_with_approved_verification(tmp_path: Path) -> VeraRuntime:
         ),
         ToolRegistry(),
         tmp_path / "state",
+        command_policy=command_policy,
+    )
+
+
+def runtime_with_approved_verification(tmp_path: Path) -> VeraRuntime:
+    return runtime_with_verification_command(
+        tmp_path,
+        (
+            sys.executable,
+            "-c",
+            "from pathlib import Path; "
+            "p=Path('verified.txt'); "
+            "old=p.read_text() if p.exists() else ''; "
+            "p.write_text(old + 'x')",
+        ),
     )
 
 
@@ -318,3 +332,23 @@ def test_new_runtime_persisted_rollback_preserves_later_user_edit(tmp_path: Path
 
     assert events[-1].type == "rollback.conflicted"
     assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "user edit\n"
+
+
+def test_runtime_uses_injected_user_allowed_command_prefix(tmp_path: Path) -> None:
+    (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
+    policy = CommandPolicy(user_allowed_prefixes=((sys.executable, "-c"),))
+    runtime = runtime_with_verification_command(
+        tmp_path,
+        (sys.executable, "-c", "print('verified')"),
+        command_policy=policy,
+    )
+
+    start_events = list(
+        runtime.handle(StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake"))
+    )
+    approval = next(event for event in start_events if event.type == "approval.required")
+    final_events = list(runtime.handle(resolve(approval, "approve")))
+
+    assert not any(event.type == "approval.required" for event in final_events)
+    assert final_events[-1].type == "run.completed"
+    assert any(event.type == "verification.completed" for event in final_events)

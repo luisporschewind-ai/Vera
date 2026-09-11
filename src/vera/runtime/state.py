@@ -26,7 +26,9 @@ class IllegalTransition(RuntimeError):
 
 ALLOWED_TRANSITIONS: dict[RunState, frozenset[RunState]] = {
     RunState.CREATED: frozenset({RunState.DISCOVERING, RunState.CANCELLED}),
-    RunState.DISCOVERING: frozenset({RunState.GENERATING, RunState.FAILED, RunState.CANCELLED}),
+    RunState.DISCOVERING: frozenset(
+        {RunState.GENERATING, RunState.COMPLETED, RunState.FAILED, RunState.CANCELLED}
+    ),
     RunState.GENERATING: frozenset(
         {RunState.DISCOVERING, RunState.CHANGESET_PROPOSED, RunState.FAILED, RunState.CANCELLED}
     ),
