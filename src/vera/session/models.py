@@ -1,0 +1,16 @@
+"""Structured session status models shared by Core and CLI."""
+
+from __future__ import annotations
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class ConversationStats(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    session_id: str
+    message_count: int = Field(ge=0)
+    context_bytes: int = Field(ge=0)
+    max_bytes: int = Field(ge=1)
+    warning: bool
+    compaction_count: int = Field(ge=0)

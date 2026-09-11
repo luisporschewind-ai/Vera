@@ -347,7 +347,7 @@ git commit -m "feat: complete conversational responses"
 - Produces: `replace_with_summary(summary: str) -> None`
 - Produces: `reset() -> str`
 
-- [ ] **Step 1：编写会话上下文失败测试**
+- [x] **Step 1：编写会话上下文失败测试**
 
 `tests/session/test_conversation.py` 至少覆盖：
 
@@ -388,7 +388,7 @@ def test_code_run_stores_summary_without_diff_or_tool_output() -> None:
 
 再覆盖：70% 警戒线、超过上限拒绝、`reset()` 更换 session ID、`replace_with_summary()` 原子替换、空摘要拒绝、失败/取消 run 的确定性简短摘要。
 
-- [ ] **Step 2：运行测试并确认 session 模块不存在**
+- [x] **Step 2：运行测试并确认 session 模块不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/session/test_conversation.py -v
@@ -396,7 +396,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/session/test_convers
 
 预期：导入 `vera.session.conversation` 或接口失败。
 
-- [ ] **Step 3：实现 ConversationContext**
+- [x] **Step 3：实现 ConversationContext**
 
 使用私有 `list[ConversationMessage]`，所有写入先构造候选列表并计算 UTF-8 字节，确认不超过 `max_bytes` 后再整体替换。`summary` 映射保持普通上下文角色，不能成为 System Prompt。
 
@@ -417,7 +417,7 @@ run run_789 失败：model_error。
 
 `reset()` 清空消息和压缩次数，并通过注入的 factory 生成新 session ID，保证测试可重复。
 
-- [ ] **Step 4：运行会话模型和静态检查**
+- [x] **Step 4：运行会话模型和静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/session/test_conversation.py -v
@@ -425,7 +425,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src/vera/session tests
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Task 3**
+- [x] **Step 5：提交 Task 3**
 
 ```bash
 git add src/vera/session tests/session \
