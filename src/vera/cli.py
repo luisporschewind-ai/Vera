@@ -12,7 +12,16 @@ from vera.cli_driver import ApprovalDecision, drive_run
 from vera.cli_presenter import HumanPresenter
 from vera.cli_session import InteractiveSession
 from vera.config import load_config
-from vera.contracts.commands import AbandonRun, InspectRecovery, ResumeRun, RollbackRun, StartRun
+from vera.contracts.commands import (
+    AbandonRun,
+    ApplyStateMigration,
+    InspectRecovery,
+    InspectState,
+    PlanStateMigration,
+    ResumeRun,
+    RollbackRun,
+    StartRun,
+)
 from vera.contracts.events import EventEnvelope
 from vera.persistence.run_store import RunStore
 
@@ -24,9 +33,11 @@ app = typer.Typer(
 runs_app = typer.Typer(help="inspect private run records")
 config_app = typer.Typer(help="inspect effective configuration")
 recover_app = typer.Typer(help="inspect and recover interrupted runs")
+state_app = typer.Typer(help="inspect and migrate private run state formats")
 app.add_typer(runs_app, name="runs")
 app.add_typer(config_app, name="config")
 app.add_typer(recover_app, name="recover")
+app.add_typer(state_app, name="state")
 
 
 class _ConsoleSessionIO:
@@ -228,6 +239,54 @@ def recover_abandon(
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
     _drive_recovery(AbandonRun(run_id=run_id), json_output)
+
+
+@state_app.command("inspect")
+def state_inspect(
+    run_id: Annotated[str | None, typer.Argument()] = None,
+    json_output: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    try:
+        deps = build_runtime(Path.cwd())
+    except Exception as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(5) from exc
+    events = list(deps.runtime.handle(InspectState(run_id=run_id)))
+    _render(events, json_output)
+    raise typer.Exit(0 if events else 5)
+
+
+@state_app.command("migrate")
+def state_migrate(
+    run_id: str,
+    json_output: Annotated[bool, typer.Option("--json")] = False,
+    apply: Annotated[bool, typer.Option("--apply")] = False,
+    migration_hash: Annotated[str | None, typer.Option("--migration-hash")] = None,
+    migration_id: Annotated[str | None, typer.Option("--migration-id")] = None,
+) -> None:
+    try:
+        deps = build_runtime(Path.cwd())
+    except Exception as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(5) from exc
+    if not apply:
+        events = list(deps.runtime.handle(PlanStateMigration(run_id=run_id)))
+        _render(events, json_output)
+        raise typer.Exit(0 if events and events[-1].type == "state.migration_planned" else 5)
+    if not migration_hash or not migration_id:
+        typer.echo("--apply 需要同时提供 --migration-id 与 --migration-hash", err=True)
+        raise typer.Exit(5)
+    events = list(
+        deps.runtime.handle(
+            ApplyStateMigration(
+                run_id=run_id,
+                migration_id=migration_id,
+                migration_hash=migration_hash,
+            )
+        )
+    )
+    _render(events, json_output)
+    raise typer.Exit(0 if events and events[-1].type == "state.migration_completed" else 5)
 
 
 @app.command()

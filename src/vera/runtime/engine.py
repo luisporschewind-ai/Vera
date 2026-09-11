@@ -14,9 +14,12 @@ from vera.config import Limits
 from vera.contracts.approvals import ApprovalRequest
 from vera.contracts.commands import (
     AbandonRun,
+    ApplyStateMigration,
     CancelRun,
     CoreCommand,
     InspectRecovery,
+    InspectState,
+    PlanStateMigration,
     ResolveApproval,
     ResumeRun,
     RollbackRun,
@@ -28,7 +31,9 @@ from vera.contracts.recovery import RecoveryClassification, RecoveryReport, Reco
 from vera.contracts.verification import VerificationCommand
 from vera.models.base import ModelAdapter, ModelMessage, ModelRequest, ModelToolCall
 from vera.persistence.journal import EventJournal
+from vera.persistence.migration import StateMigrationService
 from vera.persistence.recovery_snapshot import RecoverySnapshotError, RecoverySnapshotStore
+from vera.persistence.run_store import RunStore
 from vera.recovery.coordinator import RecoveryCoordinator
 from vera.recovery.hydrator import RecoveryHydrationError, RecoveryHydrator
 from vera.recovery.models import PersistedChangeSet, RecoverySnapshot
@@ -651,6 +656,15 @@ class VeraRuntime:
         if isinstance(command, InspectRecovery):
             yield from self._inspect_recovery(command)
             return
+        if isinstance(command, InspectState):
+            yield from self._inspect_state(command)
+            return
+        if isinstance(command, PlanStateMigration):
+            yield from self._plan_state_migration(command)
+            return
+        if isinstance(command, ApplyStateMigration):
+            yield from self._apply_state_migration(command)
+            return
         if isinstance(command, ResumeRun):
             yield from self._resume(command)
             return
@@ -744,6 +758,90 @@ class VeraRuntime:
             yield self._ephemeral_event(
                 report.run_id, "recovery.detected", self._report_payload(report), sequence
             )
+
+    def _inspect_state(self, command: InspectState) -> Iterator[EventEnvelope]:
+        store = RunStore(self.state_dir)
+        run_ids = (command.run_id,) if command.run_id else store.iter_run_ids()
+        sequence = 1
+        for run_id in run_ids:
+            if run_id is None:
+                continue
+            status = store.format_status(run_id)
+            yield self._ephemeral_event(
+                run_id,
+                "state.inspected",
+                {"run_id": run_id, "format_status": status.value},
+                sequence,
+            )
+            sequence += 1
+
+    def _plan_state_migration(self, command: PlanStateMigration) -> Iterator[EventEnvelope]:
+        service = StateMigrationService(self.state_dir)
+        try:
+            plan = service.plan(command.run_id)
+        except Exception as exc:
+            yield self._ephemeral_event(
+                command.run_id,
+                "state.migration_failed",
+                {"run_id": command.run_id, "reason_code": str(exc)},
+                1,
+            )
+            return
+        yield self._ephemeral_event(
+            command.run_id,
+            "state.migration_planned",
+            {
+                "run_id": plan.run_id,
+                "migration_id": plan.migration_id,
+                "migration_hash": plan.migration_hash,
+                "from_status": plan.from_status.value,
+                "actions": list(plan.actions),
+            },
+            1,
+        )
+
+    def _apply_state_migration(self, command: ApplyStateMigration) -> Iterator[EventEnvelope]:
+        service = StateMigrationService(self.state_dir)
+        try:
+            expected = service.plan(command.run_id)
+        except Exception as exc:
+            yield self._ephemeral_event(
+                command.run_id,
+                "state.migration_failed",
+                {"run_id": command.run_id, "reason_code": str(exc)},
+                1,
+            )
+            return
+        if expected.migration_hash != command.migration_hash:
+            yield self._ephemeral_event(
+                command.run_id,
+                "state.migration_failed",
+                {
+                    "run_id": command.run_id,
+                    "reason_code": "migration_hash_mismatch",
+                    "migration_id": command.migration_id,
+                },
+                1,
+            )
+            return
+        apply_plan = expected.model_copy(update={"migration_id": command.migration_id})
+        result = service.apply(apply_plan)
+        event_type = (
+            "state.migration_completed"
+            if result.status in {"completed", "noop"}
+            else "state.migration_failed"
+        )
+        yield self._ephemeral_event(
+            command.run_id,
+            event_type,
+            {
+                "run_id": result.run_id,
+                "migration_id": result.migration_id,
+                "status": result.status,
+                "reason_code": result.reason_code,
+            },
+            1,
+        )
 
     def _reject_resume(self, report: RecoveryReport) -> Iterator[EventEnvelope]:
         sequence = 1

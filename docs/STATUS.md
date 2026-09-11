@@ -1,52 +1,47 @@
 # Vera 状态
 
 **更新日期：** 2026-09-11
-**当前阶段：** 阶段 2——恢复、兼容性与策略扩展（任务 0005–0006 已完成，待执行 0007–0009）
-**仓库状态：** 阶段 1 已在 `main` 完成并通过人工验收；任务 0005–0006 已本地合并到 `main`；暂无远程仓库，未推送。
+**当前阶段：** 阶段 2——恢复、兼容性与策略扩展（任务 0005–0007 已完成，待执行 0008–0009）
+**仓库状态：** 任务 0005–0007 已本地合并到 `main`；暂无远程仓库，未推送。
 
 ## 已验证基线
 
 - 工作目录：`/Users/admin/Vera`
 - 当前分支：`main`
-- 初始检查点：仓库治理与 SDD 基线
-- Agent 实现：任务 0002–0006 的 Python Core、Runtime、恢复与内部 CLI；任务 0006 离线验收、本地合并已完成
+- Agent 实现：任务 0002–0007 的 Core、Runtime、恢复、版本化 Codec 与内部 CLI
 - 依赖清单：`pyproject.toml`、`.python-version`、`uv.lock`
 
 ## 已完成任务
 
 - [任务 0001：建立 Vera 仓库](tasks/0001-bootstrap-repository.md)
-- 任务 0002 的离线实现与验收步骤已完成；更广泛真实供应商评测仍开放
-- [任务 0003：交互式 CLI 会话](tasks/0003-interactive-cli-session.md)
-- [任务 0004：普通对话、会话上下文与状态命令](tasks/0004-conversational-cli-and-session-status.md)
+- 任务 0002–0004：Core / CLI / 会话
 - [任务 0005：恢复事实与只读分类](tasks/0005-recovery-facts-and-classification.md)
 - [任务 0006：安全续跑与部分写入恢复](tasks/0006-safe-run-resume-and-recovery.md)
+- [任务 0007：版本化 Codec 与兼容迁移](tasks/0007-versioned-codecs-and-migration.md)
 
 ## 活动任务
 
 - [阶段二执行顺序](tasks/phase-2-execution-order.md)
-- 后续依次执行任务 0007–0009
+- 后续依次执行任务 0008–0009
 
 ## 最近验证
 
-- 任务 0006：跨 Runtime Resume/Abandon、部分写入 `kind=recovery` 审批恢复、failpoint E2E、CLI `/resume` `/abandon` 与 `vera recover resume|abandon --json`
-- 任务 0006 离线验收：210 项非 live 测试通过、2 项 live 排除，覆盖率 90%；Ruff、格式、Mypy、包构建通过
-- 凭据边界：自动验收没有读取或使用用户 DeepSeek/GLM API Key，没有运行 live 测试；Resume 不调用 ModelAdapter
-- Git：已本地合并 `feature/safe-run-resume-recovery`，未推送（无 remote）
-- 验收记录：[安全续跑与部分写入恢复](evals/safe-run-resume-and-recovery.md)
-- 任务 0005：原子 `RecoverySnapshot`、六类只读恢复分类、损坏隔离、legacy 标记、CLI `/recover` 与 `vera recover list|show`
+- 任务 0007：`ContractCodec` / `JournalCodec` / `SnapshotCodec`、`RunManifest`、legacy fixture、损坏/未来隔离、`vera state inspect|migrate`
+- 任务 0007 离线验收：235 项非 live 测试通过、2 项 live 排除，覆盖率 90%；Ruff、格式、Mypy、包构建通过
+- 凭据边界：未读取真实 DeepSeek/GLM Key，未运行 live
+- Git：已本地合并 `feature/versioned-state-codecs`，未推送（无 remote）
+- 验收记录：[版本化 Codec 与兼容迁移](evals/versioned-codecs-and-migration.md)
 
 ## 已接受方向
 
 - 正式开发只在本仓库进行。
-- `/Users/admin/Coding-harness` 保持只读，仅作为原型参考。
-- 产品交付遵循 Core-first、内部 CLI-first、桌面 later。
-- 公开发布前先完成私有稳定性和评测证据。
-- Runtime、Command/Event 契约、私有状态与 Checkpoint，以及进程内会话上下文设计已通过 ADR 接受。
+- `/Users/admin/Coding-harness` 保持只读。
+- Core-first、内部 CLI-first、桌面 later。
 - 阶段二采用确定性恢复、版本化 Codec、统一 PolicyEngine 和 ModelAdapter 有限重试设计。
 
 ## 仍待决策
 
-- 更广泛的供应商行为和真实供应商评测阈值
+- 更广泛的供应商行为和真实供应商评测频率
 - 评测语料与阈值
 - 桌面框架
 - 许可证与发布策略
@@ -54,4 +49,4 @@
 
 ## 下一检查点
 
-Cursor 从最新 `main` 创建 `feature/versioned-state-codecs`，按任务 0007 继续实施。任务 0007–0009 全部完成且阶段二 12 条退出条件有证据后，再处理阶段三规划分支；不提前进入桌面端。
+从最新 `main` 创建 `feature/unified-policy-engine`，执行任务 0008。阶段二 12 条退出条件证据齐备前，不开始阶段三实现。

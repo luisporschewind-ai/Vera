@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-import json
 import os
 import re
 from collections.abc import Callable
 from pathlib import Path
 
+from vera.persistence.errors import StateVersionError
+from vera.persistence.snapshot_codec import SnapshotCodec
 from vera.recovery.models import RecoverySnapshot
 
 _SAFE_RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
@@ -31,10 +32,12 @@ class RecoverySnapshotStore:
         state_dir: Path,
         replace: Callable[[Path, Path], None] = os.replace,
         fsync: Callable[[int], None] = os.fsync,
+        codec: SnapshotCodec | None = None,
     ) -> None:
         self.state_dir = state_dir
         self._replace = replace
         self._fsync = fsync
+        self._codec = codec or SnapshotCodec()
 
     def exists(self, run_id: str) -> bool:
         self._assert_safe_run_id(run_id)
@@ -46,7 +49,9 @@ class RecoverySnapshotStore:
         if not path.is_file():
             raise RecoverySnapshotError("missing_snapshot")
         try:
-            return RecoverySnapshot.model_validate_json(path.read_text(encoding="utf-8"))
+            return self._codec.decode(path.read_bytes())
+        except StateVersionError as exc:
+            raise RecoverySnapshotError(exc.code) from exc
         except RecoverySnapshotError:
             raise
         except Exception as exc:
@@ -59,14 +64,9 @@ class RecoverySnapshotStore:
         os.chmod(directory, 0o700)
         target = directory / "recovery.json"
         temporary = directory / "recovery.json.tmp"
-        payload = json.dumps(
-            snapshot.model_dump(mode="json"),
-            ensure_ascii=False,
-            sort_keys=True,
-            separators=(",", ":"),
-        )
+        payload = self._codec.encode(snapshot)
         try:
-            with temporary.open("w", encoding="utf-8") as handle:
+            with temporary.open("wb") as handle:
                 handle.write(payload)
                 handle.flush()
                 self._fsync(handle.fileno())

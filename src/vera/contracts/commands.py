@@ -59,6 +59,32 @@ class AbandonRun(ContractModel):
     run_id: str
 
 
+class InspectState(ContractModel):
+    schema_version: Literal[1] = 1
+    run_id: str | None = None
+
+
+class PlanStateMigration(ContractModel):
+    schema_version: Literal[1] = 1
+    run_id: str
+
+
+class ApplyStateMigration(ContractModel):
+    schema_version: Literal[1] = 1
+    run_id: str
+    migration_id: str
+    migration_hash: str
+
+
 type CoreCommand = (
-    StartRun | ResolveApproval | CancelRun | RollbackRun | InspectRecovery | ResumeRun | AbandonRun
+    StartRun
+    | ResolveApproval
+    | CancelRun
+    | RollbackRun
+    | InspectRecovery
+    | ResumeRun
+    | AbandonRun
+    | InspectState
+    | PlanStateMigration
+    | ApplyStateMigration
 )

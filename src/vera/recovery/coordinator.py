@@ -9,9 +9,10 @@ from vera.contracts.recovery import (
     RecoveryReport,
     RecoveryStage,
 )
-from vera.persistence.journal import EventJournal, JournalCorrupt
+from vera.persistence.errors import JournalCorrupt
+from vera.persistence.journal import EventJournal
 from vera.persistence.recovery_snapshot import RecoverySnapshotError, RecoverySnapshotStore
-from vera.persistence.run_store import RunStore
+from vera.persistence.run_store import RunFormatStatus, RunStore
 from vera.recovery.classifier import RecoveryClassifier
 from vera.recovery.probe import WorkspaceEvidenceProbe
 from vera.workspace.checkpoint import CheckpointStore
@@ -63,6 +64,11 @@ class RecoveryCoordinator:
             return self._manual(run_id, "invalid_snapshot")
 
     def _classify_run(self, run_id: str) -> RecoveryReport | None:
+        status = self.run_store.format_status(run_id)
+        if status is RunFormatStatus.UNSUPPORTED:
+            return self._manual(run_id, "unsupported_version")
+        if status is RunFormatStatus.CORRUPT:
+            return self._manual(run_id, "invalid_snapshot")
         event_path = self.state_dir / "runs" / run_id / "events.jsonl"
         if not event_path.is_file():
             if self.snapshot_store.exists(run_id):
