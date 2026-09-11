@@ -2,7 +2,7 @@
 
 > **供 Agent 执行：** REQUIRED SUB-SKILL: 使用 `superpowers:executing-plans` 按 Task 顺序实施；只使用一个主实现 Agent，每个生产增量独立提交。
 
-**状态：** Planned
+**状态：** Done
 
 **目标分支：** `feature/eval-contracts-fixtures`
 
@@ -272,7 +272,7 @@ git commit -m "feat: isolate evaluation fixtures"
 - Modify: `docs/STATUS.md`
 - Modify: `docs/tasks/0015-eval-contracts-and-fixtures.md`
 
-- [ ] **Step 1：运行完整质量门禁**
+- [x] **Step 1：运行完整质量门禁**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest -m "not live" --cov=vera --cov-report=term-missing
@@ -283,7 +283,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv build
 git diff --check
 ```
 
-- [ ] **Step 2：记录证据并提交**
+- [x] **Step 2：记录证据并提交**
 
 记录 schema、manifest 负例、隔离路径、测试数、覆盖率、未运行 live 和未读取 Key；把任务状态改为 `Done`。
 
@@ -292,7 +292,7 @@ git add docs/evals/eval-contracts-and-fixtures.md docs/STATUS.md docs/tasks/0015
 git commit -m "test: verify evaluation contracts and isolation"
 ```
 
-- [ ] **Step 3：本地合并并复核**
+- [x] **Step 3：本地合并并复核**
 
 ```bash
 git switch main
