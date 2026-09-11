@@ -1,8 +1,8 @@
 # Vera 状态
 
 **更新日期：** 2026-09-11
-**当前阶段：** 阶段 1——Core 契约、安全编辑垂直切片与交互式 CLI
-**仓库状态：** Core 垂直切片与交互式 CLI 已合并到 `main`；离线验收完成；暂无远程仓库。
+**当前阶段：** 阶段 1——Core 契约、安全编辑垂直切片与对话式 CLI
+**仓库状态：** 安全编辑与交互式 CLI 已合并到 `main`；普通对话、会话上下文与状态命令规格已接受，实施计划待转交 Cursor；暂无远程仓库。
 
 ## 已验证基线
 
@@ -24,7 +24,9 @@
 - [任务 0002：Core 安全编辑垂直切片](tasks/0002-core-safe-editing-vertical-slice.md)
 - [交互式 CLI 会话规格](specs/2026-09-10-interactive-cli-session.md)
 - [任务 0003：交互式 CLI 会话](tasks/0003-interactive-cli-session.md)
-- 当前检查点：交互式 CLI 实现与离线验收完成
+- [普通对话、会话上下文与状态命令规格](specs/2026-09-11-conversational-cli-and-session-status.md)
+- [任务 0004：普通对话、会话上下文与状态命令](tasks/0004-conversational-cli-and-session-status.md)
+- 当前检查点：规格与 ADR 已接受；详细实施计划已完成，等待 Cursor 执行
 
 ## 最近验证
 
@@ -71,4 +73,4 @@
 
 ## 下一检查点
 
-下一检查点是为普通对话终态和 CLI 启动状态面板建立中文规格，确认后以新任务实施。
+下一检查点是 Cursor 按任务 0004 从 `main` 创建功能分支，以 TDD 完成普通对话、进程内会话上下文、启动状态和核心 Slash Command；完成后运行完整非 live 验收并本地合并回 `main`。

@@ -1,6 +1,6 @@
 # Vera 普通对话、会话上下文与状态命令规格
 
-**状态：** Draft  
+**状态：** Accepted
 **日期：** 2026-09-11
 
 ## 目标
@@ -241,4 +241,5 @@ Vera > 把刚才提到的背景色改成红色
 - [Gemini CLI 官方 Commands](https://github.com/google-gemini/gemini-cli/blob/main/docs/reference/commands.md)
 - [交互式 CLI 会话规格](2026-09-10-interactive-cli-session.md)
 - [ADR-0002：Command → VeraRuntime → Event 公共契约](../decisions/ADR-0002-command-event-contract.md)
-- 本规格通过书面确认后创建新的实施任务与必要 ADR。
+- [ADR-0004：进程内会话上下文与状态边界](../decisions/ADR-0004-ephemeral-conversation-context.md)
+- [任务 0004：普通对话、会话上下文与状态命令实施计划](../tasks/0004-conversational-cli-and-session-status.md)
