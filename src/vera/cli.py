@@ -12,7 +12,7 @@ from vera.cli_driver import ApprovalDecision, drive_run
 from vera.cli_presenter import HumanPresenter
 from vera.cli_session import InteractiveSession
 from vera.config import load_config
-from vera.contracts.commands import InspectRecovery, RollbackRun, StartRun
+from vera.contracts.commands import AbandonRun, InspectRecovery, ResumeRun, RollbackRun, StartRun
 from vera.contracts.events import EventEnvelope
 from vera.persistence.run_store import RunStore
 
@@ -23,7 +23,7 @@ app = typer.Typer(
 )
 runs_app = typer.Typer(help="inspect private run records")
 config_app = typer.Typer(help="inspect effective configuration")
-recover_app = typer.Typer(help="inspect interrupted runs")
+recover_app = typer.Typer(help="inspect and recover interrupted runs")
 app.add_typer(runs_app, name="runs")
 app.add_typer(config_app, name="config")
 app.add_typer(recover_app, name="recover")
@@ -75,14 +75,30 @@ def _render(events: list[EventEnvelope], json_output: bool) -> None:
 def _exit_code(events: list[EventEnvelope]) -> int:
     if not events:
         return 5
-    terminal = events[-1].type
-    return {
-        "run.completed": 0,
+    last = events[-1]
+    if last.type == "run.completed":
+        if last.payload.get("state") == "verification_failed":
+            return 3
+        return 0
+    mapping = {
+        "recovery.abandoned": 0,
         "run.cancelled": 2,
         "run.failed": 4,
         "rollback.completed": 0,
         "rollback.conflicted": 4,
-    }.get(terminal, 0)
+        "recovery.manual_required": 5,
+    }
+    if last.type in mapping:
+        return mapping[last.type]
+    if last.type == "recovery.detected" and last.payload.get("classification") in {
+        "manual_required",
+        "legacy_not_resumable",
+        "recoverable_partial_apply",
+    }:
+        return 5
+    if last.type == "approval.required" and last.payload.get("kind") == "recovery":
+        return 5
+    return 0
 
 
 def execute_run(
@@ -169,6 +185,49 @@ def recover_show(
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
     _inspect_recovery(run_id, json_output)
+
+
+def _drive_recovery(command: InspectRecovery | ResumeRun | AbandonRun, json_output: bool) -> None:
+    try:
+        deps = build_runtime(Path.cwd())
+    except Exception as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(5) from exc
+    presenter = HumanPresenter(typer.echo)
+
+    def decide(request: EventEnvelope) -> ApprovalDecision:
+        if json_output or not sys.stdin.isatty():
+            return "cancel"
+        decision = typer.prompt(presenter.approval_prompt(request))
+        if decision not in {"approve", "reject", "cancel"}:
+            raise typer.BadParameter("必须明确输入 approve、reject 或 cancel")
+        return cast(ApprovalDecision, decision)
+
+    events = list(
+        drive_run(
+            deps.runtime,
+            command,
+            decide,
+            lambda batch: _render(list(batch), json_output),
+        )
+    )
+    raise typer.Exit(_exit_code(events) if events else 5)
+
+
+@recover_app.command("resume")
+def recover_resume(
+    run_id: str,
+    json_output: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    _drive_recovery(ResumeRun(run_id=run_id), json_output)
+
+
+@recover_app.command("abandon")
+def recover_abandon(
+    run_id: str,
+    json_output: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    _drive_recovery(AbandonRun(run_id=run_id), json_output)
 
 
 @app.command()

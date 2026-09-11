@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from typing import Literal
 
-from vera.contracts.commands import CancelRun, CoreCommand, ResolveApproval, StartRun
+from vera.contracts.commands import CancelRun, CoreCommand, ResolveApproval
 from vera.contracts.events import EventEnvelope
 from vera.runtime.engine import VeraRuntime
 
@@ -14,7 +14,7 @@ type EventBatchHandler = Callable[[tuple[EventEnvelope, ...]], None]
 
 def drive_run(
     runtime: VeraRuntime,
-    start: StartRun,
+    start: CoreCommand,
     decide: DecisionProvider,
     on_events: EventBatchHandler,
 ) -> tuple[EventEnvelope, ...]:

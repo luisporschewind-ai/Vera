@@ -1,15 +1,15 @@
 # Vera 状态
 
 **更新日期：** 2026-09-11
-**当前阶段：** 阶段 2——恢复、兼容性与策略扩展（任务 0005 已完成，待执行 0006–0009）
-**仓库状态：** 阶段 1 已在 `main` 完成并通过人工验收；任务 0005 已本地合并到 `main`；暂无远程仓库，未推送。
+**当前阶段：** 阶段 2——恢复、兼容性与策略扩展（任务 0005–0006 已完成，待执行 0007–0009）
+**仓库状态：** 阶段 1 已在 `main` 完成并通过人工验收；任务 0005–0006 已本地合并到 `main`；暂无远程仓库，未推送。
 
 ## 已验证基线
 
 - 工作目录：`/Users/admin/Vera`
 - 当前分支：`main`
 - 初始检查点：仓库治理与 SDD 基线
-- Agent 实现：任务 0002–0004 的 Python Core、Runtime 和内部 CLI；任务 0004 离线验收、本地合并与用户人工验收已完成
+- Agent 实现：任务 0002–0006 的 Python Core、Runtime、恢复与内部 CLI；任务 0006 离线验收、本地合并已完成
 - 依赖清单：`pyproject.toml`、`.python-version`、`uv.lock`
 
 ## 已完成任务
@@ -19,20 +19,21 @@
 - [任务 0003：交互式 CLI 会话](tasks/0003-interactive-cli-session.md)
 - [任务 0004：普通对话、会话上下文与状态命令](tasks/0004-conversational-cli-and-session-status.md)
 - [任务 0005：恢复事实与只读分类](tasks/0005-recovery-facts-and-classification.md)
+- [任务 0006：安全续跑与部分写入恢复](tasks/0006-safe-run-resume-and-recovery.md)
 
 ## 活动任务
 
 - [阶段二执行顺序](tasks/phase-2-execution-order.md)
-- 后续依次执行任务 0006–0009
+- 后续依次执行任务 0007–0009
 
 ## 最近验证
 
+- 任务 0006：跨 Runtime Resume/Abandon、部分写入 `kind=recovery` 审批恢复、failpoint E2E、CLI `/resume` `/abandon` 与 `vera recover resume|abandon --json`
+- 任务 0006 离线验收：210 项非 live 测试通过、2 项 live 排除，覆盖率 90%；Ruff、格式、Mypy、包构建通过
+- 凭据边界：自动验收没有读取或使用用户 DeepSeek/GLM API Key，没有运行 live 测试；Resume 不调用 ModelAdapter
+- Git：已本地合并 `feature/safe-run-resume-recovery`，未推送（无 remote）
+- 验收记录：[安全续跑与部分写入恢复](evals/safe-run-resume-and-recovery.md)
 - 任务 0005：原子 `RecoverySnapshot`、六类只读恢复分类、损坏隔离、legacy 标记、CLI `/recover` 与 `vera recover list|show`
-- 任务 0005 离线验收：171 项非 live 测试通过、2 项 live 排除，覆盖率 91%；Ruff、格式、Mypy、包构建通过
-- 凭据边界：自动验收没有读取或使用用户 DeepSeek/GLM API Key，没有运行 live 测试；扫描与 InspectRecovery 不写工作区、不调用模型
-- Git：已本地合并 `feature/recovery-facts-classification`，未推送（无 remote）
-- 验收记录：[恢复事实与只读分类](evals/recovery-facts-and-classification.md)
-- 任务 0004：普通文本 `assistant.message` + `outcome=responded`；进程内 `ConversationContext`；`/new`、`/clear`、`/context`、`/status`、`/permissions`、`/compact`、`/model`
 
 ## 已接受方向
 
@@ -53,4 +54,4 @@
 
 ## 下一检查点
 
-Cursor 从最新 `main` 创建 `feature/safe-run-resume-recovery`，按任务 0006 继续实施。任务 0006–0009 全部完成后进入阶段三评测，不提前进入桌面端。
+Cursor 从最新 `main` 创建 `feature/versioned-state-codecs`，按任务 0007 继续实施。任务 0007–0009 全部完成且阶段二 12 条退出条件有证据后，再处理阶段三规划分支；不提前进入桌面端。

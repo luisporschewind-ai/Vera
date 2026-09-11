@@ -98,3 +98,78 @@ def make_snapshot(
         updated_at=now,
         vera_version="0.1.0",
     )
+
+
+class PartialRecoveryFixture:
+    def __init__(self, tmp_path: Path, *, installation_id: str = "install-1") -> None:
+        from vera.persistence.journal import EventJournal
+        from vera.persistence.recovery_snapshot import RecoverySnapshotStore
+        from vera.recovery.classifier import RecoveryClassifier
+        from vera.recovery.models import PersistedChangeSet
+        from vera.recovery.probe import WorkspaceEvidenceProbe, workspace_identity
+        from vera.redaction import Redactor
+        from vera.workspace.apply import ChangeApplier
+        from vera.workspace.changeset import ChangeProposal, ChangeSetBuilder
+        from vera.workspace.checkpoint import CheckpointStore
+        from vera.workspace.paths import WorkspacePaths
+
+        self.workspace = tmp_path / "workspace"
+        self.workspace.mkdir()
+        self.before_file = self.workspace / "keep.txt"
+        self.after_file = self.workspace / "restore.txt"
+        self.before_file.write_text("before-a\n", encoding="utf-8")
+        self.after_file.write_text("before-b\n", encoding="utf-8")
+        self.state_dir = tmp_path / "state"
+        self.installation_id = installation_id
+        paths = WorkspacePaths(self.workspace)
+        self.built = ChangeSetBuilder(paths).build(
+            "run_1",
+            "edit",
+            [
+                ChangeProposal(operation="update", path="keep.txt", after_content="after-a\n"),
+                ChangeProposal(operation="update", path="restore.txt", after_content="after-b\n"),
+            ],
+            [],
+        )
+        checkpoint_store = CheckpointStore(self.state_dir, paths)
+        self.manifest = checkpoint_store.create(self.built.change_set)
+        self.after_file.write_text("after-b\n", encoding="utf-8")
+        journal = EventJournal(self.state_dir, "run_1", Redactor([]))
+        journal.append(
+            "run.started",
+            {
+                "goal": "edit",
+                "workspace_root": str(self.workspace),
+                "model_profile": "fake",
+                "kind": "task",
+            },
+        )
+        journal.append("checkpoint.created", {"checkpoint_id": self.manifest.checkpoint_id})
+        journal.append("apply.interrupted", {"path": "restore.txt"})
+        now = datetime.now(UTC)
+        self.snapshot = RecoverySnapshot(
+            run_id="run_1",
+            workspace_root=self.workspace,
+            workspace_identity=workspace_identity(self.workspace, installation_id),
+            command=StartRun(goal="edit", workspace_root=self.workspace, model_profile="fake"),
+            stage=RecoveryStage.CHECKPOINT_READY,
+            last_event_sequence=3,
+            built_changeset=PersistedChangeSet.from_built(self.built),
+            checkpoint_id=self.manifest.checkpoint_id,
+            pending_approval=None,
+            workspace_write_started=True,
+            created_at=now,
+            updated_at=now,
+            vera_version="0.1.0",
+        )
+        RecoverySnapshotStore(self.state_dir).save(self.snapshot)
+        probe = WorkspaceEvidenceProbe(installation_id)
+        evidence = probe.inspect(self.snapshot)
+        self.report = RecoveryClassifier().classify(
+            self.snapshot,
+            evidence,
+            identity_matches=True,
+            workspace_available=True,
+            checkpoint_available=True,
+        )
+        self.applier = ChangeApplier(paths, checkpoint_store)

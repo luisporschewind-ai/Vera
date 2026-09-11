@@ -2,7 +2,7 @@
 
 > **供 Cursor Agent 执行：** 使用单一主实现 Agent，按顺序执行。每项行为先写失败测试，再做最小实现并独立提交；禁止并行编辑同一工作树。
 
-**状态：** Planned
+**状态：** Done
 
 **目标分支：** `feature/safe-run-resume-recovery`
 
@@ -73,7 +73,7 @@ tests/
 - Produces: `RecoverySnapshot.recovery_plan: RecoveryPlan | None = None`
 - Produces: `RunContext.pending_recovery_plan: RecoveryPlan | None = None`
 
-- [ ] **Step 1：编写契约与恢复审批失败测试**
+- [x] **Step 1：编写契约与恢复审批失败测试**
 
 ```python
 def test_resume_and_abandon_are_core_commands() -> None:
@@ -97,18 +97,18 @@ def test_restored_gate_rejects_wrong_recovery_hash(recovery_request) -> None:
         )
 ```
 
-- [ ] **Step 2：运行测试并确认命令和 kind 不存在**
+- [x] **Step 2：运行测试并确认命令和 kind 不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
   tests/contracts/test_recovery_models.py tests/runtime/test_approval.py -v
 ```
 
-- [ ] **Step 3：实现向后兼容扩展**
+- [x] **Step 3：实现向后兼容扩展**
 
 `ApprovalRequest.kind` 扩为 `Literal["changeset", "command", "recovery"]`。`ApprovalGate.restore()` 校验 request.run_id 与 gate run_id，不生成新 ID。`RecoveryPlan.recovery_hash` 对规范化 workspace identity、有序 path、before/after/current hash 和目标动作计算 SHA-256。
 
-- [ ] **Step 4：运行契约与静态检查**
+- [x] **Step 4：运行契约与静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/contracts tests/runtime/test_approval.py -v
@@ -116,7 +116,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src/vera/contracts src
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交恢复动作契约**
+- [x] **Step 5：提交恢复动作契约**
 
 ```bash
 git add src/vera/contracts src/vera/recovery/models.py src/vera/runtime/context.py \
@@ -141,7 +141,7 @@ git commit -m "feat: define resumable recovery commands"
 - Produces: `PersistedChangeSet.to_built() -> BuiltChangeSet`
 - Produces: `RecoveryHydrator.hydrate(snapshot, journal) -> RunContext`
 
-- [ ] **Step 1：编写审批与验证边界重建测试**
+- [x] **Step 1：编写审批与验证边界重建测试**
 
 ```python
 def test_hydrate_changeset_approval_restores_exact_context(snapshot, journal) -> None:
@@ -160,19 +160,19 @@ def test_hydrate_refuses_in_flight_verification(snapshot_factory, journal) -> No
 
 再覆盖 verification_index、verification_failed、checkpoint manifest 缺失、Journal sequence 与 Snapshot 不一致、intended bytes hash 不符。
 
-- [ ] **Step 2：运行测试并确认 Hydrator 不存在**
+- [x] **Step 2：运行测试并确认 Hydrator 不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/recovery/test_hydrator.py -v
 ```
 
-- [ ] **Step 3：实现最小重建**
+- [x] **Step 3：实现最小重建**
 
 Hydrator 只接受 `resumable_approval` 和 `resumable_verification` 对应 Snapshot。审批阶段恢复 `RunState.AWAITING_APPROVAL`；验证阶段恢复 `RunState.VERIFYING`。不恢复 model messages 或 tool loop；`messages=[]`，因为续跑路径禁止进入 `_drive()`。
 
 `PersistedChangeSet.to_built()` 严格 Base64 解码 intended bytes，并再次核对 FileChange.after_hash。
 
-- [ ] **Step 4：运行恢复与 ChangeSet 回归**
+- [x] **Step 4：运行恢复与 ChangeSet 回归**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -181,7 +181,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src/vera/recovery src/
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Hydrator**
+- [x] **Step 5：提交 Hydrator**
 
 ```bash
 git add src/vera/recovery/hydrator.py src/vera/workspace/changeset.py \
@@ -208,7 +208,7 @@ git commit -m "feat: rehydrate stable Vera runs"
 - Consumes: `ResumeRun`
 - Produces: `recovery.resume_started`、`recovery.resumed`、`approval.invalidated`
 
-- [ ] **Step 1：编写跨 Runtime resume 测试**
+- [x] **Step 1：编写跨 Runtime resume 测试**
 
 ```python
 def test_new_runtime_resumes_changeset_approval(recovery_fixture) -> None:
@@ -228,20 +228,20 @@ def test_new_runtime_resumes_changeset_approval(recovery_fixture) -> None:
 
 再批准 pending，断言只创建一次 Checkpoint、只应用一次 Change Set。验证恢复测试从新 Runtime 继续 `verification_index`，只运行未完成且不在 in-flight 状态的命令。
 
-- [ ] **Step 2：运行测试并确认新 Runtime 找不到 run**
+- [x] **Step 2：运行测试并确认新 Runtime 找不到 run**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
   tests/recovery/test_resume.py tests/runtime/test_recovery_resume.py -v
 ```
 
-- [ ] **Step 3：实现 resume 分派**
+- [x] **Step 3：实现 resume 分派**
 
 `VeraRuntime.handle(ResumeRun)` 必须先 `prepare_resume()` 重新分类，再 hydrate。对于 resumable_approval，发出 `recovery.resume_started` 后重新发出同一 pending `approval.required`；对于 resumable_verification，直接进入 `_verify()`。结束后发 `recovery.resumed`。其他分类只发 recovery.detected 或 manual_required，不建立内存 run。
 
 重复 Resume 若 run 已在当前 `self.runs` 或 Journal 已终止，返回当前报告，不重复动作。
 
-- [ ] **Step 4：运行 Runtime 与 CLI driver 回归**
+- [x] **Step 4：运行 Runtime 与 CLI driver 回归**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/runtime tests/recovery tests/cli/test_driver.py -v
@@ -249,7 +249,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src tests/runtime test
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交安全续跑**
+- [x] **Step 5：提交安全续跑**
 
 ```bash
 git add src/vera/recovery src/vera/runtime/engine.py \
@@ -277,7 +277,7 @@ git commit -m "feat: resume stable Vera runs"
 - Produces: `ChangeApplier.restore_partial(plan, manifest) -> RollbackResult`
 - Produces: `recovery.restore_proposed`、`recovery.restored`
 
-- [ ] **Step 1：编写精确恢复和冲突测试**
+- [x] **Step 1：编写精确恢复和冲突测试**
 
 ```python
 def test_partial_restore_only_reverts_after_files(partial_fixture) -> None:
@@ -291,14 +291,14 @@ def test_partial_restore_only_reverts_after_files(partial_fixture) -> None:
 
 再覆盖恢复前文件变为 UNKNOWN、Checkpoint blob 损坏、恢复中 writer 失败、重复批准、错误 recovery_hash。断言 UNKNOWN 时零文件写入。
 
-- [ ] **Step 2：运行测试并确认部分恢复接口不存在**
+- [x] **Step 2：运行测试并确认部分恢复接口不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
   tests/recovery/test_planner.py tests/workspace/test_partial_recovery.py -v
 ```
 
-- [ ] **Step 3：实现计划与 recovery approval**
+- [x] **Step 3：实现计划与 recovery approval**
 
 `ResumeRun` 遇到 recoverable_partial_apply 时生成 plan，追加 `recovery.restore_proposed`，并把 plan 写入稳定 Snapshot，再通过以下调用发出现有 `approval.required`：
 
@@ -316,7 +316,7 @@ request = context.approval_gate.require(
 
 `restore_partial` 预检所有路径后，只把 AFTER 文件恢复为 BEFORE；已经 BEFORE 的文件保持不动。任一预检失败时整体不写。
 
-- [ ] **Step 4：运行恢复与 Workspace 全回归**
+- [x] **Step 4：运行恢复与 Workspace 全回归**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/recovery tests/workspace tests/runtime -v
@@ -324,7 +324,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src tests/recovery tes
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交部分恢复**
+- [x] **Step 5：提交部分恢复**
 
 ```bash
 git add src/vera/recovery src/vera/runtime/engine.py src/vera/workspace/apply.py \
@@ -349,7 +349,7 @@ git commit -m "feat: restore partial changes with approval"
 - Modify: `README.md`
 - Modify: `docs/STATUS.md`
 
-- [ ] **Step 1：编写 abandon 和 CLI 测试**
+- [x] **Step 1：编写 abandon 和 CLI 测试**
 
 ```python
 def test_abandon_only_accepts_safe_to_abandon(recovery_runtime) -> None:
@@ -362,15 +362,15 @@ def test_abandon_only_accepts_safe_to_abandon(recovery_runtime) -> None:
 
 CLI 覆盖 `/resume`、`/abandon`、`vera recover resume/abandon --json`、审批 EOF 安全取消、退出码 0/2/3/4/5 和输出脱敏。
 
-- [ ] **Step 2：编写真实跨实例 failpoint 测试**
+- [x] **Step 2：编写真实跨实例 failpoint 测试**
 
 `tests/e2e/test_crash_recovery.py` 使用参数化 failpoint，在 Change Set 审批、Checkpoint、每文件应用、changeset.applied、verification.started/completed 处抛出 `SimulatedCrash`。每次丢弃旧 Runtime，创建新 Runtime 扫描；断言分类、允许动作和文件字节。不要复用旧 `RunContext`。
 
-- [ ] **Step 3：实现 Abandon 与 CLI 命令**
+- [x] **Step 3：实现 Abandon 与 CLI 命令**
 
 Abandon 每次重新分类，只接受 safe_to_abandon；追加 `recovery.abandoned` 和终止 Snapshot。CLI Help 增加恢复命令，所有人类输出来自 Event Presenter。
 
-- [ ] **Step 4：运行完整离线验收**
+- [x] **Step 4：运行完整离线验收**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -384,7 +384,7 @@ git diff --check
 
 所有检查通过且覆盖率不低于 90%。
 
-- [ ] **Step 5：记录证据并提交**
+- [x] **Step 5：记录证据并提交**
 
 验收记录逐项写明跨实例恢复、部分写入审批、in-flight 人工处理、幂等性、退出码、测试数和未执行 live。任务标记 Complete，STATUS 指向 0007。
 
@@ -397,7 +397,7 @@ git add src/vera/runtime/engine.py src/vera/cli.py src/vera/cli_presenter.py \
 git commit -m "test: verify safe run recovery"
 ```
 
-- [ ] **Step 6：合并回 main 并复核**
+- [x] **Step 6：合并回 main 并复核**
 
 ```bash
 git switch main

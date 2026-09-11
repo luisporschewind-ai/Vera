@@ -11,7 +11,7 @@ from vera.bootstrap import RuntimeBuilder, RuntimeDependencies, build_runtime
 from vera.cli_driver import ApprovalDecision, drive_run
 from vera.cli_presenter import HumanPresenter
 from vera.cli_session_presenter import SessionPresenter
-from vera.contracts.commands import InspectRecovery, RollbackRun, StartRun
+from vera.contracts.commands import AbandonRun, InspectRecovery, ResumeRun, RollbackRun, StartRun
 from vera.contracts.events import EventEnvelope
 from vera.contracts.recovery import RecoveryClassification
 from vera.persistence.run_store import RunStore
@@ -74,6 +74,8 @@ class InteractiveSession:
                 return 0
             if value.startswith("/"):
                 self._handle_command(value)
+                if self._exit_after_run:
+                    return 0
                 continue
             self._run_goal(value)
             if self._exit_after_run:
@@ -167,7 +169,11 @@ class InteractiveSession:
             self._rollback(args[0])
         elif command == "/recover" and len(args) <= 1:
             self._recover(args[0] if args else None)
-        elif command in {"/show", "/rollback"}:
+        elif command == "/resume" and len(args) == 1:
+            self._resume(args[0])
+        elif command == "/abandon" and len(args) == 1:
+            self._abandon(args[0])
+        elif command in {"/show", "/rollback", "/resume", "/abandon"}:
             self.io.write(f"用法：{command} <run-id>")
         elif command == "/model":
             self.io.write("用法：/model [profile]")
@@ -181,6 +187,8 @@ class InteractiveSession:
             "/compact",
             "/runs",
             "/recover",
+            "/resume",
+            "/abandon",
             "/exit",
             "/quit",
         }:
@@ -255,6 +263,8 @@ class InteractiveSession:
             "  /show <run-id>         显示任务事件\n"
             "  /rollback <run-id>     安全回滚任务修改\n"
             "  /recover [run-id]      查看待恢复任务\n"
+            "  /resume <run-id>       继续可恢复的审批或验证\n"
+            "  /abandon <run-id>      放弃无工作区副作用的中断任务\n"
             "  /exit 或 /quit         退出\n"
             "审批输入：approve、reject 或 cancel"
         )
@@ -290,6 +300,23 @@ class InteractiveSession:
                 self.io.write("暂无待恢复任务。")
             else:
                 self.io.write(f"未找到待恢复 run：{run_id}")
+            return
+        self.presenter.write_events(events)
+
+    def _resume(self, run_id: str) -> None:
+        events = drive_run(
+            self.dependencies.runtime,
+            ResumeRun(run_id=run_id),
+            self._decide,
+            self.presenter.write_events,
+        )
+        if not events:
+            self.io.write(f"未找到可恢复 run：{run_id}")
+
+    def _abandon(self, run_id: str) -> None:
+        events = tuple(self.dependencies.runtime.handle(AbandonRun(run_id=run_id)))
+        if not events:
+            self.io.write(f"未找到可放弃 run：{run_id}")
             return
         self.presenter.write_events(events)
 
