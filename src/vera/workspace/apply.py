@@ -41,6 +41,10 @@ class RollbackResult:
     error: str | None = None
 
 
+class SimulatedCrash(RuntimeError):
+    """Injected crash used by recovery tests to abandon the process mid-effect."""
+
+
 class FileWriter(Protocol):
     def replace(self, path: Path, content: bytes, mode: int | None = None) -> None: ...
 
@@ -120,6 +124,8 @@ class ChangeApplier:
                     self.writer.delete(target)
                 else:
                     self.writer.replace(target, built.intended_bytes[change.path])
+        except SimulatedCrash:
+            raise
         except Exception as exc:
             try:
                 self._restore(manifest, paths)

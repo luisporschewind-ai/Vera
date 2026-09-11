@@ -269,7 +269,8 @@ def test_reject_partial_restore_does_not_write(tmp_path: Path) -> None:
         if event.type == "approval.required"
     )
     follow_up = tuple(runtime.handle(resolve(pending, "reject")))
-    assert follow_up[-1].type == "run.cancelled"
+    assert follow_up[-1].type == "recovery.detected"
+    assert follow_up[-1].payload["classification"] == "recoverable_partial_apply"
     assert fixture.after_file.read_bytes() == b"after-b\n"
 
 

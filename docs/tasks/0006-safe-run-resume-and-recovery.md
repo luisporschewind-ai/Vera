@@ -2,7 +2,7 @@
 
 > **供 Cursor Agent 执行：** 使用单一主实现 Agent，按顺序执行。每项行为先写失败测试，再做最小实现并独立提交；禁止并行编辑同一工作树。
 
-**状态：** In progress
+**状态：** Done
 
 **目标分支：** `feature/safe-run-resume-recovery`
 
@@ -349,7 +349,7 @@ git commit -m "feat: restore partial changes with approval"
 - Modify: `README.md`
 - Modify: `docs/STATUS.md`
 
-- [ ] **Step 1：编写 abandon 和 CLI 测试**
+- [x] **Step 1：编写 abandon 和 CLI 测试**
 
 ```python
 def test_abandon_only_accepts_safe_to_abandon(recovery_runtime) -> None:
@@ -362,15 +362,15 @@ def test_abandon_only_accepts_safe_to_abandon(recovery_runtime) -> None:
 
 CLI 覆盖 `/resume`、`/abandon`、`vera recover resume/abandon --json`、审批 EOF 安全取消、退出码 0/2/3/4/5 和输出脱敏。
 
-- [ ] **Step 2：编写真实跨实例 failpoint 测试**
+- [x] **Step 2：编写真实跨实例 failpoint 测试**
 
 `tests/e2e/test_crash_recovery.py` 使用参数化 failpoint，在 Change Set 审批、Checkpoint、每文件应用、changeset.applied、verification.started/completed 处抛出 `SimulatedCrash`。每次丢弃旧 Runtime，创建新 Runtime 扫描；断言分类、允许动作和文件字节。不要复用旧 `RunContext`。
 
-- [ ] **Step 3：实现 Abandon 与 CLI 命令**
+- [x] **Step 3：实现 Abandon 与 CLI 命令**
 
 Abandon 每次重新分类，只接受 safe_to_abandon；追加 `recovery.abandoned` 和终止 Snapshot。CLI Help 增加恢复命令，所有人类输出来自 Event Presenter。
 
-- [ ] **Step 4：运行完整离线验收**
+- [x] **Step 4：运行完整离线验收**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -384,7 +384,7 @@ git diff --check
 
 所有检查通过且覆盖率不低于 90%。
 
-- [ ] **Step 5：记录证据并提交**
+- [x] **Step 5：记录证据并提交**
 
 验收记录逐项写明跨实例恢复、部分写入审批、in-flight 人工处理、幂等性、退出码、测试数和未执行 live。任务标记 Complete，STATUS 指向 0007。
 
@@ -397,7 +397,7 @@ git add src/vera/runtime/engine.py src/vera/cli.py src/vera/cli_presenter.py \
 git commit -m "test: verify safe run recovery"
 ```
 
-- [ ] **Step 6：合并回 main 并复核**
+- [x] **Step 6：合并回 main 并复核**
 
 ```bash
 git switch main

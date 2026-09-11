@@ -61,11 +61,13 @@ Useful session commands:
 - `/model [profile]` — show or switch the current model profile
 - `/runs` / `/show` / `/rollback` — inspect or roll back prior runs
 - `/recover [run-id]` — inspect interrupted runs without writing
+- `/resume <run-id>` — continue a safe approval or verification boundary
+- `/abandon <run-id>` — abandon an interrupted run with no workspace side effects
 - `/exit` — leave the session
 
 The one-shot `vera run "goal"` command remains available, including `--json`
-for non-interactive Event output. Use `vera recover list` and `vera recover show <run-id>`
-to inspect recovery reports; `--json` emits Event JSON Lines only.
+for non-interactive Event output. Use `vera recover list|show|resume|abandon`
+to inspect or continue recovery; `--json` emits Event JSON Lines only.
 
 Provider credentials and live tests are intentionally opt-in; no API key is printed by the CLI. Verification commands run with the current system user's permissions and always retain a separate approval boundary when required by policy.
 

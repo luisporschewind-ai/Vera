@@ -16,7 +16,7 @@ from vera.recovery.classifier import RecoveryClassifier
 from vera.recovery.probe import WorkspaceEvidenceProbe
 from vera.workspace.checkpoint import CheckpointStore
 
-_TERMINAL_EVENTS = frozenset({"run.completed", "run.failed", "run.cancelled"})
+_TERMINAL_EVENTS = frozenset({"run.completed", "run.failed", "run.cancelled", "recovery.abandoned"})
 _LEGACY_ACTIONS = ("inspect", "rollback")
 _MANUAL_ACTIONS = ("inspect",)
 

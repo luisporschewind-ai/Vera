@@ -13,6 +13,7 @@ from vera import __version__
 from vera.config import Limits
 from vera.contracts.approvals import ApprovalRequest
 from vera.contracts.commands import (
+    AbandonRun,
     CancelRun,
     CoreCommand,
     InspectRecovery,
@@ -29,7 +30,7 @@ from vera.models.base import ModelAdapter, ModelMessage, ModelRequest, ModelTool
 from vera.persistence.journal import EventJournal
 from vera.persistence.recovery_snapshot import RecoverySnapshotError, RecoverySnapshotStore
 from vera.recovery.coordinator import RecoveryCoordinator
-from vera.recovery.hydrator import RecoveryHydrationError
+from vera.recovery.hydrator import RecoveryHydrationError, RecoveryHydrator
 from vera.recovery.models import PersistedChangeSet, RecoverySnapshot
 from vera.recovery.planner import RecoveryPlanError, RecoveryPlanner
 from vera.recovery.probe import workspace_identity
@@ -42,7 +43,7 @@ from vera.runtime.state import RunState, RunStateMachine
 from vera.tools.command_policy import CommandDecisionKind, CommandPolicy
 from vera.tools.registry import ToolRegistry
 from vera.verification.runner import VerificationRunner
-from vera.workspace.apply import ApplyStatus, ChangeApplier, RollbackStatus
+from vera.workspace.apply import ApplyStatus, ChangeApplier, FileWriter, RollbackStatus
 from vera.workspace.changeset import ChangeProposal, ChangeSetBuilder
 from vera.workspace.checkpoint import CheckpointStore
 from vera.workspace.paths import WorkspacePaths
@@ -75,6 +76,7 @@ class VeraRuntime:
         snapshot_store: RecoverySnapshotStore | None = None,
         installation_id: str | None = None,
         recovery_coordinator: RecoveryCoordinator | None = None,
+        file_writer: FileWriter | None = None,
     ) -> None:
         self.adapter = adapter
         self.registry = registry
@@ -84,6 +86,7 @@ class VeraRuntime:
         self.runs: dict[str, RunContext] = {}
         self.snapshot_store = snapshot_store or RecoverySnapshotStore(state_dir)
         self.installation_id = installation_id or "local"
+        self.file_writer = file_writer
         self.coordinator = recovery_coordinator or RecoveryCoordinator(
             state_dir,
             self.installation_id,
@@ -397,13 +400,11 @@ class VeraRuntime:
         if request.kind == ApprovalKind.RECOVERY.value:
             if decision == "reject":
                 context.pending_recovery_plan = None
-                with suppress(Exception):
-                    context.machine.transition(RunState.CANCELLED)
                 yield self._stable_event(
                     context,
-                    "run.cancelled",
-                    {"reason": "recovery_rejected"},
-                    RecoveryStage.TERMINAL,
+                    "recovery.detected",
+                    self._report_payload(self.coordinator.prepare_resume(context.run_id)),
+                    RecoveryStage.CHECKPOINT_READY,
                 )
                 return
             yield from self._apply_recovery_plan(context, request)
@@ -423,7 +424,7 @@ class VeraRuntime:
             return
         paths = WorkspacePaths(context.command.workspace_root)
         store = CheckpointStore(self.state_dir, paths)
-        applier = ChangeApplier(paths, store)
+        applier = ChangeApplier(paths, store, writer=self.file_writer)
         try:
             context.machine.transition(RunState.CHECKPOINTING)
             manifest = store.create(built.change_set)
@@ -628,6 +629,10 @@ class VeraRuntime:
         if isinstance(command, CancelRun):
             context = self.runs.get(command.run_id)
             if context is not None:
+                pending = context.approval_gate.pending_approval
+                if pending is not None and pending.kind == ApprovalKind.RECOVERY.value:
+                    self.runs.pop(command.run_id, None)
+                    return
                 with suppress(Exception):
                     context.machine.transition(RunState.CANCELLED)
                 yield self._stable_event(
@@ -648,6 +653,9 @@ class VeraRuntime:
             return
         if isinstance(command, ResumeRun):
             yield from self._resume(command)
+            return
+        if isinstance(command, AbandonRun):
+            yield from self._abandon(command)
             return
         if not isinstance(command, StartRun):
             return
@@ -933,9 +941,11 @@ class VeraRuntime:
             )
             return
         paths = WorkspacePaths(context.command.workspace_root)
-        result = ChangeApplier(paths, CheckpointStore(self.state_dir, paths)).restore_partial(
-            plan, manifest
-        )
+        result = ChangeApplier(
+            paths,
+            CheckpointStore(self.state_dir, paths),
+            writer=self.file_writer,
+        ).restore_partial(plan, manifest)
         if result.status is not RollbackStatus.ROLLED_BACK:
             with suppress(Exception):
                 context.machine.transition(RunState.RECOVERY_REQUIRED)
@@ -962,5 +972,55 @@ class VeraRuntime:
             context,
             "run.completed",
             {"state": "completed", "outcome": "restored"},
+            RecoveryStage.TERMINAL,
+        )
+
+    def _context_from_snapshot(self, run_id: str) -> RunContext:
+        snapshot = self.snapshot_store.load(run_id)
+        journal = EventJournal(self.state_dir, run_id, Redactor([]))
+        try:
+            return RecoveryHydrator().hydrate(snapshot, journal)
+        except RecoveryHydrationError:
+            return RunContext(
+                run_id=snapshot.run_id,
+                command=snapshot.command,
+                machine=RunStateMachine(),
+                journal=journal,
+                messages=[],
+                approval_gate=ApprovalGate(snapshot.run_id),
+                built_change_set=(
+                    snapshot.built_changeset.to_built()
+                    if snapshot.built_changeset is not None
+                    else None
+                ),
+                snapshot_created_at=snapshot.created_at,
+            )
+
+    def _abandon(self, command: AbandonRun) -> Iterator[EventEnvelope]:
+        report = self.coordinator.prepare_resume(command.run_id)
+        if "abandon" not in report.allowed_actions:
+            yield self._ephemeral_event(
+                report.run_id,
+                "recovery.manual_required",
+                self._report_payload(report),
+            )
+            return
+        context = self.runs.get(command.run_id)
+        if context is None:
+            try:
+                context = self._context_from_snapshot(command.run_id)
+            except (RecoverySnapshotError, OSError, ValueError):
+                yield from self._reject_resume(report)
+                return
+            self.runs[context.run_id] = context
+        with suppress(Exception):
+            context.machine.transition(RunState.CANCELLED)
+        yield self._stable_event(
+            context,
+            "recovery.abandoned",
+            {
+                "run_id": context.run_id,
+                "classification": report.classification.value,
+            },
             RecoveryStage.TERMINAL,
         )

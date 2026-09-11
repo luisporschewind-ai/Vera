@@ -21,6 +21,8 @@ class HumanPresenter:
     def approval_prompt(self, event: EventEnvelope) -> str:
         if event.payload.get("kind") == "command":
             return "批准这条验证命令？输入 approve、reject 或 cancel"
+        if event.payload.get("kind") == "recovery":
+            return "批准这个恢复计划？输入 approve、reject 或 cancel"
         return "批准这个 Change Set？输入 approve、reject 或 cancel"
 
     def _write_event(self, event: EventEnvelope) -> None:
@@ -53,6 +55,11 @@ class HumanPresenter:
                 self._write(f"工作目录：{payload.get('cwd', '.')}")
                 self._write(f"风险：{payload.get('risk', 'unknown')}")
                 self._write("该进程以当前系统用户权限运行，Vera 第一版不提供 OS 沙箱。")
+            elif payload.get("kind") == "recovery":
+                self._write(
+                    f"待批准的恢复计划：{payload.get('target_hash', '')}"
+                    f"（风险：{payload.get('risk', 'unknown')}）"
+                )
             else:
                 self._write(
                     f"待批准的 Change Set：{payload.get('target_hash', '')}"
@@ -108,5 +115,24 @@ class HumanPresenter:
             actions = payload.get("allowed_actions", ())
             if isinstance(actions, list | tuple) and actions:
                 self._write("允许动作：" + ", ".join(str(action) for action in actions))
+        elif event.type == "recovery.resume_started":
+            self._write(f"开始恢复：{event.run_id}")
+        elif event.type == "recovery.resumed":
+            self._write(f"已恢复到稳定边界：{event.run_id}")
+        elif event.type == "recovery.abandoned":
+            self._write(f"已放弃任务：{event.run_id}")
+        elif event.type == "recovery.restore_proposed":
+            self._write(f"恢复计划：{payload.get('recovery_hash', '')}")
+            files = payload.get("files", [])
+            if isinstance(files, list):
+                for item in files:
+                    if isinstance(item, dict):
+                        self._write(f"{item.get('path', '')}: {item.get('action', 'unknown')}")
+        elif event.type == "recovery.restored":
+            self._write(f"部分写入已恢复：{event.run_id}")
+        elif event.type == "recovery.manual_required":
+            self._write(f"需要人工处理：{event.run_id}（{payload.get('reason', 'unknown')}）")
+        elif event.type == "approval.invalidated":
+            self._write(f"审批已失效：{payload.get('approval_id', event.run_id)}")
         else:
             self._write(event.type)
