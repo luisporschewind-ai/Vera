@@ -113,14 +113,24 @@ def test_presenter_displays_plain_assistant_message() -> None:
     assert output == ["Vera：你好"]
 
 
-def test_presenter_reports_compaction_without_reprinting_summary() -> None:
+def test_presenter_reports_recovery_without_file_bodies() -> None:
     output: list[str] = []
     presenter = HumanPresenter(output.append)
-    summary = "很长的摘要内容" * 20
-
-    presenter.write_events((event("conversation.compacted", {"summary": summary}),))
-
+    presenter.write_events(
+        (
+            event(
+                "recovery.detected",
+                {
+                    "classification": "resumable_approval",
+                    "reason_code": "awaiting_changeset_approval",
+                    "allowed_actions": ["inspect", "resume", "abandon"],
+                    "evidence": [{"path": "app.py", "state": "before", "after_content": "SECRET"}],
+                },
+            ),
+        )
+    )
     text = "\n".join(output)
-    assert "上下文已压缩" in text
-    assert str(len(summary.encode("utf-8"))) in text
-    assert summary not in text
+    assert "待恢复：run-1（resumable_approval / awaiting_changeset_approval）" in text
+    assert "app.py: before" in text
+    assert "允许动作：inspect, resume, abandon" in text
+    assert "SECRET" not in text

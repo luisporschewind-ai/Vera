@@ -12,7 +12,7 @@ from vera.cli_driver import ApprovalDecision, drive_run
 from vera.cli_presenter import HumanPresenter
 from vera.cli_session import InteractiveSession
 from vera.config import load_config
-from vera.contracts.commands import RollbackRun, StartRun
+from vera.contracts.commands import InspectRecovery, RollbackRun, StartRun
 from vera.contracts.events import EventEnvelope
 from vera.persistence.run_store import RunStore
 
@@ -23,8 +23,10 @@ app = typer.Typer(
 )
 runs_app = typer.Typer(help="inspect private run records")
 config_app = typer.Typer(help="inspect effective configuration")
+recover_app = typer.Typer(help="inspect interrupted runs")
 app.add_typer(runs_app, name="runs")
 app.add_typer(config_app, name="config")
+app.add_typer(recover_app, name="recover")
 
 
 class _ConsoleSessionIO:
@@ -140,6 +142,33 @@ def show_run(run_id: str) -> None:
     config = load_config(Path.cwd(), {})
     for event in RunStore(config.state_dir).read_events(run_id):
         typer.echo(event.model_dump_json())
+
+
+def _inspect_recovery(run_id: str | None, json_output: bool) -> None:
+    deps = build_runtime(Path.cwd())
+    events = list(deps.runtime.handle(InspectRecovery(run_id=run_id)))
+    if json_output:
+        _render(events, True)
+        raise typer.Exit(0)
+    if not events:
+        message = "暂无待恢复任务。" if run_id is None else f"未找到待恢复 run：{run_id}"
+        typer.echo(message)
+        raise typer.Exit(0)
+    _render(events, False)
+    raise typer.Exit(0)
+
+
+@recover_app.command("list")
+def recover_list(json_output: Annotated[bool, typer.Option("--json")] = False) -> None:
+    _inspect_recovery(None, json_output)
+
+
+@recover_app.command("show")
+def recover_show(
+    run_id: str,
+    json_output: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    _inspect_recovery(run_id, json_output)
 
 
 @app.command()

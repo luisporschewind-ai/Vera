@@ -11,7 +11,14 @@ from pydantic import BaseModel
 
 from vera import __version__
 from vera.config import Limits
-from vera.contracts.commands import CancelRun, CoreCommand, ResolveApproval, RollbackRun, StartRun
+from vera.contracts.commands import (
+    CancelRun,
+    CoreCommand,
+    InspectRecovery,
+    ResolveApproval,
+    RollbackRun,
+    StartRun,
+)
 from vera.contracts.conversation import ConversationMessage
 from vera.contracts.events import EventEnvelope
 from vera.contracts.recovery import RecoveryStage
@@ -19,6 +26,7 @@ from vera.contracts.verification import VerificationCommand
 from vera.models.base import ModelAdapter, ModelMessage, ModelRequest, ModelToolCall
 from vera.persistence.journal import EventJournal
 from vera.persistence.recovery_snapshot import RecoverySnapshotError, RecoverySnapshotStore
+from vera.recovery.coordinator import RecoveryCoordinator
 from vera.recovery.models import PersistedChangeSet, RecoverySnapshot
 from vera.recovery.probe import workspace_identity
 from vera.redaction import Redactor
@@ -61,6 +69,7 @@ class VeraRuntime:
         *,
         snapshot_store: RecoverySnapshotStore | None = None,
         installation_id: str | None = None,
+        recovery_coordinator: RecoveryCoordinator | None = None,
     ) -> None:
         self.adapter = adapter
         self.registry = registry
@@ -70,6 +79,11 @@ class VeraRuntime:
         self.runs: dict[str, RunContext] = {}
         self.snapshot_store = snapshot_store or RecoverySnapshotStore(state_dir)
         self.installation_id = installation_id or "local"
+        self.coordinator = recovery_coordinator or RecoveryCoordinator(
+            state_dir,
+            self.installation_id,
+            snapshot_store=self.snapshot_store,
+        )
 
     def _event(
         self, context: RunContext, event_type: str, payload: dict[str, Any]
@@ -609,6 +623,9 @@ class VeraRuntime:
         if isinstance(command, RollbackRun):
             yield from self._rollback(command)
             return
+        if isinstance(command, InspectRecovery):
+            yield from self._inspect_recovery(command)
+            return
         if not isinstance(command, StartRun):
             return
         run_id = f"run_{uuid4().hex}"
@@ -639,3 +656,32 @@ class VeraRuntime:
             yield from self._compact(context)
             return
         yield from self._drive(context)
+
+    def _inspect_recovery(self, command: InspectRecovery) -> Iterator[EventEnvelope]:
+        reports = self.coordinator.scan(command.run_id)
+        for sequence, report in enumerate(reports, start=1):
+            yield EventEnvelope(
+                event_id=str(uuid4()),
+                run_id=report.run_id,
+                sequence=sequence,
+                timestamp=datetime.now(UTC),
+                type="recovery.detected",
+                payload={
+                    "run_id": report.run_id,
+                    "classification": report.classification.value,
+                    "stage": report.stage.value,
+                    "workspace_root": str(report.workspace_root),
+                    "allowed_actions": list(report.allowed_actions),
+                    "reason_code": report.reason_code,
+                    "evidence": [
+                        {
+                            "path": item.path,
+                            "before_hash": item.before_hash,
+                            "after_hash": item.after_hash,
+                            "current_hash": item.current_hash,
+                            "state": item.state.value,
+                        }
+                        for item in report.evidence
+                    ],
+                },
+            )

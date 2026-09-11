@@ -130,6 +130,7 @@ def test_build_runtime_loads_provider_environment_before_config(
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
     monkeypatch.delenv("VERA_DEEPSEEK_BASE_URL", raising=False)
     monkeypatch.delenv("VERA_DEEPSEEK_MODEL", raising=False)
+    monkeypatch.setenv("VERA_STATE_DIR", str(tmp_path / "state"))
 
     dependencies = build_runtime(tmp_path)
 

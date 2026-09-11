@@ -2,7 +2,7 @@
 
 > **供 Cursor Agent 执行：** 使用单一主实现 Agent，逐项执行本计划。每个生产行为先写失败测试，再做最小实现；每个可审阅任务独立提交。不要派发并行编辑 Agent。
 
-**状态：** In progress
+**状态：** Done
 
 **目标分支：** `feature/recovery-facts-classification`
 
@@ -412,7 +412,7 @@ git commit -m "feat: snapshot stable runtime boundaries"
 - Produces: `/recover [run-id]`
 - Produces: `vera recover list|show`
 
-- [ ] **Step 1：编写损坏隔离和只读 CLI 测试**
+- [x] **Step 1：编写损坏隔离和只读 CLI 测试**
 
 Coordinator Fixture 同时创建正常 Snapshot、损坏 Snapshot、legacy 未终止 Journal、已终止 run 和 compaction run。断言损坏项为 manual_required、legacy 为 legacy_not_resumable、终止与 compaction 不出现。
 
@@ -431,20 +431,20 @@ def test_recover_list_never_calls_model_or_changes_workspace(
 
 再测试 `/recover`、指定 run、未知 run、无恢复项、JSON 无 ANSI/提示符，以及启动只在存在未完成 run 时显示计数。
 
-- [ ] **Step 2：运行测试并确认命令未知**
+- [x] **Step 2：运行测试并确认命令未知**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
   tests/recovery/test_coordinator.py tests/cli/test_recovery_inspection.py -v
 ```
 
-- [ ] **Step 3：实现扫描与展示**
+- [x] **Step 3：实现扫描与展示**
 
 RunStore 增加 `iter_run_ids() -> tuple[str, ...]`，只返回安全目录名并排序。Coordinator 逐 run 捕获 `JournalCorrupt`、`RecoverySnapshotError`、`OSError`、`ValueError`，输出脱敏 manual_required 报告。
 
 Runtime 分派 `InspectRecovery` 并发出 recovery.detected。Bootstrap 在私有状态目录原子创建 `installation.json` 并注入同一 Coordinator。Typer 注册 `recover list/show`；InteractiveSession 处理 `/recover [run-id]`。Payload 只含分类、阶段、允许动作、相对路径哈希和 reason_code，不含文件正文或 Snapshot 原文。
 
-- [ ] **Step 4：运行完整任务验收**
+- [x] **Step 4：运行完整任务验收**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -458,7 +458,7 @@ git diff --check
 
 全部退出码为 0，且总覆盖率不得低于当前 90%。
 
-- [ ] **Step 5：记录证据并提交**
+- [x] **Step 5：记录证据并提交**
 
 创建 `docs/evals/recovery-facts-and-classification.md`，记录 Snapshot 原子性、六类分类、损坏隔离、legacy、CLI 只读性、测试数、覆盖率和未执行 live。更新 README、STATUS 和任务状态。
 
@@ -472,7 +472,7 @@ git add src/vera/recovery src/vera/persistence/run_store.py \
 git commit -m "test: verify recovery classification"
 ```
 
-- [ ] **Step 6：合并回 main 并复核**
+- [x] **Step 6：合并回 main 并复核**
 
 ```bash
 git switch main

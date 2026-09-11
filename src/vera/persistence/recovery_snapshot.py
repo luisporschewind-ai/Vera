@@ -13,6 +13,10 @@ from vera.recovery.models import RecoverySnapshot
 _SAFE_RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
+def is_safe_run_id(run_id: str) -> bool:
+    return Path(run_id).name == run_id and _SAFE_RUN_ID.fullmatch(run_id) is not None
+
+
 class RecoverySnapshotError(ValueError):
     """Raised when a recovery snapshot cannot be written or read safely."""
 
@@ -84,5 +88,5 @@ class RecoverySnapshotStore:
 
     @staticmethod
     def _assert_safe_run_id(run_id: str) -> None:
-        if Path(run_id).name != run_id or _SAFE_RUN_ID.fullmatch(run_id) is None:
+        if not is_safe_run_id(run_id):
             raise RecoverySnapshotError("invalid_run_id")

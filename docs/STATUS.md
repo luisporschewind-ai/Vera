@@ -1,8 +1,8 @@
 # Vera 状态
 
 **更新日期：** 2026-09-11
-**当前阶段：** 阶段 2——恢复、兼容性与策略扩展（规划完成，待实施）
-**仓库状态：** 阶段 1 已在 `main` 完成并通过人工验收；阶段 2 规格、ADR 与任务 0005–0009 已本地合并到 `main`，可交给 Cursor 实施；暂无远程仓库，未推送。
+**当前阶段：** 阶段 2——恢复、兼容性与策略扩展（任务 0005 已完成，待执行 0006–0009）
+**仓库状态：** 阶段 1 已在 `main` 完成并通过人工验收；任务 0005 已本地合并到 `main`；暂无远程仓库，未推送。
 
 ## 已验证基线
 
@@ -18,24 +18,21 @@
 - 任务 0002 的离线实现与验收步骤已完成；更广泛真实供应商评测仍开放
 - [任务 0003：交互式 CLI 会话](tasks/0003-interactive-cli-session.md)
 - [任务 0004：普通对话、会话上下文与状态命令](tasks/0004-conversational-cli-and-session-status.md)
+- [任务 0005：恢复事实与只读分类](tasks/0005-recovery-facts-and-classification.md)
 
 ## 活动任务
 
 - [阶段二执行顺序](tasks/phase-2-execution-order.md)
-- [任务 0005：恢复事实与只读分类](tasks/0005-recovery-facts-and-classification.md)
-- 后续依次执行任务 0006–0009；当前没有阶段二代码实现
+- 后续依次执行任务 0006–0009
 
 ## 最近验证
 
+- 任务 0005：原子 `RecoverySnapshot`、六类只读恢复分类、损坏隔离、legacy 标记、CLI `/recover` 与 `vera recover list|show`
+- 任务 0005 离线验收：171 项非 live 测试通过、2 项 live 排除，覆盖率 91%；Ruff、格式、Mypy、包构建通过
+- 凭据边界：自动验收没有读取或使用用户 DeepSeek/GLM API Key，没有运行 live 测试；扫描与 InspectRecovery 不写工作区、不调用模型
+- Git：已本地合并 `feature/recovery-facts-classification`，未推送（无 remote）
+- 验收记录：[恢复事实与只读分类](evals/recovery-facts-and-classification.md)
 - 任务 0004：普通文本 `assistant.message` + `outcome=responded`；进程内 `ConversationContext`；`/new`、`/clear`、`/context`、`/status`、`/permissions`、`/compact`、`/model`
-- 任务 0004 离线验收：129 项非 live 测试通过、2 项 live 排除，覆盖率 90%；Ruff、格式、Mypy、包构建通过
-- 合并后复核：`pytest -m "not live"` 129 通过；Ruff、Mypy 通过
-- 凭据边界：自动验收没有读取或使用用户 DeepSeek API Key，没有运行 live 测试；自动测试强制隔离真实供应商环境
-- 仓库外启动：`uv tool install --editable` 后仅执行本地 Slash Command，输出不含测试 Key/Base URL
-- 用户人工验收：2026-09-11 由用户本人按验证步骤完成测试，确认结果符合预期、无问题；Agent 未接触真实 Key
-- 历史现象：普通问候曾以 `no_changes_proposed` 失败，现已修复为正常对话完成语义，并经人工确认
-- Git：已本地合并 `feature/conversational-cli-session`，未推送（无 remote）
-- 验收记录：[普通对话、会话上下文与状态命令](evals/conversational-cli-and-session-status.md)
 
 ## 已接受方向
 
@@ -56,4 +53,4 @@
 
 ## 下一检查点
 
-Cursor 从最新 `main` 创建 `feature/recovery-facts-classification`，按任务 0005 开始实施。任务 0005–0009 全部完成后进入阶段三评测，不提前进入桌面端。
+Cursor 从最新 `main` 创建 `feature/safe-run-resume-recovery`，按任务 0006 继续实施。任务 0006–0009 全部完成后进入阶段三评测，不提前进入桌面端。
