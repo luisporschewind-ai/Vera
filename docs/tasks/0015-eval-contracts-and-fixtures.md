@@ -43,7 +43,7 @@
 - Produces: `EvalWorkerRequest`、`EvalWorkerResult`
 - Produces: `EvalSuiteReport.case(case_id: str) -> EvalReport`
 
-- [ ] **Step 1：编写严格 round-trip 与非法字段测试**
+- [x] **Step 1：编写严格 round-trip 与非法字段测试**
 
 ```python
 def test_eval_case_round_trips_and_forbids_live() -> None:
@@ -63,13 +63,13 @@ def test_eval_case_round_trips_and_forbids_live() -> None:
 
 覆盖非法 `case_id`、重复 tag、0/121 秒 timeout、未知 scenario、绝对 expectation path、重复允许路径、usage 缺失保持 `None`、Report 的空 score 和额外字段。
 
-- [ ] **Step 2：运行失败测试**
+- [x] **Step 2：运行失败测试**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_contracts.py -v
 ```
 
-- [ ] **Step 3：实现冻结 Contract**
+- [x] **Step 3：实现冻结 Contract**
 
 ```python
 class EvalCase(EvalContract):
@@ -85,7 +85,7 @@ class EvalCase(EvalContract):
 
 `EvalScript` 包含 `turns: tuple[ModelTurn, ...]`、`text_deltas: tuple[tuple[str, ...], ...]` 和 `approvals: tuple[Literal["approve", "reject", "cancel"], ...]`。`EvalWorkerRequest` 只包含 evaluation/case ID 与父进程创建的 corpus、workspace、state、staging 绝对路径；Runner 必须再确认后三者位于本次受控临时根。`EvalWorkerResult` 包含可选 Report、持久 Event、before/after FileFact；失败时这些证据可为空，但必须包含稳定 `error_code`，且不能同时宣称 Pass。Corpus-relative 和 expectation 路径由共享 validator 拒绝空值、绝对路径、`.` 和 `..`。
 
-- [ ] **Step 4：验证并提交**
+- [x] **Step 4：验证并提交**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_contracts.py -v
