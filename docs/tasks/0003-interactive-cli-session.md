@@ -423,7 +423,7 @@ git commit -m "feat: rollback persisted runs after restart"
 - Produces: `HumanPresenter.approval_prompt(event: EventEnvelope) -> str`
 - Consumes: 注入的 `write: Callable[[str], None]`
 
-- [ ] **Step 1：编写 Diff、命令风险和终态展示失败测试**
+- [x] **Step 1：编写 Diff、命令风险和终态展示失败测试**
 
 ```python
 presenter.write_events([changeset_event])
@@ -436,17 +436,17 @@ assert changeset_hash in text
 
 命令审批测试断言完整 argv、cwd、风险和“当前系统用户权限”提示存在；普通 `tool.completed` 不输出读取到的文件正文。
 
-- [ ] **Step 2：运行测试并确认 presenter 尚不存在**
+- [x] **Step 2：运行测试并确认 presenter 尚不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/cli/test_presenter.py -v
 ```
 
-- [ ] **Step 3：按 Event 类型实现稳定的人类展示**
+- [x] **Step 3：按 Event 类型实现稳定的人类展示**
 
 只读取 Event Payload，不重新读取项目文件或生成 Diff。未知 Event 使用简短 `event.type` 回退；JSON 模式继续使用原始 `model_dump_json()`，不经过 Presenter。
 
-- [ ] **Step 4：运行展示与 CLI 测试**
+- [x] **Step 4：运行展示与 CLI 测试**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/cli/test_presenter.py tests/cli/test_run.py -v
@@ -454,7 +454,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src/vera/cli_presenter
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Task 5**
+- [x] **Step 5：提交 Task 5**
 
 ```bash
 git add src/vera/cli.py src/vera/cli_presenter.py tests/cli/test_presenter.py tests/cli/test_run.py docs/tasks/0003-interactive-cli-session.md

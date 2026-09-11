@@ -9,6 +9,7 @@ import typer
 
 from vera.bootstrap import RuntimeDependencies, build_runtime
 from vera.cli_driver import ApprovalDecision, drive_run
+from vera.cli_presenter import HumanPresenter
 from vera.config import load_config
 from vera.contracts.commands import RollbackRun, StartRun
 from vera.contracts.events import EventEnvelope
@@ -26,8 +27,7 @@ def _render(events: list[EventEnvelope], json_output: bool) -> None:
         for event in events:
             typer.echo(event.model_dump_json())
         return
-    for event in events:
-        typer.echo(f"{event.type}: {json.dumps(event.payload, ensure_ascii=False)}")
+    HumanPresenter(typer.echo).write_events(events)
 
 
 def _exit_code(events: list[EventEnvelope]) -> int:
@@ -55,12 +55,14 @@ def execute_run(
     except Exception as exc:
         typer.echo(str(exc), err=True)
         return 5
-    def decide(_request: EventEnvelope) -> ApprovalDecision:
+    presenter = HumanPresenter(typer.echo)
+
+    def decide(request: EventEnvelope) -> ApprovalDecision:
         if json_output or not sys.stdin.isatty():
             return "cancel"
-        decision = typer.prompt("输入 approve 批准，或 reject 拒绝")
-        if decision not in {"approve", "reject"}:
-            raise typer.BadParameter("必须明确输入 approve 或 reject")
+        decision = typer.prompt(presenter.approval_prompt(request))
+        if decision not in {"approve", "reject", "cancel"}:
+            raise typer.BadParameter("必须明确输入 approve、reject 或 cancel")
         return cast(ApprovalDecision, decision)
 
     events = drive_run(
