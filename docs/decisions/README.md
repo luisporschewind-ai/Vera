@@ -15,5 +15,9 @@
 - [ADR-0002：Command → VeraRuntime → Event 公共契约](ADR-0002-command-event-contract.md)
 - [ADR-0003：私有状态与 Checkpoint](ADR-0003-private-state-and-checkpoints.md)
 - [ADR-0004：进程内会话上下文与状态边界](ADR-0004-ephemeral-conversation-context.md)
+- [ADR-0005：确定性 Run 恢复边界](ADR-0005-deterministic-run-recovery.md)
+- [ADR-0006：版本化 Codec 与非破坏迁移](ADR-0006-versioned-state-codecs.md)
+- [ADR-0007：统一 PolicyEngine 与策略指纹](ADR-0007-unified-policy-engine.md)
+- [ADR-0008：ModelAdapter 能力、错误与有限重试](ADR-0008-model-capabilities-and-errors.md)
 
 Core Runtime、协议、持久化模型、关键依赖、安全边界或桌面框架等长期选择应建立决策记录；常规实现细节写入任务记录。
