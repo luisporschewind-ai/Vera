@@ -9,8 +9,9 @@ import typer
 
 from vera.bootstrap import RuntimeDependencies, build_runtime
 from vera.cli_driver import ApprovalDecision, drive_run
+from vera.cli_json_session import JsonSessionDriver
+from vera.cli_plain_session import PlainSessionDriver
 from vera.cli_presenter import HumanPresenter
-from vera.cli_session import InteractiveSession
 from vera.config import load_config
 from vera.contracts.commands import (
     AbandonRun,
@@ -64,6 +65,7 @@ def main(
     workspace: Annotated[Path, typer.Option()] = Path("."),
     model: Annotated[str | None, typer.Option()] = None,
     plain: Annotated[bool, typer.Option("--plain", help="逐行人类交互模式")] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="NDJSON Session 协议")] = False,
 ) -> None:
     """Start an interactive session when no subcommand is supplied."""
 
@@ -81,13 +83,17 @@ def main(
     selected_model = model or next(iter(deps.config.providers), "default")
     capabilities = detect_terminal_capabilities()
     try:
-        mode = select_mode(plain=plain, json_output=False, capabilities=capabilities)
+        mode = select_mode(plain=plain, json_output=json_output, capabilities=capabilities)
     except TerminalModeError as exc:
         typer.echo(exc.message, err=True)
         raise typer.Exit(exc.exit_code) from exc
+    if mode is PresentationMode.JSON:
+        raise typer.Exit(
+            JsonSessionDriver(deps, resolved, selected_model).run(sys.stdin, sys.stdout)
+        )
     if mode is PresentationMode.PLAIN:
         raise typer.Exit(
-            InteractiveSession(deps, resolved, selected_model, _ConsoleSessionIO()).run()
+            PlainSessionDriver(deps, resolved, selected_model, _ConsoleSessionIO()).run()
         )
     raise typer.Exit(_launch_tui_session(deps, resolved, selected_model))
 

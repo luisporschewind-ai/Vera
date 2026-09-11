@@ -33,7 +33,10 @@ Vera is private and in Core-first implementation. The current CLI is an internal
 
 ```bash
 uv sync --extra dev
-uv run vera
+uv run vera                 # TTY 默认 TUI
+uv run vera --plain          # 逐行人类模式
+uv run vera --json           # NDJSON Session
+uv run vera run "goal" --json
 uv run vera config show
 ```
 

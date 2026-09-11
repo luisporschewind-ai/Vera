@@ -1,6 +1,6 @@
 # Vera 阶段三执行顺序
 
-**状态：** Planned
+**状态：** Complete
 **规格：** [阶段三：富交互 Terminal UI](../specs/2026-09-11-rich-terminal-ui.md)
 
 ## 目标

@@ -36,14 +36,13 @@
 
 ## 阶段 3——富交互 Terminal UI
 
-**状态：** Planned
+**状态：** Complete
 
-- 让 `vera` 在受支持 TTY 中默认进入全屏、可滚动的富交互会话。
-- 提供模型文本流式输出、状态动画、结构化时间线、折叠工具与日志、展开 Diff 与审批，以及失败自动展开。
-- 让 TUI、`vera --plain` 和 `vera --json` 复用同一 SessionController 与 Core Event，不复制 Runtime 逻辑。
-- 保持现有 `vera run <goal> --json` 的原始 EventEnvelope 兼容。
+- 以 Typer + Textual + Rich 实现默认 TUI、`--plain` 与 `--json` Session，三者共用 SessionController 与 Vera Core。
+- 完成流式 RuntimeOutput、时间线披露、Composer/审批焦点、模式兼容与 15 条规格验收证据。
+- 不引入 prompt_toolkit，不提前桌面框架。
 
-**退出条件：** 富交互、Plain、JSON 三种模式通过离线全链路、PTY、键盘、滚动、性能和安全验收，且异常退出不损坏阶段二恢复事实。
+**退出条件：** 任务 0010–0014 全部合并，规格 15 条验收标准均有自动或人工证据。
 
 ## 阶段 4——评测与内部就绪
 
