@@ -228,7 +228,7 @@ git commit -m "feat: validate bundled evaluation corpus"
 - Produces: `IsolatedEvalCase.cleanup() -> None`
 - Produces: `IsolationError(code, path, message)`
 
-- [ ] **Step 1：编写复制、权限和源不变测试**
+- [x] **Step 1：编写复制、权限和源不变测试**
 
 ```python
 def test_isolator_never_runs_in_source_workspace(valid_loaded_case, tmp_path) -> None:
@@ -242,17 +242,17 @@ def test_isolator_never_runs_in_source_workspace(valid_loaded_case, tmp_path) ->
 
 用真实文件断言复制后字节一致、workspace/state/staging 都位于 case 临时根，目录权限 `0700`；再测试源目录被改、目标已存在、复制中断、符号链接竞态和 cleanup 幂等。
 
-- [ ] **Step 2：运行失败测试**
+- [x] **Step 2：运行失败测试**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_isolation.py -v
 ```
 
-- [ ] **Step 3：实现先验证后复制的隔离器**
+- [x] **Step 3：实现先验证后复制的隔离器**
 
 复制前后都用 `lstat()` 拒绝符号链接与特殊文件。目标 case 根必须由 `tempfile.mkdtemp(prefix="vera-eval-", dir=temp_root)` 新建；不得接受用户 workspace。失败时只清理本次创建且已确认位于 `temp_root` 下的精确目录。
 
-- [ ] **Step 4：验证并提交**
+- [x] **Step 4：验证并提交**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_isolation.py tests/evals/test_corpus.py -v

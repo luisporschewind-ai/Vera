@@ -59,9 +59,7 @@ class EvalCodec:
         return _decode(EvalWorkerRequest, data, source)
 
     @staticmethod
-    def decode_worker_result(
-        data: str | bytes, *, source: str = "result.json"
-    ) -> EvalWorkerResult:
+    def decode_worker_result(data: str | bytes, *, source: str = "result.json") -> EvalWorkerResult:
         return _decode(EvalWorkerResult, data, source)
 
     @staticmethod
