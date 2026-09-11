@@ -89,7 +89,7 @@ class ConversationTimeline(VerticalScroll):
         if block.block_id in self._widgets:
             self._update(block)
             return
-        widget = TimelineBlockWidget.from_model(block)
+        widget = TimelineBlockWidget.from_model(block, approval_id=block.ref_id)
         self._widgets[block.block_id] = widget
         self.mount(widget)
 

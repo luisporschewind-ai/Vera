@@ -142,6 +142,7 @@ class TimelineProjector:
         body: str,
         status: BlockStatus,
         focus: bool = False,
+        ref_id: str | None = None,
     ) -> tuple[TimelineMutation, ...]:
         expanded = self.disclosure.initial_state(kind, status)
         block = TimelineBlock(
@@ -152,6 +153,7 @@ class TimelineProjector:
             body=sanitize_terminal_text(body),
             status=status,
             expanded=expanded,
+            ref_id=ref_id,
         )
         self._blocks[block_id] = block
         mutations: list[TimelineMutation] = [AppendBlock(block=block)]
@@ -252,6 +254,7 @@ class TimelineProjector:
     def _approval_required(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
         risk = str(event.payload.get("risk", "unknown"))
         kind = str(event.payload.get("kind", "changeset"))
+        approval_id = str(event.payload.get("approval_id", "unknown"))
         return self._append(
             block_id=f"{event.run_id}:{event.sequence}:approval",
             run_id=event.run_id,
@@ -260,6 +263,7 @@ class TimelineProjector:
             body=sanitize_terminal_text(str(event.payload.get("reason", ""))),
             status=BlockStatus.PENDING,
             focus=True,
+            ref_id=approval_id,
         )
 
     def _verification_started(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:

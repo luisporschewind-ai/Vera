@@ -39,9 +39,15 @@ class TimelineBlockWidget(Vertical):
         return f"block-{safe}"
 
     @classmethod
-    def from_model(cls, block: TimelineBlock) -> TimelineBlockWidget:
+    def from_model(
+        cls, block: TimelineBlock, *, approval_id: str | None = None
+    ) -> TimelineBlockWidget:
         if block.kind is BlockKind.DIFF:
             return DiffBlockWidget(block)
+        if block.kind is BlockKind.APPROVAL:
+            from vera.terminal.widgets.approval import ApprovalBlockWidget
+
+            return ApprovalBlockWidget(block, approval_id=approval_id or block.ref_id or "unknown")
         return cls(block)
 
     @property
