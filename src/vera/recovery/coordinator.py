@@ -50,6 +50,12 @@ class RecoveryCoordinator:
                 reports.append(report)
         return tuple(reports)
 
+    def prepare_resume(self, run_id: str) -> RecoveryReport:
+        reports = self.scan(run_id)
+        if reports:
+            return reports[0]
+        return self._manual(run_id, "not_resumable")
+
     def _scan_one(self, run_id: str) -> RecoveryReport | None:
         try:
             return self._classify_run(run_id)

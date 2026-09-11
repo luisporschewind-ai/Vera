@@ -48,6 +48,13 @@ class RecoveryHydrator:
         built = None
         if snapshot.built_changeset is not None:
             built = snapshot.built_changeset.to_built()
+        pending_command = None
+        if (
+            snapshot.stage is RecoveryStage.AWAITING_VERIFICATION_APPROVAL
+            and built is not None
+            and 0 <= snapshot.verification_index < len(built.change_set.verification)
+        ):
+            pending_command = built.change_set.verification[snapshot.verification_index]
         if snapshot.pending_approval is not None:
             approval_gate = ApprovalGate.restore(snapshot.pending_approval)
         else:
@@ -60,6 +67,7 @@ class RecoveryHydrator:
             messages=[],
             approval_gate=approval_gate,
             built_change_set=built,
+            pending_command=pending_command,
             verification_index=snapshot.verification_index,
             verification_failed=snapshot.verification_failed,
             checkpoint_manifest=checkpoint_manifest,

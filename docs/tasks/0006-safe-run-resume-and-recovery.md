@@ -208,7 +208,7 @@ git commit -m "feat: rehydrate stable Vera runs"
 - Consumes: `ResumeRun`
 - Produces: `recovery.resume_started`、`recovery.resumed`、`approval.invalidated`
 
-- [ ] **Step 1：编写跨 Runtime resume 测试**
+- [x] **Step 1：编写跨 Runtime resume 测试**
 
 ```python
 def test_new_runtime_resumes_changeset_approval(recovery_fixture) -> None:
@@ -228,20 +228,20 @@ def test_new_runtime_resumes_changeset_approval(recovery_fixture) -> None:
 
 再批准 pending，断言只创建一次 Checkpoint、只应用一次 Change Set。验证恢复测试从新 Runtime 继续 `verification_index`，只运行未完成且不在 in-flight 状态的命令。
 
-- [ ] **Step 2：运行测试并确认新 Runtime 找不到 run**
+- [x] **Step 2：运行测试并确认新 Runtime 找不到 run**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
   tests/recovery/test_resume.py tests/runtime/test_recovery_resume.py -v
 ```
 
-- [ ] **Step 3：实现 resume 分派**
+- [x] **Step 3：实现 resume 分派**
 
 `VeraRuntime.handle(ResumeRun)` 必须先 `prepare_resume()` 重新分类，再 hydrate。对于 resumable_approval，发出 `recovery.resume_started` 后重新发出同一 pending `approval.required`；对于 resumable_verification，直接进入 `_verify()`。结束后发 `recovery.resumed`。其他分类只发 recovery.detected 或 manual_required，不建立内存 run。
 
 重复 Resume 若 run 已在当前 `self.runs` 或 Journal 已终止，返回当前报告，不重复动作。
 
-- [ ] **Step 4：运行 Runtime 与 CLI driver 回归**
+- [x] **Step 4：运行 Runtime 与 CLI driver 回归**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/runtime tests/recovery tests/cli/test_driver.py -v
@@ -249,7 +249,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src tests/runtime test
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交安全续跑**
+- [x] **Step 5：提交安全续跑**
 
 ```bash
 git add src/vera/recovery src/vera/runtime/engine.py \

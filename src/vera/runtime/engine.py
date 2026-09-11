@@ -16,19 +16,22 @@ from vera.contracts.commands import (
     CoreCommand,
     InspectRecovery,
     ResolveApproval,
+    ResumeRun,
     RollbackRun,
     StartRun,
 )
 from vera.contracts.conversation import ConversationMessage
 from vera.contracts.events import EventEnvelope
-from vera.contracts.recovery import RecoveryStage
+from vera.contracts.recovery import RecoveryClassification, RecoveryReport, RecoveryStage
 from vera.contracts.verification import VerificationCommand
 from vera.models.base import ModelAdapter, ModelMessage, ModelRequest, ModelToolCall
 from vera.persistence.journal import EventJournal
 from vera.persistence.recovery_snapshot import RecoverySnapshotError, RecoverySnapshotStore
 from vera.recovery.coordinator import RecoveryCoordinator
+from vera.recovery.hydrator import RecoveryHydrationError
 from vera.recovery.models import PersistedChangeSet, RecoverySnapshot
 from vera.recovery.probe import workspace_identity
+from vera.recovery.resume import ResumeRejected, RunResumer
 from vera.redaction import Redactor
 from vera.runtime.approval import ApprovalGate, ApprovalKind
 from vera.runtime.context import RunContext
@@ -125,6 +128,7 @@ class VeraRuntime:
             verification_failed=context.verification_failed,
             verification_in_flight=verification_in_flight,
             workspace_write_started=context.workspace_write_started,
+            recovery_plan=context.pending_recovery_plan,
             created_at=created_at,
             updated_at=now,
             vera_version=__version__,
@@ -626,6 +630,9 @@ class VeraRuntime:
         if isinstance(command, InspectRecovery):
             yield from self._inspect_recovery(command)
             return
+        if isinstance(command, ResumeRun):
+            yield from self._resume(command)
+            return
         if not isinstance(command, StartRun):
             return
         run_id = f"run_{uuid4().hex}"
@@ -657,31 +664,150 @@ class VeraRuntime:
             return
         yield from self._drive(context)
 
+    def _report_payload(self, report: RecoveryReport) -> dict[str, Any]:
+        return {
+            "run_id": report.run_id,
+            "classification": report.classification.value,
+            "stage": report.stage.value,
+            "workspace_root": str(report.workspace_root),
+            "allowed_actions": list(report.allowed_actions),
+            "reason_code": report.reason_code,
+            "evidence": [
+                {
+                    "path": item.path,
+                    "before_hash": item.before_hash,
+                    "after_hash": item.after_hash,
+                    "current_hash": item.current_hash,
+                    "state": item.state.value,
+                }
+                for item in report.evidence
+            ],
+        }
+
+    def _ephemeral_event(
+        self, run_id: str, event_type: str, payload: dict[str, Any], sequence: int = 1
+    ) -> EventEnvelope:
+        return EventEnvelope(
+            event_id=str(uuid4()),
+            run_id=run_id,
+            sequence=sequence,
+            timestamp=datetime.now(UTC),
+            type=event_type,
+            payload=payload,
+        )
+
+    def _approval_payload(self, context: RunContext) -> dict[str, Any]:
+        request = context.approval_gate.pending_approval
+        if request is None:
+            raise RuntimeError("missing pending approval")
+        payload: dict[str, Any] = {
+            "approval_id": request.approval_id,
+            "run_id": context.run_id,
+            "kind": request.kind,
+            "target_id": request.target_id,
+            "target_hash": request.target_hash,
+            "description": request.description,
+            "risk": request.risk,
+        }
+        if request.kind == ApprovalKind.COMMAND.value and context.pending_command is not None:
+            payload["argv"] = list(context.pending_command.argv)
+            payload["cwd"] = context.pending_command.cwd
+        return payload
+
     def _inspect_recovery(self, command: InspectRecovery) -> Iterator[EventEnvelope]:
         reports = self.coordinator.scan(command.run_id)
         for sequence, report in enumerate(reports, start=1):
-            yield EventEnvelope(
-                event_id=str(uuid4()),
-                run_id=report.run_id,
-                sequence=sequence,
-                timestamp=datetime.now(UTC),
-                type="recovery.detected",
-                payload={
-                    "run_id": report.run_id,
-                    "classification": report.classification.value,
-                    "stage": report.stage.value,
-                    "workspace_root": str(report.workspace_root),
-                    "allowed_actions": list(report.allowed_actions),
-                    "reason_code": report.reason_code,
-                    "evidence": [
-                        {
-                            "path": item.path,
-                            "before_hash": item.before_hash,
-                            "after_hash": item.after_hash,
-                            "current_hash": item.current_hash,
-                            "state": item.state.value,
-                        }
-                        for item in report.evidence
-                    ],
-                },
+            yield self._ephemeral_event(
+                report.run_id, "recovery.detected", self._report_payload(report), sequence
             )
+
+    def _reject_resume(self, report: RecoveryReport) -> Iterator[EventEnvelope]:
+        sequence = 1
+        if (
+            report.classification is RecoveryClassification.MANUAL_REQUIRED
+            and self.snapshot_store.exists(report.run_id)
+        ):
+            try:
+                snapshot = self.snapshot_store.load(report.run_id)
+            except (OSError, ValueError, RecoverySnapshotError):
+                snapshot = None
+            if snapshot is not None and snapshot.pending_approval is not None:
+                yield self._ephemeral_event(
+                    report.run_id,
+                    "approval.invalidated",
+                    {
+                        "approval_id": snapshot.pending_approval.approval_id,
+                        "run_id": report.run_id,
+                        "reason": report.reason_code,
+                    },
+                    sequence,
+                )
+                sequence += 1
+        event_type = (
+            "recovery.manual_required"
+            if report.classification is RecoveryClassification.MANUAL_REQUIRED
+            else "recovery.detected"
+        )
+        yield self._ephemeral_event(
+            report.run_id, event_type, self._report_payload(report), sequence
+        )
+
+    def _resume(self, command: ResumeRun) -> Iterator[EventEnvelope]:
+        report = self.coordinator.prepare_resume(command.run_id)
+        resumable = {
+            RecoveryClassification.RESUMABLE_APPROVAL,
+            RecoveryClassification.RESUMABLE_VERIFICATION,
+        }
+        if report.classification not in resumable:
+            yield from self._reject_resume(report)
+            return
+        existing = self.runs.get(command.run_id)
+        if existing is not None:
+            yield self._ephemeral_event(
+                report.run_id, "recovery.detected", self._report_payload(report)
+            )
+            if existing.approval_gate.pending_approval is not None:
+                yield self._ephemeral_event(
+                    existing.run_id,
+                    "approval.required",
+                    self._approval_payload(existing),
+                    2,
+                )
+            return
+        try:
+            context = RunResumer(self.coordinator).load_context(command.run_id)
+        except (ResumeRejected, RecoveryHydrationError, RecoverySnapshotError, OSError, ValueError):
+            yield from self._reject_resume(report)
+            return
+        self.runs[context.run_id] = context
+        stage = report.stage
+        yield self._stable_event(
+            context,
+            "recovery.resume_started",
+            {
+                "run_id": context.run_id,
+                "classification": report.classification.value,
+            },
+            stage,
+        )
+        if context.approval_gate.pending_approval is not None:
+            yield self._stable_event(
+                context,
+                "approval.required",
+                self._approval_payload(context),
+                stage,
+            )
+            yield self._stable_event(
+                context,
+                "recovery.resumed",
+                {"run_id": context.run_id},
+                stage,
+            )
+            return
+        yield self._stable_event(
+            context,
+            "recovery.resumed",
+            {"run_id": context.run_id},
+            stage,
+        )
+        yield from self._verify(context)
