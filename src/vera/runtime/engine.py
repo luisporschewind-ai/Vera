@@ -29,10 +29,12 @@ from vera.contracts.commands import (
 from vera.contracts.conversation import ConversationMessage
 from vera.contracts.events import EventEnvelope
 from vera.contracts.recovery import RecoveryClassification, RecoveryReport, RecoveryStage
+from vera.contracts.streaming import RuntimeOutput, StreamFrame, StreamFrameType
 from vera.contracts.verification import VerificationCommand
 from vera.models.base import ModelAdapter, ModelMessage, ModelRequest, ModelToolCall, ModelTurn
 from vera.models.errors import ModelErrorCode, ModelProviderError, safe_error_payload
 from vera.models.retry import RetryPolicy
+from vera.models.streaming import ModelStreamCompleted, ModelTextDelta
 from vera.persistence.journal import EventJournal
 from vera.persistence.migration import StateMigrationService
 from vera.persistence.recovery_snapshot import RecoverySnapshotError, RecoverySnapshotStore
@@ -590,7 +592,7 @@ class VeraRuntime:
 
     def _complete_with_retry(
         self, context: RunContext, request: ModelRequest
-    ) -> Iterator[EventEnvelope | ModelTurn | None]:
+    ) -> Iterator[EventEnvelope | StreamFrame | ModelTurn | None]:
         has_tools = bool(request.tools)
         if not self.adapter.capabilities.supports_request(has_tools=has_tools):
             error = ModelProviderError(
@@ -600,6 +602,7 @@ class VeraRuntime:
             yield self._event(context, "model.failed", safe_error_payload(error, 0))
             yield None
             return
+        stream_id = f"stream_{uuid4().hex}"
         for attempt in range(1, self.retry_policy.max_attempts + 1):
             yield self._event(
                 context,
@@ -607,8 +610,26 @@ class VeraRuntime:
                 {"turn": context.model_turns, "attempt": attempt},
             )
             started = datetime.now(UTC)
+            frame_index = 0
             try:
-                turn = self.adapter.complete(request)
+                turn: ModelTurn | None = None
+                for item in self.adapter.stream(request):
+                    if isinstance(item, ModelTextDelta):
+                        yield StreamFrame(
+                            run_id=context.run_id,
+                            stream_id=stream_id,
+                            index=frame_index,
+                            type=StreamFrameType.ASSISTANT_DELTA,
+                            payload={"text": item.text},
+                        )
+                        frame_index += 1
+                    elif isinstance(item, ModelStreamCompleted):
+                        turn = item.turn
+                if turn is None:
+                    raise ModelProviderError(
+                        ModelErrorCode.INVALID_RESPONSE,
+                        "provider stream missing completion",
+                    )
             except ModelProviderError as provider_error:
                 if not self.retry_policy.should_retry(provider_error, attempt):
                     yield self._event(
@@ -647,13 +668,14 @@ class VeraRuntime:
                     "usage": usage,
                     "request_id": turn.provider_request_id,
                     "duration_ms": duration_ms,
+                    "stream_id": stream_id,
                 },
             )
             yield turn
             return
         yield None
 
-    def _drive(self, context: RunContext) -> Iterator[EventEnvelope]:
+    def _drive(self, context: RunContext) -> Iterator[RuntimeOutput]:
         while context.machine.state not in {RunState.AWAITING_APPROVAL, RunState.FAILED}:
             if context.model_turns >= self.limits.max_model_turns:
                 yield from self._fail(context, "max_model_turns")
@@ -665,7 +687,7 @@ class VeraRuntime:
             request = self._model_request(context)
             turn: ModelTurn | None = None
             for item in self._complete_with_retry(context, request):
-                if isinstance(item, EventEnvelope):
+                if isinstance(item, (EventEnvelope, StreamFrame)):
                     yield item
                 else:
                     turn = item
@@ -685,7 +707,21 @@ class VeraRuntime:
                     yield from self._fail(context, "empty_model_response")
                     return
                 context.machine.transition(RunState.COMPLETED)
-                yield self._event(context, "assistant.message", {"content": text})
+                yield self._event(
+                    context,
+                    "assistant.message",
+                    {
+                        "content": text,
+                        "stream_id": next(
+                            (
+                                event.payload.get("stream_id")
+                                for event in reversed(context.journal.read_all())
+                                if event.type == "model.completed"
+                            ),
+                            None,
+                        ),
+                    },
+                )
                 yield self._stable_event(
                     context,
                     "run.completed",
@@ -718,7 +754,7 @@ class VeraRuntime:
         messages.append(ModelMessage(role="user", content=command.goal))
         return messages
 
-    def _compact(self, context: RunContext) -> Iterator[EventEnvelope]:
+    def _compact(self, context: RunContext) -> Iterator[RuntimeOutput]:
         request = ModelRequest(
             messages=tuple(context.messages),
             tools=(),
@@ -726,7 +762,7 @@ class VeraRuntime:
         )
         turn: ModelTurn | None = None
         for item in self._complete_with_retry(context, request):
-            if isinstance(item, EventEnvelope):
+            if isinstance(item, (EventEnvelope, StreamFrame)):
                 yield item
             else:
                 turn = item
@@ -749,12 +785,17 @@ class VeraRuntime:
         )
 
     def handle(self, command: CoreCommand) -> Iterator[EventEnvelope]:
+        for output in self.stream(command):
+            if isinstance(output, EventEnvelope):
+                yield output
+
+    def stream(self, command: CoreCommand) -> Iterator[RuntimeOutput]:
         try:
             yield from self._dispatch(command)
         except SnapshotPersistError as exc:
             yield exc.failed_event
 
-    def _dispatch(self, command: CoreCommand) -> Iterator[EventEnvelope]:
+    def _dispatch(self, command: CoreCommand) -> Iterator[RuntimeOutput]:
         if isinstance(command, CancelRun):
             context = self.runs.get(command.run_id)
             if context is not None:

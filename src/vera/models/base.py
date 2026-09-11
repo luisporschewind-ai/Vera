@@ -1,7 +1,7 @@
 """Stable provider-neutral model protocol."""
 
 from collections import deque
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from typing import Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -62,6 +62,8 @@ class ModelAdapter(Protocol):
 
     def complete(self, request: ModelRequest) -> ModelTurn: ...
 
+    def stream(self, request: ModelRequest) -> Iterator[object]: ...
+
 
 class FakeModelAdapter:
     def __init__(
@@ -69,10 +71,12 @@ class FakeModelAdapter:
         turns: Sequence[ModelTurn | ModelProviderError] = (),
         *,
         capabilities: ModelCapabilities | None = None,
+        text_deltas: Sequence[Sequence[str]] | None = None,
     ) -> None:
         self._turns: deque[ModelTurn | ModelProviderError] = deque(turns)
         self.requests: list[ModelRequest] = []
         self._capabilities = capabilities or ModelCapabilities()
+        self._text_deltas: deque[Sequence[str]] = deque(text_deltas or ())
 
     @property
     def capabilities(self) -> ModelCapabilities:
@@ -86,3 +90,15 @@ class FakeModelAdapter:
         if isinstance(item, ModelProviderError):
             raise item
         return item
+
+    def stream(self, request: ModelRequest) -> Iterator[object]:
+        from vera.models.streaming import ModelStreamCompleted, ModelTextDelta
+
+        if self._text_deltas:
+            deltas = self._text_deltas.popleft()
+            for part in deltas:
+                yield ModelTextDelta(text=part)
+            turn = self.complete(request)
+            yield ModelStreamCompleted(turn=turn)
+            return
+        yield ModelStreamCompleted(turn=self.complete(request))

@@ -13,6 +13,7 @@ class ModelCapabilities(BaseModel):
     context_tokens: int | None = Field(default=None, ge=1)
     usage: bool = True
     request_id: bool = True
+    streaming: bool = False
 
     def supports_request(self, *, has_tools: bool) -> bool:
         return not (has_tools and not self.tool_calling)
