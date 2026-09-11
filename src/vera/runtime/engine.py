@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from vera import __version__
 from vera.config import Limits
+from vera.contracts.approvals import ApprovalRequest
 from vera.contracts.commands import (
     CancelRun,
     CoreCommand,
@@ -30,6 +31,7 @@ from vera.persistence.recovery_snapshot import RecoverySnapshotError, RecoverySn
 from vera.recovery.coordinator import RecoveryCoordinator
 from vera.recovery.hydrator import RecoveryHydrationError
 from vera.recovery.models import PersistedChangeSet, RecoverySnapshot
+from vera.recovery.planner import RecoveryPlanError, RecoveryPlanner
 from vera.recovery.probe import workspace_identity
 from vera.recovery.resume import ResumeRejected, RunResumer
 from vera.redaction import Redactor
@@ -391,6 +393,20 @@ class VeraRuntime:
                     RecoveryStage.VERIFYING,
                 )
             yield from self._verify(context)
+            return
+        if request.kind == ApprovalKind.RECOVERY.value:
+            if decision == "reject":
+                context.pending_recovery_plan = None
+                with suppress(Exception):
+                    context.machine.transition(RunState.CANCELLED)
+                yield self._stable_event(
+                    context,
+                    "run.cancelled",
+                    {"reason": "recovery_rejected"},
+                    RecoveryStage.TERMINAL,
+                )
+                return
+            yield from self._apply_recovery_plan(context, request)
             return
         if decision == "reject":
             context.machine.transition(RunState.CANCELLED)
@@ -757,6 +773,7 @@ class VeraRuntime:
         resumable = {
             RecoveryClassification.RESUMABLE_APPROVAL,
             RecoveryClassification.RESUMABLE_VERIFICATION,
+            RecoveryClassification.RECOVERABLE_PARTIAL_APPLY,
         }
         if report.classification not in resumable:
             yield from self._reject_resume(report)
@@ -780,6 +797,9 @@ class VeraRuntime:
             yield from self._reject_resume(report)
             return
         self.runs[context.run_id] = context
+        if report.classification is RecoveryClassification.RECOVERABLE_PARTIAL_APPLY:
+            yield from self._propose_partial_restore(context, report)
+            return
         stage = report.stage
         yield self._stable_event(
             context,
@@ -811,3 +831,136 @@ class VeraRuntime:
             stage,
         )
         yield from self._verify(context)
+
+    def _propose_partial_restore(
+        self, context: RunContext, report: RecoveryReport
+    ) -> Iterator[EventEnvelope]:
+        snapshot = self.snapshot_store.load(context.run_id)
+        try:
+            plan = RecoveryPlanner().plan(report, snapshot)
+        except RecoveryPlanError:
+            yield from self._reject_resume(report)
+            return
+        current = context.pending_recovery_plan
+        pending = context.approval_gate.pending_approval
+        if current is None or current.recovery_hash != plan.recovery_hash:
+            if pending is not None:
+                yield self._stable_event(
+                    context,
+                    "approval.invalidated",
+                    {
+                        "approval_id": pending.approval_id,
+                        "run_id": context.run_id,
+                        "reason": "recovery_hash_changed",
+                    },
+                    report.stage,
+                )
+                context.approval_gate.pending_approval = None
+            context.pending_recovery_plan = plan
+            context.approval_gate.require(
+                ApprovalKind.RECOVERY,
+                plan.recovery_id,
+                plan.recovery_hash,
+                "恢复部分应用的 Change Set",
+                "high",
+            )
+        else:
+            context.pending_recovery_plan = current
+        stage = report.stage
+        yield self._stable_event(
+            context,
+            "recovery.resume_started",
+            {
+                "run_id": context.run_id,
+                "classification": report.classification.value,
+            },
+            stage,
+        )
+        plan = context.pending_recovery_plan
+        assert plan is not None
+        yield self._stable_event(
+            context,
+            "recovery.restore_proposed",
+            {
+                "recovery_id": plan.recovery_id,
+                "run_id": plan.run_id,
+                "recovery_hash": plan.recovery_hash,
+                "files": [{"path": item.path, "action": item.action} for item in plan.files],
+            },
+            stage,
+        )
+        yield self._stable_event(
+            context,
+            "approval.required",
+            self._approval_payload(context),
+            stage,
+        )
+
+    def _apply_recovery_plan(
+        self, context: RunContext, request: ApprovalRequest
+    ) -> Iterator[EventEnvelope]:
+        plan = context.pending_recovery_plan
+        manifest = context.checkpoint_manifest
+        if plan is None or manifest is None:
+            yield from self._fail(context, "missing_recovery_plan")
+            return
+        report = self.coordinator.prepare_resume(context.run_id)
+        try:
+            snapshot = self.snapshot_store.load(context.run_id)
+            recomputed = RecoveryPlanner().plan(report, snapshot)
+        except (RecoveryPlanError, RecoverySnapshotError, OSError, ValueError):
+            yield self._stable_event(
+                context,
+                "approval.invalidated",
+                {
+                    "approval_id": request.approval_id,
+                    "run_id": context.run_id,
+                    "reason": report.reason_code,
+                },
+                RecoveryStage.CHECKPOINT_READY,
+            )
+            return
+        if recomputed.recovery_hash != request.target_hash:
+            yield self._stable_event(
+                context,
+                "approval.invalidated",
+                {
+                    "approval_id": request.approval_id,
+                    "run_id": context.run_id,
+                    "reason": "recovery_hash_changed",
+                },
+                RecoveryStage.CHECKPOINT_READY,
+            )
+            return
+        paths = WorkspacePaths(context.command.workspace_root)
+        result = ChangeApplier(paths, CheckpointStore(self.state_dir, paths)).restore_partial(
+            plan, manifest
+        )
+        if result.status is not RollbackStatus.ROLLED_BACK:
+            with suppress(Exception):
+                context.machine.transition(RunState.RECOVERY_REQUIRED)
+            yield self._stable_event(
+                context,
+                "recovery.manual_required",
+                {
+                    "run_id": context.run_id,
+                    "reason": result.error or result.status.value,
+                },
+                RecoveryStage.CHECKPOINT_READY,
+            )
+            return
+        context.pending_recovery_plan = None
+        with suppress(Exception):
+            context.machine.transition(RunState.COMPLETED)
+        yield self._stable_event(
+            context,
+            "recovery.restored",
+            {"run_id": context.run_id, "paths": list(result.paths)},
+            RecoveryStage.TERMINAL,
+        )
+        yield self._stable_event(
+            context,
+            "run.completed",
+            {"state": "completed", "outcome": "restored"},
+            RecoveryStage.TERMINAL,
+        )

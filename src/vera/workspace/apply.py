@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Protocol
 
 from vera.contracts.checkpoints import CheckpointManifest
+from vera.contracts.recovery import RecoveryPlan
 from vera.workspace.changeset import ABSENT_HASH, BuiltChangeSet, sha256_bytes
 from vera.workspace.checkpoint import CheckpointStore
 from vera.workspace.paths import WorkspacePaths
@@ -145,3 +146,40 @@ class ChangeApplier:
         except Exception as exc:
             return RollbackResult(RollbackStatus.RECOVERY_REQUIRED, paths=paths, error=str(exc))
         return RollbackResult(RollbackStatus.ROLLED_BACK, paths=paths)
+
+    def restore_partial(self, plan: RecoveryPlan, manifest: CheckpointManifest) -> RollbackResult:
+        try:
+            restore_paths = self._preflight_partial(plan, manifest)
+        except (OSError, ValueError) as exc:
+            return RollbackResult(RollbackStatus.RECOVERY_REQUIRED, error=str(exc))
+        try:
+            self._restore(manifest, restore_paths)
+        except Exception as exc:
+            return RollbackResult(
+                RollbackStatus.RECOVERY_REQUIRED,
+                paths=restore_paths,
+                error=str(exc),
+            )
+        return RollbackResult(RollbackStatus.ROLLED_BACK, paths=restore_paths)
+
+    def _preflight_partial(
+        self, plan: RecoveryPlan, manifest: CheckpointManifest
+    ) -> tuple[str, ...]:
+        restore_paths: list[str] = []
+        for item in plan.files:
+            if item.path not in manifest.before:
+                raise ValueError(f"checkpoint missing path: {item.path}")
+            target = self.paths.resolve_mutation(item.path)
+            current_hash = ABSENT_HASH if not target.exists() else sha256_bytes(target.read_bytes())
+            if current_hash != item.current_hash:
+                raise ValueError(f"current hash changed: {item.path}")
+            if item.action == "keep_before" and current_hash != item.before_hash:
+                raise ValueError(f"keep_before mismatch: {item.path}")
+            if item.action == "restore_before" and current_hash != item.after_hash:
+                raise ValueError(f"restore_before mismatch: {item.path}")
+            if item.action == "restore_before":
+                record = manifest.before[item.path]
+                if record.existed:
+                    self.checkpoint_store.read_original(manifest, item.path)
+                restore_paths.append(item.path)
+        return tuple(restore_paths)

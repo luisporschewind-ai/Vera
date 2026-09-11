@@ -223,3 +223,81 @@ def test_resume_manual_required_does_not_hydrate(tmp_path: Path) -> None:
     assert events[-1].payload["classification"] == "manual_required"
     assert any(event.type == "approval.invalidated" for event in events)
     assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "tampered\n"
+
+
+def test_resume_partial_restore_requires_approval(tmp_path: Path) -> None:
+    from tests.recovery.helpers import PartialRecoveryFixture
+
+    fixture = PartialRecoveryFixture(tmp_path)
+    runtime = VeraRuntime(
+        FakeModelAdapter([]),
+        ToolRegistry(),
+        fixture.state_dir,
+        snapshot_store=RecoverySnapshotStore(fixture.state_dir),
+        installation_id="install-1",
+    )
+    resumed = tuple(runtime.handle(ResumeRun(run_id="run_1")))
+    pending = next(event for event in resumed if event.type == "approval.required")
+
+    assert any(event.type == "recovery.restore_proposed" for event in resumed)
+    assert pending.payload["kind"] == "recovery"
+    assert fixture.after_file.read_bytes() == b"after-b\n"
+    assert runtime.adapter.requests == []
+
+    follow_up = tuple(runtime.handle(resolve(pending)))
+    assert any(event.type == "recovery.restored" for event in follow_up)
+    assert follow_up[-1].type == "run.completed"
+    assert fixture.before_file.read_bytes() == b"before-a\n"
+    assert fixture.after_file.read_bytes() == b"before-b\n"
+    assert tuple(runtime.handle(resolve(pending))) == ()
+
+
+def test_reject_partial_restore_does_not_write(tmp_path: Path) -> None:
+    from tests.recovery.helpers import PartialRecoveryFixture
+
+    fixture = PartialRecoveryFixture(tmp_path)
+    runtime = VeraRuntime(
+        FakeModelAdapter([]),
+        ToolRegistry(),
+        fixture.state_dir,
+        snapshot_store=RecoverySnapshotStore(fixture.state_dir),
+        installation_id="install-1",
+    )
+    pending = next(
+        event
+        for event in runtime.handle(ResumeRun(run_id="run_1"))
+        if event.type == "approval.required"
+    )
+    follow_up = tuple(runtime.handle(resolve(pending, "reject")))
+    assert follow_up[-1].type == "run.cancelled"
+    assert fixture.after_file.read_bytes() == b"after-b\n"
+
+
+def test_wrong_recovery_hash_is_rejected(tmp_path: Path) -> None:
+    from tests.recovery.helpers import PartialRecoveryFixture
+
+    fixture = PartialRecoveryFixture(tmp_path)
+    runtime = VeraRuntime(
+        FakeModelAdapter([]),
+        ToolRegistry(),
+        fixture.state_dir,
+        snapshot_store=RecoverySnapshotStore(fixture.state_dir),
+        installation_id="install-1",
+    )
+    pending = next(
+        event
+        for event in runtime.handle(ResumeRun(run_id="run_1"))
+        if event.type == "approval.required"
+    )
+    events = tuple(
+        runtime.handle(
+            ResolveApproval(
+                run_id=pending.run_id,
+                approval_id=str(pending.payload["approval_id"]),
+                target_hash="0" * 64,
+                decision="approve",
+            )
+        )
+    )
+    assert events[-1].type == "run.failed"
+    assert fixture.after_file.read_bytes() == b"after-b\n"

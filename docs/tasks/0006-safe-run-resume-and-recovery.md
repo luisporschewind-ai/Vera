@@ -277,7 +277,7 @@ git commit -m "feat: resume stable Vera runs"
 - Produces: `ChangeApplier.restore_partial(plan, manifest) -> RollbackResult`
 - Produces: `recovery.restore_proposed`、`recovery.restored`
 
-- [ ] **Step 1：编写精确恢复和冲突测试**
+- [x] **Step 1：编写精确恢复和冲突测试**
 
 ```python
 def test_partial_restore_only_reverts_after_files(partial_fixture) -> None:
@@ -291,14 +291,14 @@ def test_partial_restore_only_reverts_after_files(partial_fixture) -> None:
 
 再覆盖恢复前文件变为 UNKNOWN、Checkpoint blob 损坏、恢复中 writer 失败、重复批准、错误 recovery_hash。断言 UNKNOWN 时零文件写入。
 
-- [ ] **Step 2：运行测试并确认部分恢复接口不存在**
+- [x] **Step 2：运行测试并确认部分恢复接口不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
   tests/recovery/test_planner.py tests/workspace/test_partial_recovery.py -v
 ```
 
-- [ ] **Step 3：实现计划与 recovery approval**
+- [x] **Step 3：实现计划与 recovery approval**
 
 `ResumeRun` 遇到 recoverable_partial_apply 时生成 plan，追加 `recovery.restore_proposed`，并把 plan 写入稳定 Snapshot，再通过以下调用发出现有 `approval.required`：
 
@@ -316,7 +316,7 @@ request = context.approval_gate.require(
 
 `restore_partial` 预检所有路径后，只把 AFTER 文件恢复为 BEFORE；已经 BEFORE 的文件保持不动。任一预检失败时整体不写。
 
-- [ ] **Step 4：运行恢复与 Workspace 全回归**
+- [x] **Step 4：运行恢复与 Workspace 全回归**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/recovery tests/workspace tests/runtime -v
@@ -324,7 +324,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src tests/recovery tes
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交部分恢复**
+- [x] **Step 5：提交部分恢复**
 
 ```bash
 git add src/vera/recovery src/vera/runtime/engine.py src/vera/workspace/apply.py \

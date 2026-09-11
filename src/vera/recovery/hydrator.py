@@ -10,7 +10,12 @@ from vera.runtime.context import RunContext
 from vera.runtime.state import RunState, RunStateMachine
 from vera.workspace.checkpoint import CheckpointStore
 
-_APPROVAL_STAGES = frozenset({RecoveryStage.AWAITING_CHANGESET_APPROVAL})
+_APPROVAL_STAGES = frozenset(
+    {
+        RecoveryStage.AWAITING_CHANGESET_APPROVAL,
+        RecoveryStage.CHECKPOINT_READY,
+    }
+)
 _VERIFICATION_STAGES = frozenset(
     {
         RecoveryStage.AWAITING_VERIFICATION_APPROVAL,

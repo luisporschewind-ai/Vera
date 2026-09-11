@@ -13,6 +13,7 @@ _RESUMABLE = frozenset(
     {
         RecoveryClassification.RESUMABLE_APPROVAL,
         RecoveryClassification.RESUMABLE_VERIFICATION,
+        RecoveryClassification.RECOVERABLE_PARTIAL_APPLY,
     }
 )
 
