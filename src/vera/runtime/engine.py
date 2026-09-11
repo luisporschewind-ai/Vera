@@ -43,11 +43,13 @@ class VeraRuntime:
         registry: ToolRegistry,
         state_dir: Path,
         limits: Limits | None = None,
+        command_policy: CommandPolicy | None = None,
     ) -> None:
         self.adapter = adapter
         self.registry = registry
         self.state_dir = state_dir
         self.limits = limits or Limits()
+        self.command_policy = command_policy or CommandPolicy()
         self.runs: dict[str, RunContext] = {}
 
     def _event(
@@ -164,7 +166,7 @@ class VeraRuntime:
             yield from self._fail(context, "missing_changeset")
             return
         runner = VerificationRunner(context.command.workspace_root)
-        policy = CommandPolicy()
+        policy = self.command_policy
         while context.verification_index < len(built.change_set.verification):
             index = context.verification_index
             command = built.change_set.verification[index]

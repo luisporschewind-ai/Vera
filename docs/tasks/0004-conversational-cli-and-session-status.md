@@ -559,7 +559,7 @@ git commit -m "feat: compact conversation context through core"
 - Consumes: `VeraConfig.user_allowed_command_prefixes`
 - Guarantee: Runtime 分类验证命令时使用注入的同一个 policy
 
-- [ ] **Step 1：编写“配置必须真实生效”的失败测试**
+- [x] **Step 1：编写“配置必须真实生效”的失败测试**
 
 在 `tests/runtime/test_safe_editing_flow.py` 增加配置前缀命令无需第二道审批的测试：
 
@@ -582,7 +582,7 @@ def test_runtime_uses_injected_user_allowed_command_prefix(tmp_path: Path) -> No
 
 在 `tests/session/test_permissions.py` 断言快照只包含实际 policy 的前缀，并显示 `manual`、`current user`、`False` OS sandbox；不得包含供应商配置。
 
-- [ ] **Step 2：运行测试并确认 Runtime 当前新建默认 policy**
+- [x] **Step 2：运行测试并确认 Runtime 当前新建默认 policy**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -591,7 +591,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
 
 预期：`VeraRuntime` 不接受 `command_policy`，或命令仍产生审批。
 
-- [ ] **Step 3：注入并复用有效策略**
+- [x] **Step 3：注入并复用有效策略**
 
 Runtime 构造函数增加：
 
@@ -620,7 +620,7 @@ runtime = VeraRuntime(
 
 `permission_status()` 从传入 policy 生成冻结状态对象。不得把“配置存在但未注入”的前缀显示为有效。
 
-- [ ] **Step 4：运行策略、Runtime 和静态检查**
+- [x] **Step 4：运行策略、Runtime 和静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -632,7 +632,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check \
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Task 5**
+- [x] **Step 5：提交 Task 5**
 
 ```bash
 git add src/vera/tools/command_policy.py src/vera/session/models.py \
