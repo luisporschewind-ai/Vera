@@ -96,7 +96,7 @@ git commit -m "feat: score evaluation file and event facts"
 - Produces: `EvalExecutionError(code, message)`
 - Consumes: `$VERA_EVAL_PYTHON` only inside verification argv
 
-- [ ] **Step 1：编写无 Provider、审批耗尽和替换占位符测试**
+- [x] **Step 1：编写无 Provider、审批耗尽和替换占位符测试**
 
 ```python
 def test_factory_uses_fake_adapter_and_never_provider_loader(loaded_case, isolated, monkeypatch) -> None:
@@ -112,19 +112,19 @@ def test_driver_fails_closed_when_approval_script_is_exhausted(runtime, loaded_c
 
 再覆盖未知工具、剩余未消费 ModelTurn、剩余审批决定、`cancel` 转 `CancelRun`、`reject`/`approve` 绑定动态 approval ID/hash，以及非 `$VERA_EVAL_PYTHON` 环境语法拒绝。
 
-- [ ] **Step 2：运行失败测试**
+- [x] **Step 2：运行失败测试**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_runtime_factory.py tests/evals/test_script_driver.py -v
 ```
 
-- [ ] **Step 3：实现与 bootstrap 同边界的离线装配**
+- [x] **Step 3：实现与 bootstrap 同边界的离线装配**
 
 Factory 注册 `ReadFileTool`、`ListDirectoryTool`、`SearchTextTool`，使用临时 WorkspacePaths、固定 `installation_id=f"eval-{case_id}"`、临时 RecoverySnapshotStore、PolicyEngine 和只允许 `(sys.executable, "-c")` 的 CommandPolicy。Driver 只调用 `drive_run()`/`runtime.handle()`，标准场景从 `StartRun` 开始；本任务对非 `standard` 场景返回 `unsupported_scenario`。
 
 `EvalExecution.event_types` 是全部 Event 的顺序投影；`event_types_after_restart` 从 `restart_event_offset` 切片。没有重启时 `runtime_instance_count=1`、offset 为 `None`。副作用计数使用稳定 key（例如 `changeset.applied`、`rollback.completed`），供恢复评分使用。
 
-- [ ] **Step 4：验证并提交**
+- [x] **Step 4：验证并提交**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_runtime_factory.py tests/evals/test_script_driver.py tests/runtime -v
