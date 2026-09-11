@@ -77,3 +77,12 @@ def test_list_runs_hides_compaction_by_default(tmp_path: Path) -> None:
 
     assert default_ids == ["run_task"]
     assert set(internal_ids) == {"run_task", "run_compact"}
+
+
+def test_iter_run_ids_returns_sorted_safe_names(tmp_path: Path) -> None:
+    EventJournal(tmp_path, "run_b", Redactor([]))
+    EventJournal(tmp_path, "run_a", Redactor([]))
+    (tmp_path / "runs" / "not a run").mkdir()
+    (tmp_path / "runs" / "file.txt").write_text("x", encoding="utf-8")
+
+    assert RunStore(tmp_path).iter_run_ids() == ("run_a", "run_b")

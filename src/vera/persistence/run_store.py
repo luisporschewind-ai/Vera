@@ -59,3 +59,14 @@ class RunStore:
             )
         summaries.sort(key=lambda item: item.last_event_at, reverse=True)
         return tuple(summaries)
+
+    def iter_run_ids(self) -> tuple[str, ...]:
+        from vera.persistence.recovery_snapshot import is_safe_run_id
+
+        runs_dir = self.state_dir / "runs"
+        if not runs_dir.is_dir():
+            return ()
+        names = [
+            item.name for item in runs_dir.iterdir() if item.is_dir() and is_safe_run_id(item.name)
+        ]
+        return tuple(sorted(names))

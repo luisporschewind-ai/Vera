@@ -272,7 +272,7 @@ def test_readonly_commands_do_not_call_model(tmp_path: Path) -> None:
     session, adapter, io = make_session(
         workspace,
         [],
-        ["/status", "/context", "/permissions", "/help", "/exit"],
+        ["/status", "/context", "/permissions", "/help", "/recover", "/exit"],
     )
 
     assert session.run() == 0
@@ -283,6 +283,7 @@ def test_readonly_commands_do_not_call_model(tmp_path: Path) -> None:
     assert "no OS sandbox" in output
     assert "/compact" in output
     assert "/model" in output
+    assert "/recover" in output
 
 
 def test_startup_shows_status_before_prompt(tmp_path: Path) -> None:

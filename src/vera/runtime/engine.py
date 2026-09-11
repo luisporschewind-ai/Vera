@@ -2,19 +2,33 @@
 
 from collections.abc import Iterator
 from contextlib import suppress
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal, cast
 from uuid import uuid4
 
 from pydantic import BaseModel
 
+from vera import __version__
 from vera.config import Limits
-from vera.contracts.commands import CancelRun, CoreCommand, ResolveApproval, RollbackRun, StartRun
+from vera.contracts.commands import (
+    CancelRun,
+    CoreCommand,
+    InspectRecovery,
+    ResolveApproval,
+    RollbackRun,
+    StartRun,
+)
 from vera.contracts.conversation import ConversationMessage
 from vera.contracts.events import EventEnvelope
+from vera.contracts.recovery import RecoveryStage
 from vera.contracts.verification import VerificationCommand
 from vera.models.base import ModelAdapter, ModelMessage, ModelRequest, ModelToolCall
 from vera.persistence.journal import EventJournal
+from vera.persistence.recovery_snapshot import RecoverySnapshotError, RecoverySnapshotStore
+from vera.recovery.coordinator import RecoveryCoordinator
+from vera.recovery.models import PersistedChangeSet, RecoverySnapshot
+from vera.recovery.probe import workspace_identity
 from vera.redaction import Redactor
 from vera.runtime.approval import ApprovalGate, ApprovalKind
 from vera.runtime.context import RunContext
@@ -27,6 +41,14 @@ from vera.workspace.apply import ApplyStatus, ChangeApplier, RollbackStatus
 from vera.workspace.changeset import ChangeProposal, ChangeSetBuilder
 from vera.workspace.checkpoint import CheckpointStore
 from vera.workspace.paths import WorkspacePaths
+
+
+class SnapshotPersistError(RuntimeError):
+    """Raised after a failed snapshot write so the Runtime can stop without looping."""
+
+    def __init__(self, failed_event: EventEnvelope) -> None:
+        super().__init__("snapshot_write_failed")
+        self.failed_event = failed_event
 
 
 class ProposalInput(BaseModel):
@@ -44,6 +66,10 @@ class VeraRuntime:
         state_dir: Path,
         limits: Limits | None = None,
         command_policy: CommandPolicy | None = None,
+        *,
+        snapshot_store: RecoverySnapshotStore | None = None,
+        installation_id: str | None = None,
+        recovery_coordinator: RecoveryCoordinator | None = None,
     ) -> None:
         self.adapter = adapter
         self.registry = registry
@@ -51,11 +77,85 @@ class VeraRuntime:
         self.limits = limits or Limits()
         self.command_policy = command_policy or CommandPolicy()
         self.runs: dict[str, RunContext] = {}
+        self.snapshot_store = snapshot_store or RecoverySnapshotStore(state_dir)
+        self.installation_id = installation_id or "local"
+        self.coordinator = recovery_coordinator or RecoveryCoordinator(
+            state_dir,
+            self.installation_id,
+            snapshot_store=self.snapshot_store,
+        )
 
     def _event(
         self, context: RunContext, event_type: str, payload: dict[str, Any]
     ) -> EventEnvelope:
         return context.journal.append(event_type, payload)
+
+    def _should_snapshot(self, context: RunContext) -> bool:
+        return context.command.mode != "compact"
+
+    def _snapshot_from_context(
+        self,
+        context: RunContext,
+        stage: RecoveryStage,
+        sequence: int,
+        *,
+        verification_in_flight: bool,
+    ) -> RecoverySnapshot:
+        now = datetime.now(UTC)
+        created_at = context.snapshot_created_at or now
+        built = None
+        if context.built_change_set is not None:
+            built = PersistedChangeSet.from_built(context.built_change_set)
+        checkpoint_id = None
+        if context.checkpoint_manifest is not None:
+            checkpoint_id = context.checkpoint_manifest.checkpoint_id
+        return RecoverySnapshot(
+            run_id=context.run_id,
+            workspace_root=context.command.workspace_root,
+            workspace_identity=workspace_identity(
+                context.command.workspace_root, self.installation_id
+            ),
+            command=context.command,
+            stage=stage,
+            last_event_sequence=sequence,
+            built_changeset=built,
+            checkpoint_id=checkpoint_id,
+            pending_approval=context.approval_gate.pending_approval,
+            verification_index=context.verification_index,
+            verification_failed=context.verification_failed,
+            verification_in_flight=verification_in_flight,
+            workspace_write_started=context.workspace_write_started,
+            created_at=created_at,
+            updated_at=now,
+            vera_version=__version__,
+        )
+
+    def _stable_event(
+        self,
+        context: RunContext,
+        event_type: str,
+        payload: dict[str, Any],
+        stage: RecoveryStage,
+    ) -> EventEnvelope:
+        if not self._should_snapshot(context):
+            return self._event(context, event_type, payload)
+        event = context.journal.append(event_type, payload)
+        snapshot = self._snapshot_from_context(
+            context,
+            stage,
+            event.sequence,
+            verification_in_flight=event_type == "verification.started",
+        )
+        try:
+            self.snapshot_store.save(snapshot)
+        except RecoverySnapshotError as exc:
+            with suppress(Exception):
+                context.machine.transition(RunState.FAILED)
+            failed = context.journal.append("run.failed", {"reason": "snapshot_write_failed"})
+            raise SnapshotPersistError(failed) from exc
+        if context.snapshot_created_at is None:
+            context.snapshot_created_at = snapshot.created_at
+        return event
 
     def _definitions(self) -> tuple[dict[str, Any], ...]:
         definitions: list[dict[str, Any]] = []
@@ -95,7 +195,7 @@ class VeraRuntime:
     def _fail(self, context: RunContext, reason: str) -> Iterator[EventEnvelope]:
         with suppress(Exception):
             context.machine.transition(RunState.FAILED)
-        yield self._event(context, "run.failed", {"reason": reason})
+        yield self._stable_event(context, "run.failed", {"reason": reason}, RecoveryStage.TERMINAL)
 
     def _propose(self, context: RunContext, call: ModelToolCall) -> Iterator[EventEnvelope]:
         try:
@@ -146,7 +246,7 @@ class VeraRuntime:
             change_set.summary,
             risk,
         )
-        yield self._event(
+        yield self._stable_event(
             context,
             "approval.required",
             {
@@ -158,6 +258,7 @@ class VeraRuntime:
                 "description": request.description,
                 "risk": request.risk,
             },
+            RecoveryStage.AWAITING_CHANGESET_APPROVAL,
         )
 
     def _verify(self, context: RunContext) -> Iterator[EventEnvelope]:
@@ -173,12 +274,13 @@ class VeraRuntime:
             decision = policy.classify(command)
             if decision.kind is CommandDecisionKind.FORBIDDEN:
                 context.verification_failed = True
-                yield self._event(
+                context.verification_index += 1
+                yield self._stable_event(
                     context,
                     "verification.completed",
                     {"index": index, "status": "rejected", "reason": decision.reason},
+                    RecoveryStage.VERIFYING,
                 )
-                context.verification_index += 1
                 continue
             if decision.kind is CommandDecisionKind.APPROVAL_REQUIRED:
                 context.pending_command = command
@@ -189,7 +291,7 @@ class VeraRuntime:
                     "执行验证命令",
                     "medium",
                 )
-                yield self._event(
+                yield self._stable_event(
                     context,
                     "approval.required",
                     {
@@ -202,16 +304,19 @@ class VeraRuntime:
                         "cwd": command.cwd,
                         "risk": request.risk,
                     },
+                    RecoveryStage.AWAITING_VERIFICATION_APPROVAL,
                 )
                 return
-            yield self._event(
+            yield self._stable_event(
                 context,
                 "verification.started",
                 {"index": index, "argv": list(command.argv), "cwd": command.cwd},
+                RecoveryStage.VERIFYING,
             )
             result = runner.run(command)
             context.verification_failed = context.verification_failed or result.status != "passed"
-            yield self._event(
+            context.verification_index += 1
+            yield self._stable_event(
                 context,
                 "verification.completed",
                 {
@@ -223,13 +328,18 @@ class VeraRuntime:
                     "stdout_truncated": result.stdout_truncated,
                     "stderr_truncated": result.stderr_truncated,
                 },
+                RecoveryStage.VERIFYING,
             )
-            context.verification_index += 1
         terminal = (
             RunState.VERIFICATION_FAILED if context.verification_failed else RunState.COMPLETED
         )
         context.machine.transition(terminal)
-        yield self._event(context, "run.completed", {"state": context.machine.state.value})
+        yield self._stable_event(
+            context,
+            "run.completed",
+            {"state": context.machine.state.value},
+            RecoveryStage.TERMINAL,
+        )
 
     def _resolve_approval(self, command: ResolveApproval) -> Iterator[EventEnvelope]:
         context = self.runs.get(command.run_id)
@@ -250,12 +360,13 @@ class VeraRuntime:
             if decision == "reject":
                 context.verification_failed = True
                 context.pending_command = None
-                yield self._event(
+                context.verification_index += 1
+                yield self._stable_event(
                     context,
                     "verification.completed",
-                    {"index": context.verification_index, "status": "rejected"},
+                    {"index": context.verification_index - 1, "status": "rejected"},
+                    RecoveryStage.VERIFYING,
                 )
-                context.verification_index += 1
             elif context.pending_command is not None:
                 result = VerificationRunner(context.command.workspace_root).run(
                     context.pending_command
@@ -263,22 +374,28 @@ class VeraRuntime:
                 context.verification_failed = (
                     context.verification_failed or result.status != "passed"
                 )
-                yield self._event(
+                context.pending_command = None
+                context.verification_index += 1
+                yield self._stable_event(
                     context,
                     "verification.completed",
                     {
-                        "index": context.verification_index,
+                        "index": context.verification_index - 1,
                         "status": result.status,
                         "exit_code": result.exit_code,
                     },
+                    RecoveryStage.VERIFYING,
                 )
-                context.pending_command = None
-                context.verification_index += 1
             yield from self._verify(context)
             return
         if decision == "reject":
             context.machine.transition(RunState.CANCELLED)
-            yield self._event(context, "run.cancelled", {"reason": "approval_rejected"})
+            yield self._stable_event(
+                context,
+                "run.cancelled",
+                {"reason": "approval_rejected"},
+                RecoveryStage.TERMINAL,
+            )
             return
         built = context.built_change_set
         if built is None:
@@ -293,7 +410,13 @@ class VeraRuntime:
         except Exception as exc:
             yield from self._fail(context, f"checkpoint_failed:{exc}")
             return
-        yield self._event(context, "checkpoint.created", {"checkpoint_id": manifest.checkpoint_id})
+        context.checkpoint_manifest = manifest
+        yield self._stable_event(
+            context,
+            "checkpoint.created",
+            {"checkpoint_id": manifest.checkpoint_id},
+            RecoveryStage.CHECKPOINT_READY,
+        )
         context.machine.transition(RunState.APPLYING)
         apply_result = applier.apply(built, manifest)
         if apply_result.status is not ApplyStatus.APPLIED:
@@ -309,7 +432,13 @@ class VeraRuntime:
             )
             yield from self._fail(context, apply_result.status.value)
             return
-        yield self._event(context, "changeset.applied", {"status": apply_result.status.value})
+        context.workspace_write_started = True
+        yield self._stable_event(
+            context,
+            "changeset.applied",
+            {"status": apply_result.status.value},
+            RecoveryStage.VERIFYING,
+        )
         context.machine.transition(RunState.VERIFYING)
         yield from self._verify(context)
 
@@ -404,10 +533,11 @@ class VeraRuntime:
                     return
                 context.machine.transition(RunState.COMPLETED)
                 yield self._event(context, "assistant.message", {"content": text})
-                yield self._event(
+                yield self._stable_event(
                     context,
                     "run.completed",
                     {"state": RunState.COMPLETED.value, "outcome": "responded"},
+                    RecoveryStage.TERMINAL,
                 )
                 return
             context.machine.transition(RunState.GENERATING)
@@ -469,18 +599,32 @@ class VeraRuntime:
         )
 
     def handle(self, command: CoreCommand) -> Iterator[EventEnvelope]:
+        try:
+            yield from self._dispatch(command)
+        except SnapshotPersistError as exc:
+            yield exc.failed_event
+
+    def _dispatch(self, command: CoreCommand) -> Iterator[EventEnvelope]:
         if isinstance(command, CancelRun):
             context = self.runs.get(command.run_id)
             if context is not None:
                 with suppress(Exception):
                     context.machine.transition(RunState.CANCELLED)
-                yield self._event(context, "run.cancelled", {"reason": "cancelled_by_user"})
+                yield self._stable_event(
+                    context,
+                    "run.cancelled",
+                    {"reason": "cancelled_by_user"},
+                    RecoveryStage.TERMINAL,
+                )
             return
         if isinstance(command, ResolveApproval):
             yield from self._resolve_approval(command)
             return
         if isinstance(command, RollbackRun):
             yield from self._rollback(command)
+            return
+        if isinstance(command, InspectRecovery):
+            yield from self._inspect_recovery(command)
             return
         if not isinstance(command, StartRun):
             return
@@ -496,7 +640,7 @@ class VeraRuntime:
         )
         self.runs[run_id] = context
         context.machine.transition(RunState.DISCOVERING)
-        yield self._event(
+        yield self._stable_event(
             context,
             "run.started",
             {
@@ -506,8 +650,38 @@ class VeraRuntime:
                 "model_profile": command.model_profile,
                 "kind": kind,
             },
+            RecoveryStage.STARTED,
         )
         if command.mode == "compact":
             yield from self._compact(context)
             return
         yield from self._drive(context)
+
+    def _inspect_recovery(self, command: InspectRecovery) -> Iterator[EventEnvelope]:
+        reports = self.coordinator.scan(command.run_id)
+        for sequence, report in enumerate(reports, start=1):
+            yield EventEnvelope(
+                event_id=str(uuid4()),
+                run_id=report.run_id,
+                sequence=sequence,
+                timestamp=datetime.now(UTC),
+                type="recovery.detected",
+                payload={
+                    "run_id": report.run_id,
+                    "classification": report.classification.value,
+                    "stage": report.stage.value,
+                    "workspace_root": str(report.workspace_root),
+                    "allowed_actions": list(report.allowed_actions),
+                    "reason_code": report.reason_code,
+                    "evidence": [
+                        {
+                            "path": item.path,
+                            "before_hash": item.before_hash,
+                            "after_hash": item.after_hash,
+                            "current_hash": item.current_hash,
+                            "state": item.state.value,
+                        }
+                        for item in report.evidence
+                    ],
+                },
+            )

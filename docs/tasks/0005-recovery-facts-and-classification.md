@@ -2,7 +2,7 @@
 
 > **供 Cursor Agent 执行：** 使用单一主实现 Agent，逐项执行本计划。每个生产行为先写失败测试，再做最小实现；每个可审阅任务独立提交。不要派发并行编辑 Agent。
 
-**状态：** Planned
+**状态：** Done
 
 **目标分支：** `feature/recovery-facts-classification`
 
@@ -69,7 +69,7 @@ tests/
 - Produces: `InspectRecovery(run_id: str | None = None)`
 - Produces: `PersistedChangeSet`、`RecoverySnapshot`
 
-- [ ] **Step 1：编写失败的 round-trip 测试**
+- [x] **Step 1：编写失败的 round-trip 测试**
 
 ```python
 def test_recovery_report_round_trips() -> None:
@@ -98,7 +98,7 @@ def test_inspect_recovery_is_a_core_command() -> None:
     assert command.schema_version == 1
 ```
 
-- [ ] **Step 2：运行测试并确认恢复类型不存在**
+- [x] **Step 2：运行测试并确认恢复类型不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -107,7 +107,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
 
 预期：导入 `vera.contracts.recovery` 失败。
 
-- [ ] **Step 3：实现精确模型**
+- [x] **Step 3：实现精确模型**
 
 ```python
 class RecoveryClassification(StrEnum):
@@ -158,7 +158,7 @@ vera_version: str
 
 `PersistedChangeSet` 保存 `change_set: ChangeSet` 与 `intended_content_b64: dict[str, str]`。加载时使用严格 Base64 解码，并核对 create/update 的 `after_hash`。
 
-- [ ] **Step 4：运行契约和静态检查**
+- [x] **Step 4：运行契约和静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -168,7 +168,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check \
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交契约**
+- [x] **Step 5：提交契约**
 
 ```bash
 git add src/vera/contracts/commands.py src/vera/contracts/recovery.py \
@@ -192,7 +192,7 @@ git commit -m "feat: define recovery facts and reports"
 - Produces: `RecoverySnapshotStore(state_dir: Path, replace: Callable[[Path, Path], None] = os.replace, fsync: Callable[[int], None] = os.fsync)`
 - Produces: `save(snapshot) -> None`、`load(run_id) -> RecoverySnapshot`、`exists(run_id) -> bool`
 
-- [ ] **Step 1：编写原子性、权限和损坏测试**
+- [x] **Step 1：编写原子性、权限和损坏测试**
 
 ```python
 def test_snapshot_save_is_atomic_and_private(tmp_path: Path, snapshot) -> None:
@@ -215,18 +215,18 @@ def test_corrupt_snapshot_has_stable_error(tmp_path: Path) -> None:
 
 注入失败的 `replace`，断言旧正式文件逐字节不变。
 
-- [ ] **Step 2：运行测试并确认 Store 不存在**
+- [x] **Step 2：运行测试并确认 Store 不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
   tests/persistence/test_recovery_snapshot.py -v
 ```
 
-- [ ] **Step 3：实现同目录原子替换**
+- [x] **Step 3：实现同目录原子替换**
 
 构造函数允许注入 `replace: Callable[[Path, Path], None] = os.replace` 和 `fsync: Callable[[int], None] = os.fsync`。`save()` 校验安全 run ID，目录 `0700`、文件 `0600`；使用排序键紧凑 JSON，flush + fsync 后 replace。异常删除临时文件、保留旧正式文件并抛 `RecoverySnapshotError("snapshot_write_failed")`。
 
-- [ ] **Step 4：运行持久化回归**
+- [x] **Step 4：运行持久化回归**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/persistence -v
@@ -235,7 +235,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check \
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Store**
+- [x] **Step 5：提交 Store**
 
 ```bash
 git add src/vera/persistence/recovery_snapshot.py \
@@ -262,7 +262,7 @@ git commit -m "feat: persist atomic recovery snapshots"
 - Produces: `WorkspaceEvidenceProbe.inspect(snapshot: RecoverySnapshot) -> tuple[RecoveryEvidence, ...]`
 - Produces: `RecoveryClassifier.classify(snapshot, evidence) -> RecoveryReport`
 
-- [ ] **Step 1：编写 before/after/unknown 与分类表测试**
+- [x] **Step 1：编写 before/after/unknown 与分类表测试**
 
 ```python
 def test_probe_classifies_exact_hashes(tmp_path: Path, snapshot_factory) -> None:
@@ -281,20 +281,20 @@ def test_probe_classifies_exact_hashes(tmp_path: Path, snapshot_factory) -> None
 
 参数化分类固定 STARTED/空证据 → safe_to_abandon，审批/全 BEFORE → resumable_approval，验证/全 AFTER 且 `verification_in_flight=False` → resumable_verification，Checkpoint/BEFORE+AFTER → recoverable_partial_apply，任意 UNKNOWN 或 `verification_in_flight=True` → manual_required。再覆盖 create/delete、工作区缺失、身份不符、符号链接逃逸和路径集合矛盾。
 
-- [ ] **Step 2：运行测试并确认接口不存在**
+- [x] **Step 2：运行测试并确认接口不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
   tests/recovery/test_probe.py tests/recovery/test_classifier.py -v
 ```
 
-- [ ] **Step 3：实现只读 Probe 和穷尽分类**
+- [x] **Step 3：实现只读 Probe 和穷尽分类**
 
 `workspace_identity` 对 `installation_id + "\0" + str(workspace.resolve())` 计算 SHA-256。Probe 使用 `WorkspacePaths.resolve_mutation()` 重新验证路径，只读取字节并与 before/after hash 比较；不存在使用 `ABSENT_HASH`。异常生成 UNKNOWN，不执行 Git、Shell 或模型。
 
 Classifier 不访问文件系统。UNKNOWN、身份错误、Checkpoint 缺失或证据矛盾优先 manual_required；只有所有条件都满足时返回可恢复状态。
 
-- [ ] **Step 4：运行恢复和 Workspace 回归**
+- [x] **Step 4：运行恢复和 Workspace 回归**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -304,7 +304,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check \
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交证据分类**
+- [x] **Step 5：提交证据分类**
 
 ```bash
 git add src/vera/recovery tests/recovery \
@@ -327,7 +327,7 @@ git commit -m "feat: classify recovery evidence"
 - Produces: `VeraRuntime(adapter, registry, state_dir, limits=None, command_policy=None, *, snapshot_store: RecoverySnapshotStore | None = None, installation_id: str | None = None)`
 - Guarantee: `snapshot.last_event_sequence` 等于最近稳定 Event sequence
 
-- [ ] **Step 1：编写边界顺序与失败关闭测试**
+- [x] **Step 1：编写边界顺序与失败关闭测试**
 
 ```python
 def test_changeset_approval_snapshot_references_required_event(runtime_fixture) -> None:
@@ -344,14 +344,14 @@ def test_changeset_approval_snapshot_references_required_event(runtime_fixture) 
 
 再覆盖 started、checkpoint.created、changeset.applied、验证命令 approval.required、verification.started、每条 verification.completed、所有终止 Event。`verification.started` 快照设置 `verification_in_flight=True`，完成后恢复 False。注入 save 失败，断言不进入下一副作用并产生 `run.failed(reason="snapshot_write_failed")`。
 
-- [ ] **Step 2：运行测试并确认 Runtime 不写 Snapshot**
+- [x] **Step 2：运行测试并确认 Runtime 不写 Snapshot**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
   tests/runtime/test_recovery_snapshots.py -v
 ```
 
-- [ ] **Step 3：实现 `_stable_event`**
+- [x] **Step 3：实现 `_stable_event`**
 
 ```python
 def _stable_event(
@@ -371,7 +371,7 @@ def _stable_event(
 
 若 Snapshot 保存失败，Runtime 使用不经过 `_stable_event` 的原始 Journal append 记录一次 `run.failed(reason="snapshot_write_failed")`，随后立即停止；失败路径不得递归尝试再写 Snapshot，也不得进入下一项副作用。
 
-- [ ] **Step 4：运行 Runtime 全回归**
+- [x] **Step 4：运行 Runtime 全回归**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -380,7 +380,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src tests/runtime test
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Runtime 集成**
+- [x] **Step 5：提交 Runtime 集成**
 
 ```bash
 git add src/vera/runtime/context.py src/vera/runtime/engine.py \
@@ -412,7 +412,7 @@ git commit -m "feat: snapshot stable runtime boundaries"
 - Produces: `/recover [run-id]`
 - Produces: `vera recover list|show`
 
-- [ ] **Step 1：编写损坏隔离和只读 CLI 测试**
+- [x] **Step 1：编写损坏隔离和只读 CLI 测试**
 
 Coordinator Fixture 同时创建正常 Snapshot、损坏 Snapshot、legacy 未终止 Journal、已终止 run 和 compaction run。断言损坏项为 manual_required、legacy 为 legacy_not_resumable、终止与 compaction 不出现。
 
@@ -431,20 +431,20 @@ def test_recover_list_never_calls_model_or_changes_workspace(
 
 再测试 `/recover`、指定 run、未知 run、无恢复项、JSON 无 ANSI/提示符，以及启动只在存在未完成 run 时显示计数。
 
-- [ ] **Step 2：运行测试并确认命令未知**
+- [x] **Step 2：运行测试并确认命令未知**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
   tests/recovery/test_coordinator.py tests/cli/test_recovery_inspection.py -v
 ```
 
-- [ ] **Step 3：实现扫描与展示**
+- [x] **Step 3：实现扫描与展示**
 
 RunStore 增加 `iter_run_ids() -> tuple[str, ...]`，只返回安全目录名并排序。Coordinator 逐 run 捕获 `JournalCorrupt`、`RecoverySnapshotError`、`OSError`、`ValueError`，输出脱敏 manual_required 报告。
 
 Runtime 分派 `InspectRecovery` 并发出 recovery.detected。Bootstrap 在私有状态目录原子创建 `installation.json` 并注入同一 Coordinator。Typer 注册 `recover list/show`；InteractiveSession 处理 `/recover [run-id]`。Payload 只含分类、阶段、允许动作、相对路径哈希和 reason_code，不含文件正文或 Snapshot 原文。
 
-- [ ] **Step 4：运行完整任务验收**
+- [x] **Step 4：运行完整任务验收**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -458,7 +458,7 @@ git diff --check
 
 全部退出码为 0，且总覆盖率不得低于当前 90%。
 
-- [ ] **Step 5：记录证据并提交**
+- [x] **Step 5：记录证据并提交**
 
 创建 `docs/evals/recovery-facts-and-classification.md`，记录 Snapshot 原子性、六类分类、损坏隔离、legacy、CLI 只读性、测试数、覆盖率和未执行 live。更新 README、STATUS 和任务状态。
 
@@ -472,7 +472,7 @@ git add src/vera/recovery src/vera/persistence/run_store.py \
 git commit -m "test: verify recovery classification"
 ```
 
-- [ ] **Step 6：合并回 main 并复核**
+- [x] **Step 6：合并回 main 并复核**
 
 ```bash
 git switch main

@@ -11,8 +11,9 @@ from vera.bootstrap import RuntimeBuilder, RuntimeDependencies, build_runtime
 from vera.cli_driver import ApprovalDecision, drive_run
 from vera.cli_presenter import HumanPresenter
 from vera.cli_session_presenter import SessionPresenter
-from vera.contracts.commands import RollbackRun, StartRun
+from vera.contracts.commands import InspectRecovery, RollbackRun, StartRun
 from vera.contracts.events import EventEnvelope
+from vera.contracts.recovery import RecoveryClassification
 from vera.persistence.run_store import RunStore
 from vera.session.conversation import ConversationContext
 from vera.session.permissions import permission_status
@@ -57,6 +58,7 @@ class InteractiveSession:
 
     def run(self) -> int:
         self._write_status()
+        self._write_recovery_hint()
         self.io.write("输入 /help 查看命令")
         while True:
             try:
@@ -163,6 +165,8 @@ class InteractiveSession:
             self._show(args[0])
         elif command == "/rollback" and len(args) == 1:
             self._rollback(args[0])
+        elif command == "/recover" and len(args) <= 1:
+            self._recover(args[0] if args else None)
         elif command in {"/show", "/rollback"}:
             self.io.write(f"用法：{command} <run-id>")
         elif command == "/model":
@@ -176,6 +180,7 @@ class InteractiveSession:
             "/clear",
             "/compact",
             "/runs",
+            "/recover",
             "/exit",
             "/quit",
         }:
@@ -249,6 +254,7 @@ class InteractiveSession:
             "  /runs                 列出任务\n"
             "  /show <run-id>         显示任务事件\n"
             "  /rollback <run-id>     安全回滚任务修改\n"
+            "  /recover [run-id]      查看待恢复任务\n"
             "  /exit 或 /quit         退出\n"
             "审批输入：approve、reject 或 cancel"
         )
@@ -276,3 +282,30 @@ class InteractiveSession:
             self.io.write(f"未找到可回滚的 Checkpoint：{run_id}")
             return
         self.presenter.write_events(events)
+
+    def _recover(self, run_id: str | None) -> None:
+        events = tuple(self.dependencies.runtime.handle(InspectRecovery(run_id=run_id)))
+        if not events:
+            if run_id is None:
+                self.io.write("暂无待恢复任务。")
+            else:
+                self.io.write(f"未找到待恢复 run：{run_id}")
+            return
+        self.presenter.write_events(events)
+
+    def _write_recovery_hint(self) -> None:
+        reports = self.dependencies.runtime.coordinator.scan()
+        if not reports:
+            return
+        rank = {
+            RecoveryClassification.MANUAL_REQUIRED: 5,
+            RecoveryClassification.RECOVERABLE_PARTIAL_APPLY: 4,
+            RecoveryClassification.RESUMABLE_VERIFICATION: 3,
+            RecoveryClassification.RESUMABLE_APPROVAL: 2,
+            RecoveryClassification.LEGACY_NOT_RESUMABLE: 1,
+            RecoveryClassification.SAFE_TO_ABANDON: 0,
+        }
+        highest = max(reports, key=lambda item: rank.get(item.classification, 0))
+        self.io.write(
+            f"发现 {len(reports)} 个待恢复任务（最高风险：{highest.classification.value}）"
+        )

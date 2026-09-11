@@ -44,4 +44,9 @@ class RollbackRun(ContractModel):
         return self
 
 
-type CoreCommand = StartRun | ResolveApproval | CancelRun | RollbackRun
+class InspectRecovery(ContractModel):
+    schema_version: Literal[1] = 1
+    run_id: str | None = None
+
+
+type CoreCommand = StartRun | ResolveApproval | CancelRun | RollbackRun | InspectRecovery

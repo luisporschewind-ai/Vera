@@ -95,5 +95,18 @@ class HumanPresenter:
             summary = payload.get("summary", "")
             size = len(summary.encode("utf-8")) if isinstance(summary, str) else 0
             self._write(f"上下文已压缩（{size} bytes）")
+        elif event.type == "recovery.detected":
+            classification = payload.get("classification", "unknown")
+            reason = payload.get("reason_code", "unknown")
+            self._write(f"待恢复：{event.run_id}（{classification} / {reason}）")
+            evidence = payload.get("evidence", [])
+            if isinstance(evidence, list):
+                for item in evidence:
+                    if not isinstance(item, dict):
+                        continue
+                    self._write(f"{item.get('path', '')}: {item.get('state', 'unknown')}")
+            actions = payload.get("allowed_actions", ())
+            if isinstance(actions, list | tuple) and actions:
+                self._write("允许动作：" + ", ".join(str(action) for action in actions))
         else:
             self._write(event.type)
