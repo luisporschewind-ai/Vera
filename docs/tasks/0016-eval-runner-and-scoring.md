@@ -149,7 +149,7 @@ git commit -m "feat: drive scripted evaluations through Vera core"
 - Produces: module entry `python -m vera.evals.worker --request <path> --result <path>`
 - Guarantee: Worker 不向 stdout 写协议，不加载用户 Provider 配置
 
-- [ ] **Step 1：编写成功、Runtime 异常和结果原子写测试**
+- [x] **Step 1：编写成功、Runtime 异常和结果原子写测试**
 
 ```python
 def test_worker_returns_report_from_core_facts(worker_request) -> None:
@@ -168,17 +168,17 @@ def test_worker_maps_uncaught_runtime_error(worker_request, monkeypatch) -> None
 
 再测 request schema 错误、result 目标已存在、部分写失败、没有 Event、source manifest 在运行后改变和 stderr 不包含 fixture 正文。
 
-- [ ] **Step 2：运行失败测试**
+- [x] **Step 2：运行失败测试**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_worker.py -v
 ```
 
-- [ ] **Step 3：实现单 case Worker**
+- [x] **Step 3：实现单 case Worker**
 
 Worker 顺序固定：解码 request → 重新校验 corpus → 捕获 before → 构造 Runtime → 执行脚本 → 捕获 after → 提取最小 metrics → 评分 → 验证源 hash → 原子写 result。任何异常映射稳定 code，不序列化 traceback、环境或原始文件正文。
 
-- [ ] **Step 4：验证并提交**
+- [x] **Step 4：验证并提交**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_worker.py tests/evals/test_script_driver.py -v
