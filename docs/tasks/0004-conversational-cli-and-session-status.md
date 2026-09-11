@@ -2,7 +2,7 @@
 
 > **供 Cursor Agent 执行：** 必须逐任务执行本计划。使用单一主实现 Agent，不派发并行编辑 Agent。每个生产行为先写失败测试，再做最小实现；每项完成后独立提交。
 
-**状态：** Planned（可执行）
+**状态：** In Progress
 
 **目标分支：** `feature/conversational-cli-session`
 
@@ -101,7 +101,7 @@ tests/
 - Produces: `Limits.max_conversation_bytes: int = 200_000`
 - Guarantee: 旧版 `StartRun` JSON 仍能按版本 1解析
 
-- [ ] **Step 1：编写契约和配置失败测试**
+- [x] **Step 1：编写契约和配置失败测试**
 
 在 `tests/contracts/test_models.py` 增加：
 
@@ -145,7 +145,7 @@ def test_conversation_limit_defaults_to_two_hundred_thousand(tmp_path: Path) -> 
     assert config.limits.max_conversation_bytes == 200_000
 ```
 
-- [ ] **Step 2：运行测试并确认接口不存在**
+- [x] **Step 2：运行测试并确认接口不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -154,7 +154,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
 
 预期：导入 `ConversationMessage` 失败，或 `StartRun`、`Limits` 缺少新字段。
 
-- [ ] **Step 3：实现最小公共契约**
+- [x] **Step 3：实现最小公共契约**
 
 `src/vera/contracts/conversation.py`：
 
@@ -187,7 +187,7 @@ max_conversation_bytes: int = Field(default=200_000, ge=1)
 
 不要把 `ConversationMessage` 复用为模型内部带 tool call 的 `ModelMessage`。
 
-- [ ] **Step 4：运行契约、配置和静态检查**
+- [x] **Step 4：运行契约、配置和静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -197,7 +197,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check \
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Task 1**
+- [x] **Step 5：提交 Task 1**
 
 ```bash
 git add src/vera/contracts/conversation.py src/vera/contracts/commands.py \

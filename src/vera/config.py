@@ -30,6 +30,7 @@ class Limits(BaseModel):
     max_file_bytes: int = Field(default=1_000_000, ge=1)
     max_tool_output_bytes: int = Field(default=100_000, ge=1)
     max_context_bytes: int = Field(default=2_000_000, ge=1)
+    max_conversation_bytes: int = Field(default=200_000, ge=1)
     command_timeout_seconds: int = Field(default=120, ge=1)
 
 
