@@ -192,7 +192,7 @@ git commit -m "feat: define recovery facts and reports"
 - Produces: `RecoverySnapshotStore(state_dir: Path, replace: Callable[[Path, Path], None] = os.replace, fsync: Callable[[int], None] = os.fsync)`
 - Produces: `save(snapshot) -> None`、`load(run_id) -> RecoverySnapshot`、`exists(run_id) -> bool`
 
-- [ ] **Step 1：编写原子性、权限和损坏测试**
+- [x] **Step 1：编写原子性、权限和损坏测试**
 
 ```python
 def test_snapshot_save_is_atomic_and_private(tmp_path: Path, snapshot) -> None:
@@ -215,18 +215,18 @@ def test_corrupt_snapshot_has_stable_error(tmp_path: Path) -> None:
 
 注入失败的 `replace`，断言旧正式文件逐字节不变。
 
-- [ ] **Step 2：运行测试并确认 Store 不存在**
+- [x] **Step 2：运行测试并确认 Store 不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
   tests/persistence/test_recovery_snapshot.py -v
 ```
 
-- [ ] **Step 3：实现同目录原子替换**
+- [x] **Step 3：实现同目录原子替换**
 
 构造函数允许注入 `replace: Callable[[Path, Path], None] = os.replace` 和 `fsync: Callable[[int], None] = os.fsync`。`save()` 校验安全 run ID，目录 `0700`、文件 `0600`；使用排序键紧凑 JSON，flush + fsync 后 replace。异常删除临时文件、保留旧正式文件并抛 `RecoverySnapshotError("snapshot_write_failed")`。
 
-- [ ] **Step 4：运行持久化回归**
+- [x] **Step 4：运行持久化回归**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/persistence -v
@@ -235,7 +235,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check \
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Store**
+- [x] **Step 5：提交 Store**
 
 ```bash
 git add src/vera/persistence/recovery_snapshot.py \
