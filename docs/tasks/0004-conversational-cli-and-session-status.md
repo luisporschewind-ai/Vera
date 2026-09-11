@@ -2,7 +2,7 @@
 
 > **供 Cursor Agent 执行：** 必须逐任务执行本计划。使用单一主实现 Agent，不派发并行编辑 Agent。每个生产行为先写失败测试，再做最小实现；每项完成后独立提交。
 
-**状态：** In Progress
+**状态：** Complete
 
 **目标分支：** `feature/conversational-cli-session`
 
@@ -1042,7 +1042,7 @@ git commit -m "feat: manage Vera context and model commands"
 - Preserves: `vera run ... --json` 无提示符、无 ANSI、审批时安全取消
 - Produces: 可复核的完整非 live 验收记录
 
-- [ ] **Step 1：补充回归与秘密边界测试**
+- [x] **Step 1：补充回归与秘密边界测试**
 
 新增测试断言：
 
@@ -1068,7 +1068,7 @@ def test_json_plain_response_contains_events_without_human_output(
 
 状态和命令输出测试设置假的 `DEEPSEEK_API_KEY=must-not-render`、假的 Base URL，断言完整 CLI 输出不包含二者。现有 JSON 审批取消、回滚和历史命令测试必须继续通过。
 
-- [ ] **Step 2：运行完整非 live 验收**
+- [x] **Step 2：运行完整非 live 验收**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -1082,7 +1082,7 @@ git diff --check
 
 全部命令必须退出码为 0。若 `uv build` 只因沙箱 DNS 无法解析 PyPI 失败，应记录该环境证据并由用户在本机重跑；不能把网络失败伪装成构建通过。
 
-- [ ] **Step 3：仓库外离线启动验收**
+- [x] **Step 3：仓库外离线启动验收**
 
 ```bash
 uv tool install --editable /Users/admin/Vera
@@ -1106,13 +1106,13 @@ vera
 
 验证启动状态包含工作区、模型、会话和安全边界，输出中没有测试 Key 或 Base URL。真实 DeepSeek 普通对话与 iOS 工程回归留给用户后续明确执行。
 
-- [ ] **Step 4：更新中文文档与验收记录**
+- [x] **Step 4：更新中文文档与验收记录**
 
 `README.md` 增加普通对话、会话内上下文和 Slash Command 示例。`docs/evals/conversational-cli-and-session-status.md` 逐项记录规格 16 条验收标准、测试数量、覆盖率、静态检查、构建、仓库外启动、未执行 live 测试和已知限制。
 
 `docs/STATUS.md` 更新当前分支、已完成能力、验证证据和下一检查点。任务状态改为 `Complete`，但只有所有检查成功后才能勾选本任务。
 
-- [ ] **Step 5：检查文档一致性和工作树**
+- [x] **Step 5：检查文档一致性和工作树**
 
 ```bash
 rg -n "Draf[t]|TB[D]|TOD[O]|no_changes_proposed|普通对话.*未实现|会话上下文.*未实现" \
@@ -1123,7 +1123,7 @@ git status --short --branch
 
 允许 `no_changes_proposed` 只出现在历史验收记录中，并必须标明它是已修复前的历史现象。不要删除历史证据。
 
-- [ ] **Step 6：提交 Task 10**
+- [x] **Step 6：提交 Task 10**
 
 ```bash
 git add README.md docs/STATUS.md \
@@ -1133,7 +1133,7 @@ git add README.md docs/STATUS.md \
 git commit -m "test: verify conversational Vera CLI"
 ```
 
-- [ ] **Step 7：合并回 main**
+- [x] **Step 7：合并回 main**
 
 在功能分支工作区干净且完整验证通过后：
 

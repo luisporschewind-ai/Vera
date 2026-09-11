@@ -6,6 +6,9 @@ from tests.cli.fakes import make_changeset_runtime
 from vera.bootstrap import RuntimeDependencies
 from vera.cli import app
 from vera.config import Limits, VeraConfig
+from vera.models.base import FakeModelAdapter, ModelTurn
+from vera.runtime.engine import VeraRuntime
+from vera.tools.registry import ToolRegistry
 
 
 def test_help_lists_formal_commands() -> None:
@@ -37,3 +40,34 @@ def test_json_run_stays_noninteractive_and_cancels_at_approval(tmp_path: Path, m
     assert "approval >" not in result.stdout
     assert '"type":"run.cancelled"' in result.stdout
     assert target.read_text(encoding="utf-8") == "old\n"
+
+
+def dependencies_with_text_turn(tmp_path: Path, text: str) -> RuntimeDependencies:
+    state_dir = tmp_path / "state"
+    return RuntimeDependencies(
+        runtime=VeraRuntime(
+            FakeModelAdapter([ModelTurn(assistant_text=text, finish_reason="stop")]),
+            ToolRegistry(),
+            state_dir,
+        ),
+        config=VeraConfig(state_dir=state_dir, limits=Limits(), providers={}),
+    )
+
+
+def test_json_plain_response_contains_events_without_human_output(
+    tmp_path: Path, monkeypatch
+) -> None:
+    deps = dependencies_with_text_turn(tmp_path, "hello")
+    monkeypatch.setattr("vera.cli.build_runtime", lambda *_args, **_kwargs: deps)
+
+    result = CliRunner().invoke(
+        app,
+        ["run", "Hello", "--workspace", str(tmp_path), "--json"],
+    )
+
+    assert result.exit_code == 0
+    assert '"type":"assistant.message"' in result.stdout
+    assert '"outcome":"responded"' in result.stdout
+    assert "Vera：" not in result.stdout
+    assert "Vera >" not in result.stdout
+    assert "\x1b" not in result.stdout
