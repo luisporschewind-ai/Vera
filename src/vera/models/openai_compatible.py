@@ -1,10 +1,19 @@
 """OpenAI-compatible protocol adapter; provider objects stay in this module."""
 
+from __future__ import annotations
+
 import json
 import os
 from typing import Any
 
-from openai import OpenAI
+from openai import (
+    APIConnectionError,
+    APIStatusError,
+    APITimeoutError,
+    AuthenticationError,
+    OpenAI,
+    RateLimitError,
+)
 
 from vera.config import ProviderConfig
 from vera.models.base import (
@@ -13,10 +22,8 @@ from vera.models.base import (
     ModelTurn,
     ModelUsage,
 )
-
-
-class ModelAdapterError(RuntimeError):
-    """Raised when a provider response cannot become a Vera model turn."""
+from vera.models.capabilities import ModelCapabilities
+from vera.models.errors import ModelErrorCode, ModelProviderError
 
 
 def _get(value: object, name: str, default: Any = None) -> Any:
@@ -28,12 +35,17 @@ def _get(value: object, name: str, default: Any = None) -> Any:
 class OpenAICompatibleAdapter:
     def __init__(self, provider: ProviderConfig, client: Any | None = None) -> None:
         self.provider = provider
+        self._capabilities = provider.capabilities
         self.client: Any = client or OpenAI(
             api_key=os.environ.get(provider.api_key_env),
             base_url=str(provider.base_url),
             timeout=120.0,
             max_retries=0,
         )
+
+    @property
+    def capabilities(self) -> ModelCapabilities:
+        return self._capabilities
 
     @staticmethod
     def _tools(request: ModelRequest) -> list[dict[str, object]]:
@@ -76,6 +88,48 @@ class OpenAICompatibleAdapter:
             messages.append(item)
         return messages
 
+    def _map_exception(self, exc: Exception) -> ModelProviderError:
+        if isinstance(exc, AuthenticationError):
+            return ModelProviderError(
+                ModelErrorCode.AUTHENTICATION,
+                "provider authentication failed",
+                status_code=getattr(exc, "status_code", 401),
+            )
+        if isinstance(exc, APITimeoutError):
+            return ModelProviderError(ModelErrorCode.TIMEOUT, "provider request timed out")
+        if isinstance(exc, RateLimitError):
+            return ModelProviderError(
+                ModelErrorCode.RATE_LIMITED,
+                "provider rate limited",
+                status_code=getattr(exc, "status_code", 429),
+                retry_after_seconds=self._retry_after(exc),
+            )
+        if isinstance(exc, APIConnectionError):
+            return ModelProviderError(ModelErrorCode.NETWORK, "provider network error")
+        if isinstance(exc, APIStatusError):
+            status = getattr(exc, "status_code", None)
+            code = ModelErrorCode.SERVICE if status and status >= 500 else ModelErrorCode.SERVICE
+            return ModelProviderError(
+                code,
+                "provider service error",
+                status_code=status,
+                retry_after_seconds=self._retry_after(exc),
+            )
+        return ModelProviderError(ModelErrorCode.SERVICE, "provider request failed")
+
+    @staticmethod
+    def _retry_after(exc: Exception) -> float | None:
+        headers = getattr(exc, "headers", None) or {}
+        value = None
+        if isinstance(headers, dict):
+            value = headers.get("retry-after") or headers.get("Retry-After")
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
     def complete(self, request: ModelRequest) -> ModelTurn:
         try:
             kwargs: dict[str, object] = {
@@ -86,15 +140,21 @@ class OpenAICompatibleAdapter:
             if request.tools:
                 kwargs["tools"] = self._tools(request)
             response = self.client.chat.completions.create(**kwargs)
+        except ModelProviderError:
+            raise
         except Exception as exc:
-            raise ModelAdapterError("provider request failed") from exc
+            raise self._map_exception(exc) from exc
         choices = _get(response, "choices", [])
         if not choices:
-            raise ModelAdapterError("provider returned no choices")
+            raise ModelProviderError(
+                ModelErrorCode.INVALID_RESPONSE, "provider returned no choices"
+            )
         choice = choices[0]
         finish_reason = _get(choice, "finish_reason")
         if finish_reason not in {"stop", "tool_calls", "length", "content_filter", "function_call"}:
-            raise ModelAdapterError(f"unknown finish reason: {finish_reason}")
+            raise ModelProviderError(
+                ModelErrorCode.INVALID_RESPONSE, f"unknown finish reason: {finish_reason}"
+            )
         message = _get(choice, "message")
         calls: list[ModelToolCall] = []
         for raw_call in _get(message, "tool_calls", []) or []:
@@ -102,9 +162,13 @@ class OpenAICompatibleAdapter:
             try:
                 arguments = json.loads(_get(function, "arguments", "{}"))
             except (TypeError, json.JSONDecodeError) as exc:
-                raise ModelAdapterError("provider returned invalid tool arguments") from exc
+                raise ModelProviderError(
+                    ModelErrorCode.INVALID_RESPONSE, "provider returned invalid tool arguments"
+                ) from exc
             if not isinstance(arguments, dict):
-                raise ModelAdapterError("tool arguments must be an object")
+                raise ModelProviderError(
+                    ModelErrorCode.INVALID_RESPONSE, "tool arguments must be an object"
+                )
             calls.append(
                 ModelToolCall(
                     call_id=str(_get(raw_call, "id", "")),
@@ -120,9 +184,11 @@ class OpenAICompatibleAdapter:
                 output_tokens=_get(usage_value, "completion_tokens"),
                 total_tokens=_get(usage_value, "total_tokens"),
             )
+        request_id = _get(response, "_request_id") or _get(response, "id")
         return ModelTurn(
             assistant_text=_get(message, "content"),
             tool_calls=tuple(calls),
             finish_reason=finish_reason,
             usage=usage,
+            provider_request_id=str(request_id) if request_id else None,
         )

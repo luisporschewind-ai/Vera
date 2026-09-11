@@ -13,6 +13,8 @@ from typing import Any
 from platformdirs import user_config_path, user_state_path
 from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field
 
+from vera.models.capabilities import ModelCapabilities
+
 
 class UnsafeProjectConfig(ValueError):
     """Raised when project configuration attempts to bypass a safety boundary."""
@@ -32,6 +34,7 @@ class Limits(BaseModel):
     max_context_bytes: int = Field(default=2_000_000, ge=1)
     max_conversation_bytes: int = Field(default=200_000, ge=1)
     command_timeout_seconds: int = Field(default=120, ge=1)
+    max_model_attempts: int = Field(default=2, ge=1)
 
 
 class ProviderConfig(BaseModel):
@@ -40,6 +43,7 @@ class ProviderConfig(BaseModel):
     base_url: AnyHttpUrl
     model: str
     api_key_env: str
+    capabilities: ModelCapabilities = Field(default_factory=lambda: ModelCapabilities())
 
 
 class VeraConfig(BaseModel):

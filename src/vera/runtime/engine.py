@@ -1,9 +1,10 @@
 """Bounded discovery loop that stops before any filesystem mutation."""
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import suppress
 from datetime import UTC, datetime
 from pathlib import Path
+from time import sleep as default_sleep
 from typing import Any, Literal, cast
 from uuid import uuid4
 
@@ -29,7 +30,9 @@ from vera.contracts.conversation import ConversationMessage
 from vera.contracts.events import EventEnvelope
 from vera.contracts.recovery import RecoveryClassification, RecoveryReport, RecoveryStage
 from vera.contracts.verification import VerificationCommand
-from vera.models.base import ModelAdapter, ModelMessage, ModelRequest, ModelToolCall
+from vera.models.base import ModelAdapter, ModelMessage, ModelRequest, ModelToolCall, ModelTurn
+from vera.models.errors import ModelErrorCode, ModelProviderError, safe_error_payload
+from vera.models.retry import RetryPolicy
 from vera.persistence.journal import EventJournal
 from vera.persistence.migration import StateMigrationService
 from vera.persistence.recovery_snapshot import RecoverySnapshotError, RecoverySnapshotStore
@@ -85,12 +88,16 @@ class VeraRuntime:
         recovery_coordinator: RecoveryCoordinator | None = None,
         file_writer: FileWriter | None = None,
         policy_engine: PolicyEngine | None = None,
+        retry_policy: RetryPolicy | None = None,
+        sleep: Callable[[float], None] = default_sleep,
     ) -> None:
         self.adapter = adapter
         self.registry = registry
         self.state_dir = state_dir
         self.limits = limits or Limits()
         self.installation_id = installation_id or "local"
+        self.retry_policy = retry_policy or RetryPolicy(max_attempts=self.limits.max_model_attempts)
+        self.sleep = sleep
         if policy_engine is not None:
             self.policy_engine = policy_engine
         elif command_policy is not None:
@@ -581,6 +588,71 @@ class VeraRuntime:
         )
         context.context_bytes += len(str(result.content).encode())
 
+    def _complete_with_retry(
+        self, context: RunContext, request: ModelRequest
+    ) -> Iterator[EventEnvelope | ModelTurn | None]:
+        has_tools = bool(request.tools)
+        if not self.adapter.capabilities.supports_request(has_tools=has_tools):
+            error = ModelProviderError(
+                ModelErrorCode.CAPABILITY_MISMATCH,
+                "model capabilities do not support this request",
+            )
+            yield self._event(context, "model.failed", safe_error_payload(error, 0))
+            yield None
+            return
+        for attempt in range(1, self.retry_policy.max_attempts + 1):
+            yield self._event(
+                context,
+                "model.requested",
+                {"turn": context.model_turns, "attempt": attempt},
+            )
+            started = datetime.now(UTC)
+            try:
+                turn = self.adapter.complete(request)
+            except ModelProviderError as provider_error:
+                if not self.retry_policy.should_retry(provider_error, attempt):
+                    yield self._event(
+                        context, "model.failed", safe_error_payload(provider_error, attempt)
+                    )
+                    yield None
+                    return
+                delay = self.retry_policy.delay_seconds(provider_error, attempt)
+                yield self._event(
+                    context,
+                    "model.retrying",
+                    {
+                        "attempt": attempt,
+                        "delay": delay,
+                        "code": provider_error.code.value,
+                    },
+                )
+                self.sleep(delay)
+                continue
+            except Exception:
+                mapped = ModelProviderError(ModelErrorCode.SERVICE, "provider request failed")
+                yield self._event(context, "model.failed", safe_error_payload(mapped, attempt))
+                yield None
+                return
+            duration_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
+            usage = None
+            if turn.usage is not None:
+                usage = turn.usage.model_dump(mode="json")
+            yield self._event(
+                context,
+                "model.completed",
+                {
+                    "finish_reason": turn.finish_reason,
+                    "tool_call_count": len(turn.tool_calls),
+                    "attempt": attempt,
+                    "usage": usage,
+                    "request_id": turn.provider_request_id,
+                    "duration_ms": duration_ms,
+                },
+            )
+            yield turn
+            return
+        yield None
+
     def _drive(self, context: RunContext) -> Iterator[EventEnvelope]:
         while context.machine.state not in {RunState.AWAITING_APPROVAL, RunState.FAILED}:
             if context.model_turns >= self.limits.max_model_turns:
@@ -590,17 +662,16 @@ class VeraRuntime:
                 yield from self._fail(context, "max_context_bytes")
                 return
             context.model_turns += 1
-            yield self._event(context, "model.requested", {"turn": context.model_turns})
-            try:
-                turn = self.adapter.complete(self._model_request(context))
-            except Exception:
+            request = self._model_request(context)
+            turn: ModelTurn | None = None
+            for item in self._complete_with_retry(context, request):
+                if isinstance(item, EventEnvelope):
+                    yield item
+                else:
+                    turn = item
+            if turn is None:
                 yield from self._fail(context, "model_error")
                 return
-            yield self._event(
-                context,
-                "model.completed",
-                {"finish_reason": turn.finish_reason, "tool_call_count": len(turn.tool_calls)},
-            )
             context.messages.append(
                 ModelMessage(
                     role="assistant",
@@ -648,23 +719,20 @@ class VeraRuntime:
         return messages
 
     def _compact(self, context: RunContext) -> Iterator[EventEnvelope]:
-        yield self._event(context, "model.requested", {"turn": 1})
-        try:
-            turn = self.adapter.complete(
-                ModelRequest(
-                    messages=tuple(context.messages),
-                    tools=(),
-                    max_output_tokens=4_096,
-                )
-            )
-        except Exception:
+        request = ModelRequest(
+            messages=tuple(context.messages),
+            tools=(),
+            max_output_tokens=4_096,
+        )
+        turn: ModelTurn | None = None
+        for item in self._complete_with_retry(context, request):
+            if isinstance(item, EventEnvelope):
+                yield item
+            else:
+                turn = item
+        if turn is None:
             yield from self._fail(context, "model_error")
             return
-        yield self._event(
-            context,
-            "model.completed",
-            {"finish_reason": turn.finish_reason, "tool_call_count": len(turn.tool_calls)},
-        )
         if turn.tool_calls:
             yield from self._fail(context, "invalid_compaction_response")
             return

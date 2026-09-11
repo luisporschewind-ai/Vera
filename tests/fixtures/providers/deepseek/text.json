@@ -1,0 +1,1 @@
+{"id":"chatcmpl-deepseek-text","choices":[{"finish_reason":"stop","message":{"role":"assistant","content":"hello from deepseek"}}],"usage":{"prompt_tokens":3,"completion_tokens":4,"total_tokens":7}}

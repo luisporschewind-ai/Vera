@@ -1,6 +1,6 @@
 # Vera 阶段二执行顺序
 
-**状态：** Planned
+**状态：** Complete
 **规格：** [阶段二：恢复、兼容性与策略扩展](../specs/2026-09-11-phase-2-recovery-compatibility-policy.md)
 
 ## 目标

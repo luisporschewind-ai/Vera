@@ -9,7 +9,6 @@ from vera.models.base import (
     ModelTurn,
     ModelUsage,
 )
-from vera.models.openai_compatible import OpenAICompatibleAdapter
 
 __all__ = [
     "FakeModelAdapter",
@@ -21,3 +20,11 @@ __all__ = [
     "ModelUsage",
     "OpenAICompatibleAdapter",
 ]
+
+
+def __getattr__(name: str) -> object:
+    if name == "OpenAICompatibleAdapter":
+        from vera.models.openai_compatible import OpenAICompatibleAdapter
+
+        return OpenAICompatibleAdapter
+    raise AttributeError(name)
