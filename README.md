@@ -33,9 +33,15 @@ Vera is private and in Core-first implementation. The current CLI is an internal
 
 ```bash
 uv sync --extra dev
-uv run vera --help
+uv run vera
 uv run vera config show
 ```
+
+Run `vera` from the project directory you want to edit. The bare command opens a
+persistent `Vera >` session; enter a natural-language task, review the emitted
+Diff, and explicitly type `approve`, `reject`, or `cancel` at each approval
+boundary. Use `/help` inside the session to list `/runs`, `/show`, `/rollback`,
+and exit commands. The one-shot `vera run "goal"` command remains available.
 
 Provider credentials and live tests are intentionally opt-in; no API key is printed by the CLI.
 

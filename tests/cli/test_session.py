@@ -68,9 +68,7 @@ def test_session_runs_two_independent_goals_and_handles_commands(tmp_path: Path)
     result = InteractiveSession(deps, workspace, "fake", io).run()
 
     output = "\n".join(io.output)
-    started_goals = [
-        context.command.goal for context in deps.runtime.runs.values()
-    ]
+    started_goals = [context.command.goal for context in deps.runtime.runs.values()]
     assert started_goals == ["first task", "second task"]
     assert output.count("Vera > ") >= 3
     assert "未知命令" in output

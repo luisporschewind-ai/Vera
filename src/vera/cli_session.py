@@ -127,8 +127,7 @@ class InteractiveSession:
             return
         for summary in summaries:
             self.io.write(
-                f"{summary.run_id}\t{summary.goal_summary}\t"
-                f"{summary.terminal_state or 'active'}"
+                f"{summary.run_id}\t{summary.goal_summary}\t{summary.terminal_state or 'active'}"
             )
 
     def _show(self, run_id: str) -> None:

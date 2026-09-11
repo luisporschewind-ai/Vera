@@ -107,9 +107,7 @@ def load_provider_environment(path: Path | None = None) -> None:
             line = line[7:].strip()
         name, separator, raw_value = line.partition("=")
         if not separator or name not in _PROVIDER_ENV_KEYS:
-            raise UnsafeProviderEnvironment(
-                f"invalid provider setting at line {line_number}"
-            )
+            raise UnsafeProviderEnvironment(f"invalid provider setting at line {line_number}")
         value = raw_value.strip()
         if any(token in value for token in ("`", "$(", "${")):
             raise UnsafeProviderEnvironment(f"shell syntax is forbidden at line {line_number}")

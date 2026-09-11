@@ -8,9 +8,7 @@ def test_rollback_requires_target() -> None:
     assert result.exit_code != 0
 
 
-def test_rollback_missing_run_is_explicit_and_does_not_create_record(
-    tmp_path, monkeypatch
-) -> None:
+def test_rollback_missing_run_is_explicit_and_does_not_create_record(tmp_path, monkeypatch) -> None:
     state_dir = tmp_path / "state"
     monkeypatch.setenv("VERA_STATE_DIR", str(state_dir))
     monkeypatch.setenv("DEEPSEEK_API_KEY", "test-secret")

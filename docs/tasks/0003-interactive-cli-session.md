@@ -555,7 +555,7 @@ git commit -m "feat: add persistent interactive CLI session"
 - Produces: `vera [--workspace PATH] [--model PROFILE]`
 - Preserves: `vera run`、`vera runs`、`vera rollback`、`vera config`
 
-- [ ] **Step 1：编写根命令启动和子命令兼容失败测试**
+- [x] **Step 1：编写根命令启动和子命令兼容失败测试**
 
 通过 Typer `CliRunner` 注入测试依赖，输入 `/exit`：
 
@@ -568,17 +568,17 @@ assert "Vera >" in result.stdout
 
 同时断言 `vera --help` 仍列出四个原有子命令，`vera run ... --json` 不出现 `Vera >` 或审批提示。
 
-- [ ] **Step 2：运行测试并确认根命令仍只显示帮助**
+- [x] **Step 2：运行测试并确认根命令仍只显示帮助**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/cli/test_entrypoint.py tests/cli/test_run.py -v
 ```
 
-- [ ] **Step 3：使用 Typer callback 装配会话**
+- [x] **Step 3：使用 Typer callback 装配会话**
 
 把根应用设置为 `invoke_without_command=True`。Callback 只在 `ctx.invoked_subcommand is None` 时构建 Runtime 和启动 `InteractiveSession`；任何子命令路径都不重复启动会话。工作区在传给 Core 前调用 `resolve()` 并验证为目录。
 
-- [ ] **Step 4：运行全部 CLI 测试**
+- [x] **Step 4：运行全部 CLI 测试**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/cli -v
@@ -587,7 +587,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff format --check src tests
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Task 7**
+- [x] **Step 5：提交 Task 7**
 
 ```bash
 git add src/vera/cli.py tests/cli/test_entrypoint.py tests/cli/test_run.py README.md docs/tasks/0003-interactive-cli-session.md

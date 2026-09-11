@@ -39,9 +39,7 @@ class HumanPresenter:
                 for item in files:
                     if not isinstance(item, dict):
                         continue
-                    self._write(
-                        f"\n{item.get('path', '')}（{item.get('operation', 'update')}）"
-                    )
+                    self._write(f"\n{item.get('path', '')}（{item.get('operation', 'update')}）")
                     diff = item.get("unified_diff", "")
                     if isinstance(diff, str) and diff:
                         self._write(diff.rstrip("\n"))
@@ -49,9 +47,7 @@ class HumanPresenter:
             if payload.get("kind") == "command":
                 argv = payload.get("argv", [])
                 command = (
-                    shlex.join(str(part) for part in argv)
-                    if isinstance(argv, list)
-                    else str(argv)
+                    shlex.join(str(part) for part in argv) if isinstance(argv, list) else str(argv)
                 )
                 self._write(f"待批准的验证命令：{command}")
                 self._write(f"工作目录：{payload.get('cwd', '.')}")
@@ -71,9 +67,7 @@ class HumanPresenter:
         elif event.type == "verification.started":
             argv = payload.get("argv", [])
             command = (
-                shlex.join(str(part) for part in argv)
-                if isinstance(argv, list)
-                else str(argv)
+                shlex.join(str(part) for part in argv) if isinstance(argv, list) else str(argv)
             )
             self._write(f"开始验证：{command}")
         elif event.type == "verification.completed":

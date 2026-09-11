@@ -182,13 +182,9 @@ def test_approved_verification_command_runs_once_and_completes(tmp_path: Path) -
     start_events = list(
         runtime.handle(StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake"))
     )
-    changeset_approval = next(
-        event for event in start_events if event.type == "approval.required"
-    )
+    changeset_approval = next(event for event in start_events if event.type == "approval.required")
     apply_events = list(runtime.handle(resolve(changeset_approval, "approve")))
-    command_approval = next(
-        event for event in apply_events if event.type == "approval.required"
-    )
+    command_approval = next(event for event in apply_events if event.type == "approval.required")
 
     command_events = list(runtime.handle(resolve(command_approval, "approve")))
 
@@ -209,13 +205,9 @@ def test_rejected_verification_command_keeps_change_and_finishes_failed(
     start_events = list(
         runtime.handle(StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake"))
     )
-    changeset_approval = next(
-        event for event in start_events if event.type == "approval.required"
-    )
+    changeset_approval = next(event for event in start_events if event.type == "approval.required")
     apply_events = list(runtime.handle(resolve(changeset_approval, "approve")))
-    command_approval = next(
-        event for event in apply_events if event.type == "approval.required"
-    )
+    command_approval = next(event for event in apply_events if event.type == "approval.required")
 
     command_events = list(runtime.handle(resolve(command_approval, "reject")))
 
@@ -272,9 +264,7 @@ def test_new_runtime_rolls_back_persisted_checkpoint(tmp_path: Path) -> None:
         state_dir,
     )
     start_events = list(
-        first_runtime.handle(
-            StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake")
-        )
+        first_runtime.handle(StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake"))
     )
     approval = next(event for event in start_events if event.type == "approval.required")
     list(first_runtime.handle(resolve(approval, "approve")))
@@ -317,9 +307,7 @@ def test_new_runtime_persisted_rollback_preserves_later_user_edit(tmp_path: Path
         state_dir,
     )
     start_events = list(
-        first_runtime.handle(
-            StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake")
-        )
+        first_runtime.handle(StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake"))
     )
     approval = next(event for event in start_events if event.type == "approval.required")
     list(first_runtime.handle(resolve(approval, "approve")))

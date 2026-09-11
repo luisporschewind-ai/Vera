@@ -10,16 +10,52 @@ import typer
 from vera.bootstrap import RuntimeDependencies, build_runtime
 from vera.cli_driver import ApprovalDecision, drive_run
 from vera.cli_presenter import HumanPresenter
+from vera.cli_session import InteractiveSession
 from vera.config import load_config
 from vera.contracts.commands import RollbackRun, StartRun
 from vera.contracts.events import EventEnvelope
 from vera.persistence.run_store import RunStore
 
-app = typer.Typer(no_args_is_help=True, help="Vera local coding-agent Core")
+app = typer.Typer(
+    invoke_without_command=True,
+    no_args_is_help=False,
+    help="Vera local coding-agent Core",
+)
 runs_app = typer.Typer(help="inspect private run records")
 config_app = typer.Typer(help="inspect effective configuration")
 app.add_typer(runs_app, name="runs")
 app.add_typer(config_app, name="config")
+
+
+class _ConsoleSessionIO:
+    def read(self, prompt: str) -> str:
+        return cast(str, typer.prompt(prompt, prompt_suffix=""))
+
+    def write(self, text: str) -> None:
+        typer.echo(text)
+
+
+@app.callback()
+def main(
+    ctx: typer.Context,
+    workspace: Annotated[Path, typer.Option()] = Path("."),
+    model: Annotated[str | None, typer.Option()] = None,
+) -> None:
+    """Start an interactive session when no subcommand is supplied."""
+
+    if ctx.invoked_subcommand is not None:
+        return
+    resolved = workspace.resolve()
+    if not resolved.is_dir():
+        typer.echo(f"工作区必须是现有目录：{resolved}")
+        raise typer.Exit(2)
+    try:
+        deps = build_runtime(resolved, model)
+    except Exception as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(5) from exc
+    selected_model = model or next(iter(deps.config.providers), "default")
+    raise typer.Exit(InteractiveSession(deps, resolved, selected_model, _ConsoleSessionIO()).run())
 
 
 def _render(events: list[EventEnvelope], json_output: bool) -> None:

@@ -71,11 +71,7 @@ class CheckpointStore:
         if Path(run_id).name != run_id:
             raise FileNotFoundError(run_id)
         manifest_path = (
-            state_dir.expanduser().resolve()
-            / "runs"
-            / run_id
-            / "checkpoint"
-            / "manifest.json"
+            state_dir.expanduser().resolve() / "runs" / run_id / "checkpoint" / "manifest.json"
         )
         return CheckpointManifest.model_validate_json(manifest_path.read_text(encoding="utf-8"))
 

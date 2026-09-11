@@ -207,9 +207,7 @@ class VeraRuntime:
                 {"index": index, "argv": list(command.argv), "cwd": command.cwd},
             )
             result = runner.run(command)
-            context.verification_failed = (
-                context.verification_failed or result.status != "passed"
-            )
+            context.verification_failed = context.verification_failed or result.status != "passed"
             yield self._event(
                 context,
                 "verification.completed",
