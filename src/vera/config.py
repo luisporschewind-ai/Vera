@@ -46,6 +46,12 @@ class ProviderConfig(BaseModel):
     capabilities: ModelCapabilities = Field(default_factory=lambda: ModelCapabilities())
 
 
+class UiConfig(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    animations: bool = True
+
+
 class VeraConfig(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -53,6 +59,7 @@ class VeraConfig(BaseModel):
     limits: Limits
     providers: dict[str, ProviderConfig]
     user_allowed_command_prefixes: tuple[tuple[str, ...], ...] = ()
+    ui: UiConfig = Field(default_factory=UiConfig)
 
 
 class RunSummary(BaseModel):

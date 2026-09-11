@@ -2,9 +2,9 @@
 
 > **供 Agent 执行（For agentic workers）：** REQUIRED SUB-SKILL: 使用 `superpowers:executing-plans` 按 Task 顺序实施；只使用一个主实现 Agent。
 
-**状态：** Planned
+**状态：** Complete
 
-**目标分支：** `feature/tui-composer-approvals`
+**目标分支：** `cursor/tui-composer-approvals-b138`
 
 **目标：** 为富交互界面增加多行输入、Slash Command 补全、Core 驱动审批、取消语义、状态词和可禁用动画。
 
