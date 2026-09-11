@@ -24,6 +24,12 @@ from vera.contracts.commands import (
 )
 from vera.contracts.events import EventEnvelope
 from vera.persistence.run_store import RunStore
+from vera.terminal.mode import (
+    PresentationMode,
+    TerminalCapabilities,
+    TerminalModeError,
+    select_mode,
+)
 
 app = typer.Typer(
     invoke_without_command=True,
@@ -57,6 +63,7 @@ def main(
     ctx: typer.Context,
     workspace: Annotated[Path, typer.Option()] = Path("."),
     model: Annotated[str | None, typer.Option()] = None,
+    plain: Annotated[bool, typer.Option("--plain", help="逐行人类交互模式")] = False,
 ) -> None:
     """Start an interactive session when no subcommand is supplied."""
 
@@ -72,7 +79,57 @@ def main(
         typer.echo(str(exc), err=True)
         raise typer.Exit(5) from exc
     selected_model = model or next(iter(deps.config.providers), "default")
-    raise typer.Exit(InteractiveSession(deps, resolved, selected_model, _ConsoleSessionIO()).run())
+    capabilities = detect_terminal_capabilities()
+    try:
+        mode = select_mode(plain=plain, json_output=False, capabilities=capabilities)
+    except TerminalModeError as exc:
+        typer.echo(exc.message, err=True)
+        raise typer.Exit(exc.exit_code) from exc
+    if mode is PresentationMode.PLAIN:
+        raise typer.Exit(
+            InteractiveSession(deps, resolved, selected_model, _ConsoleSessionIO()).run()
+        )
+    raise typer.Exit(_launch_tui_session(deps, resolved, selected_model))
+
+
+def detect_terminal_capabilities() -> TerminalCapabilities:
+    import os
+    import shutil
+
+    size = shutil.get_terminal_size(fallback=(80, 24))
+    return TerminalCapabilities(
+        stdin_tty=sys.stdin.isatty(),
+        stdout_tty=sys.stdout.isatty(),
+        term=os.environ.get("TERM", ""),
+        columns=size.columns,
+        rows=size.lines,
+    )
+
+
+def _launch_tui_session(
+    dependencies: RuntimeDependencies,
+    workspace: Path,
+    model_profile: str,
+) -> int:
+    from vera.session.controller import SessionController
+
+    try:
+        from vera.terminal.app import launch_tui
+    except Exception as exc:
+        typer.echo(
+            f"无法启动 Textual TUI（{exc}）。请改用 --plain。",
+            err=True,
+        )
+        return 2
+    controller = SessionController(dependencies, workspace, model_profile)
+    try:
+        return launch_tui(controller, workspace, model_profile)
+    except Exception as exc:
+        typer.echo(
+            f"TUI 启动失败（{exc}）。请改用 --plain。",
+            err=True,
+        )
+        return 2
 
 
 def _render(events: list[EventEnvelope], json_output: bool) -> None:

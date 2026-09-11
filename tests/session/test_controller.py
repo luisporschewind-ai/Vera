@@ -60,9 +60,7 @@ def test_controller_submits_prompt_through_runtime(tmp_path: Path) -> None:
 
     outputs = tuple(controller.dispatch(SubmitPrompt(text="解释这个项目")))
 
-    assert any(
-        isinstance(item, EventEnvelope) and item.type == "run.completed" for item in outputs
-    )
+    assert any(isinstance(item, EventEnvelope) and item.type == "run.completed" for item in outputs)
     assert controller.active_run_id is None
 
 
@@ -86,7 +84,9 @@ def test_controller_pauses_on_approval(tmp_path: Path) -> None:
 
     outputs = tuple(controller.dispatch(SubmitPrompt(text="edit")))
 
-    assert any(isinstance(item, EventEnvelope) and item.type == "approval.required" for item in outputs)
+    assert any(
+        isinstance(item, EventEnvelope) and item.type == "approval.required" for item in outputs
+    )
     assert controller.pending_approval_id is not None
     assert controller.active_run_id is not None
 
@@ -113,6 +113,8 @@ def test_close_cancels_pending_approval(tmp_path: Path) -> None:
     outputs = tuple(controller.dispatch(CloseSession()))
 
     assert any(isinstance(item, EventEnvelope) and item.type == "run.cancelled" for item in outputs)
-    assert any(isinstance(item, EventEnvelope) and item.type == "session.closed" for item in outputs)
+    assert any(
+        isinstance(item, EventEnvelope) and item.type == "session.closed" for item in outputs
+    )
     assert controller.snapshot().closed is True
     assert (workspace / "hello.txt").read_text(encoding="utf-8") == "old\n"

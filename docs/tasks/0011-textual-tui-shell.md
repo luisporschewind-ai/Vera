@@ -2,9 +2,9 @@
 
 > **供 Agent 执行（For agentic workers）：** REQUIRED SUB-SKILL: 使用 `superpowers:executing-plans` 按 Task 顺序实施；只使用一个主实现 Agent，每个生产增量独立提交。
 
-**状态：** Planned
+**状态：** Complete
 
-**目标分支：** `feature/textual-tui-shell`
+**目标分支：** `cursor/textual-tui-shell-b138`
 
 **目标：** 让 `vera` 在受支持 TTY 中默认进入可测试的 Textual 全屏外壳，并建立 TUI、Plain、JSON 共用的 SessionController 边界。
 

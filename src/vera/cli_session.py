@@ -1,7 +1,6 @@
 """Persistent interactive terminal session over the Vera Core contracts."""
 
-from __future__ import annotations
-
+from contextlib import suppress
 from pathlib import Path
 from typing import Protocol
 
@@ -162,32 +161,28 @@ class InteractiveSession:
             self.session_presenter.write_context(ConversationStats.model_validate(event.payload))
             return
         if event.type == "session.permissions":
-            self.session_presenter.write_permissions(
-                PermissionStatus.model_validate(event.payload)
-            )
+            self.session_presenter.write_permissions(PermissionStatus.model_validate(event.payload))
             return
         if event.type == "session.help":
             self.io.write(str(event.payload.get("text", "")))
             return
         if event.type == "session.message":
-            text = str(event.payload.get("text", ""))
+            message_text = str(event.payload.get("text", ""))
             if event.payload.get("clear_display"):
-                try:
+                with suppress(Exception):
                     self.io.clear()
-                except Exception:
-                    pass
-            if text:
-                self.io.write(text)
+            if message_text:
+                self.io.write(message_text)
             return
         if event.type == "session.closed":
             return
         if event.type == "session.action_rejected":
-            message = event.payload.get("message")
-            self.io.write(str(message) if message else "操作被拒绝。")
+            rejected = event.payload.get("message")
+            self.io.write(str(rejected) if isinstance(rejected, str) else "操作被拒绝。")
             return
-        text = event.payload.get("text")
-        if isinstance(text, str) and text:
-            self.io.write(text)
+        fallback = event.payload.get("text")
+        if isinstance(fallback, str) and fallback:
+            self.io.write(fallback)
 
     def _decide(self, request: EventEnvelope) -> ApprovalDecision:
         prompt = self.presenter.approval_prompt(request)

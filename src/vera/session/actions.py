@@ -43,10 +43,6 @@ class CloseSession(BaseModel):
 
 
 SessionAction = Annotated[
-    SubmitPrompt
-    | ExecuteSlashCommand
-    | ResolveSessionApproval
-    | CancelActiveRun
-    | CloseSession,
+    SubmitPrompt | ExecuteSlashCommand | ResolveSessionApproval | CancelActiveRun | CloseSession,
     Field(discriminator="type"),
 ]

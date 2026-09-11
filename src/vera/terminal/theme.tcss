@@ -1,0 +1,48 @@
+/* Vera terminal theme: 16/256-color safe semantic classes */
+
+Screen {
+    layout: vertical;
+}
+
+#header {
+    dock: top;
+    height: 1;
+    background: $boost;
+    color: $text;
+    padding: 0 1;
+}
+
+#timeline {
+    height: 1fr;
+    border: tall $surface;
+    padding: 0 1;
+}
+
+#composer {
+    dock: bottom;
+    height: 3;
+    margin-bottom: 1;
+    border: tall $accent;
+}
+
+#status-line {
+    dock: bottom;
+    height: 1;
+    background: $panel;
+    color: $text-muted;
+    padding: 0 1;
+}
+
+#terminal-too-small {
+    layer: overlay;
+    width: 100%;
+    height: 100%;
+    content-align: center middle;
+    background: $background;
+    color: $warning;
+    display: none;
+}
+
+.-narrow {
+    /* secondary header fields collapsed via widget update */
+}

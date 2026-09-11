@@ -514,8 +514,7 @@ class SessionController:
             "session.message",
             {
                 "text": (
-                    f"发现 {len(reports)} 个待恢复任务"
-                    f"（最高风险：{highest.classification.value}）"
+                    f"发现 {len(reports)} 个待恢复任务（最高风险：{highest.classification.value}）"
                 )
             },
         )
@@ -560,7 +559,7 @@ class SessionController:
             sequence=self._session_sequence,
             timestamp=datetime.now(UTC),
             type=event_type,
-            payload=payload,  # type: ignore[arg-type]
+            payload=payload,
         )
 
     @staticmethod
