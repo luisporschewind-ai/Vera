@@ -655,7 +655,7 @@ git add README.md docs/STATUS.md docs/evals/interactive-cli-session.md docs/task
 git commit -m "test: verify interactive Vera CLI session"
 ```
 
-- [ ] **Step 6：合并回 main**
+- [x] **Step 6：合并回 main**
 
 完整验证通过后切换 `main`，使用 `--no-ff` 合并 `codex/interactive-cli-session`。仓库没有 remote 时准确记录“未推送”，不能宣称已经 push。
 
