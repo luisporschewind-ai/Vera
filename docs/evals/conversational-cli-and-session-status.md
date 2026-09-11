@@ -4,9 +4,17 @@
 
 ## 结论
 
-任务 0004 离线实现、完整非 live 验收、包构建和仓库外 Slash Command 启动通过。Vera 现在可以在同一 CLI 会话中完成普通对话与安全编码任务，保留进程内上下文，并提供启动状态与核心 Slash Command。
+任务 0004 离线实现、完整非 live 验收、包构建、仓库外 Slash Command 启动，以及用户人工验收均通过。Vera 现在可以在同一 CLI 会话中完成普通对话与安全编码任务，保留进程内上下文，并提供启动状态与核心 Slash Command。
 
-本轮没有运行 live 测试，没有读取或使用用户真实 DeepSeek API Key，也没有读取或修改 `/Users/admin/Desktop/VeraTestDemo`。
+自动验收没有运行 live 测试，没有读取或使用用户真实 DeepSeek API Key，也没有由 Agent 读取或修改 `/Users/admin/Desktop/VeraTestDemo`。用户人工验收由其本人完成本机验证，并向 Agent 确认结果符合预期。
+
+## 用户人工验收证据
+
+- 日期：2026-09-11；执行者：用户本人。
+- 范围：按任务 0004 验证步骤完成测试，覆盖普通对话完成语义、会话内上下文、状态/权限面板、Slash Command，以及既有安全编码审批边界是否保持。
+- 结果：用户确认“没有问题，符合预期”。
+- 边界：Agent 未参与该次人工操作，未读取、加载或使用用户真实 DeepSeek API Key；未向文档写入任何凭据。
+- 对照：此前交互式 CLI 人工验收中，普通问候 `Hello` 曾因无 Change Set 被标记为 `no_changes_proposed`；本次人工确认该历史缺口已按对话完成语义修复。
 
 ## 规格验收对照
 
@@ -53,5 +61,5 @@
 
 - 退出进程后不恢复会话；无长期记忆、RAG、MCP、多 Agent 或 `!shell`。
 - 第一版不自动压缩。
-- 历史验收记录中的 `no_changes_proposed` 是修复前现象，现已由 `responded` / `empty_model_response` 取代。
-- 真实 DeepSeek 普通对话与 iOS 工程回归留给用户后续明确执行。
+- 历史验收记录中的 `no_changes_proposed` 是修复前现象，现已由 `responded` / `empty_model_response` 取代，并经用户人工确认。
+- 更广泛的供应商评测阈值与桌面联调仍属后续增量。
