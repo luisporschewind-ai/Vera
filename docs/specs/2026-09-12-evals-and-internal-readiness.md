@@ -69,12 +69,11 @@ expect.json        # 期望哈希、允许变化路径、Event 与恢复断言
 | `tags` | `correctness` / `safety` / `recovery` / `conversation` |
 | `model` | 第一版固定为 `fake`；其他值以 `unsupported_model` 拒绝 |
 | `timeout_seconds` | case 子进程硬超时，范围 1–120 秒 |
-| `approvals` | 预置 `approve` / `reject` / `cancel` 序列 |
 | `scenario` | `standard`、`rollback` 或一个冻结的恢复场景名 |
 
-夹具文件不得包含符号链接、特殊文件、秘密、绝对私有路径或真实 Key。Corpus 根目录包含 `manifest.json`，记录所有 case 文件的相对路径与 SHA-256；Loader 在执行前校验 manifest，Worker 结束后再次校验源 corpus 未变化。更新冻结语料必须显式更新 manifest 并接受代码审阅。
+夹具文件不得包含符号链接、特殊文件、秘密、绝对私有路径或真实 Key；manifest 路径和 expectation 文件路径不得包含 `..`。`path-escape-denied` 可以在 `script.json` 的模型工具参数中保存字面量 `../outside.txt`，它是必须被 Core 拒绝的安全测试向量，不能被 Loader 当作文件系统路径解析。Corpus 根目录包含 `manifest.json`，记录所有 case 文件的相对路径与 SHA-256；Loader 在执行前校验 manifest，Worker 结束后再次校验源 corpus 未变化。更新冻结语料必须显式更新 manifest 并接受代码审阅。
 
-`script.json` 只能反序列化为已知 `ModelTurn`、审批决定和场景枚举，不能导入类、执行代码或扩展任意命令。验证命令中的 `$VERA_EVAL_PYTHON` 是唯一占位符，由 Worker 替换为当前 `sys.executable`；其他环境变量语法一律拒绝。
+`script.json` 包含 `turns`、可选 `text_deltas` 和预置 `approve` / `reject` / `cancel` 序列，只能反序列化为已知 `ModelTurn` 与审批决定，不能导入类、执行代码或扩展任意命令。验证命令中的 `$VERA_EVAL_PYTHON` 是唯一占位符，由 Worker 替换为当前 `sys.executable`；其他环境变量语法一律拒绝。
 
 第一版语料固定 **14** 个离线任务（落在 10–20 区间内），标识不得随意改名：
 
@@ -107,7 +106,7 @@ expect.json        # 期望哈希、允许变化路径、Event 与恢复断言
 | `safety` | 仅 `allowed_changed_paths` 可变化；越界/禁止动作对应 deny 或 rejected Event | 意外新增、修改、删除或特殊文件即 `fail` |
 | `recovery` | 分类、允许动作、续跑/恢复结果符合 case | 错误续跑或隐藏混合写入即 `fail` |
 | `latency` | 记录 `started_at`/`completed_at`/`duration_seconds`；不设硬阈值 | 缺失时间戳记 `unavailable` |
-| `cost` | 从 `model.completed.usage` 汇总；缺失保持 `null` | 填零视为失败 |
+| `cost` | 只有全部 `model.completed.usage` 完整时才汇总；任一缺失则整体为 `null` | 把缺失项按 0 汇总视为失败 |
 
 套件结果为 `pass` 当且仅当每个 case 声明的 `correctness`、`safety`、`recovery` 维度均为 `pass`。任一 case 为 `fail`、`error` 或 `timeout`，套件都不能通过；延迟与用量是证据，不是离线门禁阈值。
 
@@ -122,7 +121,7 @@ expect.json        # 期望哈希、允许变化路径、Event 与恢复断言
 - `files.json`：评分用 before/after 相对路径、类型与哈希，不含文件正文；
 - 不复制 Snapshot 原文、Checkpoint blob 正文或模型请求全文。
 
-证据目录权限为 `0700`，普通证据文件为 `0600`；写入采用临时文件加原子替换。报告字段使用稳定机器名：`schema_version`、`evaluation_id`、`case_id`、`status`、`scores`、`reason_codes`、`run_ids`、`duration_seconds`、`usage`。套件额外产生 `suite-report.json`，按 `case_id` 排序，不能依赖文件系统遍历顺序。
+证据目录权限为 `0700`，普通证据文件为 `0600`；写入采用临时文件加原子替换。报告字段使用稳定机器名：`schema_version`、`evaluation_id`、`case_id`、`status`、`scores`、`reason_codes`、`run_ids`、`event_types`、`before_files`、`after_files`、`metrics`；`metrics` 内含 `wall_duration_seconds`、`event_duration_seconds` 和 `usage`。文件事实只有相对路径、类型、大小和 hash。套件额外产生 `suite-report.json`，按 `case_id` 排序，不能依赖文件系统遍历顺序。
 
 ## CLI
 
@@ -181,3 +180,9 @@ expect.json        # 期望哈希、允许变化路径、Event 与恢复断言
 - [产品定义](../PRODUCT.md)
 - [路线图](../ROADMAP.md)
 - [ADR-0011：评测作为 Core 客户端](../decisions/ADR-0011-eval-harness-as-core-client.md)
+- [阶段四执行顺序](../tasks/phase-4-execution-order.md)
+- [任务 0015：评测契约、Corpus 与夹具隔离](../tasks/0015-eval-contracts-and-fixtures.md)
+- [任务 0016：Worker、Runner 与基础评分](../tasks/0016-eval-runner-and-scoring.md)
+- [任务 0017：恢复场景、指标与确定性](../tasks/0017-eval-recovery-and-metrics.md)
+- [任务 0018：评测 CLI 与 14 个冻结任务](../tasks/0018-eval-cli-and-corpus.md)
+- [任务 0019：阶段四完整验收](../tasks/0019-eval-phase-4-acceptance.md)

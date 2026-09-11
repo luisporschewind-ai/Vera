@@ -1,8 +1,8 @@
 # Vera 状态
 
-**更新日期：** 2026-09-11
-**当前阶段：** 阶段 3 Complete；下一阶段为阶段 4——评测与内部就绪
-**仓库状态：** 阶段三任务 0010–0014 已本地合并到 `main`；暂无远程，未推送。
+**更新日期：** 2026-09-12
+**当前阶段：** 阶段 4——评测与内部就绪（规格和施工计划完成，待实施）
+**仓库状态：** 阶段一至阶段三已本地合并到 `main`；阶段四规格、ADR 与任务 0015–0019 已完成规划并本地合并到 `main`，可交给 Cursor 实施；暂无远程，未推送。
 
 ## 已完成
 
@@ -15,14 +15,19 @@
 
 ## 活动任务
 
-- 无进行中的阶段三实现任务
-- 下一阶段：评测与内部就绪（阶段 4）
+- [阶段四执行顺序](tasks/phase-4-execution-order.md)
+- [任务 0015：评测契约、Corpus 与夹具隔离](tasks/0015-eval-contracts-and-fixtures.md)
+- [任务 0016：Worker、Runner 与基础评分](tasks/0016-eval-runner-and-scoring.md)
+- [任务 0017：恢复场景、指标与确定性](tasks/0017-eval-recovery-and-metrics.md)
+- [任务 0018：评测 CLI 与 14 个冻结任务](tasks/0018-eval-cli-and-corpus.md)
+- [任务 0019：阶段四完整验收](tasks/0019-eval-phase-4-acceptance.md)
 
 ## 最近验证
 
 - 阶段三总验收：[phase-3-rich-terminal-ui](evals/phase-3-rich-terminal-ui.md)
 - 15 条规格标准均有自动测试或文档证据映射
+- 阶段四规划只修改中文规格、ADR、任务和状态文档；尚无阶段四实现代码或评测结果
 
 ## 下一检查点
 
-开始阶段四评测集设计前，保持 `main` 干净；不提前桌面端；不跑 live。
+Cursor 从最新干净 `main` 创建任务 0015 指定分支，依次实施到任务 0019；完成阶段四后停止，不提前进入桌面端。

@@ -1,7 +1,7 @@
 # Vera Product Definition
 
 **Status:** Accepted baseline
-**Updated:** 2026-09-10
+**Updated:** 2026-09-12
 
 ## Purpose
 
@@ -56,6 +56,7 @@ Vera is also a long-term learning and portfolio product. It should become mainta
 - Core clients communicate through structured contracts, not parsed CLI text.
 - Development is private until reliability and release-readiness checks are met.
 - SDD, small verified changes, and synchronized documentation are required.
+- The accepted Phase 4 design fixes 14 bundled offline Fake Model cases and scores only Core facts and file hashes.
 
 ## Open decisions
 
@@ -63,6 +64,5 @@ Vera is also a long-term learning and portfolio product. It should become mainta
 - Initial model providers and adapter contract
 - Core command and event protocol
 - Session, checkpoint, and recovery storage design
-- Eval corpus and measurable acceptance thresholds
 - Desktop framework and packaging approach
 - License, contribution model, telemetry policy, and public-release criteria
