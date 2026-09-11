@@ -12,6 +12,7 @@ dependencies = [
   "platformdirs>=4,<5",
   "pydantic>=2,<3",
   "rich>=14,<15",
+  "textual>=8.2,<9",
   "typer>=0.16,<1",
 ]
 
@@ -19,6 +20,7 @@ dependencies = [
 dev = [
   "mypy>=1,<2",
   "pytest>=8,<10",
+  "pytest-asyncio>=1,<2",
   "pytest-cov>=6,<8",
   "ruff>=0.12,<1",
 ]
@@ -31,6 +33,8 @@ packages = ["src/vera"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 markers = ["live: requires an explicitly selected real provider and API key"]
 
 [tool.ruff]
@@ -44,3 +48,8 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 python_version = "3.12"
 strict = true
 packages = ["vera"]
+
+[dependency-groups]
+dev = [
+    "pytest-asyncio>=1,<2",
+]
