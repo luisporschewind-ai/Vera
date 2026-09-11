@@ -1,6 +1,4 @@
-from vera.presentation.disclosure import DisclosurePolicy
 from vera.presentation.sanitize import sanitize_terminal_text
-from vera.presentation.timeline import BlockKind, BlockStatus
 
 
 def test_untrusted_osc_and_ansi_are_removed() -> None:

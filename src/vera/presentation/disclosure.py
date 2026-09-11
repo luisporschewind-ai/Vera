@@ -14,10 +14,16 @@ class DisclosurePolicy:
         match kind:
             case BlockKind.TOOL | BlockKind.LOG | BlockKind.STATUS:
                 return False
-            case BlockKind.DIFF | BlockKind.APPROVAL | BlockKind.ERROR | BlockKind.USER | BlockKind.ASSISTANT:
+            case (
+                BlockKind.DIFF
+                | BlockKind.APPROVAL
+                | BlockKind.ERROR
+                | BlockKind.USER
+                | BlockKind.ASSISTANT
+            ):
                 return True
             case BlockKind.VERIFICATION:
-                return status is BlockStatus.FAILED
+                return False
         return False
 
     def on_status_change(
@@ -27,7 +33,7 @@ class DisclosurePolicy:
     ) -> TimelineBlock:
         if block.user_overridden:
             return block.model_copy(update={"status": new_status})
-        if new_status is BlockStatus.FAILED and block.status is not BlockStatus.FAILED:
+        if new_status is BlockStatus.FAILED and block.status != BlockStatus.FAILED:
             return block.model_copy(update={"status": new_status, "expanded": True})
         if (
             block.kind is BlockKind.VERIFICATION

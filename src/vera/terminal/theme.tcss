@@ -33,6 +33,14 @@ Screen {
     padding: 0 1;
 }
 
+TimelineBlockWidget {
+    height: auto;
+}
+
+DiffBlockWidget {
+    height: auto;
+}
+
 #terminal-too-small {
     layer: overlay;
     width: 100%;

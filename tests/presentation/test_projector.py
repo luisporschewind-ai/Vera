@@ -46,9 +46,7 @@ def test_changeset_and_approval_are_expanded() -> None:
             event(
                 "changeset.proposed",
                 payload={
-                    "files": [
-                        {"path": "a.py", "unified_diff": "--- a/a.py\n+++ b/a.py\n+hi\n"}
-                    ]
+                    "files": [{"path": "a.py", "unified_diff": "--- a/a.py\n+++ b/a.py\n+hi\n"}]
                 },
             )
         )

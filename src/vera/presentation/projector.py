@@ -65,10 +65,13 @@ class TimelineProjector:
             stream_key,
             {"next_index": 0, "text": "", "incomplete": False, "seen": set()},
         )
-        seen: set[int] = state["seen"]  # type: ignore[assignment]
+        seen_raw = state["seen"]
+        seen: set[int] = seen_raw if isinstance(seen_raw, set) else set()
+        state["seen"] = seen
         if frame.index in seen:
             return ()
-        next_index = int(state["next_index"])  # type: ignore[arg-type]
+        next_raw = state["next_index"]
+        next_index = int(next_raw) if isinstance(next_raw, int) else 0
         if bool(state["incomplete"]) or frame.index != next_index:
             state["incomplete"] = True
             block_id = f"{frame.run_id}:{frame.stream_id}:assistant"
@@ -96,7 +99,9 @@ class TimelineProjector:
             )
             self._blocks[block_id] = block
             return (AppendBlock(block=block),)
-        updated = existing.model_copy(update={"body": str(state["text"]), "status": BlockStatus.RUNNING})
+        updated = existing.model_copy(
+            update={"body": str(state["text"]), "status": BlockStatus.RUNNING}
+        )
         self._blocks[block_id] = updated
         return (UpdateBlock(block=updated),)
 
@@ -209,9 +214,7 @@ class TimelineProjector:
             existing = self._blocks[block_id]
             updated = self.disclosure.on_status_change(existing, status).model_copy(
                 update={
-                    "title": sanitize_terminal_text(
-                        f"{name} · {'completed' if ok else 'failed'}"
-                    ),
+                    "title": sanitize_terminal_text(f"{name} · {'completed' if ok else 'failed'}"),
                     "body": body or existing.body,
                 }
             )

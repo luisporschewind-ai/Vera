@@ -22,9 +22,7 @@ def test_initial_disclosure(kind: BlockKind, expanded: bool) -> None:
 
 
 def test_successful_verification_starts_collapsed() -> None:
-    assert (
-        DisclosurePolicy().initial_state(BlockKind.VERIFICATION, BlockStatus.SUCCEEDED) is False
-    )
+    assert DisclosurePolicy().initial_state(BlockKind.VERIFICATION, BlockStatus.SUCCEEDED) is False
 
 
 def test_failed_verification_starts_expanded() -> None:
