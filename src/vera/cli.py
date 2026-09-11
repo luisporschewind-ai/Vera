@@ -34,6 +34,10 @@ class _ConsoleSessionIO:
     def write(self, text: str) -> None:
         typer.echo(text)
 
+    def clear(self) -> None:
+        if sys.stdout.isatty():
+            typer.echo("\033[2J\033[H", nl=False)
+
 
 @app.callback()
 def main(

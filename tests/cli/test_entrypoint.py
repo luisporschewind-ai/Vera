@@ -32,6 +32,7 @@ def test_bare_vera_starts_session_in_resolved_workspace(tmp_path: Path, monkeypa
     assert result.exit_code == 0
     assert str(workspace.resolve()) in result.stdout
     assert "Vera >" in result.stdout
+    assert "Model" in result.stdout or "Workspace" in result.stdout
 
 
 def test_bare_vera_rejects_non_directory_workspace(tmp_path: Path) -> None:
