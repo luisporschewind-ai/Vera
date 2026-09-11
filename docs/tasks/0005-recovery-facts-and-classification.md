@@ -2,7 +2,7 @@
 
 > **供 Cursor Agent 执行：** 使用单一主实现 Agent，逐项执行本计划。每个生产行为先写失败测试，再做最小实现；每个可审阅任务独立提交。不要派发并行编辑 Agent。
 
-**状态：** Planned
+**状态：** In progress
 
 **目标分支：** `feature/recovery-facts-classification`
 
@@ -69,7 +69,7 @@ tests/
 - Produces: `InspectRecovery(run_id: str | None = None)`
 - Produces: `PersistedChangeSet`、`RecoverySnapshot`
 
-- [ ] **Step 1：编写失败的 round-trip 测试**
+- [x] **Step 1：编写失败的 round-trip 测试**
 
 ```python
 def test_recovery_report_round_trips() -> None:
@@ -98,7 +98,7 @@ def test_inspect_recovery_is_a_core_command() -> None:
     assert command.schema_version == 1
 ```
 
-- [ ] **Step 2：运行测试并确认恢复类型不存在**
+- [x] **Step 2：运行测试并确认恢复类型不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -107,7 +107,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
 
 预期：导入 `vera.contracts.recovery` 失败。
 
-- [ ] **Step 3：实现精确模型**
+- [x] **Step 3：实现精确模型**
 
 ```python
 class RecoveryClassification(StrEnum):
@@ -158,7 +158,7 @@ vera_version: str
 
 `PersistedChangeSet` 保存 `change_set: ChangeSet` 与 `intended_content_b64: dict[str, str]`。加载时使用严格 Base64 解码，并核对 create/update 的 `after_hash`。
 
-- [ ] **Step 4：运行契约和静态检查**
+- [x] **Step 4：运行契约和静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -168,7 +168,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check \
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交契约**
+- [x] **Step 5：提交契约**
 
 ```bash
 git add src/vera/contracts/commands.py src/vera/contracts/recovery.py \
