@@ -1,5 +1,6 @@
 """Single dependency assembly point for the CLI."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -17,6 +18,9 @@ from vera.workspace.paths import WorkspacePaths
 class RuntimeDependencies:
     runtime: VeraRuntime
     config: VeraConfig
+
+
+type RuntimeBuilder = Callable[[Path, str | None], RuntimeDependencies]
 
 
 def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeDependencies:

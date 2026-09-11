@@ -18,9 +18,7 @@ from vera.session.models import (
 
 
 class GitRunner(Protocol):
-    def run(
-        self, argv: tuple[str, ...], *, cwd: Path, timeout: float
-    ) -> CompletedProcess[str]: ...
+    def run(self, argv: tuple[str, ...], *, cwd: Path, timeout: float) -> CompletedProcess[str]: ...
 
 
 class SubprocessGitRunner:

@@ -59,7 +59,5 @@ class SessionPresenter:
         if not git.available:
             return "not a repository"
         branch = git.branch or "unavailable"
-        dirty = (
-            "unavailable" if git.dirty is None else "dirty" if git.dirty else "clean"
-        )
+        dirty = "unavailable" if git.dirty is None else "dirty" if git.dirty else "clean"
         return f"{branch} · {dirty}"

@@ -7,7 +7,7 @@ from contextlib import suppress
 from pathlib import Path
 from typing import Protocol
 
-from vera.bootstrap import RuntimeDependencies
+from vera.bootstrap import RuntimeBuilder, RuntimeDependencies, build_runtime
 from vera.cli_driver import ApprovalDecision, drive_run
 from vera.cli_presenter import HumanPresenter
 from vera.cli_session_presenter import SessionPresenter
@@ -39,6 +39,7 @@ class InteractiveSession:
         *,
         conversation: ConversationContext | None = None,
         status_service: SessionStatusService | None = None,
+        runtime_builder: RuntimeBuilder | None = None,
     ) -> None:
         self.dependencies = dependencies
         self.workspace = workspace.resolve()
@@ -51,6 +52,7 @@ class InteractiveSession:
             dependencies.config.limits.max_conversation_bytes
         )
         self.status_service = status_service or SessionStatusService()
+        self.runtime_builder = runtime_builder or build_runtime
         self._exit_after_run = False
 
     def run(self) -> int:
@@ -151,6 +153,10 @@ class InteractiveSession:
             with suppress(Exception):
                 self.io.clear()
             self.io.write(f"已清空显示并开始新会话：{session_id}")
+        elif command == "/compact":
+            self._compact(" ".join(args) if args else "保留关键结论与未完成事项")
+        elif command == "/model" and len(args) <= 1:
+            self._switch_model(args[0] if args else None)
         elif command == "/runs" and not args:
             self._write_runs()
         elif command == "/show" and len(args) == 1:
@@ -159,6 +165,8 @@ class InteractiveSession:
             self._rollback(args[0])
         elif command in {"/show", "/rollback"}:
             self.io.write(f"用法：{command} <run-id>")
+        elif command == "/model":
+            self.io.write("用法：/model [profile]")
         elif command in {
             "/help",
             "/status",
@@ -166,6 +174,7 @@ class InteractiveSession:
             "/permissions",
             "/new",
             "/clear",
+            "/compact",
             "/runs",
             "/exit",
             "/quit",
@@ -173,6 +182,58 @@ class InteractiveSession:
             self.io.write(f"用法：{command}")
         else:
             self.io.write(f"未知命令：{command}。输入 /help 查看可用命令。")
+
+    def _compact(self, focus: str) -> None:
+        before = self.conversation.snapshot()
+        if not before:
+            self.io.write("当前上下文为空，无需压缩。")
+            return
+        self.io.write("正在压缩上下文…")
+        events = drive_run(
+            self.dependencies.runtime,
+            StartRun(
+                goal=focus,
+                workspace_root=self.workspace,
+                model_profile=self.model_profile,
+                mode="compact",
+                conversation=before,
+            ),
+            self._decide,
+            self.presenter.write_events,
+        )
+        compacted = next(
+            (event for event in events if event.type == "conversation.compacted"),
+            None,
+        )
+        completed = events[-1] if events else None
+        summary = compacted.payload.get("summary") if compacted is not None else None
+        if (
+            compacted is not None
+            and isinstance(summary, str)
+            and summary.strip()
+            and completed is not None
+            and completed.type == "run.completed"
+            and completed.payload.get("outcome") == "compacted"
+        ):
+            self.conversation.replace_with_summary(summary)
+            self.io.write("上下文压缩完成。")
+            return
+        assert self.conversation.snapshot() == before
+        self.io.write("上下文压缩失败，已保留原上下文。")
+
+    def _switch_model(self, requested_profile: str | None) -> None:
+        if requested_profile is None:
+            self.io.write(f"当前模型：{self.model_profile} / {self._model_name()}")
+            return
+        try:
+            candidate = self.runtime_builder(self.workspace, requested_profile)
+        except Exception as exc:
+            self.io.write(f"模型切换失败，已保留当前配置：{exc}")
+            return
+        self.dependencies = candidate
+        self.model_profile = requested_profile
+        self.store = RunStore(candidate.config.state_dir)
+        self.io.write(f"已切换模型：{self.model_profile} / {self._model_name()}")
 
     def _write_help(self) -> None:
         self.io.write(

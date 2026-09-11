@@ -4,6 +4,7 @@ from subprocess import CompletedProcess
 from vera.bootstrap import RuntimeDependencies
 from vera.cli_session import InteractiveSession
 from vera.config import Limits, ProviderConfig, VeraConfig
+from vera.contracts.conversation import ConversationMessage
 from vera.models.base import FakeModelAdapter, ModelToolCall, ModelTurn
 from vera.runtime.engine import VeraRuntime
 from vera.session.conversation import ConversationContext
@@ -63,6 +64,7 @@ def make_session(
     inputs: list[str | BaseException],
     *,
     conversation: ConversationContext | None = None,
+    runtime_builder=None,
 ) -> tuple[InteractiveSession, FakeModelAdapter, ScriptedIO]:
     deps = dependencies(workspace, turns)
     io = ScriptedIO(inputs)
@@ -76,6 +78,7 @@ def make_session(
             version_reader=lambda: "0.1.0",
             git_runner=FakeGitRunner(),
         ),
+        runtime_builder=runtime_builder,
     )
     adapter = deps.runtime.adapter
     assert isinstance(adapter, FakeModelAdapter)
@@ -326,3 +329,112 @@ def test_warning_prompts_compact_after_near_capacity_response(tmp_path: Path) ->
     assert session.run() == 0
     assert "上下文已接近上限" in "\n".join(io.output)
     assert "/compact" in "\n".join(io.output)
+
+
+def test_compact_replaces_context_only_after_success(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    session, adapter, _io = make_session(
+        workspace,
+        [
+            ModelTurn(assistant_text="你好", finish_reason="stop"),
+            ModelTurn(assistant_text="摘要：用户与 Vera 互相问候。", finish_reason="stop"),
+        ],
+        ["Hello", "/compact 保留问候", "/context", "/exit"],
+    )
+
+    assert session.run() == 0
+    assert adapter.requests[1].tools == ()
+    assert session.conversation.snapshot() == (
+        ConversationMessage(role="summary", content="摘要：用户与 Vera 互相问候。"),
+    )
+    assert session.conversation.stats().compaction_count == 1
+
+
+def test_compact_on_empty_context_skips_model(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    session, adapter, io = make_session(workspace, [], ["/compact", "/exit"])
+
+    assert session.run() == 0
+    assert not adapter.requests
+    assert "当前上下文为空" in "\n".join(io.output)
+
+
+def test_compact_failure_preserves_original_context(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    session, _adapter, io = make_session(
+        workspace,
+        [
+            ModelTurn(assistant_text="你好", finish_reason="stop"),
+            ModelTurn(assistant_text="", finish_reason="stop"),
+        ],
+        ["Hello", "/compact", "/exit"],
+    )
+
+    assert session.run() == 0
+    assert session.conversation.snapshot() == (
+        ConversationMessage(role="user", content="Hello"),
+        ConversationMessage(role="assistant", content="你好"),
+    )
+    assert "已保留原上下文" in "\n".join(io.output)
+
+
+def test_model_command_shows_and_switches_safely(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    original = dependencies(workspace, [])
+    state_dir = workspace.parent / "state"
+    switched = RuntimeDependencies(
+        runtime=VeraRuntime(FakeModelAdapter([]), ToolRegistry(), state_dir),
+        config=VeraConfig(
+            state_dir=state_dir,
+            limits=Limits(),
+            providers={
+                "alt": ProviderConfig(
+                    base_url="https://example.invalid",
+                    model="alt-model",
+                    api_key_env="FAKE_API_KEY",
+                )
+            },
+        ),
+    )
+
+    def builder(_workspace: Path, profile: str | None) -> RuntimeDependencies:
+        if profile == "alt":
+            return switched
+        raise ValueError(f"unknown profile: {profile}")
+
+    session, _adapter, io = make_session(
+        workspace,
+        [],
+        ["/model", "/model alt", "/model missing", "/exit"],
+        runtime_builder=builder,
+    )
+    session.dependencies = original
+
+    assert session.run() == 0
+    output = "\n".join(io.output)
+    assert "当前模型：fake / fake-model" in output
+    assert "已切换模型：alt / alt-model" in output
+    assert "模型切换失败" in output
+    assert session.model_profile == "alt"
+    assert session.dependencies is switched
+
+
+def test_model_builder_error_keeps_runtime(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    session, _adapter, io = make_session(
+        workspace,
+        [],
+        ["/model boom", "/exit"],
+        runtime_builder=lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("boom")),
+    )
+    before = session.dependencies
+
+    assert session.run() == 0
+    assert session.dependencies is before
+    assert session.model_profile == "fake"
+    assert "模型切换失败" in "\n".join(io.output)

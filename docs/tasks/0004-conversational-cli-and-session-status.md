@@ -839,7 +839,7 @@ git commit -m "feat: render conversational session status"
 - Produces: `SessionIO.clear() -> None`
 - Guarantee: 每个普通输入把 `conversation.snapshot()` 传给 `StartRun`
 
-- [ ] **Step 1：编写连续对话和命令失败测试**
+- [x] **Step 1：编写连续对话和命令失败测试**
 
 测试两个普通输入，FakeModelAdapter 准备两个文本 turn：
 
@@ -872,7 +872,7 @@ def test_second_goal_receives_first_conversation_pair(session_fixture) -> None:
 - 启动首先显示状态面板，再出现 `Vera >`；
 - `/help` 列出所有本增量命令。
 
-- [ ] **Step 2：运行测试并确认当前会话不传历史**
+- [x] **Step 2：运行测试并确认当前会话不传历史**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -881,7 +881,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
 
 预期：第二个 ModelRequest 不含第一轮消息，Slash Command 未识别。
 
-- [ ] **Step 3：接入上下文与只读命令**
+- [x] **Step 3：接入上下文与只读命令**
 
 `InteractiveSession` 构造函数显式接收或创建：
 
@@ -913,7 +913,7 @@ self.conversation.record_run(goal, events)
 
 `/status` 每次从服务重新组合状态；`/permissions` 传入 Runtime 的实际 `command_policy`；不得读取配置副本冒充有效策略。
 
-- [ ] **Step 4：运行全部会话测试和静态检查**
+- [x] **Step 4：运行全部会话测试和静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -925,7 +925,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check \
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Task 8**
+- [x] **Step 5：提交 Task 8**
 
 ```bash
 git add src/vera/cli.py src/vera/cli_session.py \
@@ -954,7 +954,7 @@ git commit -m "feat: retain in-process Vera conversation"
 - Produces: `/model [profile]`
 - Guarantee: 压缩与模型切换都是事务式，失败保留原上下文和 Runtime
 
-- [ ] **Step 1：编写压缩和模型切换失败测试**
+- [x] **Step 1：编写压缩和模型切换失败测试**
 
 压缩成功测试：
 
@@ -979,7 +979,7 @@ def test_compact_replaces_context_only_after_success(session_fixture) -> None:
 
 再测试：空上下文 `/compact` 不调用模型；压缩失败后 snapshot 完全相等；`/model` 显示当前 profile/model；有效 profile 候选构建成功后才替换 Runtime；未知 profile 或 builder 抛错时保留原 Runtime、profile、ConversationContext。
 
-- [ ] **Step 2：运行测试并确认命令未知**
+- [x] **Step 2：运行测试并确认命令未知**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/cli/test_session.py -v
@@ -987,7 +987,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/cli/test_session.py 
 
 预期：`/compact`、`/model` 被报告为未知或不改变状态。
 
-- [ ] **Step 3：实现事务式压缩和模型切换**
+- [x] **Step 3：实现事务式压缩和模型切换**
 
 `InteractiveSession` 接收 `runtime_builder`，默认使用 `build_runtime`。`/model <profile>` 先构建局部候选：
 
@@ -1004,7 +1004,7 @@ self.store = RunStore(candidate.config.state_dir)
 
 压缩 run 使用当前 profile，不能走审批，不能包含任何工具定义。空上下文直接显示“当前上下文为空”，不创建 run。
 
-- [ ] **Step 4：运行全部 CLI、压缩和静态检查**
+- [x] **Step 4：运行全部 CLI、压缩和静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest \
@@ -1014,7 +1014,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff format --check src tests
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Task 9**
+- [x] **Step 5：提交 Task 9**
 
 ```bash
 git add src/vera/bootstrap.py src/vera/cli.py src/vera/cli_session.py \
