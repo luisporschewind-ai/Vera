@@ -477,7 +477,7 @@ git commit -m "feat: render reviewable CLI events"
 - Consumes: 一个 `RuntimeDependencies`、规范化工作区、模型名称、`SessionIO`
 - Produces: `/help`、`/runs`、`/show`、`/rollback`、`/exit`、`/quit`
 
-- [ ] **Step 1：编写两个连续 run 和斜杠命令的失败测试**
+- [x] **Step 1：编写两个连续 run 和斜杠命令的失败测试**
 
 使用内存 `SessionIO` 输入：空行、第一条任务、审批、第二条任务、拒绝、`/runs`、未知命令、`/exit`。断言：
 
@@ -490,13 +490,13 @@ assert session.run() == 0
 
 另测 EOF 正常退出、任务失败后重新出现提示符，以及 `/show`、`/rollback` 不调用模型。
 
-- [ ] **Step 2：运行测试并确认会话模块不存在**
+- [x] **Step 2：运行测试并确认会话模块不存在**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/cli/test_session.py -v
 ```
 
-- [ ] **Step 3：实现可注入 IO 的会话循环**
+- [x] **Step 3：实现可注入 IO 的会话循环**
 
 ```python
 class SessionIO(Protocol):
@@ -524,7 +524,7 @@ class InteractiveSession:
 
 审批读取只接受 `approve`、`reject`、`cancel`；无效输入重复提示，不发送 Command。`KeyboardInterrupt` 按规格区分提示符和审批边界。
 
-- [ ] **Step 4：运行全部会话测试和静态检查**
+- [x] **Step 4：运行全部会话测试和静态检查**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/cli/test_session.py tests/cli/test_driver.py tests/cli/test_presenter.py -v
@@ -532,7 +532,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run ruff check src/vera/cli_session.p
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 ```
 
-- [ ] **Step 5：提交 Task 6**
+- [x] **Step 5：提交 Task 6**
 
 ```bash
 git add src/vera/cli_session.py src/vera/cli.py tests/cli/test_session.py docs/tasks/0003-interactive-cli-session.md
