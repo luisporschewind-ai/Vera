@@ -64,3 +64,4 @@ Provider Key 只从用户本地环境或 `VERA_PROVIDER_ENV_FILE` 读取，不�
 
 - [代表性工程人工清单](evals/phase-5-representative-project-manual-checklist.md)
 - 连续 dogfood 记录属于任务 0024，本文件不代填。
+- 阶段六终端兼容只记录实测项，见 [阶段六终端兼容矩阵](evals/phase-6-terminal-compatibility-matrix.md)。`NO_COLOR`、`TERM=dumb` 与 `VERA_NO_ANIMATIONS=1` 走保守静态展示；默认 TUI 需要可用 TTY。

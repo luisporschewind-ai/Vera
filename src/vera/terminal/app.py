@@ -28,6 +28,7 @@ from vera.session.actions import (
 from vera.session.controller import SessionController
 from vera.terminal.animation import AnimationClock
 from vera.terminal.bridge import RuntimeOutputReceived, TerminalBridge, WorkerStopped
+from vera.terminal.capabilities import detect_display_capabilities
 from vera.terminal.widgets.approval import ApprovalSelected
 from vera.terminal.widgets.blocks import TimelineBlockWidget
 from vera.terminal.widgets.completions import CompletionList
@@ -63,11 +64,13 @@ class VeraTerminalApp(App[int]):
         self.controller = controller
         self.workspace = workspace
         self.model_profile = model_profile
-        env_disabled = os.environ.get("VERA_NO_ANIMATIONS", "") == "1"
         config_animations = getattr(controller.dependencies.config, "ui", None)
         default_animations = True if config_animations is None else config_animations.animations
-        self.animations = default_animations if animations is None else animations
-        if env_disabled:
+        self.display_capabilities = detect_display_capabilities(
+            animations_config=default_animations
+        )
+        self.animations = self.display_capabilities.animations if animations is None else animations
+        if os.environ.get("VERA_NO_ANIMATIONS", "") == "1":
             self.animations = False
         self.bridge = TerminalBridge(self, controller)
         self.projector = TimelineProjector()
@@ -96,6 +99,8 @@ class VeraTerminalApp(App[int]):
     def on_mount(self) -> None:
         self.query_one(PromptComposer).focus()
         self._apply_size(self.size)
+        if not self.display_capabilities.color:
+            self._apply_theme("no-color")
         self.set_interval(0.1, self._tick_status)
 
     def on_resize(self, event: Resize) -> None:
