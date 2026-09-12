@@ -30,6 +30,7 @@ vera = "vera.cli:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/vera"]
+# Frozen eval corpus JSON and workspace fixtures live under vera/evals/corpus/.
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
