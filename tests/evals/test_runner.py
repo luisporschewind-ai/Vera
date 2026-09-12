@@ -1,6 +1,7 @@
 import stat
 from pathlib import Path
 
+from vera.contracts.compatibility import current_compatibility_manifest
 from vera.evals.contracts import EvalStatus
 from vera.evals.runner import EvalSuiteRunner
 
@@ -55,3 +56,9 @@ def test_suite_report_is_atomic_and_preserves_parent_mode(tmp_path: Path) -> Non
     assert not any(
         path.name.startswith(".") for path in tmp_path.iterdir() if path.name != "eval-one"
     )
+
+
+def test_eval_runner_is_a_core_client_not_a_human_protocol() -> None:
+    manifest = current_compatibility_manifest()
+    assert "start_run" in {item.name for item in manifest.commands}
+    assert "event" in manifest.runtime_output

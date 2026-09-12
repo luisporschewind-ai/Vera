@@ -4,6 +4,10 @@ import pytest
 
 from vera.bootstrap import RuntimeDependencies
 from vera.config import Limits, ProviderConfig, VeraConfig
+from vera.contracts.compatibility import (
+    current_compatibility_manifest,
+    encode_compatibility_manifest,
+)
 from vera.models.base import FakeModelAdapter
 from vera.runtime.engine import VeraRuntime
 from vera.session.controller import SessionController
@@ -58,3 +62,11 @@ async def test_app_accepts_minimum_and_large_sizes(tmp_path: Path) -> None:
         assert app.query_one("#terminal-too-small").display is False
         await pilot.resize_terminal(120, 40)
         assert app.query_one("#composer").has_focus
+
+
+def test_tui_app_is_not_a_public_contract(tmp_path: Path) -> None:
+    controller = make_controller(tmp_path)
+    app = VeraTerminalApp(controller, controller.workspace, "fake")
+    dumped = encode_compatibility_manifest(current_compatibility_manifest())
+    assert type(app).__name__ not in dumped
+    assert app.controller is controller
