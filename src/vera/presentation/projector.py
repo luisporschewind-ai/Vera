@@ -114,6 +114,8 @@ class TimelineProjector:
             "changeset.proposed": self._changeset_proposed,
             "approval.required": self._approval_required,
             "approval.resolved": self._status_event,
+            "approval.expired": self._status_event,
+            "approval.invalidated": self._status_event,
             "checkpoint.created": self._status_event,
             "changeset.applied": self._status_event,
             "verification.started": self._verification_started,

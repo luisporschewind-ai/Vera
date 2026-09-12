@@ -4,6 +4,7 @@ import difflib
 import hashlib
 import json
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Literal
 from uuid import uuid4
 
@@ -12,7 +13,7 @@ from pydantic import Field
 from vera.contracts import ContractModel
 from vera.contracts.changes import ChangeSet, FileChange
 from vera.contracts.verification import VerificationCommand
-from vera.workspace.paths import WorkspaceBoundaryError, WorkspacePaths
+from vera.workspace.paths import PathFact, WorkspaceBoundaryError, WorkspacePaths
 
 ABSENT_HASH = "0" * 64
 
@@ -30,6 +31,13 @@ class ChangeProposal(ContractModel):
 class BuiltChangeSet(ContractModel):
     change_set: ChangeSet
     intended_bytes: dict[str, bytes] = Field(default_factory=dict)
+    path_facts: dict[str, PathFact] = Field(default_factory=dict)
+
+    def facts_digest(self) -> str:
+        payload = {path: fact.digest() for path, fact in sorted(self.path_facts.items())}
+        return sha256_bytes(
+            json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
+        )
 
 
 class ChangeSetBuilder:
@@ -61,25 +69,27 @@ class ChangeSetBuilder:
             raise ValueError("duplicate change path")
         files: list[FileChange] = []
         intended: dict[str, bytes] = {}
+        path_facts: dict[str, PathFact] = {}
         for proposal in ordered:
             try:
-                target = self.paths.resolve_mutation(proposal.path)
+                fact = self.paths.inspect_mutation(proposal.path)
             except WorkspaceBoundaryError:
                 raise
-            exists = target.exists()
+            target = Path(fact.canonical_path)
+            exists = fact.exists
             if proposal.operation == "create":
                 if exists or proposal.after_content is None:
                     raise ValueError("create requires an absent path and content")
                 before = b""
                 after = proposal.after_content.encode("utf-8")
             elif proposal.operation == "update":
-                if not exists or not target.is_file() or proposal.after_content is None:
+                if not exists or fact.kind != "regular" or proposal.after_content is None:
                     raise ValueError("update requires an existing text file and content")
                 before = target.read_bytes()
                 before.decode("utf-8")
                 after = proposal.after_content.encode("utf-8")
             else:
-                if not exists or not target.is_file() or proposal.after_content is not None:
+                if not exists or fact.kind != "regular" or proposal.after_content is not None:
                     raise ValueError("delete requires an existing file and no content")
                 before = target.read_bytes()
                 before.decode("utf-8")
@@ -97,6 +107,7 @@ class ChangeSetBuilder:
             )
             if proposal.operation != "delete":
                 intended[proposal.path] = after
+            path_facts[proposal.path] = fact
         hash_payload = {
             "files": [item.model_dump(mode="json") for item in files],
             "verification": [item.model_dump(mode="json") for item in verification],
@@ -117,4 +128,8 @@ class ChangeSetBuilder:
             verification=tuple(verification),
             content_hash=content_hash,
         )
-        return BuiltChangeSet(change_set=change_set, intended_bytes=intended)
+        return BuiltChangeSet(
+            change_set=change_set,
+            intended_bytes=intended,
+            path_facts=path_facts,
+        )

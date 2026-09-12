@@ -1,3 +1,6 @@
+import stat
+from pathlib import Path
+
 from vera.evals.contracts import EvalStatus
 from vera.evals.runner import EvalSuiteRunner
 
@@ -27,3 +30,28 @@ def test_suite_continues_after_failed_case() -> None:
         "timeout-case",
     ]
     assert report.status is EvalStatus.FAIL
+
+
+def test_suite_report_is_atomic_and_preserves_parent_mode(tmp_path: Path) -> None:
+    def fake_run(case_id: str, output_root=None):
+        del case_id, output_root
+        from vera.evals.contracts import DimensionStatus, EvalReport, EvalScore
+
+        return EvalReport(
+            evaluation_id="eval-one",
+            case_id="pass-case",
+            status=EvalStatus.PASS,
+            scores=(EvalScore(dimension="correctness", status=DimensionStatus.PASS),),
+        )
+
+    tmp_path.chmod(0o755)
+    before = stat.S_IMODE(tmp_path.stat().st_mode)
+    runner = EvalSuiteRunner(case_runner=fake_run)
+    runner.run_suite(("pass-case",), output_root=tmp_path)
+    target = tmp_path / "suite-report.json"
+    assert target.is_file()
+    assert stat.S_IMODE(target.stat().st_mode) == 0o600
+    assert stat.S_IMODE(tmp_path.stat().st_mode) == before
+    assert not any(
+        path.name.startswith(".") for path in tmp_path.iterdir() if path.name != "eval-one"
+    )

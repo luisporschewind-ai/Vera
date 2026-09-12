@@ -54,6 +54,13 @@ class FileWriter(Protocol):
 class AtomicFileWriter:
     def replace(self, path: Path, content: bytes, mode: int | None = None) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+        try:
+            existing = os.open(path, flags)
+        except FileNotFoundError:
+            existing = None
+        if existing is not None:
+            os.close(existing)
         fd, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
         temporary = Path(temporary_name)
         try:
@@ -68,6 +75,12 @@ class AtomicFileWriter:
             temporary.unlink(missing_ok=True)
 
     def delete(self, path: Path) -> None:
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+        try:
+            fd = os.open(path, flags)
+        except FileNotFoundError:
+            return
+        os.close(fd)
         path.unlink(missing_ok=True)
 
 
@@ -88,13 +101,24 @@ class ChangeApplier:
         if manifest.run_id != built.change_set.run_id or set(manifest.before) != expected_paths:
             raise ValueError("checkpoint does not match changeset")
         for change in changes:
+            fact = built.path_facts.get(change.path)
+            if fact is None:
+                raise ValueError(f"missing path fact: {change.path}")
+            self.paths.revalidate(fact)
             target = self.paths.resolve_mutation(change.path)
             current_exists = target.exists()
             record = manifest.before[change.path]
             if current_exists != record.existed:
                 raise ValueError(f"before existence changed: {change.path}")
-            if current_exists and sha256_bytes(target.read_bytes()) != record.content_hash:
-                raise ValueError(f"before hash changed: {change.path}")
+            if current_exists:
+                flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+                fd = os.open(target, flags)
+                try:
+                    self.paths.revalidate_fd(fact, fd)
+                    if sha256_bytes(target.read_bytes()) != record.content_hash:
+                        raise ValueError(f"before hash changed: {change.path}")
+                finally:
+                    os.close(fd)
             if change.operation != "delete" and change.path not in built.intended_bytes:
                 raise ValueError(f"missing intended bytes: {change.path}")
         return tuple(item.path for item in changes)

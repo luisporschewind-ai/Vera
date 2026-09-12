@@ -20,6 +20,7 @@ from vera.evals.corpus import CorpusLoader
 from vera.evals.evidence import EvidenceWriter
 from vera.evals.isolation import FixtureIsolator
 from vera.evals.process_runner import CaseProcessRunner
+from vera.persistence.private_writer import PrivateAtomicWriter, PrivateWriteError
 
 CaseRunner = Callable[[str, Path | None], EvalReport]
 
@@ -87,10 +88,12 @@ class EvalSuiteRunner:
 
             payload = EvalCodec.encode_suite_report(suite).encode("utf-8")
             target = output_root / "suite-report.json"
-            if target.exists():
-                raise FileExistsError(target)
-            target.write_bytes(payload)
-            target.chmod(0o600)
+            writer = PrivateAtomicWriter()
+            try:
+                writer.ensure_directory(output_root)
+                writer.write_bytes(target, payload)
+            except PrivateWriteError as exc:
+                raise FileExistsError(target) from exc
         return suite
 
 

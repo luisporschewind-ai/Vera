@@ -48,7 +48,7 @@ from vera.recovery.planner import RecoveryPlanError, RecoveryPlanner
 from vera.recovery.probe import workspace_identity
 from vera.recovery.resume import ResumeRejected, RunResumer
 from vera.redaction import Redactor
-from vera.runtime.approval import ApprovalGate, ApprovalKind
+from vera.runtime.approval import ApprovalGate, ApprovalKind, ApprovalMismatch
 from vera.runtime.context import RunContext
 from vera.runtime.prompts import COMPACTION_PROMPT, SYSTEM_PROMPT
 from vera.runtime.state import RunState, RunStateMachine
@@ -58,7 +58,7 @@ from vera.verification.runner import VerificationRunner
 from vera.workspace.apply import ApplyStatus, ChangeApplier, FileWriter, RollbackStatus
 from vera.workspace.changeset import ChangeProposal, ChangeSetBuilder
 from vera.workspace.checkpoint import CheckpointStore
-from vera.workspace.paths import WorkspacePaths
+from vera.workspace.paths import WorkspaceBoundaryError, WorkspacePaths
 
 
 class SnapshotPersistError(RuntimeError):
@@ -137,6 +137,7 @@ class VeraRuntime:
             "risk": request.risk,
             "workspace_identity": request.workspace_identity,
             "policy_hash": request.policy_hash,
+            "fact_hash": request.fact_hash,
         }
         if (
             context is not None
@@ -310,6 +311,7 @@ class VeraRuntime:
             risk,
             workspace_identity=self._policy_binding(context.command.workspace_root)[0],
             policy_hash=self.policy_engine.policy_hash,
+            fact_hash=built.facts_digest(),
         )
         yield self._stable_event(
             context,
@@ -393,14 +395,55 @@ class VeraRuntime:
             RecoveryStage.TERMINAL,
         )
 
+    def _expire_approval(
+        self,
+        context: RunContext | None,
+        command: ResolveApproval,
+        reason: str,
+        approval_id: str | None = None,
+    ) -> Iterator[EventEnvelope]:
+        payload = {
+            "approval_id": approval_id or command.approval_id,
+            "run_id": command.run_id,
+            "expiry_reason": reason,
+        }
+        if context is None:
+            yield EventEnvelope(
+                event_id=f"event_{uuid4().hex}",
+                run_id=command.run_id,
+                sequence=1,
+                timestamp=datetime.now(UTC),
+                type="approval.expired",
+                payload=payload,
+            )
+            return
+        yield self._stable_event(
+            context,
+            "approval.expired",
+            payload,
+            RecoveryStage.AWAITING_CHANGESET_APPROVAL,
+        )
+
     def _resolve_approval(self, command: ResolveApproval) -> Iterator[EventEnvelope]:
         context = self.runs.get(command.run_id)
-        if context is None or context.approval_gate.pending_approval is None:
+        if context is None:
+            yield from self._expire_approval(None, command, "cross_run")
             return
         request = context.approval_gate.pending_approval
+        if request is None:
+            return
+        try:
+            decision = context.approval_gate.resolve(command)
+        except ApprovalMismatch as exc:
+            yield from self._expire_approval(
+                context,
+                command,
+                exc.reason,
+                approval_id=request.approval_id,
+            )
+            return
         identity, current_hash = self._policy_binding(context.command.workspace_root)
         if request.policy_hash is not None and request.policy_hash != current_hash:
-            context.approval_gate.pending_approval = None
             yield self._stable_event(
                 context,
                 "approval.invalidated",
@@ -413,7 +456,6 @@ class VeraRuntime:
             )
             return
         if request.workspace_identity is not None and request.workspace_identity != identity:
-            context.approval_gate.pending_approval = None
             yield self._stable_event(
                 context,
                 "approval.invalidated",
@@ -425,11 +467,32 @@ class VeraRuntime:
                 RecoveryStage.AWAITING_CHANGESET_APPROVAL,
             )
             return
-        try:
-            decision = context.approval_gate.resolve(command)
-        except Exception as exc:
-            yield self._event(context, "run.failed", {"reason": str(exc)})
-            return
+        if decision == "approve" and request.kind == ApprovalKind.CHANGESET.value:
+            if not request.fact_hash:
+                yield from self._expire_approval(
+                    context,
+                    command,
+                    "missing_fact_binding",
+                    approval_id=request.approval_id,
+                )
+                return
+            built = context.built_change_set
+            expired = built is None or built.facts_digest() != request.fact_hash
+            if not expired and built is not None:
+                paths = WorkspacePaths(context.command.workspace_root)
+                try:
+                    for fact in built.path_facts.values():
+                        paths.revalidate(fact)
+                except WorkspaceBoundaryError:
+                    expired = True
+            if expired:
+                yield from self._expire_approval(
+                    context,
+                    command,
+                    "fact_changed",
+                    approval_id=request.approval_id,
+                )
+                return
         yield self._event(
             context,
             "approval.resolved",

@@ -2,7 +2,7 @@
 
 > 供 Cursor 执行：按 `superpowers:executing-plans` 逐项实施；新行为必须执行 Red → Green → Refactor。
 
-**状态：** Planned
+**状态：** Done
 **执行就绪：** 是
 **分支：** `phase-5/0020-filesystem-approval-hardening`
 **依赖：** 最新干净 `main`
@@ -129,3 +129,16 @@ git commit -m "feat: harden workspace facts and approvals"
 - 审批事实变化后必须重新生成，旧审批不能跨 run/workspace 使用。
 - 证据与 suite report 私有、原子，既有父目录权限不变。
 - 公共字段变更有 schema 兼容测试，四个 Core 客户端无需解析文本。
+
+## 验证结果
+
+- 日期：2026-09-12
+- 额外聚焦：`pytest tests/workspace tests/persistence tests/runtime/test_approval.py tests/runtime/test_safe_editing_flow.py tests/evals/test_evidence.py tests/evals/test_runner.py -q` → 78 passed
+- 完整非 live：559 passed / 2 deselected；Ruff、format、Mypy、`uv build`、`git diff --check` 通过
+- Diff 检查：无 `follow_symlinks=True`、`shell=True`；`PrivateAtomicWriter` 不 chmod 既有父目录
+- 未读取真实 Provider Key，未运行 live，未修改用户工程，未引入桌面框架
+
+## 未决事项
+
+- Unix Socket 类型判定由 `lstat`/`kind_from_stat_mode` 覆盖；测试中因沙箱无法 `bind(AF_UNIX)` 使用 mode 注入，不打开真实设备文件
+- 阶段五其余退出条件（命令/进程、恢复、三类真实工程、20 次 dogfood）属于任务 0021–0024，本任务不关闭阶段五

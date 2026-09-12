@@ -1,8 +1,10 @@
 from pathlib import Path
 
+import pytest
+
 from vera.contracts.verification import VerificationCommand
 from vera.workspace.changeset import ChangeProposal, ChangeSetBuilder
-from vera.workspace.paths import WorkspacePaths
+from vera.workspace.paths import WorkspaceBoundaryError, WorkspacePaths
 
 
 def test_changeset_hash_covers_files_and_verification(tmp_path: Path) -> None:
@@ -39,3 +41,21 @@ def test_changeset_supports_create_delete_and_stable_order(tmp_path: Path) -> No
     assert [item.path for item in first.change_set.files] == ["a.txt", "b.txt", "z.txt"]
     assert first.change_set.content_hash == second.change_set.content_hash
     assert first.intended_bytes["a.txt"] == b"a\n"
+    assert "a.txt" in first.path_facts
+    assert first.path_facts["a.txt"].kind == "absent"
+    assert first.path_facts["z.txt"].kind == "regular"
+
+
+def test_changeset_build_rejects_fifo_target(tmp_path: Path) -> None:
+    import os
+
+    os.mkfifo(tmp_path / "named.pipe")
+    builder = ChangeSetBuilder(WorkspacePaths(tmp_path))
+    with pytest.raises(WorkspaceBoundaryError) as caught:
+        builder.build(
+            "run_1",
+            "bad",
+            [ChangeProposal(operation="update", path="named.pipe", after_content="x\n")],
+            [],
+        )
+    assert caught.value.code == "special_file"

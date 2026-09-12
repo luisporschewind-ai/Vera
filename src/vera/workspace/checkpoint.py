@@ -7,7 +7,7 @@ from pathlib import Path
 from vera.contracts.changes import ChangeSet
 from vera.contracts.checkpoints import CheckpointFile, CheckpointManifest
 from vera.workspace.changeset import sha256_bytes
-from vera.workspace.paths import WorkspacePaths
+from vera.workspace.paths import WorkspaceBoundaryError, WorkspacePaths
 
 
 class CheckpointStore:
@@ -28,8 +28,17 @@ class CheckpointStore:
         os.chmod(blobs, 0o700)
         before: dict[str, CheckpointFile] = {}
         for change in change_set.files:
-            target = self.paths.resolve_mutation(change.path)
-            if target.exists():
+            try:
+                fact = self.paths.inspect_mutation(change.path)
+            except WorkspaceBoundaryError:
+                raise
+            target = Path(fact.canonical_path)
+            if fact.exists:
+                if fact.kind != "regular":
+                    raise WorkspaceBoundaryError(
+                        f"checkpoint requires a regular file: {change.path}",
+                        code="not_regular_file",
+                    )
                 data = target.read_bytes()
                 content_hash = sha256_bytes(data)
                 if change.before_hash != content_hash:
@@ -41,7 +50,7 @@ class CheckpointStore:
                 before[change.path] = CheckpointFile(
                     existed=True,
                     content_hash=content_hash,
-                    mode=target.stat().st_mode & 0o777,
+                    mode=fact.mode if fact.mode is not None else target.stat().st_mode & 0o777,
                 )
             else:
                 if change.before_hash != "0" * 64:

@@ -1,6 +1,6 @@
 # 阶段五执行顺序
 
-**状态：** Planned
+**状态：** In progress
 **执行就绪：** 是
 **目标分支前缀：** `phase-5/`
 **上游规格：** [Core 安全、权限与可靠性加固](../specs/2026-09-12-core-security-and-reliability-hardening.md)

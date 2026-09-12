@@ -17,6 +17,10 @@ class ApprovalKind(StrEnum):
 class ApprovalMismatch(ValueError):
     """Raised for replayed, stale, or cross-run approval commands."""
 
+    def __init__(self, message: str, *, reason: str = "unknown_approval") -> None:
+        super().__init__(message)
+        self.reason = reason
+
 
 class ApprovalGate:
     def __init__(self, run_id: str) -> None:
@@ -33,9 +37,10 @@ class ApprovalGate:
         *,
         workspace_identity: str | None = None,
         policy_hash: str | None = None,
+        fact_hash: str | None = None,
     ) -> ApprovalRequest:
         if self.pending_approval is not None:
-            raise ApprovalMismatch("an approval is already pending")
+            raise ApprovalMismatch("an approval is already pending", reason="duplicate_pending")
         request = ApprovalRequest(
             approval_id=f"approval_{uuid4().hex}",
             run_id=self.run_id,
@@ -46,20 +51,28 @@ class ApprovalGate:
             risk=risk,
             workspace_identity=workspace_identity,
             policy_hash=policy_hash,
+            fact_hash=fact_hash,
         )
         self.pending_approval = request
         return request
 
     def resolve(self, command: ResolveApproval) -> str:
         request = self.pending_approval
-        if (
-            request is None
-            or command.run_id != self.run_id
-            or command.run_id != request.run_id
-            or command.approval_id != request.approval_id
-            or command.target_hash != request.target_hash
-        ):
-            raise ApprovalMismatch("approval does not match pending request")
+        if request is None or command.approval_id != request.approval_id:
+            raise ApprovalMismatch(
+                "approval does not match pending request",
+                reason="unknown_approval",
+            )
+        if command.run_id != self.run_id or command.run_id != request.run_id:
+            raise ApprovalMismatch(
+                "approval does not match pending request",
+                reason="cross_run",
+            )
+        if command.target_hash != request.target_hash:
+            raise ApprovalMismatch(
+                "approval does not match pending request",
+                reason="target_hash_changed",
+            )
         self.pending_approval = None
         return command.decision
 

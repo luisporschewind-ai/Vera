@@ -16,6 +16,7 @@ from vera.contracts.changes import ChangeSet
 from vera.contracts.commands import StartRun
 from vera.contracts.recovery import RecoveryPlan, RecoveryStage
 from vera.workspace.changeset import BuiltChangeSet
+from vera.workspace.paths import PathFact
 
 
 class FrozenPrivateModel(BaseModel):
@@ -36,6 +37,7 @@ def _strict_b64decode(value: str) -> bytes:
 class PersistedChangeSet(FrozenPrivateModel):
     change_set: ChangeSet
     intended_content_b64: dict[str, str] = Field(default_factory=dict)
+    path_facts: dict[str, PathFact] = Field(default_factory=dict)
 
     @staticmethod
     def encode_bytes(value: bytes) -> str:
@@ -48,13 +50,18 @@ class PersistedChangeSet(FrozenPrivateModel):
             intended_content_b64={
                 path: cls.encode_bytes(payload) for path, payload in built.intended_bytes.items()
             },
+            path_facts=built.path_facts,
         )
 
     def decoded_content(self) -> dict[str, bytes]:
         return {path: _strict_b64decode(blob) for path, blob in self.intended_content_b64.items()}
 
     def to_built(self) -> BuiltChangeSet:
-        return BuiltChangeSet(change_set=self.change_set, intended_bytes=self.decoded_content())
+        return BuiltChangeSet(
+            change_set=self.change_set,
+            intended_bytes=self.decoded_content(),
+            path_facts=self.path_facts,
+        )
 
     @model_validator(mode="after")
     def verify_intended_content(self) -> Self:

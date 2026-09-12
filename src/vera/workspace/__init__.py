@@ -1,5 +1,5 @@
 """Workspace boundary helpers."""
 
-from vera.workspace.paths import WorkspaceBoundaryError, WorkspacePaths
+from vera.workspace.paths import PathFact, WorkspaceBoundaryError, WorkspacePaths
 
-__all__ = ["WorkspaceBoundaryError", "WorkspacePaths"]
+__all__ = ["PathFact", "WorkspaceBoundaryError", "WorkspacePaths"]

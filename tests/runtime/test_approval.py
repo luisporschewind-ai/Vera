@@ -50,7 +50,34 @@ def test_approval_rejects_second_pending_request_and_wrong_run() -> None:
         )
 
 
-def test_restored_gate_rejects_wrong_recovery_hash() -> None:
+def test_legacy_approval_request_defaults_missing_fact_hash() -> None:
+    request = ApprovalRequest.model_validate(
+        {
+            "schema_version": 1,
+            "approval_id": "approval_1",
+            "run_id": "run_1",
+            "kind": "changeset",
+            "target_id": "cs_1",
+            "target_hash": "hash",
+            "description": "diff",
+            "risk": "medium",
+        }
+    )
+    assert request.fact_hash is None
+    assert request.schema_version == 1
+
+
+def test_require_stores_fact_hash() -> None:
+    gate = ApprovalGate(run_id="run_1")
+    request = gate.require(
+        ApprovalKind.CHANGESET,
+        "cs_1",
+        "hash",
+        "diff",
+        "medium",
+        fact_hash="f" * 64,
+    )
+    assert request.fact_hash == "f" * 64
     request = ApprovalRequest(
         approval_id="approval_1",
         run_id="run_1",
