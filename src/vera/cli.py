@@ -26,6 +26,7 @@ from vera.contracts.commands import (
 )
 from vera.contracts.events import EventEnvelope
 from vera.persistence.run_store import RunStore
+from vera.redaction import Redactor
 from vera.terminal.mode import (
     PresentationMode,
     TerminalCapabilities,
@@ -141,11 +142,12 @@ def _launch_tui_session(
 
 
 def _render(events: list[EventEnvelope], json_output: bool) -> None:
+    redactor = Redactor()
     if json_output:
         for event in events:
-            typer.echo(event.model_dump_json())
+            typer.echo(redactor.redact_event(event).model_dump_json())
         return
-    HumanPresenter(typer.echo).write_events(events)
+    HumanPresenter(typer.echo, redactor).write_events(events)
 
 
 def _exit_code(events: list[EventEnvelope]) -> int:
@@ -233,7 +235,7 @@ def list_runs() -> None:
 def show_run(run_id: str) -> None:
     config = load_config(Path.cwd(), {})
     for event in RunStore(config.state_dir).read_events(run_id):
-        typer.echo(event.model_dump_json())
+        typer.echo(Redactor().redact_event(event).model_dump_json())
 
 
 def _inspect_recovery(run_id: str | None, json_output: bool) -> None:

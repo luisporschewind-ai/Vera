@@ -27,4 +27,4 @@ class VerificationResult(ContractModel):
     stderr: str
     stdout_truncated: bool = False
     stderr_truncated: bool = False
-    status: Literal["passed", "failed", "timed_out", "rejected", "error"]
+    status: Literal["passed", "failed", "timed_out", "cancelled", "rejected", "error"]

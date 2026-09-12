@@ -141,6 +141,15 @@ def test_loader_rejects_secret_names_and_bearer_values(tmp_path: Path) -> None:
     with pytest.raises(CorpusError, match="secret_detected"):
         CorpusLoader(valid_corpus).validate()
 
+    valid_corpus = _copy_valid(tmp_path / "openai")
+    (valid_corpus / "plain-answer" / "workspace" / "openai.txt").write_text(
+        "https://api.openai.test/v1?api_key=sk-openai-corpus-secret\n",
+        encoding="utf-8",
+    )
+    _write_manifest(valid_corpus)
+    with pytest.raises(CorpusError, match="secret_detected"):
+        CorpusLoader(valid_corpus).validate()
+
 
 def test_loader_rejects_non_utf8_json(tmp_path: Path) -> None:
     valid_corpus = _copy_valid(tmp_path)

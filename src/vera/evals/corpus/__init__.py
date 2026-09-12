@@ -21,10 +21,9 @@ from vera.evals.contracts import (
     EvalScript,
     reject_eval_relative_path,
 )
+from vera.redaction import DEFAULT_SECRET_POLICY
 
 _CASE_ID_RE = re.compile(CASE_ID_PATTERN)
-_SECRET_NAMES = ("DEEPSEEK_API_KEY", "GLM_API_KEY", "VERA_LIVE_API_KEY")
-_BEARER_RE = re.compile(r"Bearer\s+[A-Za-z0-9._\-+=/]{8,}")
 _IGNORED_DIR_NAMES = {"__pycache__", ".git"}
 
 
@@ -268,14 +267,19 @@ def _sha256_file(path: Path) -> str:
 
 
 def _reject_secrets(path: Path, rel: str) -> None:
-    upper_name = rel.upper()
-    if any(name in upper_name for name in _SECRET_NAMES):
-        _fail("secret_detected", rel, "corpus paths must not contain provider secret names")
+    for part in Path(rel).parts:
+        name = Path(part).stem
+        if DEFAULT_SECRET_POLICY.is_forbidden_env_name(
+            part
+        ) or DEFAULT_SECRET_POLICY.is_forbidden_env_name(name):
+            _fail("secret_detected", rel, "corpus paths must not contain provider secret names")
+        if DEFAULT_SECRET_POLICY.contains_secret(part):
+            _fail("secret_detected", rel, "corpus paths must not contain provider secret names")
     try:
         text = path.read_text(encoding="utf-8")
     except UnicodeDecodeError:
         if path.suffix == ".json":
             _fail("invalid_utf8", rel, "corpus json must be utf-8")
         return
-    if any(name in text for name in _SECRET_NAMES) or _BEARER_RE.search(text):
+    if DEFAULT_SECRET_POLICY.contains_secret(text):
         _fail("secret_detected", rel, "corpus files must not contain provider secrets")

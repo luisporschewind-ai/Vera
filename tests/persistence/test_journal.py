@@ -22,6 +22,20 @@ def test_reopened_journal_continues_sequence(tmp_path: Path) -> None:
     assert journal.append("run.completed", {}).sequence == 2
 
 
+def test_journal_redacts_secrets_before_persist(tmp_path: Path) -> None:
+    journal = EventJournal(tmp_path, run_id="run_1", redactor=Redactor())
+    journal.append(
+        "run.failed",
+        {
+            "reason": "Authorization: Bearer sk-live-journal-secret-abcdef",
+            "env": "GLM_API_KEY=sk-live-journal-secret-abcdef",
+        },
+    )
+    body = (tmp_path / "runs" / "run_1" / "events.jsonl").read_text(encoding="utf-8")
+    assert "sk-live-journal-secret-abcdef" not in body
+    assert "[REDACTED]" in body
+
+
 def test_journal_rejects_corrupt_or_noncontinuous_lines(tmp_path: Path) -> None:
     event_path = tmp_path / "runs" / "run_1" / "events.jsonl"
     event_path.parent.mkdir(parents=True)

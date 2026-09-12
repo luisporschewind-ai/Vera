@@ -10,6 +10,7 @@ from vera.policy.snapshot import EffectivePolicySnapshot
 _SHELLS = frozenset({"sh", "bash", "zsh", "fish", "dash", "cmd", "powershell", "pwsh"})
 _DESTRUCTIVE = frozenset({"rm", "rmdir", "unlink", "del"})
 _PRIVILEGED = frozenset({"sudo", "doas", "su"})
+_WRAPPERS = frozenset({"env", "xargs", "busybox", "nice", "nohup", "timeout", "stdbuf"})
 _SAFE_COMMANDS = {
     ("git", "status", "--short"),
     ("git", "diff", "--check"),
@@ -83,7 +84,15 @@ def _command_rule(snapshot: EffectivePolicySnapshot, action: PolicyAction) -> di
     cwd = str(action.metadata.get("cwd", "."))
     if not argv or any("\x00" in item for item in argv) or "\x00" in cwd:
         return _match(PolicyDecisionKind.DENY, "invalid_command", "invalid command", "hard_forbid")
-    executable = Path(argv[0]).name
+    if _cwd_forbidden(cwd):
+        return _match(
+            PolicyDecisionKind.DENY,
+            "cwd_forbidden",
+            "command cwd must stay inside the workspace",
+            "hard_forbid",
+        )
+    names = tuple(_executable_name(item) for item in argv)
+    executable = names[0]
     if executable in _PRIVILEGED:
         return _match(
             PolicyDecisionKind.DENY,
@@ -100,6 +109,15 @@ def _command_rule(snapshot: EffectivePolicySnapshot, action: PolicyAction) -> di
             PolicyDecisionKind.DENY,
             "deletion_forbidden",
             "destructive deletion forbidden",
+            "hard_forbid",
+        )
+    if executable in _WRAPPERS and any(
+        name in _SHELLS | _PRIVILEGED | _DESTRUCTIVE for name in names[1:]
+    ):
+        return _match(
+            PolicyDecisionKind.DENY,
+            "nested_interpreter_forbidden",
+            "nested shell or privileged interpreter forbidden",
             "hard_forbid",
         )
     if (
@@ -136,6 +154,20 @@ def _command_rule(snapshot: EffectivePolicySnapshot, action: PolicyAction) -> di
         "该进程以当前系统用户权限运行，Vera 第一版不提供 OS 沙箱",
         "default_approval",
     )
+
+
+def _executable_name(value: str) -> str:
+    name = Path(value).name.lower()
+    if name.endswith(".exe"):
+        return name[:-4]
+    return name
+
+
+def _cwd_forbidden(cwd: str) -> bool:
+    candidate = Path(cwd)
+    if candidate.is_absolute():
+        return True
+    return any(part == ".." for part in candidate.parts)
 
 
 def _path_rule(snapshot: EffectivePolicySnapshot, action: PolicyAction) -> dict[str, str] | None:

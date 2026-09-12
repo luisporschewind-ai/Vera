@@ -62,7 +62,7 @@ class TerminalBridge:
     def _dispatch(self, action: SessionAction) -> None:
         try:
             for output in self.controller.dispatch(action):
-                self.app.post_message(RuntimeOutputReceived(output))
+                self.app.post_message(RuntimeOutputReceived(self.redactor.redact_output(output)))
             self.app.post_message(WorkerStopped(self.controller.active_run_id, "completed"))
         except Exception as exc:
             message = str(self.redactor.redact(str(exc)))

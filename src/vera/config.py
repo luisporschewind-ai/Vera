@@ -14,6 +14,7 @@ from platformdirs import user_config_path, user_state_path
 from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field
 
 from vera.models.capabilities import ModelCapabilities
+from vera.redaction import DEFAULT_SECRET_POLICY
 
 
 class UnsafeProjectConfig(ValueError):
@@ -73,11 +74,7 @@ class RunSummary(BaseModel):
 
 
 _PROJECT_FORBIDDEN_KEYS = {
-    "api_key",
-    "authorization",
-    "password",
-    "secret",
-    "token",
+    *DEFAULT_SECRET_POLICY.sensitive_fields,
     "user_allowed_command_prefixes",
     "allowed_command_prefixes",
     "safe_commands",

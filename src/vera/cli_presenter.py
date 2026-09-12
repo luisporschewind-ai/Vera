@@ -6,27 +6,33 @@ import shlex
 from collections.abc import Callable, Sequence
 
 from vera.contracts.events import EventEnvelope
+from vera.redaction import Redactor
 
 
 class HumanPresenter:
     """Render authoritative Runtime events without inspecting the workspace."""
 
-    def __init__(self, write: Callable[[str], None]) -> None:
+    def __init__(self, write: Callable[[str], None], redactor: Redactor | None = None) -> None:
         self._write = write
+        self._redactor = redactor or Redactor()
 
     def write_events(self, events: Sequence[EventEnvelope]) -> None:
         for event in events:
             self._write_event(event)
 
     def approval_prompt(self, event: EventEnvelope) -> str:
-        if event.payload.get("kind") == "command":
+        payload = self._redactor.redact(event.payload)
+        if not isinstance(payload, dict):
+            payload = {}
+        if payload.get("kind") == "command":
             return "批准这条验证命令？输入 approve、reject 或 cancel"
-        if event.payload.get("kind") == "recovery":
+        if payload.get("kind") == "recovery":
             return "批准这个恢复计划？输入 approve、reject 或 cancel"
         return "批准这个 Change Set？输入 approve、reject 或 cancel"
 
     def _write_event(self, event: EventEnvelope) -> None:
-        payload = event.payload
+        raw = self._redactor.redact(event.payload)
+        payload = raw if isinstance(raw, dict) else {}
         if event.type == "run.started":
             self._write(f"任务开始：{event.run_id}")
         elif event.type == "tool.started":

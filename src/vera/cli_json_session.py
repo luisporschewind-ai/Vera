@@ -60,7 +60,7 @@ class JsonSessionDriver:
         return exit_code
 
     def _write_output(self, output_stream: TextIO, output: EventEnvelope | StreamFrame) -> None:
-        record = SessionRecordCodec.from_output(output)
+        record = SessionRecordCodec.from_output(self.redactor.redact_output(output))
         output_stream.write(SessionRecordCodec.encode(record) + "\n")
         output_stream.flush()
 
