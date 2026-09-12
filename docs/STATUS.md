@@ -2,11 +2,12 @@
 
 **更新日期：** 2026-09-12
 **当前阶段：** 阶段 5——Core 安全、权限与可靠性加固（进行中）
-**仓库状态：** 任务 0021 已合并到 `main`；下一任务为 0022。阶段六封存门禁已写入规格。暂无远程，未推送。
+**仓库状态：** 任务 0022 离线实现已完成，待本地合并后从干净 `main` 执行 0023。阶段六封存门禁已写入规格。暂无远程，未推送。
 
 ## 已完成
 
 - 阶段一、阶段二、阶段三、阶段四全部任务
+- [任务 0022：状态、恢复与长会话加固](tasks/0022-state-recovery-and-long-run-hardening.md)
 - [任务 0021：命令、进程与秘密加固](tasks/0021-command-process-and-secret-hardening.md)
 - [任务 0020：文件系统与审批事实加固](tasks/0020-workspace-filesystem-and-approval-hardening.md)
 - [任务 0010：流式 RuntimeOutput](tasks/0010-streaming-runtime-output.md)
@@ -22,11 +23,12 @@
 
 ## 活动任务
 
-- [阶段五执行顺序](tasks/phase-5-execution-order.md)：下一步从干净 `main` 执行任务 0022。
+- [阶段五执行顺序](tasks/phase-5-execution-order.md)：下一步从干净 `main` 执行任务 0023。
 - [阶段六执行顺序](tasks/phase-6-execution-order.md)：阶段五完成前不开始；任务 0029 只能先进入 Ready for manual acceptance。
 
 ## 最近验证
 
+- 任务 0022：[state-recovery-and-long-run-hardening](evals/state-recovery-and-long-run-hardening.md)
 - 任务 0021：[command-process-and-secret-hardening](evals/command-process-and-secret-hardening.md)
 - 完整非 live：587 passed / 2 deselected
 - 任务 0020：[workspace-filesystem-and-approval-hardening](evals/workspace-filesystem-and-approval-hardening.md)

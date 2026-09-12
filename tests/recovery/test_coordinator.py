@@ -93,3 +93,19 @@ def test_repeated_scan_is_read_only(tmp_path: Path) -> None:
     second = coordinator.scan("run_1")
     assert digest() == before
     assert first == second
+
+
+def test_truncated_journal_tail_does_not_fail_scan(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / "app.py").write_text("before\n", encoding="utf-8")
+    state_dir = tmp_path / "state"
+    journal = _journal(state_dir, "run_1")
+    journal.append("approval.required", {"kind": "changeset"})
+    path = state_dir / "runs" / "run_1" / "events.jsonl"
+    path.write_bytes(path.read_bytes() + b'{"schema_version":1,"event_id":"partial"')
+    RecoverySnapshotStore(state_dir).save(
+        make_snapshot(workspace).model_copy(update={"run_id": "run_1"})
+    )
+    reports = RecoveryCoordinator(state_dir, "install-1").scan("run_1")
+    assert reports[0].classification is RecoveryClassification.RESUMABLE_APPROVAL

@@ -6,6 +6,8 @@ from pathlib import Path
 
 from vera.contracts.changes import ChangeSet
 from vera.contracts.checkpoints import CheckpointFile, CheckpointManifest
+from vera.contracts.errors import classify_os_error
+from vera.persistence.errors import PersistenceFault
 from vera.workspace.changeset import sha256_bytes
 from vera.workspace.paths import WorkspaceBoundaryError, WorkspacePaths
 
@@ -82,7 +84,13 @@ class CheckpointStore:
         manifest_path = (
             state_dir.expanduser().resolve() / "runs" / run_id / "checkpoint" / "manifest.json"
         )
-        return CheckpointManifest.model_validate_json(manifest_path.read_text(encoding="utf-8"))
+        try:
+            text = manifest_path.read_text(encoding="utf-8")
+        except UnicodeDecodeError as exc:
+            raise PersistenceFault("invalid_encoding", "checkpoint manifest is not utf-8") from exc
+        except OSError as exc:
+            raise PersistenceFault(classify_os_error(exc), str(exc)) from exc
+        return CheckpointManifest.model_validate_json(text)
 
     def read_original(self, manifest: CheckpointManifest, path: str) -> bytes:
         record = manifest.before[path]

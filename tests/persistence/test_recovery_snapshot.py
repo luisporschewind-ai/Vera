@@ -1,3 +1,4 @@
+import errno
 import stat
 from datetime import UTC, datetime
 from pathlib import Path
@@ -43,8 +44,9 @@ def test_corrupt_snapshot_has_stable_error(tmp_path: Path) -> None:
     target = tmp_path / "state" / "runs" / "run_1" / "recovery.json"
     target.parent.mkdir(parents=True)
     target.write_text("{broken", encoding="utf-8")
-    with pytest.raises(RecoverySnapshotError, match="invalid_snapshot"):
+    with pytest.raises(RecoverySnapshotError) as caught:
         RecoverySnapshotStore(tmp_path / "state").load("run_1")
+    assert caught.value.code == "mid_file_corrupt"
 
 
 def test_failed_replace_keeps_existing_snapshot_bytes(tmp_path: Path) -> None:
@@ -65,6 +67,25 @@ def test_failed_replace_keeps_existing_snapshot_bytes(tmp_path: Path) -> None:
     assert target.read_bytes() == original
     assert not target.with_suffix(".json.tmp").exists()
     assert store.load(snapshot.run_id) == snapshot
+
+
+def test_snapshot_enospc_does_not_clobber(tmp_path: Path) -> None:
+    snapshot = make_snapshot()
+    store = RecoverySnapshotStore(tmp_path / "state")
+    store.save(snapshot)
+    target = tmp_path / "state" / "runs" / snapshot.run_id / "recovery.json"
+    original = target.read_bytes()
+
+    def fail_fsync(_fd: int) -> None:
+        raise OSError(errno.ENOSPC, "No space left on device")
+
+    failing = RecoverySnapshotStore(tmp_path / "state", fsync=fail_fsync)
+    updated = snapshot.model_copy(update={"last_event_sequence": 9})
+    with pytest.raises(RecoverySnapshotError) as caught:
+        failing.save(updated)
+    assert caught.value.code == "no_space"
+    assert target.read_bytes() == original
+    assert not target.with_suffix(".json.tmp").exists()
 
 
 def test_missing_snapshot_is_a_stable_error(tmp_path: Path) -> None:

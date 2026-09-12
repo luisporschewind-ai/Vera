@@ -39,4 +39,5 @@ class TimelineBlock(BaseModel):
     expanded: bool = False
     user_overridden: bool = False
     incomplete: bool = False
+    truncated: bool = False
     ref_id: str | None = None

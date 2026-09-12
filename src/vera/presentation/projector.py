@@ -44,12 +44,20 @@ TimelineMutation = Annotated[
 class TimelineProjector:
     """Pure RuntimeOutput → TimelineMutation projector."""
 
-    def __init__(self, disclosure: DisclosurePolicy | None = None) -> None:
+    def __init__(
+        self,
+        disclosure: DisclosurePolicy | None = None,
+        *,
+        max_body_bytes: int = 8_192,
+        max_blocks: int = 200,
+    ) -> None:
         self.disclosure = disclosure or DisclosurePolicy()
         self._redactor = Redactor()
         self._blocks: dict[str, TimelineBlock] = {}
         self._streams: dict[str, dict[str, object]] = {}
         self._tool_blocks: dict[tuple[str, str], str] = {}
+        self._max_body_bytes = max_body_bytes
+        self._max_blocks = max_blocks
 
     def apply(self, output: RuntimeOutput) -> tuple[TimelineMutation, ...]:
         output = self._redactor.redact_output(output)
@@ -88,6 +96,9 @@ class TimelineProjector:
         state["next_index"] = frame.index + 1
         text = sanitize_terminal_text(str(frame.payload.get("text", "")))
         state["text"] = str(state["text"]) + text
+        body, truncated = self._truncate_body(str(state["text"]))
+        if truncated:
+            state["text"] = body
         block_id = f"{frame.run_id}:{frame.stream_id}:assistant"
         existing = self._blocks.get(block_id)
         if existing is None:
@@ -96,14 +107,15 @@ class TimelineProjector:
                 run_id=frame.run_id,
                 kind=BlockKind.ASSISTANT,
                 title="助手",
-                body=str(state["text"]),
+                body=body,
                 status=BlockStatus.RUNNING,
                 expanded=self.disclosure.initial_state(BlockKind.ASSISTANT, BlockStatus.RUNNING),
+                truncated=truncated,
             )
             self._blocks[block_id] = block
             return (AppendBlock(block=block),)
         updated = existing.model_copy(
-            update={"body": str(state["text"]), "status": BlockStatus.RUNNING}
+            update={"body": body, "status": BlockStatus.RUNNING, "truncated": truncated}
         )
         self._blocks[block_id] = updated
         return (UpdateBlock(block=updated),)
@@ -137,6 +149,24 @@ class TimelineProjector:
         handler = handlers.get(event.type, self._unknown_event)
         return handler(event)
 
+    def _truncate_body(self, body: str) -> tuple[str, bool]:
+        encoded = body.encode("utf-8")
+        if len(encoded) <= self._max_body_bytes:
+            return body, False
+        clipped = encoded[: self._max_body_bytes].decode("utf-8", errors="ignore")
+        return clipped, True
+
+    def _evict_if_needed(self) -> None:
+        protected = {BlockKind.APPROVAL, BlockKind.DIFF, BlockKind.ERROR, BlockKind.USER}
+        while len(self._blocks) > self._max_blocks:
+            victim = next(
+                (key for key, block in self._blocks.items() if block.kind not in protected),
+                None,
+            )
+            if victim is None:
+                break
+            del self._blocks[victim]
+
     def _append(
         self,
         *,
@@ -150,17 +180,20 @@ class TimelineProjector:
         ref_id: str | None = None,
     ) -> tuple[TimelineMutation, ...]:
         expanded = self.disclosure.initial_state(kind, status)
+        clipped, truncated = self._truncate_body(sanitize_terminal_text(body))
         block = TimelineBlock(
             block_id=block_id,
             run_id=run_id,
             kind=kind,
             title=sanitize_terminal_text(title),
-            body=sanitize_terminal_text(body),
+            body=clipped,
             status=status,
             expanded=expanded,
+            truncated=truncated,
             ref_id=ref_id,
         )
         self._blocks[block_id] = block
+        self._evict_if_needed()
         mutations: list[TimelineMutation] = [AppendBlock(block=block)]
         if focus:
             mutations.append(FocusBlock(block_id=block_id))

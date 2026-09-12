@@ -4,8 +4,28 @@ from __future__ import annotations
 
 import json
 
-from vera.persistence.errors import StateVersionError
+from pydantic import ValidationError
+
+from vera.contracts.errors import CoreErrorCode
+from vera.persistence.decode import classify_validation_error, inspect_payload, parse_json_object
+from vera.persistence.errors import PersistenceFault, StateVersionError
 from vera.recovery.models import RecoverySnapshot
+
+_SNAPSHOT_ALLOWED = frozenset(RecoverySnapshot.model_fields)
+_SNAPSHOT_REQUIRED = frozenset(
+    {
+        "snapshot_version",
+        "run_id",
+        "workspace_root",
+        "workspace_identity",
+        "command",
+        "stage",
+        "last_event_sequence",
+        "created_at",
+        "updated_at",
+        "vera_version",
+    }
+)
 
 
 class SnapshotCodec:
@@ -19,19 +39,29 @@ class SnapshotCodec:
         return payload.encode("utf-8")
 
     def decode(self, data: bytes | str) -> RecoverySnapshot:
-        raw = data.encode("utf-8") if isinstance(data, str) else data
         try:
-            payload = json.loads(raw.decode("utf-8"))
-        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise StateVersionError("invalid_snapshot") from exc
-        if not isinstance(payload, dict) or "snapshot_version" not in payload:
-            raise StateVersionError("missing_version")
-        version = payload["snapshot_version"]
-        if not isinstance(version, int) or isinstance(version, bool):
-            raise StateVersionError("invalid_snapshot")
-        if version != 1:
-            raise StateVersionError("unsupported_version", version)
+            payload = parse_json_object(data)
+            version = inspect_payload(
+                payload,
+                allowed_keys=_SNAPSHOT_ALLOWED,
+                required_keys=_SNAPSHOT_REQUIRED,
+                version_key="snapshot_version",
+                supported_versions=frozenset({1}),
+            )
+        except PersistenceFault as exc:
+            if exc.code == CoreErrorCode.UNSUPPORTED_VERSION.value:
+                raise StateVersionError(exc.code, exc.version) from exc
+            raise StateVersionError(exc.code, exc.version) from exc
         try:
             return RecoverySnapshot.model_validate(payload)
+        except ValidationError as exc:
+            code = classify_validation_error(exc)
+            if code == "invalid_record":
+                code = "invalid_snapshot"
+            raise StateVersionError(code, version) from exc
         except Exception as exc:
-            raise StateVersionError("invalid_snapshot", version) from exc
+            message = str(exc).lower()
+            code = (
+                CoreErrorCode.CHECKSUM_MISMATCH.value if "hash" in message else "invalid_snapshot"
+            )
+            raise StateVersionError(code, version) from exc

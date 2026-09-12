@@ -32,6 +32,8 @@ class RecoveryHydrator:
     def hydrate(self, snapshot: RecoverySnapshot, journal: EventJournal) -> RunContext:
         if snapshot.verification_in_flight:
             raise RecoveryHydrationError("verification_in_flight")
+        if snapshot.rollback_in_flight:
+            raise RecoveryHydrationError("rollback_in_flight")
         events = journal.read_all()
         last_sequence = events[-1].sequence if events else 0
         if snapshot.last_event_sequence != last_sequence:

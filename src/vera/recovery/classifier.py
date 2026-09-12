@@ -52,6 +52,8 @@ class RecoveryClassifier:
             return self._report(snapshot, evidence, _MANUAL, "workspace_missing")
         if snapshot.verification_in_flight:
             return self._report(snapshot, evidence, _MANUAL, "verification_in_flight")
+        if snapshot.rollback_in_flight:
+            return self._report(snapshot, evidence, _MANUAL, "rollback_in_flight")
 
         expected = set()
         if snapshot.built_changeset is not None:

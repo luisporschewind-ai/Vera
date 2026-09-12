@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Protocol
 
 from vera.contracts.checkpoints import CheckpointManifest
+from vera.contracts.errors import classify_os_error
 from vera.contracts.recovery import RecoveryPlan
 from vera.workspace.changeset import ABSENT_HASH, BuiltChangeSet, sha256_bytes
 from vera.workspace.checkpoint import CheckpointStore
@@ -32,6 +33,10 @@ class ApplyResult:
     status: ApplyStatus
     paths: tuple[str, ...] = ()
     error: str | None = None
+    written: bool = False
+    rollbackable: bool = False
+    next_step: str | None = None
+    error_code: str | None = None
 
 
 @dataclass(frozen=True)
@@ -39,6 +44,10 @@ class RollbackResult:
     status: RollbackStatus
     paths: tuple[str, ...] = ()
     error: str | None = None
+    written: bool = False
+    rollbackable: bool = False
+    next_step: str | None = None
+    error_code: str | None = None
 
 
 class SimulatedCrash(RuntimeError):
@@ -140,7 +149,16 @@ class ChangeApplier:
         try:
             paths = self._preflight(built, manifest)
         except (OSError, ValueError) as exc:
-            return ApplyResult(ApplyStatus.REJECTED, error=str(exc))
+            code = classify_os_error(exc) if isinstance(exc, OSError) else "preflight_failed"
+            return ApplyResult(
+                ApplyStatus.REJECTED,
+                error=str(exc),
+                error_code=code,
+                written=False,
+                rollbackable=False,
+                next_step="inspect",
+            )
+        mutated = False
         try:
             for change in built.change_set.files:
                 target = self.paths.resolve_mutation(change.path)
@@ -148,9 +166,11 @@ class ChangeApplier:
                     self.writer.delete(target)
                 else:
                     self.writer.replace(target, built.intended_bytes[change.path])
+                mutated = True
         except SimulatedCrash:
             raise
         except Exception as exc:
+            code = classify_os_error(exc) if isinstance(exc, OSError) else "write_failed"
             try:
                 self._restore(manifest, paths)
             except Exception as recovery_error:
@@ -158,9 +178,26 @@ class ChangeApplier:
                     ApplyStatus.RECOVERY_REQUIRED,
                     paths=paths,
                     error=f"{exc}; recovery failed: {recovery_error}",
+                    error_code=code,
+                    written=mutated,
+                    rollbackable=False,
+                    next_step="restore",
                 )
-            return ApplyResult(ApplyStatus.RESTORED_AFTER_FAILURE, paths=paths, error=str(exc))
-        return ApplyResult(ApplyStatus.APPLIED, paths=paths)
+            return ApplyResult(
+                ApplyStatus.RESTORED_AFTER_FAILURE,
+                paths=paths,
+                error=str(exc),
+                error_code=code,
+                written=False,
+                rollbackable=True,
+                next_step="retry",
+            )
+        return ApplyResult(
+            ApplyStatus.APPLIED,
+            paths=paths,
+            written=True,
+            rollbackable=True,
+        )
 
     def rollback(self, manifest: CheckpointManifest) -> RollbackResult:
         paths = tuple(manifest.before)
@@ -171,26 +208,66 @@ class ChangeApplier:
                     ABSENT_HASH if not target.exists() else sha256_bytes(target.read_bytes())
                 )
                 if current_hash != manifest.after_hashes[relative]:
-                    return RollbackResult(RollbackStatus.CONFLICTED, paths=paths)
+                    return RollbackResult(
+                        RollbackStatus.CONFLICTED,
+                        paths=paths,
+                        written=False,
+                        rollbackable=False,
+                        next_step="inspect",
+                        error_code="checksum_mismatch",
+                    )
             self._restore(manifest, paths)
         except Exception as exc:
-            return RollbackResult(RollbackStatus.RECOVERY_REQUIRED, paths=paths, error=str(exc))
-        return RollbackResult(RollbackStatus.ROLLED_BACK, paths=paths)
+            code = classify_os_error(exc) if isinstance(exc, OSError) else "write_failed"
+            return RollbackResult(
+                RollbackStatus.RECOVERY_REQUIRED,
+                paths=paths,
+                error=str(exc),
+                error_code=code,
+                written=False,
+                rollbackable=False,
+                next_step="restore",
+            )
+        return RollbackResult(
+            RollbackStatus.ROLLED_BACK,
+            paths=paths,
+            written=True,
+            rollbackable=False,
+            next_step=None,
+        )
 
     def restore_partial(self, plan: RecoveryPlan, manifest: CheckpointManifest) -> RollbackResult:
         try:
             restore_paths = self._preflight_partial(plan, manifest)
         except (OSError, ValueError) as exc:
-            return RollbackResult(RollbackStatus.RECOVERY_REQUIRED, error=str(exc))
+            code = classify_os_error(exc) if isinstance(exc, OSError) else "preflight_failed"
+            return RollbackResult(
+                RollbackStatus.RECOVERY_REQUIRED,
+                error=str(exc),
+                error_code=code,
+                written=False,
+                rollbackable=False,
+                next_step="inspect",
+            )
         try:
             self._restore(manifest, restore_paths)
         except Exception as exc:
+            code = classify_os_error(exc) if isinstance(exc, OSError) else "write_failed"
             return RollbackResult(
                 RollbackStatus.RECOVERY_REQUIRED,
                 paths=restore_paths,
                 error=str(exc),
+                error_code=code,
+                written=False,
+                rollbackable=False,
+                next_step="restore",
             )
-        return RollbackResult(RollbackStatus.ROLLED_BACK, paths=restore_paths)
+        return RollbackResult(
+            RollbackStatus.ROLLED_BACK,
+            paths=restore_paths,
+            written=True,
+            rollbackable=False,
+        )
 
     def _preflight_partial(
         self, plan: RecoveryPlan, manifest: CheckpointManifest

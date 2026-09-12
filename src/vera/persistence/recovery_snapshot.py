@@ -7,7 +7,8 @@ import re
 from collections.abc import Callable
 from pathlib import Path
 
-from vera.persistence.errors import StateVersionError
+from vera.contracts.errors import classify_os_error
+from vera.persistence.errors import PersistenceFault, StateVersionError
 from vera.persistence.snapshot_codec import SnapshotCodec
 from vera.recovery.models import RecoverySnapshot
 
@@ -18,12 +19,11 @@ def is_safe_run_id(run_id: str) -> bool:
     return Path(run_id).name == run_id and _SAFE_RUN_ID.fullmatch(run_id) is not None
 
 
-class RecoverySnapshotError(ValueError):
+class RecoverySnapshotError(PersistenceFault):
     """Raised when a recovery snapshot cannot be written or read safely."""
 
-    def __init__(self, code: str) -> None:
-        super().__init__(code)
-        self.code = code
+    def __init__(self, code: str, *, advice: str | None = None) -> None:
+        super().__init__(code, advice=advice)
 
 
 class RecoverySnapshotStore:
@@ -51,7 +51,7 @@ class RecoverySnapshotStore:
         try:
             return self._codec.decode(path.read_bytes())
         except StateVersionError as exc:
-            raise RecoverySnapshotError(exc.code) from exc
+            raise RecoverySnapshotError(exc.code, advice=exc.advice) from exc
         except RecoverySnapshotError:
             raise
         except Exception as exc:
@@ -76,6 +76,11 @@ class RecoverySnapshotStore:
         except RecoverySnapshotError:
             temporary.unlink(missing_ok=True)
             raise
+        except OSError as exc:
+            temporary.unlink(missing_ok=True)
+            mapped = classify_os_error(exc)
+            code = "snapshot_write_failed" if mapped == "write_failed" else mapped
+            raise RecoverySnapshotError(code) from exc
         except Exception as exc:
             temporary.unlink(missing_ok=True)
             raise RecoverySnapshotError("snapshot_write_failed") from exc

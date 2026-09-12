@@ -2,7 +2,7 @@
 
 > 供 Cursor 执行：按 `superpowers:executing-plans` 实施；不得以删除损坏状态或重建用户数据作为自动修复。
 
-**状态：** Planned
+**状态：** Done
 **执行就绪：** 任务 0021 合并后
 **分支：** `phase-5/0022-state-recovery-long-run`
 **依赖：** 任务 0021 已合并
@@ -119,3 +119,15 @@ git commit -m "feat: harden recovery and long-running sessions"
 - 损坏、未知版本、权限和磁盘错误均失败关闭并保留原数据。
 - 长会话内存与上下文有明确上限，权威未决事实不丢失。
 - 四类客户端仍消费同一 Runtime 事件和恢复结果。
+
+## 验证结果
+
+- 日期：2026-09-12
+- 额外聚焦：`pytest tests/persistence tests/recovery tests/runtime tests/session tests/presentation tests/e2e/test_long_session.py` → 202 passed
+- 完整非 live：611 passed / 2 deselected；Ruff、format、Mypy、`uv build`、`git diff --check` 通过
+- 未读取真实 Provider Key，未运行 live，未修改用户工程，未引入桌面框架
+
+## 未决事项
+
+- 跨轮次只保留 changeset 路径与 ID 等 `[facts]` 引用，不回放 unified diff 正文
+- 三类真实工程与 20 次 dogfood 属于任务 0024，本任务不关闭阶段五

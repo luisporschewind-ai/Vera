@@ -14,7 +14,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict
 
-from vera.persistence.errors import StateVersionError
+from vera.persistence.errors import StateVersionError, default_advice
 from vera.persistence.run_manifest import RunManifest, RunManifestStore
 from vera.persistence.run_store import RunFormatStatus, RunStore
 
@@ -37,6 +37,7 @@ class MigrationResult(BaseModel):
     migration_id: str
     run_id: str
     reason_code: str | None = None
+    advice: str | None = None
 
 
 class StateMigrationService:
@@ -91,6 +92,7 @@ class StateMigrationService:
                 migration_id=plan.migration_id,
                 run_id=plan.run_id,
                 reason_code=exc.code,
+                advice=exc.advice,
             )
         if current.migration_hash != plan.migration_hash or current.actions != plan.actions:
             return MigrationResult(
@@ -98,6 +100,7 @@ class StateMigrationService:
                 migration_id=plan.migration_id,
                 run_id=plan.run_id,
                 reason_code="migration_hash_mismatch",
+                advice=default_advice("migration_apply_failed"),
             )
         if plan.actions == ("noop",) or plan.from_status is RunFormatStatus.CURRENT:
             return MigrationResult(
@@ -132,6 +135,7 @@ class StateMigrationService:
                 migration_id=plan.migration_id,
                 run_id=plan.run_id,
                 reason_code="migration_apply_failed",
+                advice=default_advice("migration_apply_failed"),
             )
         return MigrationResult(
             status="completed",

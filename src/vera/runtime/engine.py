@@ -1,6 +1,6 @@
 """Bounded discovery loop that stops before any filesystem mutation."""
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from contextlib import suppress
 from datetime import UTC, datetime
 from pathlib import Path
@@ -37,6 +37,11 @@ from vera.models.retry import RetryPolicy
 from vera.models.streaming import ModelStreamCompleted, ModelTextDelta
 from vera.persistence.journal import EventJournal
 from vera.persistence.migration import StateMigrationService
+from vera.persistence.operation_receipt import (
+    OperationReceipt,
+    OperationReceiptStore,
+    receipt_key,
+)
 from vera.persistence.recovery_snapshot import RecoverySnapshotError, RecoverySnapshotStore
 from vera.persistence.run_store import RunStore
 from vera.policy.engine import PolicyEngine
@@ -49,14 +54,14 @@ from vera.recovery.probe import workspace_identity
 from vera.recovery.resume import ResumeRejected, RunResumer
 from vera.redaction import Redactor
 from vera.runtime.approval import ApprovalGate, ApprovalKind, ApprovalMismatch
-from vera.runtime.context import RunContext
+from vera.runtime.context import RunContext, compact_run_messages, tool_result_message
 from vera.runtime.prompts import COMPACTION_PROMPT, SYSTEM_PROMPT
 from vera.runtime.state import RunState, RunStateMachine
 from vera.tools.command_policy import CommandDecisionKind, CommandPolicy
 from vera.tools.registry import ToolRegistry
 from vera.verification.runner import VerificationRunner
 from vera.workspace.apply import ApplyStatus, ChangeApplier, FileWriter, RollbackStatus
-from vera.workspace.changeset import ChangeProposal, ChangeSetBuilder
+from vera.workspace.changeset import ChangeProposal, ChangeSetBuilder, sha256_bytes
 from vera.workspace.checkpoint import CheckpointStore
 from vera.workspace.paths import WorkspaceBoundaryError, WorkspacePaths
 
@@ -113,6 +118,7 @@ class VeraRuntime:
         )
         self.runs: dict[str, RunContext] = {}
         self.snapshot_store = snapshot_store or RecoverySnapshotStore(state_dir)
+        self.receipts = OperationReceiptStore(state_dir)
         self.file_writer = file_writer
         self.coordinator = recovery_coordinator or RecoveryCoordinator(
             state_dir,
@@ -152,6 +158,84 @@ class VeraRuntime:
         self, context: RunContext, event_type: str, payload: dict[str, Any]
     ) -> EventEnvelope:
         return context.journal.append(event_type, payload)
+
+    def _replay_receipt(self, receipt: OperationReceipt) -> Iterator[EventEnvelope]:
+        path = self.state_dir / "runs" / receipt.run_id / "events.jsonl"
+        if not path.is_file():
+            return
+        wanted = {
+            ref.removeprefix("event:") for ref in receipt.effect_refs if ref.startswith("event:")
+        }
+        for event in EventJournal.load_events(path, receipt.run_id):
+            if event.event_id in wanted:
+                yield event
+
+    def _file_effect_refs(self, run_id: str) -> tuple[str, ...]:
+        context = self.runs.get(run_id)
+        if context is None or context.built_change_set is None:
+            return ()
+        refs: list[str] = []
+        root = context.command.workspace_root
+        for item in context.built_change_set.change_set.files:
+            target = root / item.path
+            digest = sha256_bytes(target.read_bytes()) if target.exists() else "0" * 64
+            refs.append(f"file:{item.path}:{digest}")
+        return tuple(refs)
+
+    def _commit_receipt(
+        self,
+        *,
+        operation: Literal["resume", "resolve_approval", "cancel", "rollback"],
+        run_id: str,
+        payload: dict[str, Any],
+        events: Sequence[EventEnvelope],
+        extra_refs: tuple[str, ...] = (),
+    ) -> None:
+        if not events:
+            return
+        operation_id, input_hash = receipt_key(operation, payload)
+        self.receipts.save(
+            OperationReceipt(
+                operation_id=operation_id,
+                operation=operation,
+                run_id=run_id,
+                input_hash=input_hash,
+                terminal_result=events[-1].type,
+                effect_refs=tuple(f"event:{event.event_id}" for event in events) + extra_refs,
+                created_at=datetime.now(UTC),
+            )
+        )
+
+    def _with_receipt(
+        self,
+        operation: Literal["resume", "resolve_approval", "cancel", "rollback"],
+        run_id: str,
+        payload: dict[str, Any],
+        events: Iterator[EventEnvelope],
+        *,
+        extra_refs: Callable[[], tuple[str, ...]] | None = None,
+        hydrate: bool = False,
+    ) -> Iterator[EventEnvelope]:
+        operation_id, _input_hash = receipt_key(operation, payload)
+        existing = self.receipts.load(run_id, operation_id)
+        if existing is not None:
+            if hydrate and run_id not in self.runs:
+                with suppress(Exception):
+                    self.runs[run_id] = RunResumer(self.coordinator).load_context(run_id)
+            yield from self._replay_receipt(existing)
+            return
+        collected: list[EventEnvelope] = []
+        for event in events:
+            collected.append(event)
+            yield event
+        refs = extra_refs() if extra_refs is not None else ()
+        self._commit_receipt(
+            operation=operation,
+            run_id=run_id,
+            payload=payload,
+            events=collected,
+            extra_refs=refs,
+        )
 
     def _should_snapshot(self, context: RunContext) -> bool:
         return context.command.mode != "compact"
@@ -582,9 +666,16 @@ class VeraRuntime:
             yield self._event(
                 context,
                 event_type,
-                {"status": apply_result.status.value, "paths": list(apply_result.paths)},
+                {
+                    "status": apply_result.status.value,
+                    "paths": list(apply_result.paths),
+                    "written": apply_result.written,
+                    "rollbackable": apply_result.rollbackable,
+                    "next_step": apply_result.next_step,
+                    "error_code": apply_result.error_code,
+                },
             )
-            yield from self._fail(context, apply_result.status.value)
+            yield from self._fail(context, apply_result.error_code or apply_result.status.value)
             return
         context.workspace_write_started = True
         yield self._stable_event(
@@ -648,10 +739,20 @@ class VeraRuntime:
             "error_code": result.error_code,
         }
         yield self._event(context, "tool.completed", payload)
+        tool_text = tool_result_message(call, result)
         context.messages.append(
-            ModelMessage(role="tool", content=str(result.content), tool_call_id=call.call_id)
+            ModelMessage(role="tool", content=tool_text, tool_call_id=call.call_id)
         )
-        context.context_bytes += len(str(result.content).encode())
+        context.context_bytes = sum(
+            len(message.content.encode("utf-8")) for message in context.messages
+        )
+        context.messages = compact_run_messages(
+            context.messages,
+            max_bytes=self.limits.max_context_bytes,
+        )
+        context.context_bytes = sum(
+            len(message.content.encode("utf-8")) for message in context.messages
+        )
 
     def _complete_with_retry(
         self, context: RunContext, request: ModelRequest
@@ -743,6 +844,14 @@ class VeraRuntime:
             if context.model_turns >= self.limits.max_model_turns:
                 yield from self._fail(context, "max_model_turns")
                 return
+            if context.context_bytes >= self.limits.max_context_bytes:
+                context.messages = compact_run_messages(
+                    context.messages,
+                    max_bytes=self.limits.max_context_bytes,
+                )
+                context.context_bytes = sum(
+                    len(message.content.encode("utf-8")) for message in context.messages
+                )
             if context.context_bytes >= self.limits.max_context_bytes:
                 yield from self._fail(context, "max_context_bytes")
                 return
@@ -860,8 +969,11 @@ class VeraRuntime:
 
     def _dispatch(self, command: CoreCommand) -> Iterator[RuntimeOutput]:
         if isinstance(command, CancelRun):
-            context = self.runs.get(command.run_id)
-            if context is not None:
+
+            def _cancel_once() -> Iterator[EventEnvelope]:
+                context = self.runs.get(command.run_id)
+                if context is None:
+                    return
                 pending = context.approval_gate.pending_approval
                 if pending is not None and pending.kind == ApprovalKind.RECOVERY.value:
                     self.runs.pop(command.run_id, None)
@@ -874,12 +986,40 @@ class VeraRuntime:
                     {"reason": "cancelled_by_user"},
                     RecoveryStage.TERMINAL,
                 )
+
+            yield from self._with_receipt(
+                "cancel",
+                command.run_id,
+                {"run_id": command.run_id},
+                _cancel_once(),
+            )
             return
         if isinstance(command, ResolveApproval):
-            yield from self._resolve_approval(command)
+            yield from self._with_receipt(
+                "resolve_approval",
+                command.run_id,
+                {
+                    "run_id": command.run_id,
+                    "approval_id": command.approval_id,
+                    "target_hash": command.target_hash,
+                    "decision": command.decision,
+                },
+                self._resolve_approval(command),
+                extra_refs=lambda: self._file_effect_refs(command.run_id),
+            )
             return
         if isinstance(command, RollbackRun):
-            yield from self._rollback(command)
+            if command.run_id is None:
+                yield from self._rollback(command)
+                return
+            rollback_run_id = command.run_id
+            yield from self._with_receipt(
+                "rollback",
+                rollback_run_id,
+                {"run_id": rollback_run_id, "checkpoint_id": command.checkpoint_id},
+                self._rollback(command),
+                extra_refs=lambda: self._file_effect_refs(rollback_run_id),
+            )
             return
         if isinstance(command, InspectRecovery):
             yield from self._inspect_recovery(command)
@@ -894,7 +1034,25 @@ class VeraRuntime:
             yield from self._apply_state_migration(command)
             return
         if isinstance(command, ResumeRun):
-            yield from self._resume(command)
+            payload = {"run_id": command.run_id}
+            operation_id, _input_hash = receipt_key("resume", payload)
+            existing_receipt = self.receipts.load(command.run_id, operation_id)
+            if existing_receipt is not None and command.run_id not in self.runs:
+                with suppress(Exception):
+                    self.runs[command.run_id] = RunResumer(self.coordinator).load_context(
+                        command.run_id
+                    )
+            collected: list[EventEnvelope] = []
+            for event in self._resume(command):
+                collected.append(event)
+                yield event
+            if existing_receipt is None:
+                self._commit_receipt(
+                    operation="resume",
+                    run_id=command.run_id,
+                    payload=payload,
+                    events=collected,
+                )
             return
         if isinstance(command, AbandonRun):
             yield from self._abandon(command)

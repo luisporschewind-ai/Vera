@@ -103,3 +103,37 @@ def test_multifile_fact_change_fails_before_first_write(tmp_path: Path, state_di
     assert writer.writes == []
     assert (tmp_path / "a.txt").read_text(encoding="utf-8") == "a\n"
     assert (tmp_path / "b.txt").read_text(encoding="utf-8") == "changed\n"
+
+
+def test_apply_enospc_does_not_complete_and_reports_next_step(
+    tmp_path: Path, state_dir: Path
+) -> None:
+    import errno
+
+    (tmp_path / "old.txt").write_text("old\n", encoding="utf-8")
+    paths = WorkspacePaths(tmp_path)
+    built = ChangeSetBuilder(paths).build(
+        "run_1",
+        "edit",
+        [ChangeProposal(operation="update", path="old.txt", after_content="new\n")],
+        [],
+    )
+    store = CheckpointStore(state_dir, paths)
+    manifest = store.create(built.change_set)
+
+    class EnospcWriter:
+        def replace(self, path: Path, content: bytes, mode: int | None = None) -> None:
+            del path, content, mode
+            raise OSError(errno.ENOSPC, "No space left on device")
+
+        def delete(self, path: Path) -> None:
+            del path
+            raise OSError(errno.ENOSPC, "No space left on device")
+
+    result = ChangeApplier(paths, store, writer=EnospcWriter()).apply(built, manifest)
+    assert result.status is ApplyStatus.RECOVERY_REQUIRED
+    assert result.written is False
+    assert result.rollbackable is False
+    assert result.next_step == "restore"
+    assert result.error_code == "no_space"
+    assert (tmp_path / "old.txt").read_text(encoding="utf-8") == "old\n"

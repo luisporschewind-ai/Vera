@@ -59,3 +59,25 @@ def test_checkpoint_rejects_non_regular_file(tmp_path: Path, state_dir: Path) ->
             )
             .change_set
         )
+
+
+def test_checkpoint_rejects_invalid_utf8_manifest(tmp_path: Path, state_dir: Path) -> None:
+    from vera.persistence.errors import PersistenceFault
+
+    (tmp_path / "old.txt").write_bytes(b"old\n")
+    built = ChangeSetBuilder(WorkspacePaths(tmp_path)).build(
+        "run_1",
+        "edit",
+        [ChangeProposal(operation="update", path="old.txt", after_content="new\n")],
+        [],
+    )
+    store = CheckpointStore(state_dir, WorkspacePaths(tmp_path))
+    store.create(built.change_set)
+    manifest_path = state_dir / "runs" / "run_1" / "checkpoint" / "manifest.json"
+    original = manifest_path.read_bytes()
+    manifest_path.write_bytes(b"\xff\xfe{not utf-8")
+    with pytest.raises(PersistenceFault) as caught:
+        CheckpointStore.load_manifest(state_dir, "run_1")
+    assert caught.value.code == "invalid_encoding"
+    assert manifest_path.read_bytes() == b"\xff\xfe{not utf-8"
+    assert original != manifest_path.read_bytes()
