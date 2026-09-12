@@ -27,7 +27,7 @@ When these disagree, stop and resolve the conflict in the relevant document befo
 - Build the UI-independent Core first. CLI and desktop clients must consume the same Core contracts and structured events; the desktop must never parse human-oriented CLI output.
 - The first stage covers the Agent loop, model adaptation, context, tools, approvals, workspace boundaries, Diff, verification, checkpoints and rollback, logs, recovery, and evals.
 - Multi-Agent orchestration, complex RAG, vector databases, and a plugin marketplace are outside the first-stage scope.
-- Do not lock in a desktop framework until the Core is stable enough for measured Electron, Wails, or Tauri experiments.
+- Electron is the accepted first desktop baseline for Phase 7. This choice does not waive the Phase 5, Phase 6, or explicit CLI seal gates; do not add Electron code or dependencies before those gates pass. Tauri is the fallback if the Electron baseline later fails accepted measurements.
 - Phase 6 cannot be marked Complete from automated tests, Textual Pilot, or snapshots. Task 0029 stops at `Ready for manual acceptance` until the user confirms in writing: `CLI 版本达到预期，可以封存`. Without that confirmation, do not start Phase 7 or add any desktop-shell code.
 
 ## Required workflow

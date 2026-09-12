@@ -7,7 +7,7 @@
 
 在现有 `VeraRuntime` 和 Command/Event 契约之上提供可长期运行的内部交互式 CLI。用户进入任意本地代码工程后执行 `vera`，即可把当前目录作为工作区，用自然语言连续发起多个独立编码任务。每个任务必须完整展示工具活动、Change Set、统一 Diff、审批、Checkpoint、写入和验证证据，任务结束后返回输入提示符。
 
-本增量补齐 CLI 客户端和 Runtime 生命周期，不改变 Core-first 架构。CLI 只能发送 Command、消费 Event 和收集用户决定；它不能直接修改项目、伪造状态或绕过审批。未来 Wails 客户端仍复用同一套 Core 契约，不解析终端文本。
+本增量补齐 CLI 客户端和 Runtime 生命周期，不改变 Core-first 架构。CLI 只能发送 Command、消费 Event 和收集用户决定；它不能直接修改项目、伪造状态或绕过审批。未来桌面客户端仍复用同一套 Core 契约，不解析终端文本。
 
 ## 用户流程
 

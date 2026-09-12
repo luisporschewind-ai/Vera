@@ -257,7 +257,7 @@ uv run mypy src
 三份 ADR 均使用中文，状态为 `Accepted`：
 
 - ADR-0001：选择 Python 3.12、薄自研 `VeraRuntime`、uv、Pydantic、Typer/Rich、OpenAI Python Client；明确不采用 Vercel AI SDK、OpenAI Agents SDK 或 LangGraph 作为 Runtime。
-- ADR-0002：公共边界是 `Command -> VeraRuntime -> Event`，使用 `schema_version: 1`，CLI 和未来 Wails 不共享展示文本。
+- ADR-0002：公共边界是 `Command -> VeraRuntime -> Event`，使用 `schema_version: 1`，CLI 和未来桌面客户端不共享展示文本。
 - ADR-0003：Checkpoint 与 Event Journal 存在 Vera 私有状态目录；项目内不落状态；先校验哈希再应用或回滚。
 
 把 `docs/ROADMAP.md` 的 Phase 1 调整为本规格的最小安全循环，把 Phase 2 描述为恢复、兼容性和策略扩展。把 `docs/STATUS.md` 的活动任务改为本文件，并记录 Python/Runtime/协议/私有存储决定已经接受。

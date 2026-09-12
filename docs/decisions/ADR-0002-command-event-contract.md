@@ -5,14 +5,14 @@
 
 ## 背景
 
-CLI 是第一阶段的开发和验收入口，未来还会有 Wails 桌面客户端。若客户端解析人类可读文本，展示格式变化就会破坏协议边界，也会让审批和恢复难以验证。
+CLI 是第一阶段的开发和验收入口，未来还会有桌面客户端。若客户端解析人类可读文本，展示格式变化就会破坏协议边界，也会让审批和恢复难以验证。
 
 ## 决策
 
 - 公共调用链固定为 `Command -> VeraRuntime -> Event`。
 - 所有公共 Command、Event、Change Set、Approval 和 Verification Model 使用 Pydantic，并带 `schema_version: 1`。
 - Event 使用单调递增的 `sequence`、稳定的 `run_id` 和明确的 `type`；Payload 只包含可 JSON 序列化且已脱敏的数据。
-- CLI 人类模式只渲染 Event；JSON 模式逐行输出 Event JSON；未来 Wails 使用同一结构化协议，不解析 CLI 文本。
+- CLI 人类模式只渲染 Event；JSON 模式逐行输出 Event JSON；未来桌面客户端使用同一结构化协议，不解析 CLI 文本。
 - Runtime 自己拥有状态转换和顺序保证；供应商 SDK 对象、Rich 对象和终端控制符不能进入 Core 契约。
 
 ## 后果

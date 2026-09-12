@@ -3,14 +3,14 @@
 > 供 Cursor 执行：按 `superpowers:executing-plans` 和 `superpowers:verification-before-completion` 实施；人工证据缺失时必须停在 `Ready for manual acceptance`。
 
 **状态：** Planned
-**执行就绪：** 任务 0020–0023 合并后
+**执行就绪：** 任务 0020–0023 与已接受的提示词投毒安全增量合并后
 **分支：** `phase-5/0024-contract-freeze-acceptance`
-**依赖：** 任务 0020–0023 已合并
-**规格：** [阶段五 Core 加固](../specs/2026-09-12-core-security-and-reliability-hardening.md)
+**依赖：** 任务 0020–0023 已合并；[不可信内容、提示词投毒与内容安全](../specs/2026-09-12-untrusted-content-and-prompt-injection-defense.md)已接受并完成阶段五增量
+**规格：** [阶段五 Core 加固](../specs/2026-09-12-core-security-and-reliability-hardening.md)、[不可信内容、提示词投毒与内容安全](../specs/2026-09-12-untrusted-content-and-prompt-injection-defense.md)
 
 ## 目标
 
-冻结阶段六和未来桌面客户端可依赖的结构化边界，运行完整安全与可靠性回归，形成不夸大的阶段五就绪报告。
+在提示词投毒安全增量完成后，冻结阶段六和未来桌面客户端可依赖的结构化边界，运行完整安全与可靠性回归，形成不夸大的阶段五就绪报告。
 
 ## 实施步骤
 
@@ -20,7 +20,7 @@
 
 - 新增 `src/vera/contracts/compatibility.py`
 - 新增 `tests/contracts/test_compatibility_manifest.py`
-- 新增 `docs/decisions/ADR-0013-core-client-compatibility-contract.md`
+- 新增 `docs/decisions/ADR-0014-core-client-compatibility-contract.md`
 - 新增 `docs/protocol.md`
 - `docs/decisions/README.md`
 
