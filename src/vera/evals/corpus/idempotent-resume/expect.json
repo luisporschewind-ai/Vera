@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "path": "hello.txt",
+      "exists": true,
+      "kind": "file",
+      "sha256": "7aa7a5359173d05b63cfd682e3c38487f3cb4f7f1d60659fe59fab1505977d4c"
+    }
+  ],
+  "allowed_changed_paths": ["hello.txt"],
+  "required_event_types": ["recovery.detected", "changeset.applied", "run.completed"],
+  "forbidden_event_types": ["run.failed"],
+  "terminal_event": "run.completed",
+  "recovery_classification": "resumable_approval",
+  "recovery_allowed_actions": ["inspect", "resume", "abandon"]
+}

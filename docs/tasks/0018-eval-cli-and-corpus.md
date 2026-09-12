@@ -187,7 +187,7 @@ git commit -m "test: add evaluation safety corpus"
 - Produces: case IDs `rollback-after-apply`、`resume-after-approval`、`restore-partial-apply`、`in-flight-manual`、`idempotent-resume`
 - Produces: `scripts/build_eval_manifest.py --check|--write`
 
-- [ ] **Step 1：编写恢复事实和 manifest 可重复测试**
+- [x] **Step 1：编写恢复事实和 manifest 可重复测试**
 
 ```python
 @pytest.mark.parametrize(
@@ -207,11 +207,11 @@ def test_manifest_builder_check_matches_committed_manifest(corpus_root) -> None:
 
 分别断言 rollback before hash、resume 单次 apply、partial restore 全部 before hash、in-flight 仅 inspect、idempotent 第二次 Resume 零新增副作用。
 
-- [ ] **Step 2：创建 5 个冻结 case 与安全 manifest 工具**
+- [x] **Step 2：创建 5 个冻结 case 与安全 manifest 工具**
 
 复用已经验收的 manifest Builder 更新完整 14-case 文件集合；不改变 Builder 规则。
 
-- [ ] **Step 3：生成并检查 14-case manifest**
+- [x] **Step 3：生成并检查 14-case manifest**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run python scripts/build_eval_manifest.py --write src/vera/evals/corpus
@@ -219,7 +219,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run python scripts/build_eval_manifes
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_corpus_recovery_cases.py tests/evals/test_manifest_builder.py -v
 ```
 
-- [ ] **Step 4：提交恢复 corpus**
+- [x] **Step 4：提交恢复 corpus**
 
 ```bash
 git add src/vera/evals/corpus scripts/build_eval_manifest.py tests/evals docs/tasks/0018-eval-cli-and-corpus.md

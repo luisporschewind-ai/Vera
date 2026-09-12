@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "case_id": "rollback-after-apply",
+  "title": "应用后回滚",
+  "goal": "更新 hello.txt 后回滚",
+  "tags": ["recovery", "correctness", "safety"],
+  "model": "fake",
+  "timeout_seconds": 30,
+  "scenario": "rollback"
+}
