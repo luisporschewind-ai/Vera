@@ -36,7 +36,7 @@
 - Evidence: 14 个 case 全部通过且四类 tag 均覆盖
 - Evidence: 评分不解析 CLI/TUI/Stream Frame
 
-- [ ] **Step 1：编写总套件和 Core 边界测试**
+- [x] **Step 1：编写总套件和 Core 边界测试**
 
 ```python
 def test_phase4_offline_suite_passes_all_frozen_cases(eval_runner, corpus_loader) -> None:
@@ -56,7 +56,7 @@ def test_eval_package_has_no_human_presenter_dependency() -> None:
 
 `imported_modules_under()` 使用 AST 静态读取 `import` / `from ... import ...`，不导入目标模块；这样边界断言覆盖会在独立 Worker 进程加载的代码，而不是依赖无法跨进程传播的 monkeypatch。CLI E2E 参数化 validate/list/single/suite、人类/JSON、输出路径和退出码；断言 JSON 可由 `json.loads` 一次完整解析且前后无额外字符。
 
-- [ ] **Step 2：运行 E2E 并修复实现缺口**
+- [x] **Step 2：运行 E2E 并修复实现缺口**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/e2e/test_phase_4_offline_evals.py tests/e2e/test_phase_4_eval_cli.py -v
@@ -64,7 +64,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/e2e/test_phase_4_off
 
 只修复与已接受规格不一致的实现；若发现规格本身需要改变，停止代码修改并先更新规格/ADR。
 
-- [ ] **Step 3：提交 E2E**
+- [x] **Step 3：提交 E2E**
 
 ```bash
 git add tests/e2e src/vera/evals src/vera/cli_eval.py docs/tasks/0019-eval-phase-4-acceptance.md
