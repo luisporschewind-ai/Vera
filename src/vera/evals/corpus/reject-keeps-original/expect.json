@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "path": "hello.txt",
+      "exists": true,
+      "kind": "file",
+      "sha256": "01d09d19c2139a46aebfb577780d123d7396e97201bc7ead210a2ebff8239dee"
+    }
+  ],
+  "allowed_changed_paths": [],
+  "required_event_types": ["run.cancelled"],
+  "forbidden_event_types": ["changeset.applied"],
+  "terminal_event": "run.cancelled"
+}

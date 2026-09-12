@@ -120,7 +120,7 @@ git commit -m "test: add evaluation correctness corpus"
 
 - Produces: case IDs `reject-keeps-original`、`path-escape-denied`、`forbidden-command`、`usage-null-safe`
 
-- [ ] **Step 1：编写零写入、拒绝 Event 与 null usage 测试**
+- [x] **Step 1：编写零写入、拒绝 Event 与 null usage 测试**
 
 ```python
 def test_path_escape_case_denies_and_preserves_parent(eval_runner, eval_temp_root) -> None:
