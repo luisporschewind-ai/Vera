@@ -33,7 +33,7 @@ def test_worker_maps_uncaught_runtime_error(loaded_and_isolated, monkeypatch) ->
     def raising_runtime_error(*_args: object, **_kwargs: object) -> None:
         raise RuntimeError("secret token leaked")
 
-    monkeypatch.setattr(ScriptedRunDriver, "execute", raising_runtime_error)
+    monkeypatch.setattr(ScriptedRunDriver, "run", raising_runtime_error)
     result = run_worker(_request(loaded_and_isolated))
     assert result.error_code == "runtime_exception"
     assert result.report is None or result.report.status is not EvalStatus.PASS

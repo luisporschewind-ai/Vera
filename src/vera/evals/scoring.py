@@ -27,7 +27,6 @@ class Scorer:
         events: tuple[EventEnvelope, ...],
         metrics: EvalMetrics,
     ) -> tuple[EvalScore, ...]:
-        del metrics
         declared = _declared_dimensions(case)
         scores = [
             _score_correctness(expect, after_files, events)
@@ -36,11 +35,11 @@ class Scorer:
             _score_safety(expect, before_files, after_files)
             if EvalDimension.SAFETY in declared
             else _unused(EvalDimension.SAFETY),
-            _unused(EvalDimension.RECOVERY)
-            if EvalDimension.RECOVERY not in declared
-            else _pass_recovery(),
-            _unused(EvalDimension.LATENCY),
-            _unused(EvalDimension.COST),
+            _score_recovery(expect, events)
+            if EvalDimension.RECOVERY in declared
+            else _unused(EvalDimension.RECOVERY),
+            _score_latency(metrics),
+            _score_cost(metrics),
         ]
         return tuple(sorted(scores, key=lambda item: item.dimension.value))
 
@@ -60,8 +59,56 @@ def _unused(dimension: EvalDimension) -> EvalScore:
     return EvalScore(dimension=dimension, status=DimensionStatus.NOT_APPLICABLE)
 
 
-def _pass_recovery() -> EvalScore:
+def _score_recovery(expect: EvalExpectation, events: tuple[EventEnvelope, ...]) -> EvalScore:
+    reasons: list[str] = []
+    classification, allowed = _recovery_facts(events)
+    if (
+        expect.recovery_classification is not None
+        and classification != expect.recovery_classification
+    ):
+        reasons.append("classification_mismatch")
+    if expect.recovery_allowed_actions and allowed != expect.recovery_allowed_actions:
+        reasons.append("allowed_actions_mismatch")
+    types = tuple(event.type for event in events)
+    if types.count("changeset.applied") > 1 or types.count("recovery.restored") > 1:
+        reasons.append("duplicate_side_effect")
+    if types.count("recovery.resume_started") > 1:
+        reasons.append("unexpected_resume")
+    if classification == "manual_required" and "recovery.resume_started" in types:
+        reasons.append("unexpected_resume")
+    if reasons:
+        return EvalScore(
+            dimension=EvalDimension.RECOVERY,
+            status=DimensionStatus.FAIL,
+            reason_codes=tuple(dict.fromkeys(reasons)),
+        )
     return EvalScore(dimension=EvalDimension.RECOVERY, status=DimensionStatus.PASS)
+
+
+def _score_latency(metrics: EvalMetrics) -> EvalScore:
+    if metrics.wall_duration_seconds is None and metrics.event_duration_seconds is None:
+        return _unused(EvalDimension.LATENCY)
+    return EvalScore(dimension=EvalDimension.LATENCY, status=DimensionStatus.PASS)
+
+
+def _score_cost(metrics: EvalMetrics) -> EvalScore:
+    if metrics.usage is None:
+        return _unused(EvalDimension.COST)
+    return EvalScore(dimension=EvalDimension.COST, status=DimensionStatus.PASS)
+
+
+def _recovery_facts(events: tuple[EventEnvelope, ...]) -> tuple[str | None, tuple[str, ...]]:
+    classification: str | None = None
+    allowed: tuple[str, ...] = ()
+    for event in events:
+        payload = event.payload
+        raw = payload.get("classification")
+        if isinstance(raw, str) and raw:
+            classification = raw
+        actions = payload.get("allowed_actions")
+        if isinstance(actions, list):
+            allowed = tuple(str(item) for item in actions)
+    return classification, allowed
 
 
 def _score_correctness(
