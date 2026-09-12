@@ -1,6 +1,6 @@
 # Vera 阶段六：CLI 产品化与体验完善
 
-**状态：** Draft
+**状态：** Accepted
 **日期：** 2026-09-12
 
 ## 背景
@@ -216,6 +216,7 @@ Vera 保持自身边界：不因竞品支持会话恢复、直接 Shell、自定
 - [阶段五：Core 安全、权限与可靠性加固](2026-09-12-core-security-and-reliability-hardening.md)
 - [ADR-0009：Textual Terminal UI](../decisions/ADR-0009-textual-terminal-ui.md)
 - [ADR-0012：桌面集成延后至 Core 加固与 CLI 产品化之后](../decisions/ADR-0012-delay-desktop-until-cli-hardening.md)
+- [阶段六执行顺序](../tasks/phase-6-execution-order.md)
 - [Claude Code CLI 与交互模式](https://docs.anthropic.com/en/docs/claude-code/interactive-mode)
 - [Codex CLI Developer Commands](https://developers.openai.com/codex/cli/slash-commands)
 - [Gemini CLI Commands](https://github.com/google-gemini/gemini-cli/blob/main/docs/reference/commands.md)

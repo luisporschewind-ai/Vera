@@ -62,9 +62,7 @@ Vera is also a long-term learning and portfolio product. It should become mainta
 
 ## Open decisions
 
-- Core implementation language, runtime, and dependency policy
-- Initial model providers and adapter contract
-- Core command and event protocol
-- Session, checkpoint, and recovery storage design
+- 阶段五结束时公共 Command/Event、错误、审批与恢复契约的兼容承诺
+- 阶段六声明支持的终端兼容矩阵与性能基线
 - Desktop framework and packaging approach
 - License, contribution model, telemetry policy, and public-release criteria

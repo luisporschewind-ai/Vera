@@ -1,6 +1,6 @@
 # Vera 阶段五：Core 安全、权限与可靠性加固
 
-**状态：** Draft
+**状态：** Accepted
 **日期：** 2026-09-12
 
 ## 背景
@@ -39,7 +39,7 @@
 
 1. 阶段四任务 0015–0019 已提交并本地合并到干净 `main`；
 2. 阶段四 14 条退出条件有对应证据；
-3. 独立审查没有未处理的安全、权限、路线或文档阻断项；
+3. [阶段四独立安全与路线对齐审查](../evals/phase-4-independent-security-and-alignment-review.md)没有未处理的安全、权限、路线或文档阻断项；
 4. 完整非 live 门禁通过，真实 Key 未暴露给自动测试或审查 Agent。
 
 入口审查发现的问题属于阶段四返工，不得通过阶段五任务掩盖。
@@ -193,3 +193,4 @@ Vera Core Command/Event
 - [路线图](../ROADMAP.md)
 - [阶段四：评测与内部就绪](2026-09-12-evals-and-internal-readiness.md)
 - [ADR-0012：桌面集成延后至 Core 加固与 CLI 产品化之后](../decisions/ADR-0012-delay-desktop-until-cli-hardening.md)
+- [阶段五执行顺序](../tasks/phase-5-execution-order.md)
