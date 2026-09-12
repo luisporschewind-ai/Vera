@@ -10,6 +10,7 @@ from vera.session.actions import (
     ClearQueuedPrompt,
     CloseSession,
     ConfirmExternalEditor,
+    ExecuteSlashCommand,
     OpenExternalEditor,
     QueuePrompt,
     SubmitPrompt,
@@ -210,3 +211,28 @@ def test_external_editor_rejects_unconfigured_argv(tmp_path: Path) -> None:
     controller = make_controller(workspace, [])
     outputs = tuple(controller.dispatch(OpenExternalEditor(text="draft")))
     assert outputs[-1].payload["reason_code"] == "editor_unconfigured"
+
+
+def test_new_slash_commands_are_structured_and_unknown_is_not_executed(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    controller = make_controller(workspace, [])
+    help_event = tuple(controller.dispatch(ExecuteSlashCommand(raw="/help")))[-1]
+    assert help_event.type == "session.help"
+    assert "代码与证据" in str(help_event.payload["text"])
+    unknown = tuple(controller.dispatch(ExecuteSlashCommand(raw="/docotr")))[-1]
+    assert unknown.type == "session.message"
+    assert "/doctor" in str(unknown.payload.get("suggestions"))
+    doctor = tuple(controller.dispatch(ExecuteSlashCommand(raw="/doctor")))[-1]
+    assert doctor.type == "session.doctor"
+    usage = tuple(controller.dispatch(ExecuteSlashCommand(raw="/usage")))[-1]
+    assert usage.payload["calls"] == "unavailable"
+    theme = tuple(controller.dispatch(ExecuteSlashCommand(raw="/theme high-contrast")))[-1]
+    assert theme.payload["theme"] == "high-contrast"
+    diff = tuple(controller.dispatch(ExecuteSlashCommand(raw="/diff")))[-1]
+    assert diff.type == "session.diff"
+    assert diff.payload["files"] == []
+    review = tuple(controller.dispatch(ExecuteSlashCommand(raw="/review")))[-1]
+    assert review.type == "session.review"

@@ -54,3 +54,13 @@ DiffBlockWidget {
 .-narrow {
     /* secondary header fields collapsed via widget update */
 }
+
+.theme-high-contrast {
+    background: #000000;
+    color: #ffffff;
+}
+
+.theme-no-color {
+    background: $background;
+    color: $text;
+}

@@ -2,7 +2,7 @@
 
 > 供 Cursor 执行：按 `superpowers:executing-plans` 实施；命令与补全必须来自共享 Catalog。
 
-**状态：** Planned
+**状态：** Done
 **执行就绪：** 任务 0025 合并后
 **分支：** `phase-6/0026-path-commands-diagnostics`
 **依赖：** 任务 0025 已合并
@@ -93,3 +93,13 @@ git commit -m "feat: add path mentions commands and diagnostics"
 - 所有命令只有一个 Registry，参数与可用条件跨模式一致。
 - 七个新增命令均有结构化结果；`/review` 不调用模型。
 - 诊断、配置和用量不泄漏秘密，不把 unavailable 填成零。
+
+## 验证证据
+
+日期：2026-09-13
+
+- `@path` 候选保留空格/CJK，跳过隐藏项、gitignore、符号链接、特殊文件和 state_dir。
+- CommandCatalog 同时提供分组帮助、补全、参数校验与 handler；未知命令只给候选，不自动执行。
+- `/diff` `/review` `/doctor` `/config` `/usage` `/shortcuts` `/theme` 输出结构化 session 事件；`/review` 不调用模型；缺用量为 `unavailable`。
+- 主题仅当前会话生效，不写配置。
+- 任务测试与 ruff/mypy 通过。

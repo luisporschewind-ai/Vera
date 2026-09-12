@@ -169,8 +169,21 @@ class InteractiveSession:
         if event.type == "session.permissions":
             self.session_presenter.write_permissions(PermissionStatus.model_validate(event.payload))
             return
-        if event.type == "session.help":
-            self.io.write(str(event.payload.get("text", "")))
+        if event.type in {
+            "session.help",
+            "session.diff",
+            "session.review",
+            "session.doctor",
+            "session.config",
+            "session.usage",
+            "session.shortcuts",
+            "session.theme",
+        }:
+            text = event.payload.get("text")
+            if isinstance(text, str) and text:
+                self.io.write(text)
+                return
+            self.io.write(_structured_plain(event.type, event.payload))
             return
         if event.type == "session.message":
             message_text = str(event.payload.get("text", ""))
@@ -221,3 +234,30 @@ class InteractiveSession:
 
     def close(self) -> None:
         self._consume(self.controller.dispatch(CloseSession()))
+
+
+def _structured_plain(event_type: str, payload: dict[str, object]) -> str:
+    if event_type == "session.usage":
+        return (
+            f"calls {payload.get('calls')}\t"
+            f"input {payload.get('input_tokens')}\t"
+            f"output {payload.get('output_tokens')}\t"
+            f"total {payload.get('total_tokens')}"
+        )
+    if event_type == "session.theme":
+        return f"theme {payload.get('theme')}"
+    if event_type == "session.review":
+        files = payload.get("files") or []
+        return f"review files={len(files) if isinstance(files, list) else 0}"
+    if event_type == "session.doctor":
+        items = payload.get("items") or []
+        if isinstance(items, list):
+            return "\n".join(
+                f"{item.get('name')} {item.get('status')}"
+                for item in items
+                if isinstance(item, dict)
+            )
+    if event_type == "session.config":
+        sources = payload.get("sources")
+        return f"config sources={sources}"
+    return event_type
