@@ -16,8 +16,12 @@ from vera.presentation.activity import ActivityPresenter
 from vera.presentation.projector import TimelineProjector, UpdateBlock
 from vera.session.actions import (
     CancelActiveRun,
+    ClearQueuedPrompt,
     CloseSession,
+    ConfirmExternalEditor,
     ExecuteSlashCommand,
+    OpenExternalEditor,
+    QueuePrompt,
     ResolveSessionApproval,
     SubmitPrompt,
 )
@@ -42,6 +46,8 @@ class VeraTerminalApp(App[int]):
     BINDINGS = [
         ("ctrl+c", "cancel_or_clear", "Cancel"),
         ("ctrl+d", "exit_if_idle", "Exit"),
+        ("ctrl+g", "open_editor", "Editor"),
+        ("ctrl+u", "clear_composer_or_queue", "Clear"),
         ("end", "return_to_tail", "End"),
     ]
 
@@ -69,6 +75,7 @@ class VeraTerminalApp(App[int]):
         self.animation = AnimationClock(enabled=self.animations)
         self.received_sequences: list[int] = []
         self.submitted: list[str] = []
+        self._editor_preview_pending = False
         self._too_small = Static(
             "终端太小：请调整到至少 60×16",
             id="terminal-too-small",
@@ -114,8 +121,20 @@ class VeraTerminalApp(App[int]):
         self.submitted.append(text)
         if text.startswith("/"):
             self.bridge.submit(ExecuteSlashCommand(raw=text))
-        else:
-            self.bridge.submit(SubmitPrompt(text=text))
+            return
+        composer = self.query_one(PromptComposer)
+        if self.controller.pending_approval_id is not None:
+            composer.load_text(text)
+            self.query_one(VeraStatusLine).set_status("等待审批时不能排队下一条输入")
+            return
+        if self.controller.active_run_id is not None:
+            if self.controller.queued_prompt is not None:
+                composer.load_text(text)
+                self.query_one(VeraStatusLine).set_status("已有一条排队输入，请先撤销再替换")
+                return
+            self.bridge.submit(QueuePrompt(text=text))
+            return
+        self.bridge.submit(SubmitPrompt(text=text))
 
     def on_approval_selected(self, message: ApprovalSelected) -> None:
         self.bridge.submit(
@@ -131,6 +150,7 @@ class VeraTerminalApp(App[int]):
         if isinstance(sequence, int):
             self.received_sequences.append(sequence)
         if isinstance(output, EventEnvelope):
+            self._apply_session_chrome(output)
             state = self.activity.apply(output)
             self.query_one(VeraStatusLine).set_activity(state, self.animation.frame())
         mutations = self.projector.apply(output)
@@ -171,7 +191,52 @@ class VeraTerminalApp(App[int]):
         if composer.text.strip():
             composer.clear_input()
             return
+        if self.controller.queued_prompt is not None:
+            self.bridge.submit(ClearQueuedPrompt())
+            return
         self.query_one(VeraStatusLine).set_status("输入 /exit 或 Ctrl+D 退出")
+
+    def action_clear_composer_or_queue(self) -> None:
+        composer = self.query_one(PromptComposer)
+        if composer.text.strip():
+            composer.clear_input()
+            return
+        if self.controller.queued_prompt is not None:
+            self.bridge.submit(ClearQueuedPrompt())
+
+    def action_open_editor(self) -> None:
+        composer = self.query_one(PromptComposer)
+        if self._editor_preview_pending:
+            self.bridge.submit(ConfirmExternalEditor(accept=True))
+            self._editor_preview_pending = False
+        self.bridge.submit(OpenExternalEditor(text=composer.text))
+
+    def _apply_session_chrome(self, output: EventEnvelope) -> None:
+        status = self.query_one(VeraStatusLine)
+        if output.type == "session.prompt_queued":
+            status.set_status("已排队下一条输入 · Ctrl+U 撤销")
+            return
+        if output.type == "session.prompt_queue_cleared":
+            status.set_status("已撤销排队输入")
+            return
+        if output.type == "session.prompt_queue_flushed":
+            status.set_status("正在提交排队输入")
+            return
+        if output.type == "session.editor_preview":
+            argv = output.payload.get("argv", [])
+            rendered = " ".join(str(part) for part in argv) if isinstance(argv, list) else ""
+            status.set_status(f"将运行：{rendered}。再次 Ctrl+G 确认")
+            self._editor_preview_pending = True
+            return
+        if output.type == "session.editor_closed":
+            text = output.payload.get("text")
+            if output.payload.get("changed") and isinstance(text, str):
+                self.query_one(PromptComposer).load_text(text)
+            return
+        if output.type == "session.action_rejected":
+            message = output.payload.get("message")
+            if isinstance(message, str) and message:
+                status.set_status(message)
 
     def action_exit_if_idle(self) -> None:
         composer = self.query_one(PromptComposer)

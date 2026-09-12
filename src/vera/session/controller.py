@@ -26,13 +26,19 @@ from vera.contracts.streaming import RuntimeOutput
 from vera.persistence.run_store import RunStore
 from vera.session.actions import (
     CancelActiveRun,
+    ClearQueuedPrompt,
     CloseSession,
+    ConfirmExternalEditor,
     ExecuteSlashCommand,
+    OpenExternalEditor,
+    QueuePrompt,
     ResolveSessionApproval,
     SessionAction,
     SubmitPrompt,
 )
 from vera.session.conversation import ConversationContext
+from vera.session.external_editor import ExternalEditor, ExternalEditorError
+from vera.session.history import PromptHistory
 from vera.session.permissions import permission_status
 from vera.session.status import SessionStatusService
 
@@ -88,6 +94,10 @@ class SessionController:
         self._events_for_active: list[EventEnvelope] = []
         self.clear_display_requested = False
         self.exit_requested = False
+        self.history = PromptHistory()
+        self.queued_prompt: str | None = None
+        self._editor_confirmed = False
+        self._editor_draft: Path | None = None
 
     @property
     def active_run_id(self) -> str | None:
@@ -123,6 +133,7 @@ class SessionController:
             return
         match action:
             case SubmitPrompt(text=text):
+                self.history.record(text)
                 yield from self._submit(text)
             case ExecuteSlashCommand(raw=raw):
                 yield from self._slash(raw)
@@ -132,6 +143,14 @@ class SessionController:
                 yield from self._cancel(run_id)
             case CloseSession():
                 yield from self._close()
+            case QueuePrompt(text=text):
+                yield from self._queue_prompt(text)
+            case ClearQueuedPrompt():
+                yield from self._clear_queued_prompt()
+            case ConfirmExternalEditor(accept=accept):
+                yield from self._confirm_editor(accept)
+            case OpenExternalEditor(text=text):
+                yield from self._open_editor(text)
 
     def _submit(self, text: str) -> Iterator[RuntimeOutput]:
         if self._active_run_id is not None:
@@ -158,6 +177,84 @@ class SessionController:
         self._goal_for_active = text
         self._events_for_active = []
         yield from self._drive(command)
+
+    def _queue_prompt(self, text: str) -> Iterator[RuntimeOutput]:
+        if self._pending_approval is not None:
+            yield self._session_event(
+                "session.action_rejected",
+                {"reason_code": "approval_pending", "message": "等待审批时不能排队下一条输入。"},
+            )
+            return
+        if self._active_run_id is None:
+            self.history.record(text)
+            yield from self._submit(text)
+            return
+        if self.queued_prompt is not None:
+            yield self._session_event(
+                "session.action_rejected",
+                {
+                    "reason_code": "queue_occupied",
+                    "message": "已有一条排队输入，请先撤销再替换。",
+                    "queued": True,
+                },
+            )
+            return
+        self.queued_prompt = text
+        self.history.record(text)
+        yield self._session_event("session.prompt_queued", {"queued": True})
+
+    def _clear_queued_prompt(self) -> Iterator[RuntimeOutput]:
+        if self.queued_prompt is None:
+            yield self._session_event(
+                "session.action_rejected",
+                {"reason_code": "queue_empty", "message": "当前没有排队输入。"},
+            )
+            return
+        self.queued_prompt = None
+        yield self._session_event("session.prompt_queue_cleared", {"queued": False})
+
+    def _confirm_editor(self, accept: bool) -> Iterator[RuntimeOutput]:
+        self._editor_confirmed = accept
+        yield self._session_event(
+            "session.editor_confirmed" if accept else "session.editor_declined",
+            {"accepted": accept},
+        )
+
+    def _open_editor(self, text: str) -> Iterator[RuntimeOutput]:
+        argv = tuple(getattr(self.dependencies.config, "editor_argv", ()) or ())
+        try:
+            editor = ExternalEditor(argv, self.dependencies.config.state_dir / "drafts")
+        except ExternalEditorError as exc:
+            yield self._session_event(
+                "session.action_rejected",
+                {"reason_code": exc.code, "message": str(exc)},
+            )
+            return
+        preview = editor.preview()
+        if not self._editor_confirmed:
+            yield self._session_event(
+                "session.editor_preview",
+                {"argv": list(preview), "needs_confirmation": True},
+            )
+            return
+        path = editor.write_draft(text)
+        self._editor_draft = path
+        try:
+            result = editor.run(path)
+        except ExternalEditorError as exc:
+            editor.cleanup(path)
+            self._editor_draft = None
+            yield self._session_event(
+                "session.action_rejected",
+                {"reason_code": exc.code, "message": str(exc)},
+            )
+            return
+        editor.cleanup(path)
+        self._editor_draft = None
+        yield self._session_event(
+            "session.editor_closed",
+            {"status": result.status, "changed": result.changed, "text": result.text},
+        )
 
     def _resolve_approval(
         self, approval_id: str, decision: Literal["approve", "reject", "cancel"]
@@ -217,6 +314,7 @@ class SessionController:
         yield from self._drive(CancelRun(run_id=run_id))
 
     def _close(self) -> Iterator[RuntimeOutput]:
+        self.queued_prompt = None
         if self._pending_approval is not None and self._active_run_id is not None:
             approval_id = str(self._pending_approval.payload.get("approval_id", ""))
             yield from self._resolve_approval(approval_id, "cancel")
@@ -224,6 +322,8 @@ class SessionController:
             yield from self._cancel(self._active_run_id)
         self._closed = True
         self.exit_requested = True
+        self.history.clear()
+        self.queued_prompt = None
         yield self._session_event("session.closed", {"reason": "user_close"})
 
     def _drive(
@@ -248,6 +348,11 @@ class SessionController:
             yield output
         if produced_terminal or self._pending_approval is None:
             self._finish_active_run(record_conversation=record_conversation)
+            queued = self.queued_prompt
+            if queued and self._active_run_id is None and not self._closed:
+                self.queued_prompt = None
+                yield self._session_event("session.prompt_queue_flushed", {"queued": True})
+                yield from self._submit(queued)
 
     def _finish_active_run(self, *, record_conversation: bool = True) -> None:
         goal = self._goal_for_active

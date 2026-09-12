@@ -13,8 +13,12 @@ from vera.contracts.recovery import RecoveryClassification
 from vera.runtime.approval import ApprovalKind
 from vera.session.actions import (
     CancelActiveRun,
+    ClearQueuedPrompt,
     CloseSession,
+    ConfirmExternalEditor,
     ExecuteSlashCommand,
+    OpenExternalEditor,
+    QueuePrompt,
     ResolveSessionApproval,
     SubmitPrompt,
 )
@@ -44,6 +48,10 @@ _SESSION_ACTIONS = (
     ResolveSessionApproval,
     CancelActiveRun,
     CloseSession,
+    QueuePrompt,
+    ClearQueuedPrompt,
+    ConfirmExternalEditor,
+    OpenExternalEditor,
 )
 
 

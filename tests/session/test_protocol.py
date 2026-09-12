@@ -4,7 +4,15 @@ from datetime import UTC, datetime
 import pytest
 
 from vera.contracts.events import EventEnvelope
-from vera.session.actions import CloseSession, ExecuteSlashCommand, SubmitPrompt
+from vera.session.actions import (
+    ClearQueuedPrompt,
+    CloseSession,
+    ConfirmExternalEditor,
+    ExecuteSlashCommand,
+    OpenExternalEditor,
+    QueuePrompt,
+    SubmitPrompt,
+)
 from vera.session.protocol import (
     SessionActionCodec,
     SessionRecord,
@@ -27,6 +35,16 @@ def test_encode_action_round_trip() -> None:
     line = encode_action(ExecuteSlashCommand(raw="/status"))
     decoded = SessionActionCodec.decode(line)
     assert decoded == ExecuteSlashCommand(raw="/status")
+
+
+def test_queue_and_editor_actions_round_trip() -> None:
+    for action in (
+        QueuePrompt(text="later"),
+        ClearQueuedPrompt(),
+        ConfirmExternalEditor(accept=False),
+        OpenExternalEditor(text="draft"),
+    ):
+        assert SessionActionCodec.decode(encode_action(action)) == action
 
 
 def test_session_record_event_only() -> None:

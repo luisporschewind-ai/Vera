@@ -7,7 +7,12 @@ from vera.cli_json_session import JsonSessionDriver
 from vera.config import Limits, ProviderConfig, VeraConfig
 from vera.models.base import FakeModelAdapter, ModelTurn
 from vera.runtime.engine import VeraRuntime
-from vera.session.actions import CloseSession, ExecuteSlashCommand, SubmitPrompt
+from vera.session.actions import (
+    CloseSession,
+    ExecuteSlashCommand,
+    QueuePrompt,
+    SubmitPrompt,
+)
 from vera.session.protocol import encode_action
 from vera.tools.registry import ToolRegistry
 
@@ -56,3 +61,20 @@ def test_invalid_line_emits_structured_error_and_continues(tmp_path: Path) -> No
     records = [json.loads(line) for line in target.getvalue().splitlines()]
     assert records[0]["event"]["type"] == "session.input_failed"
     assert any(item.get("event") and item["event"]["type"] == "session.status" for item in records)
+
+
+def test_json_session_queues_without_parsing_ui_text(tmp_path: Path) -> None:
+    driver = make_driver(tmp_path, [])
+    driver.controller.mark_active("run_1")
+    source = StringIO(
+        encode_action(QueuePrompt(text="later")) + "\n" + encode_action(CloseSession()) + "\n"
+    )
+    target = StringIO()
+    assert driver.run(source, target) == 0
+    records = [json.loads(line) for line in target.getvalue().splitlines()]
+    queued = next(
+        item["event"] for item in records if item["event"]["type"] == "session.prompt_queued"
+    )
+    assert queued["payload"]["queued"] is True
+    assert "later" not in json.dumps(queued["payload"], ensure_ascii=False)
+    assert "\u001b" not in target.getvalue()

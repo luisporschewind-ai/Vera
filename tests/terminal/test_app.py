@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -8,10 +9,13 @@ from vera.contracts.compatibility import (
     current_compatibility_manifest,
     encode_compatibility_manifest,
 )
+from vera.contracts.events import EventEnvelope
 from vera.models.base import FakeModelAdapter
 from vera.runtime.engine import VeraRuntime
+from vera.session.actions import ClearQueuedPrompt, OpenExternalEditor, QueuePrompt
 from vera.session.controller import SessionController
 from vera.terminal.app import VeraTerminalApp
+from vera.terminal.widgets.composer import PromptSubmitted
 from vera.tools.registry import ToolRegistry
 
 
@@ -70,3 +74,49 @@ def test_tui_app_is_not_a_public_contract(tmp_path: Path) -> None:
     dumped = encode_compatibility_manifest(current_compatibility_manifest())
     assert type(app).__name__ not in dumped
     assert app.controller is controller
+
+
+@pytest.mark.asyncio
+async def test_app_queues_only_when_run_active_and_not_approving(tmp_path: Path) -> None:
+    controller = make_controller(tmp_path)
+    app = VeraTerminalApp(controller, controller.workspace, "fake", animations=False)
+    async with app.run_test(size=(80, 24)):
+        captured: list[object] = []
+        app.bridge.submit = captured.append  # type: ignore[method-assign]
+        controller.mark_active("run_1")
+        app.on_prompt_submitted(PromptSubmitted("later"))
+        assert captured == [QueuePrompt(text="later")]
+        captured.clear()
+        controller.queued_prompt = "later"
+        app.on_prompt_submitted(PromptSubmitted("other"))
+        assert captured == []
+        assert app.query_one("#composer").text == "other"
+        captured.clear()
+        controller.queued_prompt = None
+        controller._pending_approval = EventEnvelope(
+            event_id="e1",
+            run_id="run_1",
+            sequence=1,
+            timestamp=datetime.now(UTC),
+            type="approval.required",
+            payload={"approval_id": "a1"},
+        )
+        app.on_prompt_submitted(PromptSubmitted("during approval"))
+        assert captured == []
+        assert "during approval" in app.query_one("#composer").text
+
+
+@pytest.mark.asyncio
+async def test_app_clear_queue_and_editor_bindings(tmp_path: Path) -> None:
+    controller = make_controller(tmp_path)
+    app = VeraTerminalApp(controller, controller.workspace, "fake", animations=False)
+    async with app.run_test(size=(80, 24)):
+        captured: list[object] = []
+        app.bridge.submit = captured.append  # type: ignore[method-assign]
+        controller.queued_prompt = "later"
+        app.action_clear_composer_or_queue()
+        assert captured == [ClearQueuedPrompt()]
+        captured.clear()
+        app.query_one("#composer").load_text("draft")
+        app.action_open_editor()
+        assert captured == [OpenExternalEditor(text="draft")]

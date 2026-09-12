@@ -42,7 +42,42 @@ class CloseSession(BaseModel):
     type: Literal["session.close"] = "session.close"
 
 
+class QueuePrompt(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    type: Literal["prompt.queue"] = "prompt.queue"
+    text: str = Field(min_length=1)
+
+
+class ClearQueuedPrompt(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    type: Literal["prompt.queue.clear"] = "prompt.queue.clear"
+
+
+class ConfirmExternalEditor(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    type: Literal["editor.confirm"] = "editor.confirm"
+    accept: bool
+
+
+class OpenExternalEditor(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    type: Literal["editor.open"] = "editor.open"
+    text: str = ""
+
+
 SessionAction = Annotated[
-    SubmitPrompt | ExecuteSlashCommand | ResolveSessionApproval | CancelActiveRun | CloseSession,
+    SubmitPrompt
+    | ExecuteSlashCommand
+    | ResolveSessionApproval
+    | CancelActiveRun
+    | CloseSession
+    | QueuePrompt
+    | ClearQueuedPrompt
+    | ConfirmExternalEditor
+    | OpenExternalEditor,
     Field(discriminator="type"),
 ]

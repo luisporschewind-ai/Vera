@@ -1,12 +1,13 @@
 # Vera 状态
 
 **更新日期：** 2026-09-13
-**当前阶段：** 阶段 5——Core 安全、权限与可靠性加固（Ready for manual acceptance）
-**仓库状态：** 任务 0030 已合并 `main`。任务 0024 完成自动契约冻结与验收，停在 Ready for manual acceptance。缺少 20 次真实 dogfood 与三类真实工程走查，不得把阶段五标为 Complete，不得开始阶段六。不引入 Electron 代码。暂无远程时可不推送。
+**当前阶段：** 阶段 6——CLI 产品化与体验完善（In progress）
+**仓库状态：** 阶段五停在 Ready for manual acceptance。用户授权在 0024 自动门禁后开始阶段六。任务 0025 已完成自动部分。不引入 Electron 代码。暂无远程时可不推送。
 
 ## 已完成
 
 - 阶段一、阶段二、阶段三、阶段四全部任务
+- [任务 0025：Composer、历史、粘贴与单条队列](tasks/0025-composer-history-paste-and-queue.md)
 - [任务 0024：契约冻结与阶段五验收](tasks/0024-phase-5-contract-freeze-and-acceptance.md)（自动完成，Ready for manual acceptance）
 - [任务 0030：不可信内容与提示词投毒防御](tasks/0030-untrusted-content-and-prompt-injection.md)
 - [任务 0023：代表性工程与安装升级](tasks/0023-representative-projects-and-install-upgrade.md)
@@ -26,14 +27,15 @@
 
 ## 活动任务
 
+- [阶段六执行顺序](tasks/phase-6-execution-order.md)：0025 已完成；下一步 0026–0028，然后 0029 停在 Ready for manual acceptance。
 - [阶段五执行顺序](tasks/phase-5-execution-order.md)：0024 自动门禁已完成；人工 dogfood 不足，阶段五保持 Ready for manual acceptance。
-- [阶段六执行顺序](tasks/phase-6-execution-order.md)：阶段五完成前不开始；任务 0029 只能先进入 Ready for manual acceptance。
 - [ADR-0013：阶段七首个桌面底版采用 Electron](decisions/ADR-0013-electron-desktop-baseline.md)：Accepted；只固定未来实施方向，不改变 CLI 封存门禁，当前不引入 Electron 代码或依赖。
-- [阶段七：桌面 Agent 工作台与 UI](specs/2026-09-12-desktop-agent-workbench-ui.md)：Draft；已汇总本次桌面 UI 讨论并重新校准信息架构、Core 事实映射和五个后续增量，不启动阶段七；Logo 留作独立专题继续讨论。
-- [不可信内容、提示词投毒与内容安全](specs/2026-09-12-untrusted-content-and-prompt-injection-defense.md)：Accepted；由 [任务 0030](tasks/0030-untrusted-content-and-prompt-injection.md) 与 [ADR-0015](decisions/ADR-0015-untrusted-content-trust-boundary.md) 实施阶段五安全增量。
+- [阶段七：桌面 Agent 工作台与 UI](specs/2026-09-12-desktop-agent-workbench-ui.md)：Draft；不启动阶段七。
+- [不可信内容、提示词投毒与内容安全](specs/2026-09-12-untrusted-content-and-prompt-injection-defense.md)：Accepted；由任务 0030 与 ADR-0015 实施。
 
 ## 最近验证
 
+- 任务 0025：Composer 历史、粘贴净化、单条队列与外部编辑器；完整非 live 701 passed / 2 deselected
 - 任务 0024：[phase-5-core-hardening](evals/phase-5-core-hardening.md)
 - 任务 0030：[untrusted-content-and-prompt-injection](evals/untrusted-content-and-prompt-injection.md)
 - 完整非 live：683 passed / 2 deselected
@@ -53,6 +55,6 @@
 
 ## 下一检查点
 
-1. 用户填写 20 次 [dogfood](evals/phase-5-dogfood-log.md) 并在三类真实工程副本走查后，才能把阶段五改为 Complete 并开始阶段六。
-
-阶段六按 0025–0028 实施后，任务 0029 只能进入 Ready for manual acceptance，等待用户在真实 Terminal.app 和真实工程中体验。未经确认「CLI 版本达到预期，可以封存」，不得将阶段六标为 Complete、不得开始阶段七、不得引入 Electron 或其他桌面端代码（ADR-0013 只固定方向，不授权提前实现）；Textual Pilot、快照和自动测试不能代替人工体验结论。人工体验发现问题继续作为阶段六修正任务。
+1. 继续任务 0026–0028，然后任务 0029 只进入 Ready for manual acceptance。
+2. 阶段五仍缺 20 次真实 dogfood 与三类真实工程走查，不得把阶段五标为 Complete。
+3. 未经确认「CLI 版本达到预期，可以封存」，不得将阶段六标为 Complete、不得开始阶段七、不得引入 Electron 或其他桌面端代码。

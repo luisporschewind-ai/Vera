@@ -13,6 +13,7 @@ from vera.contracts.streaming import StreamFrame
 from vera.session.actions import (
     CloseSession,
     ExecuteSlashCommand,
+    QueuePrompt,
     ResolveSessionApproval,
     SubmitPrompt,
 )
@@ -100,6 +101,11 @@ class InteractiveSession:
                 continue
             if value.startswith("/"):
                 self._consume(self.controller.dispatch(ExecuteSlashCommand(raw=value)))
+            elif (
+                self.controller.pending_approval_id is not None
+                or self.controller.active_run_id is not None
+            ):
+                self._consume(self.controller.dispatch(QueuePrompt(text=value)))
             else:
                 self._consume(self.controller.dispatch(SubmitPrompt(text=value)))
                 warning = self.controller.context_warning_event()
@@ -175,6 +181,20 @@ class InteractiveSession:
                 self.io.write(message_text)
             return
         if event.type == "session.closed":
+            return
+        if event.type == "session.prompt_queued":
+            self.io.write("已排队下一条输入。下一次运行结束后提交。")
+            return
+        if event.type == "session.prompt_queue_cleared":
+            self.io.write("已撤销排队输入。")
+            return
+        if event.type == "session.prompt_queue_flushed":
+            self.io.write("正在提交排队输入。")
+            return
+        if event.type == "session.editor_preview":
+            argv = event.payload.get("argv", [])
+            rendered = " ".join(str(part) for part in argv) if isinstance(argv, list) else ""
+            self.io.write(f"外部编辑器命令：{rendered}")
             return
         if event.type == "session.action_rejected":
             rejected = event.payload.get("message")

@@ -2,10 +2,10 @@
 
 > 供 Cursor 执行：按 `superpowers:executing-plans` 实施；阶段五完成前不得开始本任务。
 
-**状态：** Planned
-**执行就绪：** 阶段五完成后
+**状态：** Done
+**执行就绪：** 阶段五自动门禁完成后（用户授权在 Ready for manual acceptance 时开始阶段六）
 **分支：** `phase-6/0025-composer-history-queue`
-**依赖：** 阶段五 Complete
+**依赖：** 任务 0024 自动部分已合并
 **规格：** [阶段六 CLI 产品化](../specs/2026-09-12-cli-productization-and-polish.md)
 
 ## 目标与边界
@@ -87,3 +87,16 @@ git commit -m "feat: polish composer history and prompt queue"
 - 队列严格一条且不跨未决审批或混入当前 run。
 - 外部编辑器路径可复核、无 shell、临时文件私有且精确清理。
 - 退出不保存自然语言历史。
+
+## 验证证据
+
+日期：2026-09-13
+
+- 会话内 `PromptHistory` 只驻留进程，覆盖上下条、草稿恢复、去重、上限、子串搜索、CJK 与 `CloseSession` 清空。
+- Composer 将 bracketed paste 视为一次编辑：净化 ANSI/OSC/bidi，不因换行提交。
+- `QueuePrompt` 仅允许一条；审批中拒绝；替换需先 `ClearQueuedPrompt`；run 终态后作为新 `StartRun` 提交，关闭会话不冲刷队列。
+- 外部编辑器使用固定 argv、`shell=False`、`0600` 草稿、首次预览确认，清理只删除本次文件。项目配置禁止 `editor_argv`。
+- TUI、Plain、JSON 共享同一 SessionAction；排队事件不回传原文。
+- 任务测试：`tests/session/test_history.py`、`test_external_editor.py`、`test_controller.py`、`tests/terminal/test_composer.py`、`test_app.py`、`tests/cli/test_plain_session.py`、`test_json_session.py` 通过。
+- 完整非 live：sandbox 中 701 passed / 2 deselected；`git init` 与 PTY 三项在沙箱外复跑 5 passed。
+- ruff、format、mypy、`uv build`、`git diff --check` 通过。
