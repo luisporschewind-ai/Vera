@@ -96,7 +96,7 @@ git commit -m "feat: extract evaluation latency and usage"
 - Produces: `EvalRuntimeFactory.create(..., failpoint: EvalFailpoint | None)`
 - Guarantee: failpoint 触发 `SimulatedCrash`，不产生伪造 Core Event
 
-- [ ] **Step 1：编写每个稳定边界恰好触发一次的测试**
+- [x] **Step 1：编写每个稳定边界恰好触发一次的测试**
 
 ```python
 @pytest.mark.parametrize(
@@ -117,17 +117,17 @@ def test_eval_failpoint_is_one_shot(point, runtime_factory, loaded_recovery_case
 
 再测 standard case 不能配置 failpoint、未知字符串被 Codec 拒绝、第二个 Runtime 默认无 failpoint、部分写入只改第一个文件。
 
-- [ ] **Step 2：运行失败测试**
+- [x] **Step 2：运行失败测试**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_failpoints.py -v
 ```
 
-- [ ] **Step 3：从现有 Recovery Snapshot 阶段映射 Failpoint**
+- [x] **Step 3：从现有 Recovery Snapshot 阶段映射 Failpoint**
 
 复用 `RecoveryStage` 和 `AtomicFileWriter`，不复制恢复分类规则。SnapshotStore 必须先成功原子保存事实再抛模拟中断；FileWriter 在第二次 replace 前抛中断，形成 before/after 混合事实。Eval RuntimeFactory 只接受枚举，不接受 callback/import path。
 
-- [ ] **Step 4：验证并提交**
+- [x] **Step 4：验证并提交**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_failpoints.py tests/e2e/test_crash_recovery.py -v

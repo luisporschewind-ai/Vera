@@ -5,7 +5,13 @@ from __future__ import annotations
 import sys
 from typing import Any
 
+from vera.evals.contracts import EvalScenario
 from vera.evals.corpus import LoadedEvalCase
+from vera.evals.failpoints import (
+    EvalFailpoint,
+    EvalFailpointFileWriter,
+    EvalFailpointSnapshotStore,
+)
 from vera.evals.isolation import IsolatedEvalCase
 from vera.evals.script_driver import EvalExecutionError
 from vera.models.base import FakeModelAdapter, ModelToolCall, ModelTurn
@@ -25,16 +31,31 @@ _EVAL_PYTHON = "$VERA_EVAL_PYTHON"
 
 
 class EvalRuntimeFactory:
+    def __init__(self) -> None:
+        self._triggers: dict[EvalFailpoint, int] = {}
+
+    def trigger_count(self, point: EvalFailpoint) -> int:
+        return self._triggers.get(point, 0)
+
+    def _mark_trigger(self, point: EvalFailpoint) -> None:
+        self._triggers[point] = self._triggers.get(point, 0) + 1
+
     def create(
         self,
         loaded: LoadedEvalCase,
         isolated: IsolatedEvalCase,
-        failpoint: object | None = None,
+        failpoint: EvalFailpoint | None = None,
+        *,
+        consume_script: bool = True,
     ) -> VeraRuntime:
-        del failpoint
         if loaded.case.model != "fake":
             raise EvalExecutionError("unsupported_model", "evaluation model must be fake")
-        turns = tuple(_rewrite_turn(turn) for turn in loaded.script.turns)
+        if failpoint is not None and loaded.case.scenario is EvalScenario.STANDARD:
+            raise EvalExecutionError(
+                "failpoint_not_allowed",
+                "standard evaluation cases cannot enable failpoints",
+            )
+        turns = tuple(_rewrite_turn(turn) for turn in loaded.script.turns) if consume_script else ()
         adapter = FakeModelAdapter(turns, text_deltas=loaded.script.text_deltas)
         paths = WorkspacePaths(isolated.workspace)
         registry = ToolRegistry()
@@ -55,7 +76,17 @@ class EvalRuntimeFactory:
             policy_engine=engine,
             workspace_identity=identity,
         )
-        snapshot_store = RecoverySnapshotStore(isolated.state_dir)
+        snapshot_store: RecoverySnapshotStore
+        file_writer = None
+        if failpoint is EvalFailpoint.AFTER_FIRST_WRITE:
+            snapshot_store = RecoverySnapshotStore(isolated.state_dir)
+            file_writer = EvalFailpointFileWriter(self._mark_trigger)
+        elif failpoint is not None:
+            snapshot_store = EvalFailpointSnapshotStore(
+                isolated.state_dir, failpoint, self._mark_trigger
+            )
+        else:
+            snapshot_store = RecoverySnapshotStore(isolated.state_dir)
         coordinator = RecoveryCoordinator(
             isolated.state_dir,
             installation_id,
@@ -70,6 +101,7 @@ class EvalRuntimeFactory:
             installation_id=installation_id,
             recovery_coordinator=coordinator,
             policy_engine=engine,
+            file_writer=file_writer,
         )
 
 
