@@ -58,6 +58,7 @@ Vera is also a long-term learning and portfolio product. It should become mainta
 - Development is private until reliability and release-readiness checks are met.
 - SDD, small verified changes, and synchronized documentation are required.
 - The accepted Phase 4 design fixes 14 bundled offline Fake Model cases and scores only Core facts and file hashes.
+- The 14-case offline evaluation suite is an accepted first-stage capability, shipped with `vera eval` and the installable wheel.
 
 ## Open decisions
 

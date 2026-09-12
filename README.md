@@ -39,6 +39,9 @@ uv run vera                 # TTY 默认 TUI
 uv run vera --plain          # 逐行人类模式
 uv run vera --json           # NDJSON Session
 uv run vera run "goal" --json
+uv run vera eval validate --json
+uv run vera eval list
+uv run vera eval run --suite offline --json
 uv run vera config show
 ```
 
@@ -73,6 +76,23 @@ Useful session commands:
 The one-shot `vera run "goal"` command remains available, including `--json`
 for non-interactive Event output. Use `vera recover list|show|resume|abandon`
 to inspect or continue recovery; `--json` emits Event JSON Lines only.
+
+Offline evaluations are a Core client, not a live-model quality score. They use
+the bundled Fake Model corpus (14 frozen cases) and never call a real provider:
+
+```bash
+uv run vera eval validate --json
+uv run vera eval list --json
+uv run vera eval run plain-answer --json --output ./eval-evidence
+uv run vera eval run --suite offline --json --output ./eval-suite
+```
+
+`--json` prints exactly one report document. Evidence is written under the given
+`--output` parent (default: the Vera private state `evals/` directory) as
+`<evaluation_id>/{report.json,files.json,events.jsonl}` with directory mode
+`0700` and file mode `0600`. Exit codes: `0` pass, `2` Ctrl+C, `4` case
+fail/timeout, `5` config/corpus/protocol/evidence error.
+
 
 Provider credentials and live tests are intentionally opt-in; no API key is printed by the CLI. Verification commands run with the current system user's permissions and always retain a separate approval boundary when required by policy.
 
