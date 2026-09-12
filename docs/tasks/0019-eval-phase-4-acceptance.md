@@ -225,7 +225,7 @@ README 只增加 `vera eval validate/list/run` 的最小示例、离线性质、
 
 - [ ] **Step 1：只在证据完整后更新状态**
 
-将任务 0019 改为 `Done`、阶段四执行顺序改为 `Complete`、ROADMAP 阶段四改为 `Complete`；STATUS 记录真实测试数、覆盖率、manifest hash、wheel smoke 和下一阶段为阶段五桌面集成。PRODUCT 只把“固定离线评测集”移入已接受能力，不提前选择桌面框架。
+将任务 0019 改为 `Done`、阶段四执行顺序改为 `Complete`、ROADMAP 阶段四改为 `Complete`；STATUS 记录真实测试数、覆盖率、manifest hash、wheel smoke 和下一阶段为阶段五 Core 安全、权限与可靠性加固。PRODUCT 只把“固定离线评测集”移入已接受能力，不提前选择桌面框架。
 
 - [ ] **Step 2：提交阶段验收**
 
@@ -247,4 +247,4 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run mypy src
 git branch -d feature/eval-phase-4-acceptance
 ```
 
-无 remote 时不执行 push。阶段四完成后停止，不自动开始阶段五桌面框架选型。
+无 remote 时不执行 push。阶段四完成后停止，不自动开始阶段五 Core 安全、权限与可靠性加固。
