@@ -55,6 +55,10 @@ def test_manifest_snapshots_public_contract_names_and_required_fields() -> None:
         "approval.resolve",
         "run.cancel",
         "session.close",
+        "prompt.queue",
+        "prompt.queue.clear",
+        "editor.confirm",
+        "editor.open",
     }
 
 

@@ -1,7 +1,11 @@
 from vera.session.actions import (
     CancelActiveRun,
+    ClearQueuedPrompt,
     CloseSession,
+    ConfirmExternalEditor,
     ExecuteSlashCommand,
+    OpenExternalEditor,
+    QueuePrompt,
     ResolveSessionApproval,
     SubmitPrompt,
 )
@@ -13,3 +17,7 @@ def test_action_types_are_stable() -> None:
     assert ResolveSessionApproval(approval_id="a1", decision="approve").type == "approval.resolve"
     assert CancelActiveRun(run_id="run_1").type == "run.cancel"
     assert CloseSession().type == "session.close"
+    assert QueuePrompt(text="later").type == "prompt.queue"
+    assert ClearQueuedPrompt().type == "prompt.queue.clear"
+    assert ConfirmExternalEditor(accept=True).type == "editor.confirm"
+    assert OpenExternalEditor(text="draft").type == "editor.open"

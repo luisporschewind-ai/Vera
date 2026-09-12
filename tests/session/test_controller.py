@@ -5,12 +5,25 @@ from vera.config import Limits, ProviderConfig, VeraConfig
 from vera.contracts.events import EventEnvelope
 from vera.models.base import FakeModelAdapter, ModelToolCall, ModelTurn
 from vera.runtime.engine import VeraRuntime
-from vera.session.actions import CancelActiveRun, CloseSession, SubmitPrompt
+from vera.session.actions import (
+    CancelActiveRun,
+    ClearQueuedPrompt,
+    CloseSession,
+    ConfirmExternalEditor,
+    OpenExternalEditor,
+    QueuePrompt,
+    SubmitPrompt,
+)
 from vera.session.controller import SessionController
 from vera.tools.registry import ToolRegistry
 
 
-def make_controller(workspace: Path, turns: list[ModelTurn]) -> SessionController:
+def make_controller(
+    workspace: Path,
+    turns: list[ModelTurn],
+    *,
+    editor_argv: tuple[str, ...] = (),
+) -> SessionController:
     state_dir = workspace.parent / "state"
     config = VeraConfig(
         state_dir=state_dir,
@@ -22,6 +35,7 @@ def make_controller(workspace: Path, turns: list[ModelTurn]) -> SessionControlle
                 api_key_env="FAKE_API_KEY",
             )
         },
+        editor_argv=editor_argv,
     )
     runtime = VeraRuntime(FakeModelAdapter(turns), ToolRegistry(), state_dir)
     deps = RuntimeDependencies(runtime=runtime, config=config)
@@ -118,3 +132,81 @@ def test_close_cancels_pending_approval(tmp_path: Path) -> None:
     )
     assert controller.snapshot().closed is True
     assert (workspace / "hello.txt").read_text(encoding="utf-8") == "old\n"
+
+
+def test_queue_prompt_waits_for_terminal_then_starts_new_run(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    controller = make_controller(
+        workspace,
+        [
+            ModelTurn(assistant_text="first", finish_reason="stop"),
+            ModelTurn(assistant_text="second", finish_reason="stop"),
+        ],
+    )
+    controller.mark_active("run_1")
+
+    queued = tuple(controller.dispatch(QueuePrompt(text="follow up")))
+    assert queued[-1].type == "session.prompt_queued"
+    assert controller.queued_prompt == "follow up"
+    occupied = tuple(controller.dispatch(QueuePrompt(text="other")))
+    assert occupied[-1].payload["reason_code"] == "queue_occupied"
+    cleared = tuple(controller.dispatch(ClearQueuedPrompt()))
+    assert cleared[-1].type == "session.prompt_queue_cleared"
+    tuple(controller.dispatch(QueuePrompt(text="follow up")))
+
+    controller._active_run_id = None
+    outputs = tuple(controller.dispatch(SubmitPrompt(text="first")))
+    types = [item.type for item in outputs if isinstance(item, EventEnvelope)]
+    assert "run.completed" in types
+    assert "session.prompt_queue_flushed" in types
+    assert types.count("run.completed") == 2
+    assert controller.queued_prompt is None
+    assert controller.active_run_id is None
+
+
+def test_queue_rejected_during_approval(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / "hello.txt").write_text("old\n", encoding="utf-8")
+    controller = make_controller(workspace, [proposal("c1", "new\n")])
+    tuple(controller.dispatch(SubmitPrompt(text="edit")))
+    assert controller.pending_approval_id is not None
+
+    outputs = tuple(controller.dispatch(QueuePrompt(text="next")))
+    assert outputs[-1].type == "session.action_rejected"
+    assert outputs[-1].payload["reason_code"] == "approval_pending"
+    assert controller.queued_prompt is None
+
+
+def test_close_clears_in_memory_history_and_queue(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    controller = make_controller(workspace, [])
+    controller.mark_active("run_1")
+    tuple(controller.dispatch(QueuePrompt(text="queued")))
+    controller.history.record("remembered")
+    tuple(controller.dispatch(CloseSession()))
+    assert len(controller.history) == 0
+    assert controller.queued_prompt is None
+
+
+def test_external_editor_requires_preview_then_returns_text(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    controller = make_controller(workspace, [], editor_argv=("/usr/bin/true",))
+    preview = tuple(controller.dispatch(OpenExternalEditor(text="draft")))
+    assert preview[-1].type == "session.editor_preview"
+    assert preview[-1].payload["needs_confirmation"] is True
+    tuple(controller.dispatch(ConfirmExternalEditor(accept=True)))
+    closed = tuple(controller.dispatch(OpenExternalEditor(text="draft")))
+    assert closed[-1].type == "session.editor_closed"
+    assert closed[-1].payload["status"] == "unchanged"
+
+
+def test_external_editor_rejects_unconfigured_argv(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    controller = make_controller(workspace, [])
+    outputs = tuple(controller.dispatch(OpenExternalEditor(text="draft")))
+    assert outputs[-1].payload["reason_code"] == "editor_unconfigured"

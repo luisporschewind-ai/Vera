@@ -64,6 +64,13 @@ def test_project_config_rejects_secrets_and_command_policy(tmp_path: Path) -> No
     with pytest.raises(UnsafeProjectConfig):
         load_config(tmp_path, {})
 
+    write_toml(
+        tmp_path / ".vera" / "config.toml",
+        'editor_argv = ["vim"]\n',
+    )
+    with pytest.raises(UnsafeProjectConfig):
+        load_config(tmp_path, {})
+
 
 def test_deepseek_environment_config_registers_provider(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch

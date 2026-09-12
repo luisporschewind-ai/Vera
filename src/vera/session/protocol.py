@@ -13,8 +13,12 @@ from vera.contracts.events import EventEnvelope
 from vera.contracts.streaming import StreamFrame
 from vera.session.actions import (
     CancelActiveRun,
+    ClearQueuedPrompt,
     CloseSession,
+    ConfirmExternalEditor,
     ExecuteSlashCommand,
+    OpenExternalEditor,
+    QueuePrompt,
     ResolveSessionApproval,
     SessionAction,
     SubmitPrompt,
@@ -61,6 +65,14 @@ class SessionActionCodec:
                 return CancelActiveRun.model_validate(body)
             case "session.close":
                 return CloseSession.model_validate(body)
+            case "prompt.queue":
+                return QueuePrompt.model_validate(body)
+            case "prompt.queue.clear":
+                return ClearQueuedPrompt.model_validate(body)
+            case "editor.confirm":
+                return ConfirmExternalEditor.model_validate(body)
+            case "editor.open":
+                return OpenExternalEditor.model_validate(body)
             case _:
                 raise ValueError(f"unknown session action type: {action_type}")
 

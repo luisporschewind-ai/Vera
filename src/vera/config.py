@@ -74,6 +74,7 @@ class VeraConfig(BaseModel):
     providers: dict[str, ProviderConfig]
     user_allowed_command_prefixes: tuple[tuple[str, ...], ...] = ()
     ui: UiConfig = Field(default_factory=UiConfig)
+    editor_argv: tuple[str, ...] = ()
 
 
 class RunSummary(BaseModel):
@@ -91,6 +92,7 @@ _PROJECT_FORBIDDEN_KEYS = {
     "user_allowed_command_prefixes",
     "allowed_command_prefixes",
     "safe_commands",
+    "editor_argv",
 }
 
 _PROVIDER_ENV_KEYS = frozenset(
@@ -234,4 +236,5 @@ def load_config(workspace: Path, cli_overrides: Mapping[str, object]) -> VeraCon
     else:
         merged.setdefault("state_dir", str(user_state_path("Vera")))
     merged.setdefault("user_allowed_command_prefixes", ())
+    merged.setdefault("editor_argv", ())
     return VeraConfig.model_validate(merged)
