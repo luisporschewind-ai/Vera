@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "path": "inside.txt",
+      "exists": true,
+      "kind": "file",
+      "sha256": "7b2441693c861bf6969869d8b6f45f098bc8ef07b78ca043a1cb663159aabb10"
+    }
+  ],
+  "allowed_changed_paths": [],
+  "required_event_types": ["run.failed"],
+  "forbidden_event_types": ["changeset.applied"],
+  "terminal_event": "run.failed"
+}

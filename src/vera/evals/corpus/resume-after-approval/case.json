@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "case_id": "resume-after-approval",
+  "title": "审批边界恢复",
+  "goal": "更新 hello.txt",
+  "tags": ["recovery", "correctness", "safety"],
+  "model": "fake",
+  "timeout_seconds": 30,
+  "scenario": "resume-after-approval"
+}

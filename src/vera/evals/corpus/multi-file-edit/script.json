@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "turns": [
+    {
+      "finish_reason": "tool_calls",
+      "tool_calls": [
+        {
+          "call_id": "1",
+          "name": "propose_changeset",
+          "arguments": {
+            "summary": "update two files",
+            "changes": [
+              {
+                "operation": "update",
+                "path": "first.txt",
+                "after_content": "ONE\n"
+              },
+              {
+                "operation": "update",
+                "path": "second.txt",
+                "after_content": "TWO\n"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "text_deltas": [],
+  "approvals": ["approve"]
+}

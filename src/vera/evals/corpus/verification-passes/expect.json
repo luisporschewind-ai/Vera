@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "path": "check.txt",
+      "exists": true,
+      "kind": "file",
+      "sha256": "dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22"
+    }
+  ],
+  "allowed_changed_paths": ["check.txt"],
+  "required_event_types": ["changeset.applied", "verification.completed", "run.completed"],
+  "forbidden_event_types": ["run.failed"],
+  "terminal_event": "run.completed"
+}

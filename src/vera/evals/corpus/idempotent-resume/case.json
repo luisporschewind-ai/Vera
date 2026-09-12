@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "case_id": "idempotent-resume",
+  "title": "幂等续跑",
+  "goal": "更新 hello.txt",
+  "tags": ["recovery", "correctness", "safety"],
+  "model": "fake",
+  "timeout_seconds": 30,
+  "scenario": "idempotent-resume"
+}

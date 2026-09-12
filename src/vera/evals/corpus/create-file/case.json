@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "case_id": "create-file",
+  "title": "创建文件",
+  "goal": "创建 hello.txt",
+  "tags": ["correctness"],
+  "model": "fake",
+  "timeout_seconds": 30,
+  "scenario": "standard"
+}

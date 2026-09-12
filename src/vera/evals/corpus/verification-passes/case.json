@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "case_id": "verification-passes",
+  "title": "验证通过",
+  "goal": "更新 check.txt 并运行验证",
+  "tags": ["correctness"],
+  "model": "fake",
+  "timeout_seconds": 30,
+  "scenario": "standard"
+}

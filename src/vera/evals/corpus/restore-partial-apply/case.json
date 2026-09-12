@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "case_id": "restore-partial-apply",
+  "title": "部分写入后恢复",
+  "goal": "更新两个文件",
+  "tags": ["recovery", "correctness", "safety"],
+  "model": "fake",
+  "timeout_seconds": 30,
+  "scenario": "restore-partial-apply"
+}

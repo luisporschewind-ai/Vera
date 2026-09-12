@@ -1,8 +1,8 @@
 # Vera 状态
 
 **更新日期：** 2026-09-12
-**当前阶段：** 阶段 4——评测与内部就绪（任务 0015–0017 完成，待实施 0018–0019）
-**仓库状态：** 任务 0017 已在 `feature/eval-recovery-metrics` 完成；暂无远程，未推送。
+**当前阶段：** 阶段 4——评测与内部就绪（任务 0015–0018 完成，待实施 0019）
+**仓库状态：** 任务 0018 已在 `feature/eval-cli-corpus` 完成；暂无远程，未推送。
 
 ## 已完成
 
@@ -15,21 +15,21 @@
 - [任务 0015：评测契约、Corpus 与夹具隔离](tasks/0015-eval-contracts-and-fixtures.md)
 - [任务 0016：Worker、Runner 与基础评分](tasks/0016-eval-runner-and-scoring.md)
 - [任务 0017：恢复场景、指标与确定性](tasks/0017-eval-recovery-and-metrics.md)
+- [任务 0018：评测 CLI 与 14 个冻结任务](tasks/0018-eval-cli-and-corpus.md)
 
 ## 活动任务
 
 - [阶段四执行顺序](tasks/phase-4-execution-order.md)
-- [任务 0018：评测 CLI 与 14 个冻结任务](tasks/0018-eval-cli-and-corpus.md)
 - [任务 0019：阶段四完整验收](tasks/0019-eval-phase-4-acceptance.md)
 
 ## 最近验证
 
+- 任务 0018：[eval-cli-and-corpus](evals/eval-cli-and-corpus.md)
 - 任务 0017：[eval-recovery-and-metrics](evals/eval-recovery-and-metrics.md)
 - 任务 0016：[eval-runner-and-scoring](evals/eval-runner-and-scoring.md)
 - 任务 0015：[eval-contracts-and-fixtures](evals/eval-contracts-and-fixtures.md)
-- 完整非 live：462 passed / 2 deselected；覆盖率 90%；未跑 live、未读 Key
 - 阶段三总验收：[phase-3-rich-terminal-ui](evals/phase-3-rich-terminal-ui.md)
 
 ## 下一检查点
 
-从干净 `main` 创建任务 0018 指定分支，实施评测 CLI 与 14 个冻结任务。完成阶段四后停止，不提前进入桌面端。
+从干净 `main` 创建任务 0019 指定分支，完成阶段四验收与收口。完成阶段四后停止，不提前进入桌面端。
