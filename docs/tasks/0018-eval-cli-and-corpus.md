@@ -59,7 +59,7 @@
 
 - Produces: case IDs `create-file`、`update-file`、`multi-file-edit`、`plain-answer`、`verification-passes`
 
-- [ ] **Step 1：先写期望行为测试**
+- [x] **Step 1：先写期望行为测试**
 
 ```python
 @pytest.mark.parametrize(
@@ -81,7 +81,7 @@ def test_correctness_case_passes_and_source_is_unchanged(eval_runner, corpus_loa
 
 Builder 只遍历 `src/vera/evals/corpus` 常规文件，排除 `manifest.json` 自身，拒绝 symlink/特殊文件，按 POSIX 相对路径排序并用原子替换写 manifest。`--check` 只比较计算值，不写文件；`--write` 是唯一写入模式。
 
-- [ ] **Step 3：运行 5 个 case 并提交**
+- [x] **Step 3：运行 5 个 case 并提交**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run python scripts/build_eval_manifest.py --write src/vera/evals/corpus

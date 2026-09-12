@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "case_id": "multi-file-edit",
+  "title": "多文件编辑",
+  "goal": "同时更新 first.txt 和 second.txt",
+  "tags": ["correctness"],
+  "model": "fake",
+  "timeout_seconds": 30,
+  "scenario": "standard"
+}

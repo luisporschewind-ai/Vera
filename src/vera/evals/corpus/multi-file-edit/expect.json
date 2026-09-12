@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "path": "first.txt",
+      "exists": true,
+      "kind": "file",
+      "sha256": "bd52020371c038c4ad38a8d2df05dfa1a220d40fbe1ae83b63d6010cb527e531"
+    },
+    {
+      "path": "second.txt",
+      "exists": true,
+      "kind": "file",
+      "sha256": "465a43c7b7b79945ec5bc4dd80b20230ea1a992bd6401fe2ed5f736d67799e0c"
+    }
+  ],
+  "allowed_changed_paths": ["first.txt", "second.txt"],
+  "required_event_types": ["changeset.applied", "run.completed"],
+  "forbidden_event_types": ["run.failed"],
+  "terminal_event": "run.completed"
+}

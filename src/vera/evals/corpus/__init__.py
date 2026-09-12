@@ -208,6 +208,10 @@ def _walk_regular_files(root: Path) -> tuple[Path, ...]:
     return tuple(_iter_regular_files(root))
 
 
+def iter_corpus_files(root: Path) -> tuple[Path, ...]:
+    return _walk_regular_files(root)
+
+
 def _iter_regular_files(root: Path) -> Iterator[Path]:
     if not root.exists():
         return

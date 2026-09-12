@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "turns": [
+    {
+      "assistant_text": "This repository is a fixture.",
+      "finish_reason": "stop"
+    }
+  ],
+  "text_deltas": [],
+  "approvals": []
+}

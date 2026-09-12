@@ -1,0 +1,89 @@
+{
+  "files": [
+    {
+      "path": "create-file/case.json",
+      "sha256": "aa4efcc6051ac57de9d77cb8b4693b65004121b1ad309418567e054b8b8185e2"
+    },
+    {
+      "path": "create-file/expect.json",
+      "sha256": "99ebee3f7f3d09180ee6a47fa9e4b35a65b83c1e325891c23295772b6cd44a66"
+    },
+    {
+      "path": "create-file/script.json",
+      "sha256": "b615cd9a35f4bb4be047cab3671b13d4d2dcc58f0acfd7dd07352dc09b82033f"
+    },
+    {
+      "path": "create-file/workspace/README.md",
+      "sha256": "e80b71cd14d3cbd65f4173abcbfcf01a545dbca32a72d575108b553a648cc96f"
+    },
+    {
+      "path": "multi-file-edit/case.json",
+      "sha256": "8bfb779cf429be55ef72723aadea61132687e4d921cc6eb66bd5a201f1e8965f"
+    },
+    {
+      "path": "multi-file-edit/expect.json",
+      "sha256": "c1c2d498ddc502f854e0111fc86a56c40e5980d35d7750222115028b742ee168"
+    },
+    {
+      "path": "multi-file-edit/script.json",
+      "sha256": "73f9f6f67c370c53b7a6bc56073f2754de1848400d9ca774e4fce787bb86fc31"
+    },
+    {
+      "path": "multi-file-edit/workspace/first.txt",
+      "sha256": "2c8b08da5ce60398e1f19af0e5dccc744df274b826abe585eaba68c525434806"
+    },
+    {
+      "path": "multi-file-edit/workspace/second.txt",
+      "sha256": "27dd8ed44a83ff94d557f9fd0412ed5a8cbca69ea04922d88c01184a07300a5a"
+    },
+    {
+      "path": "plain-answer/case.json",
+      "sha256": "edd110801f4924874727f11799f9402b6e4dc8bb3ae9df2358a70b10b5f28ed8"
+    },
+    {
+      "path": "plain-answer/expect.json",
+      "sha256": "ab9089034cc3f0b10eb73cfea0aae8300128d9cd3bbcd4020fff6d57b64de612"
+    },
+    {
+      "path": "plain-answer/script.json",
+      "sha256": "15cba80c2375a900bf142f9161279a07095ef1114d0e89f596d0ba75c686d290"
+    },
+    {
+      "path": "plain-answer/workspace/README.md",
+      "sha256": "e80b71cd14d3cbd65f4173abcbfcf01a545dbca32a72d575108b553a648cc96f"
+    },
+    {
+      "path": "update-file/case.json",
+      "sha256": "461e018bcd4a6b02136fe945cd62cbcee8c3dd4370cb9b805d7692528659dc3b"
+    },
+    {
+      "path": "update-file/expect.json",
+      "sha256": "422dfd81b256c934e772bd9e5b19965e05497f3f881d7d63a3fb4f11d4dd582b"
+    },
+    {
+      "path": "update-file/script.json",
+      "sha256": "25a38c63f8af1255e891ead5b7253a4a5cf0df575488d5b82d359085831e6a64"
+    },
+    {
+      "path": "update-file/workspace/hello.txt",
+      "sha256": "01d09d19c2139a46aebfb577780d123d7396e97201bc7ead210a2ebff8239dee"
+    },
+    {
+      "path": "verification-passes/case.json",
+      "sha256": "b7824c3d74544342fee075520d78dff47dec1ff5e59751ec0e3fe2f27bd714cb"
+    },
+    {
+      "path": "verification-passes/expect.json",
+      "sha256": "9bc0641778c1e6d39e25bcbeec9cd8d220284108eea7693380790c86857fac88"
+    },
+    {
+      "path": "verification-passes/script.json",
+      "sha256": "01de0aa38ec9ea39a1f0402ea82a53f76291d64edf3159eaf5751bf0b27cb462"
+    },
+    {
+      "path": "verification-passes/workspace/check.txt",
+      "sha256": "01d09d19c2139a46aebfb577780d123d7396e97201bc7ead210a2ebff8239dee"
+    }
+  ],
+  "schema_version": 1
+}

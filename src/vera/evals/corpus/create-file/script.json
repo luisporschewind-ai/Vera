@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "turns": [
+    {
+      "finish_reason": "tool_calls",
+      "tool_calls": [
+        {
+          "call_id": "1",
+          "name": "propose_changeset",
+          "arguments": {
+            "summary": "create hello.txt",
+            "changes": [
+              {
+                "operation": "create",
+                "path": "hello.txt",
+                "after_content": "hello\n"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "text_deltas": [],
+  "approvals": ["approve"]
+}

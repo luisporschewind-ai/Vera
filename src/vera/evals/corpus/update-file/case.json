@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "case_id": "update-file",
+  "title": "更新文件",
+  "goal": "把 hello.txt 改为 new",
+  "tags": ["correctness"],
+  "model": "fake",
+  "timeout_seconds": 30,
+  "scenario": "standard"
+}
