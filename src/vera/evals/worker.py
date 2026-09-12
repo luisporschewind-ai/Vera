@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import argparse
 import os
+import time
 from pathlib import Path
 
 from vera.evals.codec import EvalCodec, EvalCodecError
 from vera.evals.contracts import (
     DimensionStatus,
-    EvalMetrics,
     EvalReport,
     EvalScore,
     EvalStatus,
@@ -18,7 +18,7 @@ from vera.evals.contracts import (
 )
 from vera.evals.corpus import CorpusError, CorpusLoader
 from vera.evals.isolation import IsolatedEvalCase, IsolationError
-from vera.evals.runtime_factory import EvalRuntimeFactory
+from vera.evals.metrics import MetricsExtractor
 from vera.evals.scoring import Scorer
 from vera.evals.script_driver import EvalExecutionError, ScriptedRunDriver
 
@@ -37,11 +37,13 @@ def run_worker(request: EvalWorkerRequest) -> EvalWorkerResult:
             case_root=request.workspace.parent,
             temp_root=request.workspace.parent.parent,
         )
-        runtime = EvalRuntimeFactory().create(loaded, isolated)
-        execution = ScriptedRunDriver().execute(runtime, loaded, isolated)
+        started = time.perf_counter()
+        execution = ScriptedRunDriver().run(loaded, isolated)
+        wall = time.perf_counter() - started
         current = loader.validate().manifest_hash
         isolated.verify_source_unchanged(current)
-        metrics = EvalMetrics()
+        extracted = MetricsExtractor().extract(execution.events, wall)
+        metrics = extracted.metrics
         scores = Scorer().score(
             loaded.case,
             loaded.expect,
@@ -51,12 +53,14 @@ def run_worker(request: EvalWorkerRequest) -> EvalWorkerResult:
             metrics,
         )
         status = _status_from_scores(scores)
+        reasons = {code for score in scores for code in score.reason_codes}
+        reasons.update(extracted.reason_codes)
         report = EvalReport(
             evaluation_id=request.evaluation_id,
             case_id=request.case_id,
             status=status,
             scores=scores,
-            reason_codes=tuple(sorted({code for score in scores for code in score.reason_codes})),
+            reason_codes=tuple(sorted(reasons)),
             run_ids=execution.run_ids,
             event_types=execution.event_types,
             before_files=execution.before_files,

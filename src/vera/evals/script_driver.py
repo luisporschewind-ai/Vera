@@ -39,6 +39,8 @@ class EvalExecution:
     runtime_instance_count: int = 1
     restart_event_offset: int | None = None
     side_effect_counts: dict[str, int] | None = None
+    recovery_classification: str | None = None
+    allowed_actions: tuple[str, ...] = ()
 
     @property
     def event_types(self) -> tuple[str, ...]:
@@ -52,6 +54,20 @@ class EvalExecution:
 
 
 class ScriptedRunDriver:
+    def run(self, loaded: LoadedEvalCase, isolated: IsolatedEvalCase) -> EvalExecution:
+        if loaded.case.scenario is EvalScenario.STANDARD:
+            from vera.evals.runtime_factory import EvalRuntimeFactory
+
+            runtime = EvalRuntimeFactory().create(loaded, isolated)
+            return self.execute(runtime, loaded, isolated)
+        if loaded.case.scenario is EvalScenario.ROLLBACK:
+            from vera.evals.scenarios import RollbackScenarioRunner
+
+            return RollbackScenarioRunner().execute(loaded, isolated)
+        from vera.evals.scenarios import RecoveryScenarioRunner
+
+        return RecoveryScenarioRunner().execute(loaded, isolated)
+
     def execute(
         self,
         runtime: VeraRuntime,
@@ -61,7 +77,7 @@ class ScriptedRunDriver:
         if loaded.case.scenario is not EvalScenario.STANDARD:
             raise EvalExecutionError(
                 "unsupported_scenario",
-                "this evaluation slice only runs standard scenarios",
+                "standard driver cannot execute recovery scenarios",
             )
         before = FileInventory.capture(isolated.workspace)
         approvals = list(loaded.script.approvals)

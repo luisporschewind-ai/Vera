@@ -154,7 +154,7 @@ git commit -m "feat: add bounded evaluation failpoints"
 - Produces: `RollbackScenarioRunner.execute(loaded, isolated) -> EvalExecution`
 - Consumes: `InspectRecovery`、`ResumeRun`、`ResolveApproval`、`RollbackRun`
 
-- [ ] **Step 1：编写五种场景的 Command/Event 断言**
+- [x] **Step 1：编写五种场景的 Command/Event 断言**
 
 ```python
 def test_resume_after_approval_rebuilds_runtime_and_applies_once(scenario_runner, case) -> None:
@@ -172,17 +172,17 @@ def test_in_flight_verification_never_resumes(scenario_runner, case) -> None:
 
 再覆盖 `restore-partial-apply` 经 `kind=recovery` 审批恢复 before 字节、`idempotent-resume` 第二次 Resume 无副作用、`rollback-after-apply` 恢复 checkpoint before hash，以及错误分类立即停止。
 
-- [ ] **Step 2：运行失败测试**
+- [x] **Step 2：运行失败测试**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_recovery_scenarios.py tests/evals/test_rollback_scenario.py -v
 ```
 
-- [ ] **Step 3：实现显式场景状态机**
+- [x] **Step 3：实现显式场景状态机**
 
 每个场景把动作写成固定 `match EvalScenario` 分支，不从 JSON 读取任意 Command 类名。动态 run/approval/checkpoint ID 只能从刚产生的 Event 提取。模拟中断后 `del runtime`，再用相同 workspace/state、无 failpoint 的 Factory 创建新 Runtime。
 
-- [ ] **Step 4：验证并提交**
+- [x] **Step 4：验证并提交**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_recovery_scenarios.py tests/evals/test_rollback_scenario.py tests/recovery tests/runtime/test_recovery_resume.py -v
