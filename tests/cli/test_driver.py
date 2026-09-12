@@ -2,6 +2,7 @@ from pathlib import Path
 
 from vera.cli_driver import drive_run
 from vera.contracts.commands import StartRun
+from vera.contracts.compatibility import current_compatibility_manifest
 
 from .fakes import make_changeset_runtime, make_two_approval_runtime
 
@@ -57,3 +58,10 @@ def test_drive_run_cancel_keeps_target_unchanged(tmp_path: Path) -> None:
 
     assert events[-1].type == "run.cancelled"
     assert target.read_text(encoding="utf-8") == "old\n"
+
+
+def test_plain_driver_uses_frozen_core_commands_not_cli_text() -> None:
+    names = {item.name for item in current_compatibility_manifest().commands}
+    assert "start_run" in names
+    assert "resolve_approval" in names
+    assert "cancel_run" in names

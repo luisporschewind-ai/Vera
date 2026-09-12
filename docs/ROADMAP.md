@@ -57,7 +57,7 @@
 
 ## 阶段 5——Core 安全、权限与可靠性加固
 
-**状态：** In progress
+**状态：** Ready for manual acceptance
 
 - 对阶段四交付执行独立安全、权限、路线和文档审查，关闭阻断项。
 - 在 Swift/Xcode、Python、Node/TypeScript 代表性工程上验证完整 CLI 工作流。

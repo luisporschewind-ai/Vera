@@ -13,6 +13,7 @@ from platformdirs import user_state_path
 from vera.evals.codec import EvalCodec, EvalCodecError
 from vera.evals.contracts import EvalReport, EvalStatus, EvalSuiteReport
 from vera.evals.corpus import CorpusError, CorpusLoader
+from vera.evals.dogfood import DogfoodError, load_dogfood_log, summarize_dogfood
 from vera.evals.evidence import EvidenceError
 from vera.evals.runner import EvalSuiteRunner
 
@@ -168,3 +169,19 @@ def eval_run(
         FileExistsError,
     ) as exc:
         _fail(str(exc))
+
+
+@eval_app.command("dogfood-check")
+def eval_dogfood_check(
+    path: Annotated[Path, typer.Argument(exists=True, readable=True)],
+    json_output: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    try:
+        log = load_dogfood_log(path)
+    except DogfoodError as exc:
+        _fail(str(exc))
+    summary = summarize_dogfood(log)
+    if json_output:
+        _emit_json(summary)
+        return
+    typer.echo(f"dogfood\t{summary['count']}\t{summary['user_completed_20']}")
