@@ -53,6 +53,7 @@ Vera is also a long-term learning and portfolio product. It should become mainta
 - The formal product and repository name is Vera.
 - The final product is a desktop Agent; the early CLI is internal.
 - Delivery order is Core-first, CLI-first, desktop-later.
+- Desktop integration starts only after Core hardening and CLI product-readiness gates are complete.
 - Core clients communicate through structured contracts, not parsed CLI text.
 - Development is private until reliability and release-readiness checks are met.
 - SDD, small verified changes, and synchronized documentation are required.
@@ -61,9 +62,7 @@ Vera is also a long-term learning and portfolio product. It should become mainta
 
 ## Open decisions
 
-- Core implementation language, runtime, and dependency policy
-- Initial model providers and adapter contract
-- Core command and event protocol
-- Session, checkpoint, and recovery storage design
+- 阶段五结束时公共 Command/Event、错误、审批与恢复契约的兼容承诺
+- 阶段六声明支持的终端兼容矩阵与性能基线
 - Desktop framework and packaging approach
 - License, contribution model, telemetry policy, and public-release criteria

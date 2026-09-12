@@ -10,8 +10,10 @@ The accepted delivery order is:
 
 1. Build a UI-independent Vera Agent Core.
 2. Use an internal `vera-cli` to develop, test, and accept the Core.
-3. Connect the desktop application to the same Core through a structured protocol.
-4. Validate privately, then prepare a stable public GitHub release.
+3. Harden Core safety and reliability on representative projects.
+4. Productize the CLI and TUI until everyday workflows are mature and predictable.
+5. Connect the desktop application to the same Core through a structured protocol.
+6. Validate privately, then prepare a stable public GitHub release.
 
 The CLI is an internal development surface, not Vera's final product identity. The desktop framework will be selected later using working prototypes and measured trade-offs.
 

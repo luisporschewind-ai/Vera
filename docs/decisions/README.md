@@ -22,5 +22,6 @@
 - [ADR-0009：使用 Textual 构建富交互 Terminal UI](ADR-0009-textual-terminal-ui.md)
 - [ADR-0010：以瞬时 Stream Frame 承载模型流式输出](ADR-0010-transient-stream-frames.md)
 - [ADR-0011：评测工具作为隔离的 Core 客户端](ADR-0011-eval-harness-as-core-client.md)
+- [ADR-0012：桌面集成延后至 Core 加固与 CLI 产品化之后](ADR-0012-delay-desktop-until-cli-hardening.md)
 
 Core Runtime、协议、持久化模型、关键依赖、安全边界或桌面框架等长期选择应建立决策记录；常规实现细节写入任务记录。

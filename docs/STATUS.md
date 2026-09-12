@@ -1,8 +1,8 @@
 # Vera 状态
 
 **更新日期：** 2026-09-12
-**当前阶段：** 阶段 4——评测与内部就绪（Complete）
-**仓库状态：** 任务 0015–0019 已合并到 `main`；暂无远程，未推送。下一阶段为阶段五桌面集成，尚未开始。
+**当前阶段：** 阶段 5——Core 安全、权限与可靠性加固（Ready）
+**仓库状态：** 任务 0015–0019 已合并到 `main`；阶段五、阶段六规格与实施计划已完成。暂无远程，未推送。
 
 ## 已完成
 
@@ -20,11 +20,12 @@
 
 ## 活动任务
 
-无。阶段四已收口。
+- [阶段五执行顺序](tasks/phase-5-execution-order.md)：等待 Cursor 从任务 0020 开始实施。
 
 ## 最近验证
 
 - 阶段四总验收：[phase-4-evals-and-internal-readiness](evals/phase-4-evals-and-internal-readiness.md)
+- 阶段四独立安全与路线审查：[phase-4-independent-security-and-alignment-review](evals/phase-4-independent-security-and-alignment-review.md)，64/64 项已检查，无需报告的安全漏洞。
 - 完整非 live：535 passed / 2 deselected；覆盖率 91%；manifest `8169f95abcb3bf1ccd30bfbadc1c2fee5464b7fdea3ce3909ea0fbc962a4d659`
 - 仓库外 wheel smoke：`vera eval` validate/list/run/suite 均为 0，14/14 pass
 - 任务 0018：[eval-cli-and-corpus](evals/eval-cli-and-corpus.md)
@@ -33,4 +34,4 @@
 
 ## 下一检查点
 
-阶段五桌面集成尚未开始。完成阶段四后停止，不提前选择或引入桌面框架。
+按任务 0020–0024 完成阶段五 Core 加固；随后按任务 0025–0029 完成阶段六 CLI 产品化。两阶段全部通过前不开始桌面集成，也不选择桌面框架。
