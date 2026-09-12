@@ -243,7 +243,7 @@ git commit -m "test: freeze Vera offline evaluation corpus"
 - Produces: `vera eval validate [--json]`
 - Produces: `vera eval list [--json]`
 
-- [ ] **Step 1：编写无 Provider 配置和排序测试**
+- [x] **Step 1：编写无 Provider 配置和排序测试**
 
 ```python
 def test_eval_list_needs_no_provider(cli_runner, monkeypatch) -> None:

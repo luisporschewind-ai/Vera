@@ -9,6 +9,7 @@ import typer
 
 from vera.bootstrap import RuntimeDependencies, build_runtime
 from vera.cli_driver import ApprovalDecision, drive_run
+from vera.cli_eval import eval_app
 from vera.cli_json_session import JsonSessionDriver
 from vera.cli_plain_session import PlainSessionDriver
 from vera.cli_presenter import HumanPresenter
@@ -45,6 +46,7 @@ app.add_typer(runs_app, name="runs")
 app.add_typer(config_app, name="config")
 app.add_typer(recover_app, name="recover")
 app.add_typer(state_app, name="state")
+app.add_typer(eval_app, name="eval")
 
 
 class _ConsoleSessionIO:
