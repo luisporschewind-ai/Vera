@@ -2,7 +2,7 @@
 
 > 供 Cursor 执行：按 `superpowers:executing-plans` 实施；仓库夹具与临时目录是自动测试目标，用户真实工程不在自动范围内。
 
-**状态：** Planned
+**状态：** Done
 **执行就绪：** 任务 0022 合并后
 **分支：** `phase-5/0023-projects-install-upgrade`
 **依赖：** 任务 0022 已合并
@@ -113,3 +113,11 @@ git commit -m "test: cover representative projects and installation"
 - wheel 在仓库外运行，错误配置和升级路径失败关闭并保留原数据。
 - 自动测试无网络、无真实 Key、无用户工程副作用。
 - 人工清单真实、可执行，未执行项不伪装为通过。
+
+## 验证结果
+
+- 日期：2026-09-12
+- 聚焦：`pytest tests/e2e/test_phase_5_representative_projects.py tests/e2e/test_phase_5_install_upgrade.py`
+- 完整非 live：634 passed / 2 deselected；Ruff、format、Mypy、`uv build`、`git diff --check` 通过
+- 未读取真实 Provider Key，未运行 live，未修改用户工程，未引入桌面框架
+- 三类真实工程人工清单保持 `Not run`

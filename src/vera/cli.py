@@ -3,7 +3,7 @@
 import json
 import sys
 from pathlib import Path
-from typing import Annotated, cast
+from typing import Annotated, NoReturn, cast
 
 import typer
 
@@ -13,7 +13,7 @@ from vera.cli_eval import eval_app
 from vera.cli_json_session import JsonSessionDriver
 from vera.cli_plain_session import PlainSessionDriver
 from vera.cli_presenter import HumanPresenter
-from vera.config import load_config
+from vera.config import ConfigurationError, load_config
 from vera.contracts.commands import (
     AbandonRun,
     ApplyStateMigration,
@@ -50,6 +50,14 @@ app.add_typer(state_app, name="state")
 app.add_typer(eval_app, name="eval")
 
 
+def _fail_runtime_setup(exc: Exception) -> NoReturn:
+    if isinstance(exc, ConfigurationError):
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(exc.exit_code) from exc
+    typer.echo(str(exc), err=True)
+    raise typer.Exit(5) from exc
+
+
 class _ConsoleSessionIO:
     def read(self, prompt: str) -> str:
         return cast(str, typer.prompt(prompt, prompt_suffix=""))
@@ -81,8 +89,7 @@ def main(
     try:
         deps = build_runtime(resolved, model)
     except Exception as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(5) from exc
+        _fail_runtime_setup(exc)
     selected_model = model or next(iter(deps.config.providers), "default")
     capabilities = detect_terminal_capabilities()
     try:
@@ -189,8 +196,7 @@ def execute_run(
     try:
         deps = dependencies or build_runtime(workspace, model_profile)
     except Exception as exc:
-        typer.echo(str(exc), err=True)
-        return 5
+        _fail_runtime_setup(exc)
     presenter = HumanPresenter(typer.echo)
 
     def decide(request: EventEnvelope) -> ApprovalDecision:
@@ -239,7 +245,10 @@ def show_run(run_id: str) -> None:
 
 
 def _inspect_recovery(run_id: str | None, json_output: bool) -> None:
-    deps = build_runtime(Path.cwd())
+    try:
+        deps = build_runtime(Path.cwd())
+    except Exception as exc:
+        _fail_runtime_setup(exc)
     events = list(deps.runtime.handle(InspectRecovery(run_id=run_id)))
     if json_output:
         _render(events, True)
@@ -269,8 +278,7 @@ def _drive_recovery(command: InspectRecovery | ResumeRun | AbandonRun, json_outp
     try:
         deps = build_runtime(Path.cwd())
     except Exception as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(5) from exc
+        _fail_runtime_setup(exc)
     presenter = HumanPresenter(typer.echo)
 
     def decide(request: EventEnvelope) -> ApprovalDecision:
@@ -316,8 +324,7 @@ def state_inspect(
     try:
         deps = build_runtime(Path.cwd())
     except Exception as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(5) from exc
+        _fail_runtime_setup(exc)
     events = list(deps.runtime.handle(InspectState(run_id=run_id)))
     _render(events, json_output)
     raise typer.Exit(0 if events else 5)
@@ -334,8 +341,7 @@ def state_migrate(
     try:
         deps = build_runtime(Path.cwd())
     except Exception as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(5) from exc
+        _fail_runtime_setup(exc)
     if not apply:
         events = list(deps.runtime.handle(PlanStateMigration(run_id=run_id)))
         _render(events, json_output)
@@ -358,7 +364,10 @@ def state_migrate(
 
 @app.command()
 def rollback(run_id: str = typer.Argument(...)) -> None:
-    deps = build_runtime(Path.cwd())
+    try:
+        deps = build_runtime(Path.cwd())
+    except Exception as exc:
+        _fail_runtime_setup(exc)
     events = list(deps.runtime.handle(RollbackRun(run_id=run_id)))
     if not events:
         typer.echo(f"未找到可回滚的 Checkpoint：{run_id}")

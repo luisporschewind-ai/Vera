@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
 
-from vera.config import VeraConfig, load_config, load_provider_environment
+from vera.config import ConfigurationError, VeraConfig, load_config, load_provider_environment
 from vera.models.base import ModelAdapter
 from vera.models.openai_compatible import OpenAICompatibleAdapter
 from vera.persistence.recovery_snapshot import RecoverySnapshotStore
@@ -67,9 +67,16 @@ def load_or_create_installation_id(state_dir: Path) -> str:
 def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeDependencies:
     load_provider_environment()
     config = load_config(workspace, {})
+    try:
+        installation_id = load_or_create_installation_id(config.state_dir)
+    except OSError as exc:
+        raise ConfigurationError(
+            "state_unwritable",
+            f"private state directory is not writable: {config.state_dir}",
+        ) from exc
     profile = model_profile or next(iter(config.providers), None)
     if profile is None or profile not in config.providers:
-        raise ValueError("no model provider configured")
+        raise ConfigurationError("missing_provider_config", "no model provider configured")
     provider = config.providers[profile]
     adapter: ModelAdapter = OpenAICompatibleAdapter(provider)
     paths = WorkspacePaths(workspace)
@@ -78,7 +85,6 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
     registry.register(ListDirectoryTool(paths))
     registry.register(SearchTextTool(paths))
     policy_prefixes = config.user_allowed_command_prefixes
-    installation_id = load_or_create_installation_id(config.state_dir)
     identity = workspace_identity(workspace, installation_id)
     engine = PolicyEngine(
         EffectivePolicySnapshot(

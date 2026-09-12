@@ -34,6 +34,7 @@ packages = ["src/vera"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+norecursedirs = [".git", ".*", "build", "dist", "fixtures"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 markers = ["live: requires an explicitly selected real provider and API key"]
