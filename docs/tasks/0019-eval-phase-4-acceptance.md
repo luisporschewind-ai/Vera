@@ -86,7 +86,7 @@ git commit -m "test: cover phase four evaluation flow"
 - Evidence: Provider 文件和环境永不读取
 - Evidence: corpus/source/output 边界失败关闭
 
-- [ ] **Step 1：编写进程与凭据哨兵测试**
+- [x] **Step 1：编写进程与凭据哨兵测试**
 
 ```python
 def test_timeout_case_does_not_block_following_case(eval_runner_with_timeout) -> None:
@@ -107,13 +107,13 @@ def test_eval_never_reads_provider_file(tmp_path, monkeypatch, cli_runner) -> No
 
 再测 symlink/FIFO、manifest mismatch、路径穿越、已有 output、不完整 Worker result、超大 stderr 截断、TERM→kill、源 corpus hash 前后不变和证据不含 workspace 正文。
 
-- [ ] **Step 2：运行安全负例并修复缺口**
+- [x] **Step 2：运行安全负例并修复缺口**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/e2e/test_phase_4_eval_safety.py tests/evals/test_process_runner.py tests/evals/test_corpus.py -v
 ```
 
-- [ ] **Step 3：提交安全验收**
+- [x] **Step 3：提交安全验收**
 
 ```bash
 git add tests/conftest.py tests/e2e/test_phase_4_eval_safety.py src/vera/evals docs/tasks/0019-eval-phase-4-acceptance.md
