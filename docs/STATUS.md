@@ -2,11 +2,12 @@
 
 **更新日期：** 2026-09-12
 **当前阶段：** 阶段 5——Core 安全、权限与可靠性加固（进行中）
-**仓库状态：** 任务 0022 离线实现已完成，待本地合并后从干净 `main` 执行 0023。阶段六封存门禁已写入规格。暂无远程，未推送。
+**仓库状态：** 任务 0023 离线实现已完成，待本地合并后从干净 `main` 执行后续阶段五任务。阶段六封存门禁已写入规格。暂无远程，未推送。
 
 ## 已完成
 
 - 阶段一、阶段二、阶段三、阶段四全部任务
+- [任务 0023：代表性工程与安装升级](tasks/0023-representative-projects-and-install-upgrade.md)
 - [任务 0022：状态、恢复与长会话加固](tasks/0022-state-recovery-and-long-run-hardening.md)
 - [任务 0021：命令、进程与秘密加固](tasks/0021-command-process-and-secret-hardening.md)
 - [任务 0020：文件系统与审批事实加固](tasks/0020-workspace-filesystem-and-approval-hardening.md)
@@ -23,11 +24,15 @@
 
 ## 活动任务
 
-- [阶段五执行顺序](tasks/phase-5-execution-order.md)：下一步从干净 `main` 执行任务 0023。
+- [阶段五执行顺序](tasks/phase-5-execution-order.md)：任务 0023 完成后，提示词投毒规格仍为 Draft；0024 依赖该增量被接受并完成。
 - [阶段六执行顺序](tasks/phase-6-execution-order.md)：阶段五完成前不开始；任务 0029 只能先进入 Ready for manual acceptance。
+- [ADR-0013：阶段七首个桌面底版采用 Electron](decisions/ADR-0013-electron-desktop-baseline.md)：Accepted；只固定未来实施方向，不改变 CLI 封存门禁，当前不引入 Electron 代码或依赖。
+- [不可信内容、提示词投毒与内容安全](specs/2026-09-12-untrusted-content-and-prompt-injection-defense.md)：Draft，待用户审阅；不改变当前任务 0023，接受后建立独立任务并在 0024 契约冻结前执行阶段五安全增量。
 
 ## 最近验证
 
+- 任务 0023：[representative-projects-and-install-upgrade](evals/representative-projects-and-install-upgrade.md)
+- 完整非 live：634 passed / 2 deselected
 - 任务 0022：[state-recovery-and-long-run-hardening](evals/state-recovery-and-long-run-hardening.md)
 - 任务 0021：[command-process-and-secret-hardening](evals/command-process-and-secret-hardening.md)
 - 完整非 live：587 passed / 2 deselected

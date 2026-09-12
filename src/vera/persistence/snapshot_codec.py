@@ -11,6 +11,8 @@ from vera.persistence.decode import classify_validation_error, inspect_payload, 
 from vera.persistence.errors import PersistenceFault, StateVersionError
 from vera.recovery.models import RecoverySnapshot
 
+CURRENT_SNAPSHOT_VERSION = 1
+
 _SNAPSHOT_ALLOWED = frozenset(RecoverySnapshot.model_fields)
 _SNAPSHOT_REQUIRED = frozenset(
     {
@@ -46,7 +48,7 @@ class SnapshotCodec:
                 allowed_keys=_SNAPSHOT_ALLOWED,
                 required_keys=_SNAPSHOT_REQUIRED,
                 version_key="snapshot_version",
-                supported_versions=frozenset({1}),
+                supported_versions=frozenset({CURRENT_SNAPSHOT_VERSION}),
             )
         except PersistenceFault as exc:
             if exc.code == CoreErrorCode.UNSUPPORTED_VERSION.value:

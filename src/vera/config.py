@@ -25,6 +25,19 @@ class UnsafeProviderEnvironment(ValueError):
     """Raised when a private provider environment file is unsafe or malformed."""
 
 
+class ConfigurationError(Exception):
+    """Stable configuration failure with an operator-facing code and exit status."""
+
+    def __init__(self, code: str, message: str, *, exit_code: int = 5) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+        self.exit_code = exit_code
+
+    def __str__(self) -> str:
+        return f"{self.code}: {self.message}"
+
+
 class Limits(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 

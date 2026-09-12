@@ -93,6 +93,9 @@ uv run vera eval run --suite offline --json --output ./eval-suite
 `0700` and file mode `0600`. Exit codes: `0` pass, `2` Ctrl+C, `4` case
 fail/timeout, `5` config/corpus/protocol/evidence error.
 
+Local wheel install, upgrade, and configuration errors: [INSTALL.md](docs/INSTALL.md).
+Representative-project manual steps (user-run only): [phase-5-representative-project-manual-checklist.md](docs/evals/phase-5-representative-project-manual-checklist.md).
+
 
 Provider credentials and live tests are intentionally opt-in; no API key is printed by the CLI. Verification commands run with the current system user's permissions and always retain a separate approval boundary when required by policy.
 

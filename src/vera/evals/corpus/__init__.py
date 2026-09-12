@@ -266,6 +266,31 @@ def _sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def sha256_tree(root: Path) -> str:
+    """Stable digest of regular files under root; ignores VCS and cache dirs."""
+
+    digest = hashlib.sha256()
+    files: list[Path] = []
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+        dirnames[:] = sorted(
+            name for name in dirnames if name not in _IGNORED_DIR_NAMES and not name.startswith(".")
+        )
+        for name in sorted(filenames):
+            if name.startswith("."):
+                continue
+            path = Path(dirpath) / name
+            if path.is_symlink() or not path.is_file():
+                continue
+            files.append(path)
+    for path in files:
+        rel = path.relative_to(root).as_posix()
+        digest.update(rel.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(_sha256_file(path).encode("ascii"))
+        digest.update(b"\n")
+    return digest.hexdigest()
+
+
 def _reject_secrets(path: Path, rel: str) -> None:
     for part in Path(rel).parts:
         name = Path(part).stem

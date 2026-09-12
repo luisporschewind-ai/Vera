@@ -8,6 +8,8 @@ from vera.contracts.events import EventEnvelope
 from vera.persistence.decode import inspect_payload, parse_json_object
 from vera.persistence.errors import JournalCorrupt, PersistenceFault, StateVersionError
 
+CURRENT_JOURNAL_FORMAT_VERSION = 1
+
 _EVENT_ALLOWED = frozenset(EventEnvelope.model_fields)
 _EVENT_REQUIRED = frozenset(
     {"schema_version", "event_id", "run_id", "sequence", "timestamp", "type", "payload"}
@@ -24,9 +26,9 @@ class JournalCodec:
         run_id: str,
         expected_sequence: int,
         *,
-        journal_format_version: int = 1,
+        journal_format_version: int = CURRENT_JOURNAL_FORMAT_VERSION,
     ) -> EventEnvelope:
-        if journal_format_version != 1:
+        if journal_format_version != CURRENT_JOURNAL_FORMAT_VERSION:
             raise StateVersionError("unsupported_version", journal_format_version)
         try:
             payload = parse_json_object(data)
