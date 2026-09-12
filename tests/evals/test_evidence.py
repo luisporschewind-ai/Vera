@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import stat
 from pathlib import Path
 
 import pytest
@@ -49,3 +50,14 @@ def test_evidence_writer_publishes_private_files(tmp_path: Path) -> None:
     assert "after_content" not in (published / "report.json").read_text(encoding="utf-8")
     events = (published / "events.jsonl").read_text(encoding="utf-8")
     assert events == "" or events.endswith("\n") or events == ""
+
+
+def test_evidence_writer_preserves_existing_output_root_mode(tmp_path: Path) -> None:
+    result = _result(tmp_path)
+    tmp_path.chmod(0o755)
+    before = stat.S_IMODE(tmp_path.stat().st_mode)
+    EvidenceWriter().publish(result, tmp_path)
+    assert stat.S_IMODE(tmp_path.stat().st_mode) == before
+    published = tmp_path / "eval-abc"
+    assert stat.S_IMODE(published.stat().st_mode) == 0o700
+    assert stat.S_IMODE((published / "report.json").stat().st_mode) == 0o600

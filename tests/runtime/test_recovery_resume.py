@@ -300,5 +300,6 @@ def test_wrong_recovery_hash_is_rejected(tmp_path: Path) -> None:
             )
         )
     )
-    assert events[-1].type == "run.failed"
+    assert events[-1].type == "approval.expired"
+    assert events[-1].payload["expiry_reason"] == "target_hash_changed"
     assert fixture.after_file.read_bytes() == b"after-b\n"

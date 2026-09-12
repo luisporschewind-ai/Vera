@@ -16,3 +16,4 @@ class ApprovalRequest(ContractModel):
     risk: Literal["low", "medium", "high"]
     workspace_identity: str | None = None
     policy_hash: str | None = None
+    fact_hash: str | None = None

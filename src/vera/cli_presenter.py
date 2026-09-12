@@ -134,5 +134,10 @@ class HumanPresenter:
             self._write(f"需要人工处理：{event.run_id}（{payload.get('reason', 'unknown')}）")
         elif event.type == "approval.invalidated":
             self._write(f"审批已失效：{payload.get('approval_id', event.run_id)}")
+        elif event.type == "approval.expired":
+            reason = payload.get("expiry_reason", "unknown")
+            self._write(
+                f"审批已过期：{payload.get('approval_id', event.run_id)}（{reason}），需要重新生成"
+            )
         else:
             self._write(event.type)

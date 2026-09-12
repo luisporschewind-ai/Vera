@@ -134,3 +134,25 @@ def test_presenter_reports_recovery_without_file_bodies() -> None:
     assert "app.py: before" in text
     assert "允许动作：inspect, resume, abandon" in text
     assert "SECRET" not in text
+
+
+def test_presenter_displays_expired_approval_without_deciding() -> None:
+    output: list[str] = []
+    presenter = HumanPresenter(output.append)
+    presenter.write_events(
+        (
+            event(
+                "approval.expired",
+                {
+                    "approval_id": "approval-1",
+                    "expiry_reason": "fact_changed",
+                    "decision": "approve",
+                },
+            ),
+        )
+    )
+    text = "\n".join(output)
+    assert "审批已过期" in text
+    assert "fact_changed" in text
+    assert "重新生成" in text
+    assert "审批结果" not in text
