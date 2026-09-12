@@ -39,7 +39,7 @@
 - Guarantee: usage 只有全部 `model.completed.usage` 存在时才聚合
 - Guarantee: timestamp 不完整时保留 `None`，不使用当前时间填补
 
-- [ ] **Step 1：编写完整、部分缺失和无模型指标测试**
+- [x] **Step 1：编写完整、部分缺失和无模型指标测试**
 
 ```python
 def test_usage_is_null_when_any_model_event_lacks_usage() -> None:
@@ -58,17 +58,17 @@ def test_event_duration_uses_first_started_and_last_terminal() -> None:
 
 另测负时间差标记 `invalid_event_time`、多次重试 usage、无 terminal Event、输入/输出 token 任一缺失和数值溢出保护。
 
-- [ ] **Step 2：运行失败测试**
+- [x] **Step 2：运行失败测试**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_metrics.py -v
 ```
 
-- [ ] **Step 3：实现纯指标提取**
+- [x] **Step 3：实现纯指标提取**
 
 保留 `wall_duration_seconds` 和 `event_duration_seconds` 两个字段。usage 使用现有 `ModelUsage` 形状；只有每个 `model.completed` 都含三个非负整数时才逐字段求和，否则整个字段为 `None`。reason code 随 metrics 一起返回给 Report 组装器。
 
-- [ ] **Step 4：验证并提交**
+- [x] **Step 4：验证并提交**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_metrics.py tests/runtime/test_model_resilience.py -v
