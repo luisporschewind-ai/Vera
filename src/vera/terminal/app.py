@@ -117,7 +117,10 @@ class VeraTerminalApp(App[int]):
         self.query_one(PromptComposer).submit()
 
     def on_text_area_changed(self, event) -> None:  # type: ignore[no-untyped-def]
-        composer = self.query_one(PromptComposer)
+        try:
+            composer = self.query_one(PromptComposer)
+        except Exception:
+            return
         if event.text_area is not composer:
             return
         self._refresh_completions(composer.text)

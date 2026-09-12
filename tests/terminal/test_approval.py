@@ -75,3 +75,6 @@ async def test_approval_focus_defaults_to_cancel(tmp_path: Path) -> None:
             approval_id="approval_1", decision="cancel"
         )
         assert widget._locked is True
+        widget.mark_expired()
+        assert widget._locked is True
+        assert "过期" in widget.block.title

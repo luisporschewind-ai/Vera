@@ -158,32 +158,9 @@ def _render(events: list[EventEnvelope], json_output: bool) -> None:
 
 
 def _exit_code(events: list[EventEnvelope]) -> int:
-    if not events:
-        return 5
-    last = events[-1]
-    if last.type == "run.completed":
-        if last.payload.get("state") == "verification_failed":
-            return 3
-        return 0
-    mapping = {
-        "recovery.abandoned": 0,
-        "run.cancelled": 2,
-        "run.failed": 4,
-        "rollback.completed": 0,
-        "rollback.conflicted": 4,
-        "recovery.manual_required": 5,
-    }
-    if last.type in mapping:
-        return mapping[last.type]
-    if last.type == "recovery.detected" and last.payload.get("classification") in {
-        "manual_required",
-        "legacy_not_resumable",
-        "recoverable_partial_apply",
-    }:
-        return 5
-    if last.type == "approval.required" and last.payload.get("kind") == "recovery":
-        return 5
-    return 0
+    from vera.cli_exit_codes import exit_code_for_events
+
+    return exit_code_for_events(events)
 
 
 def execute_run(

@@ -129,16 +129,16 @@ class TimelineProjector:
             "changeset.proposed": self._changeset_proposed,
             "approval.required": self._approval_required,
             "approval.resolved": self._status_event,
-            "approval.expired": self._status_event,
-            "approval.invalidated": self._status_event,
+            "approval.expired": self._approval_expired,
+            "approval.invalidated": self._approval_expired,
             "checkpoint.created": self._status_event,
             "changeset.applied": self._status_event,
             "verification.started": self._verification_started,
             "verification.completed": self._verification_completed,
             "run.completed": self._terminal_status,
             "run.failed": self._run_failed,
-            "run.cancelled": self._terminal_status,
-            "recovery.detected": self._status_event,
+            "run.cancelled": self._run_cancelled,
+            "recovery.detected": self._recovery_event,
             "conversation.compacted": self._status_event,
             "session.status": self._status_event,
             "session.message": self._session_message,
@@ -293,15 +293,45 @@ class TimelineProjector:
         risk = str(event.payload.get("risk", "unknown"))
         kind = str(event.payload.get("kind", "changeset"))
         approval_id = str(event.payload.get("approval_id", "unknown"))
+        target = str(event.payload.get("target") or event.payload.get("target_id") or "")
+        workspace = str(event.payload.get("workspace") or event.payload.get("workspace_root") or "")
+        effect = str(
+            event.payload.get("effect")
+            or event.payload.get("description")
+            or "批准后才会执行该动作"
+        )
+        body = "\n".join(
+            part
+            for part in (
+                f"动作 {kind}",
+                f"目标 {target}" if target else "",
+                f"风险 {risk}",
+                f"工作区 {workspace}" if workspace else "",
+                f"效果 {effect}",
+            )
+            if part
+        )
         return self._append(
             block_id=f"{event.run_id}:{event.sequence}:approval",
             run_id=event.run_id,
             kind=BlockKind.APPROVAL,
             title=f"Approval required · {kind} · {risk}",
-            body=sanitize_terminal_text(str(event.payload.get("reason", ""))),
+            body=sanitize_terminal_text(body),
             status=BlockStatus.PENDING,
             focus=True,
             ref_id=approval_id,
+        )
+
+    def _approval_expired(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
+        from vera.presentation.errors import format_failure_body
+
+        return self._append(
+            block_id=f"{event.run_id}:{event.sequence}:error",
+            run_id=event.run_id,
+            kind=BlockKind.ERROR,
+            title="审批已过期",
+            body=format_failure_body(event),
+            status=BlockStatus.FAILED,
         )
 
     def _verification_started(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
@@ -356,23 +386,50 @@ class TimelineProjector:
         )
 
     def _run_failed(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
-        reason = str(event.payload.get("reason", "failed"))
+        from vera.presentation.errors import format_failure_body
+
         return self._append(
             block_id=f"{event.run_id}:{event.sequence}:error",
             run_id=event.run_id,
             kind=BlockKind.ERROR,
             title="Run failed",
-            body=reason,
+            body=format_failure_body(event),
+            status=BlockStatus.FAILED,
+        )
+
+    def _run_cancelled(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
+        from vera.presentation.errors import format_failure_body
+
+        return self._append(
+            block_id=f"{event.run_id}:{event.sequence}:error",
+            run_id=event.run_id,
+            kind=BlockKind.ERROR,
+            title="已取消",
+            body=format_failure_body(event),
+            status=BlockStatus.CANCELLED,
+        )
+
+    def _recovery_event(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
+        from vera.presentation.errors import format_failure_body
+
+        return self._append(
+            block_id=f"{event.run_id}:{event.sequence}:error",
+            run_id=event.run_id,
+            kind=BlockKind.ERROR,
+            title="恢复",
+            body=format_failure_body(event),
             status=BlockStatus.FAILED,
         )
 
     def _error_event(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
+        from vera.presentation.errors import format_failure_body
+
         return self._append(
             block_id=f"{event.run_id}:{event.sequence}:error",
             run_id=event.run_id,
             kind=BlockKind.ERROR,
             title="Error",
-            body=str(event.payload.get("message", event.type)),
+            body=format_failure_body(event),
             status=BlockStatus.FAILED,
         )
 
