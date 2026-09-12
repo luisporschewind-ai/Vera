@@ -209,7 +209,7 @@ git commit -m "feat: evaluate Vera recovery scenarios"
 - Produces: `CanonicalComparator.compare(first, second) -> DeterminismResult`
 - Produces: `DeterminismResult(equal, first, second, differences)`
 
-- [ ] **Step 1：编写恢复失败不能被平均和动态字段忽略测试**
+- [x] **Step 1：编写恢复失败不能被平均和动态字段忽略测试**
 
 ```python
 def test_recovery_failure_forces_case_failure(scorer) -> None:
@@ -225,11 +225,11 @@ def test_canonical_comparison_ignores_ids_but_not_event_order(report_factory) ->
 
 另测时间戳/临时路径忽略、文件 hash/reason code/usage 差异保留、case/suite 排序、重复副作用计数。
 
-- [ ] **Step 2：实现恢复评分和显式 projection**
+- [x] **Step 2：实现恢复评分和显式 projection**
 
 canonical 只从 `EvalCodec.canonical_report()` 构造，不能对任意 dict 递归删除看似动态的 key。Suite 比较先按 case ID 对齐；缺失或新增 case 都是差异。
 
-- [ ] **Step 3：验证并提交**
+- [x] **Step 3：验证并提交**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/evals/test_recovery_scoring.py tests/evals/test_determinism.py -v
