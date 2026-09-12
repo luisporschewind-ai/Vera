@@ -2,7 +2,7 @@
 
 > 供 Cursor 执行：按 `superpowers:executing-plans` 实施；Presenter 只投影 Core 事实，不重新决定权限或成功状态。
 
-**状态：** Planned
+**状态：** Done
 **执行就绪：** 任务 0026 合并后
 **分支：** `phase-6/0027-timeline-diff-approval-errors`
 **依赖：** 任务 0026 已合并
@@ -97,3 +97,13 @@ git commit -m "feat: polish timeline diffs approvals and errors"
 - 审批默认焦点安全，过期审批不可使用。
 - 错误、取消、拒绝、恢复和完成语义及退出码不混淆。
 - 流式更新、滚动和 Resize 不丢输入或改变用户选择。
+
+## 验证证据
+
+日期：2026-09-13
+
+- 披露表覆盖 user/final/tool/log/diff/approval/verification/error；失败与取消默认展开。
+- DiffView 支持文件跳转、增减语义、纯文本复制和截断提示。
+- 审批默认 Cancel；过期审批投影为必须重新生成的错误卡。
+- 失败文案包含发生什么、副作用和下一步；退出码区分取消/验证失败/运行失败。
+- 任务测试 89 passed；ruff/mypy 通过。

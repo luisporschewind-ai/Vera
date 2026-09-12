@@ -59,3 +59,9 @@ class ApprovalBlockWidget(TimelineBlockWidget):
         self._locked = True
         for button in (self._cancel, self._reject, self._approve):
             button.disabled = True
+
+    def mark_expired(self) -> None:
+        self.lock_actions()
+        self.block = self.block.model_copy(
+            update={"title": "审批已过期", "status": self.block.status}
+        )

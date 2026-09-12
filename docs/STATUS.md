@@ -2,11 +2,12 @@
 
 **更新日期：** 2026-09-13
 **当前阶段：** 阶段 6——CLI 产品化与体验完善（In progress）
-**仓库状态：** 阶段五停在 Ready for manual acceptance。用户授权在 0024 自动门禁后开始阶段六。任务 0025、0026 已完成自动部分。不引入 Electron 代码。暂无远程时可不推送。
+**仓库状态：** 阶段五停在 Ready for manual acceptance。用户授权在 0024 自动门禁后开始阶段六。任务 0025–0027 已完成自动部分。不引入 Electron 代码。暂无远程时可不推送。
 
 ## 已完成
 
 - 阶段一、阶段二、阶段三、阶段四全部任务
+- [任务 0027：时间线、Diff、审批与错误体验](tasks/0027-timeline-diff-approval-and-errors.md)
 - [任务 0026：路径引用、命令目录与诊断](tasks/0026-path-mentions-commands-and-diagnostics.md)
 - [任务 0025：Composer、历史、粘贴与单条队列](tasks/0025-composer-history-paste-and-queue.md)
 - [任务 0024：契约冻结与阶段五验收](tasks/0024-phase-5-contract-freeze-and-acceptance.md)（自动完成，Ready for manual acceptance）
@@ -28,7 +29,7 @@
 
 ## 活动任务
 
-- [阶段六执行顺序](tasks/phase-6-execution-order.md)：0025–0026 已完成；下一步 0027–0028，然后 0029 停在 Ready for manual acceptance。
+- [阶段六执行顺序](tasks/phase-6-execution-order.md)：0025–0027 已完成；下一步 0028，然后 0029 停在 Ready for manual acceptance。
 - [阶段五执行顺序](tasks/phase-5-execution-order.md)：0024 自动门禁已完成；人工 dogfood 不足，阶段五保持 Ready for manual acceptance。
 - [ADR-0013：阶段七首个桌面底版采用 Electron](decisions/ADR-0013-electron-desktop-baseline.md)：Accepted；只固定未来实施方向，不改变 CLI 封存门禁，当前不引入 Electron 代码或依赖。
 - [阶段七：桌面 Agent 工作台与 UI](specs/2026-09-12-desktop-agent-workbench-ui.md)：Draft；不启动阶段七。
@@ -36,6 +37,7 @@
 
 ## 最近验证
 
+- 任务 0027：时间线披露、Diff 浏览、过期审批与退出码
 - 任务 0026：`@path`、统一 Catalog 与七个只读诊断命令
 - 任务 0025：Composer 历史、粘贴净化、单条队列与外部编辑器；完整非 live 701 passed / 2 deselected
 - 任务 0024：[phase-5-core-hardening](evals/phase-5-core-hardening.md)
@@ -57,6 +59,6 @@
 
 ## 下一检查点
 
-1. 继续任务 0027–0028，然后任务 0029 只进入 Ready for manual acceptance。
+1. 继续任务 0028，然后任务 0029 只进入 Ready for manual acceptance。
 2. 阶段五仍缺 20 次真实 dogfood 与三类真实工程走查，不得把阶段五标为 Complete。
 3. 未经确认「CLI 版本达到预期，可以封存」，不得将阶段六标为 Complete、不得开始阶段七、不得引入 Electron 或其他桌面端代码。

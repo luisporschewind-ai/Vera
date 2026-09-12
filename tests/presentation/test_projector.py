@@ -39,6 +39,17 @@ def only_appended_block(mutations):  # type: ignore[no-untyped-def]
     return appends[0]
 
 
+def test_expired_approval_is_expanded_error() -> None:
+    projector = TimelineProjector()
+    block = only_appended_block(
+        projector.apply(event("approval.expired", payload={"expiry_reason": "facts_changed"}))
+    )
+    assert block.kind is BlockKind.ERROR
+    assert block.expanded is True
+    assert "过期" in block.body
+    assert "重新生成" in block.body
+
+
 def test_changeset_and_approval_are_expanded() -> None:
     projector = TimelineProjector()
     diff = only_appended_block(

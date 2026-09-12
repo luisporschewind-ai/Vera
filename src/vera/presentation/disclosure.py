@@ -9,7 +9,7 @@ class DisclosurePolicy:
     """Pure functions deciding default and failure-driven expansion."""
 
     def initial_state(self, kind: BlockKind, status: BlockStatus) -> bool:
-        if status is BlockStatus.FAILED:
+        if status in {BlockStatus.FAILED, BlockStatus.CANCELLED}:
             return True
         match kind:
             case BlockKind.TOOL | BlockKind.LOG | BlockKind.STATUS:
