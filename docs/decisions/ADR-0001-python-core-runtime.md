@@ -19,7 +19,7 @@ Vera 需要先交付 UI 无关的 CLI Core。第一阶段的重点是可检查�
 ## 后果
 
 - Python 代码和测试可以直接表达文件、进程、哈希与恢复语义，适合先完成 CLI Core。
-- 未来 Wails 或其他桌面客户端只需消费同一组 Command/Event，不需要复制 Runtime。
+- 未来桌面客户端只需消费同一组 Command/Event，不需要复制 Runtime。
 - `ModelAdapter` 必须承担供应商请求、响应和 Tool Call 的标准化；Provider Key 不能进入 Event Journal。
 - 依赖升级必须经过锁文件、离线测试和规格检查；桌面壳选择延后到 Core 稳定之后。
 

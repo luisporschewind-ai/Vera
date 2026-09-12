@@ -24,6 +24,7 @@ Vera is also a long-term learning and portfolio product. It should become mainta
 - **Transparent:** tool calls, changes, approvals, and verification are inspectable.
 - **Recoverable:** checkpoints and rollback are product capabilities, not emergency scripts.
 - **Evidence-based:** success means verified outcomes, not plausible model text.
+- **Untrusted by default:** repository content, tool results, model output, and future external data cannot grant authority; deterministic policy and parameter-bound approval govern actions.
 - **Core-first:** product behavior lives outside any specific CLI or desktop shell.
 - **Incremental:** specifications, code, tests, and documentation evolve in small accepted slices.
 
@@ -38,6 +39,7 @@ Vera is also a long-term learning and portfolio product. It should become mainta
 - Independent verification
 - Checkpoints, rollback, persistence, and recovery
 - Structured logs, usage evidence, and fixed-task evals
+- Untrusted-content provenance, prompt-injection containment, and adversarial safety evals
 
 ## Outside the first stage
 
@@ -55,6 +57,7 @@ Vera is also a long-term learning and portfolio product. It should become mainta
 - Delivery order is Core-first, CLI-first, desktop-later.
 - Desktop integration starts only after Core hardening, CLI product-readiness gates, and the user's explicit confirmation that the CLI version meets expectations and may be sealed.
 - Until that confirmation, Wails, Tauri, Electron, and any other desktop-shell code stay out of the repository.
+- After that confirmation, the first desktop baseline uses Electron while preserving the Python Core and structured Command/Event boundary; Tauri remains the fallback if measured gates fail.
 - Core clients communicate through structured contracts, not parsed CLI text.
 - Development is private until reliability and release-readiness checks are met.
 - SDD, small verified changes, and synchronized documentation are required.
@@ -65,5 +68,6 @@ Vera is also a long-term learning and portfolio product. It should become mainta
 
 - 阶段五结束时公共 Command/Event、错误、审批与恢复契约的兼容承诺
 - 阶段六声明支持的终端兼容矩阵与性能基线
-- Desktop framework and packaging approach
+- Electron baseline packaging, resource budgets, updater, signing, and distribution details
 - License, contribution model, telemetry policy, and public-release criteria
+- Public content-safety policy, moderation deployment, privacy boundary, and appeal behavior

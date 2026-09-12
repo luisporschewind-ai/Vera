@@ -2,7 +2,7 @@
 
 **更新日期：** 2026-09-12
 **当前阶段：** 阶段 5——Core 安全、权限与可靠性加固（进行中）
-**仓库状态：** 任务 0023 离线实现已完成，待本地合并后从干净 `main` 执行后续阶段五任务。阶段六封存门禁已写入规格。暂无远程，未推送。
+**仓库状态：** 任务 0020–0023 已合并 `main`。文档收口已写入 ADR-0013（Electron 底版方向）与提示词投毒 Draft 规格；规格接受前不实现投毒代码、不开始 0024。阶段六封存门禁已写入规格。暂无远程时可不推送。
 
 ## 已完成
 
@@ -27,7 +27,7 @@
 - [阶段五执行顺序](tasks/phase-5-execution-order.md)：任务 0023 完成后，提示词投毒规格仍为 Draft；0024 依赖该增量被接受并完成。
 - [阶段六执行顺序](tasks/phase-6-execution-order.md)：阶段五完成前不开始；任务 0029 只能先进入 Ready for manual acceptance。
 - [ADR-0013：阶段七首个桌面底版采用 Electron](decisions/ADR-0013-electron-desktop-baseline.md)：Accepted；只固定未来实施方向，不改变 CLI 封存门禁，当前不引入 Electron 代码或依赖。
-- [不可信内容、提示词投毒与内容安全](specs/2026-09-12-untrusted-content-and-prompt-injection-defense.md)：Draft，待用户审阅；不改变当前任务 0023，接受后建立独立任务并在 0024 契约冻结前执行阶段五安全增量。
+- [不可信内容、提示词投毒与内容安全](specs/2026-09-12-untrusted-content-and-prompt-injection-defense.md)：Draft，待用户审阅；接受后建立独立任务（建议 `0030`）与 `ADR-0015`，并在 0024 契约冻结前执行阶段五安全增量。
 
 ## 最近验证
 
@@ -47,6 +47,7 @@
 
 ## 下一检查点
 
-按任务 0020–0024 完成阶段五 Core 加固。阶段五人工证据不足时停在 Ready for manual acceptance，不得开始阶段六。
+1. 用户审阅并接受[不可信内容、提示词投毒与内容安全](specs/2026-09-12-untrusted-content-and-prompt-injection-defense.md)；接受后建立独立任务（建议 `0030`）与 `ADR-0015`，再实现阶段五安全增量。
+2. 安全增量合并后执行[任务 0024](tasks/0024-phase-5-contract-freeze-and-acceptance.md)。人工 dogfood 证据不足时停在 Ready for manual acceptance，不得把阶段五标为 Complete，不得开始阶段六。
 
-阶段六按 0025–0028 实施后，任务 0029 只能进入 Ready for manual acceptance，等待用户在真实 Terminal.app 和真实工程中体验。未经确认「CLI 版本达到预期，可以封存」，不得将阶段六标为 Complete、不得开始阶段七、不得引入 Wails/Tauri/Electron 或任何桌面端代码；Textual Pilot、快照和自动测试不能代替人工体验结论。人工体验发现问题继续作为阶段六修正任务。
+阶段六按 0025–0028 实施后，任务 0029 只能进入 Ready for manual acceptance，等待用户在真实 Terminal.app 和真实工程中体验。未经确认「CLI 版本达到预期，可以封存」，不得将阶段六标为 Complete、不得开始阶段七、不得引入 Electron 或其他桌面端代码（ADR-0013 只固定方向，不授权提前实现）；Textual Pilot、快照和自动测试不能代替人工体验结论。人工体验发现问题继续作为阶段六修正任务。

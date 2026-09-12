@@ -89,7 +89,7 @@ Vera > 把刚才提到的背景色改成红色
 
 ## 会话上下文
 
-新增 UI 无关的 `ConversationContext`，由 Core 层定义并由 CLI 持有当前进程实例。未来 Wails 客户端复用该组件，而不是自行拼接模型消息。
+新增 UI 无关的 `ConversationContext`，由 Core 层定义并由 CLI 持有当前进程实例。未来桌面客户端复用该组件，而不是自行拼接模型消息。
 
 `ConversationContext` 保存：
 

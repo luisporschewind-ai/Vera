@@ -45,7 +45,7 @@ src/vera/
 依赖方向始终指向稳定契约。供应商 SDK 类型不能越过 `models/`；终端展示格式不能越过 `cli/`；文件系统和进程细节不能越过各自负责的边界。
 
 ```text
-用户或未来的 Wails 客户端
+用户或未来桌面客户端
             |
             v
 CLI 或结构化进程协议
@@ -58,7 +58,7 @@ CLI 或结构化进程协议
         +-------------------> ModelAdapter -> DeepSeek / GLM
 ```
 
-初始 CLI 可以在同一进程内直接调用 Core Python API，但公共 Core 接口仍必须表示为带版本号、可序列化为 JSON 的 Command 和 Event。未来由 Wails 管理的 Sidecar 可以通过 JSON Lines 或其他分帧协议传递同一份契约，不需要解析面向人的 CLI 文本。本增量不要求实现 Sidecar 服务。
+初始 CLI 可以在同一进程内直接调用 Core Python API，但公共 Core 接口仍必须表示为带版本号、可序列化为 JSON 的 Command 和 Event。未来由桌面壳管理的 Core 子进程可以通过 JSON Lines 或其他分帧协议传递同一份契约，不需要解析面向人的 CLI 文本。本增量不要求实现子进程服务。
 
 ## 组件职责
 

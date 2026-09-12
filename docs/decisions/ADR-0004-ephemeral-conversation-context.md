@@ -7,12 +7,12 @@
 
 Vera 已经通过真实 iOS 工程验证安全编辑主链路，但当前每个 `StartRun` 只包含固定 System Prompt 和本轮目标。持续 CLI 虽然复用同一个 Runtime，却不能理解“刚才”“继续”等会话指代；模型返回普通文本而不调用工具时还会被错误标记为 `no_changes_proposed`。
 
-会话上下文若只由 CLI 私自拼接，未来 Wails 客户端将重复实现上下文、压缩和状态规则，破坏已接受的 Core-first 与结构化契约边界。若现在直接建立跨进程长期记忆，又会提前引入恢复、隐私、淘汰和检索问题。
+会话上下文若只由 CLI 私自拼接，未来桌面客户端将重复实现上下文、压缩和状态规则，破坏已接受的 Core-first 与结构化契约边界。若现在直接建立跨进程长期记忆，又会提前引入恢复、隐私、淘汰和检索问题。
 
 ## 决策
 
 - 新增 UI 无关的 `ConversationContext` Core 组件，统一管理当前进程内的用户消息、助手消息、run 结果摘要、容量和压缩次数。
-- CLI 持有一个 `ConversationContext` 实例，未来 Wails 复用同一组件；任何客户端都不能自行注入完整工具输出、Diff 或秘密。
+- CLI 持有一个 `ConversationContext` 实例，未来桌面客户端复用同一组件；任何客户端都不能自行注入完整工具输出、Diff 或秘密。
 - `StartRun` 以向后兼容的可选字段接收上下文快照，并以 `mode=agent|compact` 区分普通 Agent run 与无工具压缩 run。
 - 普通文本通过结构化 `assistant.message` Event 输出；压缩通过 `conversation.compacted` Event 输出。CLI 和未来桌面客户端只渲染 Event。
 - 每次用户输入仍是独立 run，审批、Checkpoint、验证和回滚边界不合并到 conversation。
@@ -29,7 +29,7 @@ Vera 已经通过真实 iOS 工程验证安全编辑主链路，但当前每个 
 
 ### CLI 私有维护消息数组
 
-短期修改较少，但会让 CLI 和未来 Wails 分叉，并使上下文容量、压缩和结果摘要脱离 Core 测试，因此不采用。
+短期修改较少，但会让 CLI 和未来桌面客户端分叉，并使上下文容量、压缩和结果摘要脱离 Core 测试，因此不采用。
 
 ### 立即持久化完整对话并支持恢复
 
