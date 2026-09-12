@@ -2,7 +2,7 @@
 
 > **供 Agent 执行：** REQUIRED SUB-SKILL: 使用 `superpowers:executing-plans` 按 Task 顺序实施；只使用一个主实现 Agent，每个生产增量独立提交。
 
-**状态：** Planned
+**状态：** Complete
 
 **目标分支：** `feature/eval-recovery-metrics`
 
@@ -249,7 +249,7 @@ git commit -m "feat: score deterministic recovery evidence"
 - Modify: `docs/STATUS.md`
 - Modify: `docs/tasks/0017-eval-recovery-and-metrics.md`
 
-- [ ] **Step 1：运行完整质量门禁**
+- [x] **Step 1：运行完整质量门禁**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest -m "not live" --cov=vera --cov-report=term-missing
@@ -260,7 +260,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv build
 git diff --check
 ```
 
-- [ ] **Step 2：记录证据、提交并本地合并**
+- [x] **Step 2：记录证据、提交并本地合并**
 
 ```bash
 git add docs/evals/eval-recovery-and-metrics.md docs/STATUS.md docs/tasks/0017-eval-recovery-and-metrics.md
