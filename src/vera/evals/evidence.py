@@ -12,6 +12,7 @@ from typing import NoReturn
 from vera.evals.codec import EvalCodec
 from vera.evals.contracts import EvalWorkerResult
 from vera.persistence.private_writer import PrivateAtomicWriter, PrivateWriteError
+from vera.redaction import Redactor
 
 
 class EvidenceError(ValueError):
@@ -27,8 +28,13 @@ def _fail(code: str, path: Path | str, message: str) -> NoReturn:
 
 
 class EvidenceWriter:
-    def __init__(self, writer: PrivateAtomicWriter | None = None) -> None:
+    def __init__(
+        self,
+        writer: PrivateAtomicWriter | None = None,
+        redactor: Redactor | None = None,
+    ) -> None:
         self._writer = writer or PrivateAtomicWriter()
+        self._redactor = redactor or Redactor()
 
     def publish(self, result: EvalWorkerResult, output_root: Path) -> Path:
         if result.report is None:
@@ -44,17 +50,23 @@ class EvidenceWriter:
         staging = Path(tempfile.mkdtemp(prefix="vera-eval-evidence-", dir=output_root))
         try:
             os.chmod(staging, 0o700)
-            encoded = EvalCodec.encode_report(result.report).encode("utf-8")
+            encoded = str(self._redactor.redact(EvalCodec.encode_report(result.report))).encode(
+                "utf-8"
+            )
             self._writer.write_bytes(staging / "report.json", encoded)
-            files_payload = {
-                "before_files": [item.model_dump(mode="json") for item in result.before_files],
-                "after_files": [item.model_dump(mode="json") for item in result.after_files],
-            }
+            files_payload = self._redactor.redact(
+                {
+                    "before_files": [item.model_dump(mode="json") for item in result.before_files],
+                    "after_files": [item.model_dump(mode="json") for item in result.after_files],
+                }
+            )
             self._writer.write_bytes(
                 staging / "files.json",
                 json.dumps(files_payload, ensure_ascii=False, sort_keys=True).encode("utf-8"),
             )
-            lines = [event.model_dump_json() for event in result.events]
+            lines = [
+                self._redactor.redact_event(event).model_dump_json() for event in result.events
+            ]
             body = ("\n".join(lines) + ("\n" if lines else "")).encode("utf-8")
             self._writer.write_bytes(staging / "events.jsonl", body)
             os.replace(staging, destination)

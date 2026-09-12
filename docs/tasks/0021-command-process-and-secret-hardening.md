@@ -2,8 +2,8 @@
 
 > 供 Cursor 执行：按 `superpowers:executing-plans` 实施；先证明旧行为失败，再写最小修复。
 
-**状态：** Planned
-**执行就绪：** 任务 0020 合并后
+**状态：** Done
+**执行就绪：** 是
 **分支：** `phase-5/0021-process-secret-hardening`
 **依赖：** 任务 0020 已合并
 **规格：** [阶段五 Core 加固](../specs/2026-09-12-core-security-and-reliability-hardening.md)
@@ -118,3 +118,16 @@ git commit -m "feat: harden child processes and secret handling"
 - Verification 与 Eval 环境策略一致，真实 Provider Key 不可传入。
 - 大输出不会无限增长内存，截断事实进入结构化结果。
 - 所有持久和展示出口通过同一脱敏矩阵。
+
+## 验证结果
+
+- 日期：2026-09-12
+- 额外聚焦：`pytest tests/process tests/verification tests/evals/test_process_runner.py tests/tools/test_command_policy.py tests/policy tests/security tests/persistence/test_journal.py -q` → 51 passed
+- 完整非 live：587 passed / 2 deselected；Ruff、format、Mypy、`uv build`、`git diff --check` 通过
+- Diff 检查：无 `shell=True`、无 `os.environ.copy()`、无无限 `communicate()`
+- 未读取真实 Provider Key，未运行 live，未修改用户工程，未引入桌面框架
+
+## 未决事项
+
+- 非 POSIX 平台使用 `FallbackProcessAdapter`（逐进程 TERM/KILL，不宣称进程组）
+- 阶段五其余退出条件（恢复、三类真实工程、20 次 dogfood）属于任务 0022–0024，本任务不关闭阶段五

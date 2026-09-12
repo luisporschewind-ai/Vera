@@ -11,6 +11,7 @@ from vera.contracts.streaming import RuntimeOutput, StreamFrame, StreamFrameType
 from vera.presentation.disclosure import DisclosurePolicy
 from vera.presentation.sanitize import sanitize_terminal_text
 from vera.presentation.timeline import BlockKind, BlockStatus, TimelineBlock
+from vera.redaction import Redactor
 
 
 class AppendBlock(BaseModel):
@@ -45,11 +46,13 @@ class TimelineProjector:
 
     def __init__(self, disclosure: DisclosurePolicy | None = None) -> None:
         self.disclosure = disclosure or DisclosurePolicy()
+        self._redactor = Redactor()
         self._blocks: dict[str, TimelineBlock] = {}
         self._streams: dict[str, dict[str, object]] = {}
         self._tool_blocks: dict[tuple[str, str], str] = {}
 
     def apply(self, output: RuntimeOutput) -> tuple[TimelineMutation, ...]:
+        output = self._redactor.redact_output(output)
         if isinstance(output, StreamFrame):
             return self._apply_stream(output)
         return self._apply_event(output)

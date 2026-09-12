@@ -5,6 +5,7 @@ from pathlib import Path
 
 from vera.evals.contracts import EvalWorkerRequest
 from vera.evals.process_runner import CaseProcessRunner, sanitized_worker_environment
+from vera.process.environment import build_child_environment
 
 
 def test_worker_environment_removes_all_provider_values() -> None:
@@ -13,9 +14,14 @@ def test_worker_environment_removes_all_provider_values() -> None:
         "DEEPSEEK_API_KEY": "secret",
         "GLM_API_KEY": "secret-2",
         "VERA_LIVE_API_KEY": "secret-3",
+        "OPENAI_API_KEY": "oa",
+        "GITHUB_TOKEN": "gh",
+        "AUTHORIZATION": "Bearer x",
     }
     result = sanitized_worker_environment(source)
     assert result == {"PATH": "/bin"}
+    shared = build_child_environment({}, purpose="eval_worker", source=source)
+    assert result == dict(shared.values)
 
 
 def test_timeout_terminates_exact_worker_and_returns_timeout(tmp_path: Path) -> None:

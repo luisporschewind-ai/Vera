@@ -58,7 +58,11 @@ async def test_new_output_does_not_steal_scroll_position(tmp_path: Path) -> None
         timeline = app.query_one("#timeline")
         timeline.apply(tuple(AppendBlock(block=make_block(i)) for i in range(40)))
         await pilot.pause()
+        timeline.scroll_end(animate=False)
+        await pilot.pause()
+        timeline.scroll_to(y=0, animate=False)
         timeline.mark_user_scrolled()
+        await pilot.pause()
         before = timeline.scroll_y
         app.append_output(
             EventEnvelope(

@@ -354,6 +354,28 @@ def test_runtime_uses_injected_user_allowed_command_prefix(tmp_path: Path) -> No
     assert any(event.type == "verification.completed" for event in final_events)
 
 
+def test_forbidden_verification_is_rejected_without_running_or_reclassifying(
+    tmp_path: Path,
+) -> None:
+    marker = tmp_path / "should-not-exist.txt"
+    (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
+    runtime = runtime_with_verification_command(
+        tmp_path,
+        ("rm", "-rf", str(marker)),
+    )
+    start_events = list(
+        runtime.handle(StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake"))
+    )
+    approval = next(event for event in start_events if event.type == "approval.required")
+    final_events = list(runtime.handle(resolve(approval, "approve")))
+    completed = [event for event in final_events if event.type == "verification.completed"]
+    assert completed
+    assert completed[0].payload["status"] == "rejected"
+    assert not any(event.type == "approval.required" for event in final_events)
+    assert not marker.exists()
+    assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "new\n"
+
+
 def _start_edit(tmp_path: Path) -> tuple[VeraRuntime, object]:
     (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
     adapter = FakeModelAdapter(

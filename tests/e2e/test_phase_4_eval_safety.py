@@ -233,9 +233,16 @@ def test_huge_stderr_is_drained_without_being_copied(tmp_path: Path) -> None:
     reads: list[int] = []
 
     class LimitedStream:
+        def __init__(self) -> None:
+            self.remaining = 200_000
+
         def read(self, size: int = -1) -> bytes:
             reads.append(size)
-            return b"x" * max(size, 0)
+            if self.remaining <= 0:
+                return b""
+            n = min(max(size, 0), self.remaining)
+            self.remaining -= n
+            return b"x" * n
 
     class HugeProcess:
         pid = 11
@@ -263,7 +270,7 @@ def test_huge_stderr_is_drained_without_being_copied(tmp_path: Path) -> None:
     result = CaseProcessRunner(process_factory=HugeProcess()).run(request, 5)
     assert result.error_code == "worker_exit_error"
     assert reads
-    assert all(size == 64 * 1024 for size in reads)
+    assert all(size <= 8192 for size in reads)
     assert result.report is None
 
 
