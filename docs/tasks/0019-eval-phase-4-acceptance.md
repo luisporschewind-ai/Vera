@@ -2,7 +2,7 @@
 
 > **供 Agent 执行：** REQUIRED SUB-SKILL: 使用 `superpowers:executing-plans` 按 Task 顺序实施；只使用一个主实现 Agent。本任务只补总验收缺口，不扩大产品范围。
 
-**状态：** Planned
+**状态：** Complete
 
 **目标分支：** `feature/eval-phase-4-acceptance`
 
@@ -176,7 +176,7 @@ git commit -m "test: verify repeatable packaged evaluations"
 - Create: `docs/evals/phase-4-evals-and-internal-readiness.md`
 - Modify: `README.md`
 
-- [ ] **Step 1：运行完整自动门禁**
+- [x] **Step 1：运行完整自动门禁**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest -m "not live" --cov=vera --cov-report=term-missing
@@ -190,7 +190,7 @@ git diff --check
 
 要求全部退出码 0、覆盖率至少 90%、14 case 通过、2 个既有 live 测试或实际数量明确 deselected。
 
-- [ ] **Step 2：在仓库外执行本地 wheel smoke**
+- [x] **Step 2：在仓库外执行本地 wheel smoke**
 
 使用 `mktemp -d` 创建精确临时根，在其中创建临时 venv、HOME、state 和 output；清除所有供应商变量，只安装 `dist/` 本轮 wheel，然后运行：
 
@@ -203,11 +203,11 @@ vera eval run --suite offline --json --output ./suite-evidence
 
 记录退出码、14-case 数量、manifest hash、证据权限和 JSON 解析结果；不保留临时 workspace 正文。
 
-- [ ] **Step 3：建立 14 条退出条件证据表**
+- [x] **Step 3：建立 14 条退出条件证据表**
 
 `docs/evals/phase-4-evals-and-internal-readiness.md` 必须逐条映射规格退出条件到测试文件、命令和现场结果，并单列：未运行 live、未读取真实 Key、未修改 VeraTestDemo、Worker 不是 OS 沙箱、无 remote 未推送。
 
-- [ ] **Step 4：更新 README 的评测使用说明**
+- [x] **Step 4：更新 README 的评测使用说明**
 
 README 只增加 `vera eval validate/list/run` 的最小示例、离线性质、证据路径和退出码；不得把 Fake suite 描述为真实模型质量证明。
 
@@ -223,18 +223,18 @@ README 只增加 `vera eval validate/list/run` 的最小示例、离线性质、
 - Modify: `docs/tasks/0019-eval-phase-4-acceptance.md`
 - Modify: `docs/PRODUCT.md`
 
-- [ ] **Step 1：只在证据完整后更新状态**
+- [x] **Step 1：只在证据完整后更新状态**
 
 将任务 0019 改为 `Done`、阶段四执行顺序改为 `Complete`、ROADMAP 阶段四改为 `Complete`；STATUS 记录真实测试数、覆盖率、manifest hash、wheel smoke 和下一阶段为阶段五桌面集成。PRODUCT 只把“固定离线评测集”移入已接受能力，不提前选择桌面框架。
 
-- [ ] **Step 2：提交阶段验收**
+- [x] **Step 2：提交阶段验收**
 
 ```bash
 git add README.md docs/PRODUCT.md docs/ROADMAP.md docs/STATUS.md docs/evals/phase-4-evals-and-internal-readiness.md docs/tasks/phase-4-execution-order.md docs/tasks/0019-eval-phase-4-acceptance.md
 git commit -m "test: verify Vera phase four readiness"
 ```
 
-- [ ] **Step 3：最终检查并本地合并**
+- [x] **Step 3：最终检查并本地合并**
 
 ```bash
 git diff --check

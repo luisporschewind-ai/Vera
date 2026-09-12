@@ -1,6 +1,6 @@
 # Vera 阶段四执行顺序
 
-**状态：** Planned
+**状态：** Complete
 **规格：** [阶段四：评测与内部就绪](../specs/2026-09-12-evals-and-internal-readiness.md)
 **架构决策：** [ADR-0011：评测工具作为隔离的 Core 客户端](../decisions/ADR-0011-eval-harness-as-core-client.md)
 
