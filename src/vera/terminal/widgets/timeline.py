@@ -11,7 +11,7 @@ from vera.presentation.projector import (
     UpdateBlock,
 )
 from vera.presentation.timeline import TimelineBlock
-from vera.terminal.render_scheduler import RenderScheduler
+from vera.terminal.streaming import bounded_scheduler
 from vera.terminal.widgets.blocks import TimelineBlockWidget
 
 
@@ -23,7 +23,7 @@ class ConversationTimeline(VerticalScroll):
         self.follow_tail = True
         self.pending_update_count = 0
         self._widgets: dict[str, TimelineBlockWidget] = {}
-        self._scheduler = RenderScheduler()
+        self._scheduler = bounded_scheduler()
         self._user_scrolled_away = False
 
     def on_mount(self) -> None:

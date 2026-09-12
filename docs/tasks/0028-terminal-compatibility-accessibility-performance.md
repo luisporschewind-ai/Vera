@@ -2,7 +2,7 @@
 
 > 供 Cursor 执行：按 `superpowers:executing-plans` 实施；性能证据必须记录机器与终端，不能把单机结果泛化成全平台承诺。
 
-**状态：** Planned
+**状态：** Done
 **执行就绪：** 任务 0027 合并后
 **分支：** `phase-6/0028-terminal-compatibility-performance`
 **依赖：** 任务 0027 已合并
@@ -88,3 +88,13 @@ git commit -m "feat: harden terminal compatibility and performance"
 - 长输出不按行创建 Widget，输入响应达到记录阈值或有明确差异。
 - 所有退出路径恢复终端状态，Plain/JSON 无控制序列污染。
 - 兼容矩阵只陈述实际证据。
+
+## 验证证据
+
+日期：2026-09-13
+
+- `NO_COLOR`、`TERM=dumb`、`VERA_NO_ANIMATIONS` 和非 TTY 走静态无色。
+- 动画上限 10 FPS，流式刷新上限 20 FPS。
+- 60×16 / 80×24 / 120×40 Pilot 与键盘-only 主路径覆盖。
+- 折叠长输出不按行建 Widget；审批/Diff/失败不被预算逐出。
+- PTY 覆盖正常退出、超时取消、无 alternate screen；人工终端项为 `Not run`。

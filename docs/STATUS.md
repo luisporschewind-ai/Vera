@@ -2,11 +2,12 @@
 
 **更新日期：** 2026-09-13
 **当前阶段：** 阶段 6——CLI 产品化与体验完善（In progress）
-**仓库状态：** 阶段五停在 Ready for manual acceptance。用户授权在 0024 自动门禁后开始阶段六。任务 0025–0027 已完成自动部分。不引入 Electron 代码。暂无远程时可不推送。
+**仓库状态：** 阶段五停在 Ready for manual acceptance。用户授权在 0024 自动门禁后开始阶段六。任务 0025–0028 已完成自动部分。不引入 Electron 代码。暂无远程时可不推送。
 
 ## 已完成
 
 - 阶段一、阶段二、阶段三、阶段四全部任务
+- [任务 0028：终端兼容、可访问性与性能](tasks/0028-terminal-compatibility-accessibility-performance.md)
 - [任务 0027：时间线、Diff、审批与错误体验](tasks/0027-timeline-diff-approval-and-errors.md)
 - [任务 0026：路径引用、命令目录与诊断](tasks/0026-path-mentions-commands-and-diagnostics.md)
 - [任务 0025：Composer、历史、粘贴与单条队列](tasks/0025-composer-history-paste-and-queue.md)
