@@ -98,6 +98,7 @@ class SessionController:
         self.queued_prompt: str | None = None
         self._editor_confirmed = False
         self._editor_draft: Path | None = None
+        self.theme = "default"
 
     @property
     def active_run_id(self) -> str | None:
@@ -378,102 +379,43 @@ class SessionController:
             return
         if not parts:
             return
-        command = parts[0]
-        args = parts[1:]
-        if command in {"/exit", "/quit"} and not args:
-            yield from self._close()
-            return
-        if command == "/help" and not args:
-            yield self._session_event("session.help", {"text": self._help_text()})
-            return
-        if command == "/status" and not args:
-            yield self._status_event()
-            return
-        if command == "/context" and not args:
-            stats = self.conversation.stats()
+        from vera.session.command_catalog import CommandCatalog
+
+        catalog = CommandCatalog()
+        parsed = catalog.parse(parts)
+        if parsed.unknown:
+            hint = f" 候选：{', '.join(parsed.suggestions)}。" if parsed.suggestions else ""
             yield self._session_event(
-                "session.context",
+                "session.message",
                 {
-                    "session_id": stats.session_id,
-                    "message_count": stats.message_count,
-                    "context_bytes": stats.context_bytes,
-                    "max_bytes": stats.max_bytes,
-                    "warning": stats.warning,
-                    "compaction_count": stats.compaction_count,
+                    "text": f"未知命令：{parsed.name}。{hint}输入 /help 查看可用命令。",
+                    "suggestions": list(parsed.suggestions),
                 },
             )
             return
-        if command == "/permissions" and not args:
-            status = permission_status(self.dependencies.runtime.command_policy)
-            yield self._session_event(
-                "session.permissions",
-                status.model_dump(mode="json"),
-            )
+        descriptor = catalog.get(parsed.name)
+        if descriptor is not None and descriptor.args == "none" and parsed.args:
+            yield self._session_event("session.message", {"text": f"用法：{descriptor.usage}"})
             return
-        if command == "/new" and not args:
-            session_id = self.conversation.reset()
+        if descriptor is not None and descriptor.args == "required" and not parsed.args:
+            yield self._session_event("session.message", {"text": f"用法：{descriptor.usage}"})
+            return
+        if (
+            descriptor is not None
+            and descriptor.args == "optional"
+            and parsed.handler not in {"compact"}
+            and len(parsed.args) > 1
+        ):
+            yield self._session_event("session.message", {"text": f"用法：{descriptor.usage}"})
+            return
+        handler = getattr(self, f"_cmd_{parsed.handler}", None)
+        if handler is None:
             yield self._session_event(
                 "session.message",
-                {"text": f"已开始新会话：{session_id}"},
+                {"text": f"未知命令：{parsed.name}。输入 /help 查看可用命令。"},
             )
             return
-        if command == "/clear" and not args:
-            session_id = self.conversation.reset()
-            self.clear_display_requested = True
-            yield self._session_event(
-                "session.message",
-                {"text": f"已清空显示并开始新会话：{session_id}", "clear_display": True},
-            )
-            return
-        if command == "/compact":
-            yield from self._compact(" ".join(args) if args else "保留关键结论与未完成事项")
-            return
-        if command == "/model" and len(args) <= 1:
-            yield from self._switch_model(args[0] if args else None)
-            return
-        if command == "/runs" and not args:
-            yield from self._write_runs()
-            return
-        if command == "/show" and len(args) == 1:
-            yield from self._show(args[0])
-            return
-        if command == "/rollback" and len(args) == 1:
-            yield from self._rollback(args[0])
-            return
-        if command == "/recover" and len(args) <= 1:
-            yield from self._recover(args[0] if args else None)
-            return
-        if command == "/resume" and len(args) == 1:
-            yield from self._resume(args[0])
-            return
-        if command == "/abandon" and len(args) == 1:
-            yield from self._abandon(args[0])
-            return
-        if command in {"/show", "/rollback", "/resume", "/abandon"}:
-            yield self._session_event("session.message", {"text": f"用法：{command} <run-id>"})
-            return
-        if command == "/model":
-            yield self._session_event("session.message", {"text": "用法：/model [profile]"})
-            return
-        if command in {
-            "/help",
-            "/status",
-            "/context",
-            "/permissions",
-            "/new",
-            "/clear",
-            "/compact",
-            "/runs",
-            "/recover",
-            "/exit",
-            "/quit",
-        }:
-            yield self._session_event("session.message", {"text": f"用法：{command}"})
-            return
-        yield self._session_event(
-            "session.message",
-            {"text": f"未知命令：{command}。输入 /help 查看可用命令。"},
-        )
+        yield from handler(parsed.args)
 
     def _compact(self, focus: str) -> Iterator[RuntimeOutput]:
         before = self.conversation.snapshot()
@@ -667,24 +609,188 @@ class SessionController:
             payload=payload,
         )
 
-    @staticmethod
-    def _help_text() -> str:
-        return (
-            "会话命令：\n"
-            "  /help                 显示帮助\n"
-            "  /status               显示会话状态\n"
-            "  /context              显示上下文统计\n"
-            "  /permissions          显示有效权限边界\n"
-            "  /new                  清空上下文并开始新会话\n"
-            "  /clear                清空显示与上下文\n"
-            "  /compact [focus]      压缩当前上下文\n"
-            "  /model [profile]      查看或切换模型\n"
-            "  /runs                 列出任务\n"
-            "  /show <run-id>         显示任务事件\n"
-            "  /rollback <run-id>     安全回滚任务修改\n"
-            "  /recover [run-id]      查看待恢复任务\n"
-            "  /resume <run-id>       继续可恢复的审批或验证\n"
-            "  /abandon <run-id>      放弃无工作区副作用的中断任务\n"
-            "  /exit 或 /quit         退出\n"
-            "审批输入：approve、reject 或 cancel"
+    def _cmd_help(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        yield self._session_event("session.help", {"text": self._help_text()})
+
+    def _cmd_status(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        yield self._status_event()
+
+    def _cmd_context(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        stats = self.conversation.stats()
+        yield self._session_event(
+            "session.context",
+            {
+                "session_id": stats.session_id,
+                "message_count": stats.message_count,
+                "context_bytes": stats.context_bytes,
+                "max_bytes": stats.max_bytes,
+                "warning": stats.warning,
+                "compaction_count": stats.compaction_count,
+            },
         )
+
+    def _cmd_permissions(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        status = permission_status(self.dependencies.runtime.command_policy)
+        yield self._session_event("session.permissions", status.model_dump(mode="json"))
+
+    def _cmd_new(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        session_id = self.conversation.reset()
+        yield self._session_event("session.message", {"text": f"已开始新会话：{session_id}"})
+
+    def _cmd_clear(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        session_id = self.conversation.reset()
+        self.clear_display_requested = True
+        yield self._session_event(
+            "session.message",
+            {"text": f"已清空显示并开始新会话：{session_id}", "clear_display": True},
+        )
+
+    def _cmd_compact(self, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        yield from self._compact(" ".join(args) if args else "保留关键结论与未完成事项")
+
+    def _cmd_model(self, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        yield from self._switch_model(args[0] if args else None)
+
+    def _cmd_runs(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        yield from self._write_runs()
+
+    def _cmd_show(self, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        yield from self._show(args[0])
+
+    def _cmd_rollback(self, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        yield from self._rollback(args[0])
+
+    def _cmd_recover(self, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        yield from self._recover(args[0] if args else None)
+
+    def _cmd_resume(self, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        yield from self._resume(args[0])
+
+    def _cmd_abandon(self, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        yield from self._abandon(args[0])
+
+    def _cmd_exit(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        yield from self._close()
+
+    def _cmd_diff(self, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        from vera.session.queries import collect_diffs, load_run_events, resolve_run_id
+
+        run_id = resolve_run_id(self.store, args[0] if args else None, self._active_run_id)
+        events = load_run_events(self.store, run_id) if run_id else ()
+        if not events and run_id == self._active_run_id:
+            events = tuple(self._events_for_active)
+        files = collect_diffs(events)
+        if not files:
+            yield self._session_event(
+                "session.diff",
+                {"run_id": run_id, "files": [], "text": "没有 Diff。"},
+            )
+            return
+        text = "\n\n".join(
+            str(item.get("unified_diff", "")).rstrip() for item in files if item.get("unified_diff")
+        )
+        yield self._session_event(
+            "session.diff",
+            {"run_id": run_id, "files": list(files), "text": text or "没有 Diff。"},
+        )
+
+    def _cmd_review(self, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        from vera.presentation.review import project_review
+        from vera.session.queries import load_run_events, resolve_run_id
+
+        run_id = resolve_run_id(self.store, args[0] if args else None, self._active_run_id)
+        events = load_run_events(self.store, run_id) if run_id else ()
+        if not events and run_id == self._active_run_id:
+            events = tuple(self._events_for_active)
+        review = project_review(events)
+        review["run_id"] = run_id
+        yield self._session_event("session.review", review)
+
+    def _cmd_doctor(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        import os
+        from pathlib import Path as ConfigPath
+
+        from platformdirs import user_config_path
+
+        from vera.session.diagnostics import doctor_report
+
+        user_config = ConfigPath(
+            os.environ.get("VERA_USER_CONFIG_FILE", str(user_config_path("Vera") / "config.toml"))
+        )
+        report = doctor_report(
+            workspace=self.workspace,
+            state_dir=self.dependencies.config.state_dir,
+            user_config=user_config,
+        )
+        yield self._session_event("session.doctor", report)
+
+    def _cmd_config(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        import os
+        from pathlib import Path as ConfigPath
+
+        from platformdirs import user_config_path
+
+        from vera.session.diagnostics import redacted_config_view
+
+        user_file = ConfigPath(
+            os.environ.get(
+                "VERA_USER_CONFIG_FILE",
+                str(user_config_path("Vera") / "config.toml"),
+            )
+        )
+        project_file = self.workspace / ".vera" / "config.toml"
+        sources = {
+            "user": str(user_file) if user_file.is_file() else "absent",
+            "project": str(project_file) if project_file.is_file() else "absent",
+            "environment": "applied",
+            "cli": "overrides",
+        }
+        yield self._session_event(
+            "session.config",
+            redacted_config_view(self.dependencies.config, sources),
+        )
+
+    def _cmd_usage(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        from vera.session.queries import usage_snapshot
+
+        events = tuple(self._events_for_active)
+        for summary in self.store.list_runs():
+            events = events + tuple(self.store.read_events(summary.run_id))
+        yield self._session_event("session.usage", usage_snapshot(events))
+
+    def _cmd_shortcuts(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        from vera.session.diagnostics import shortcut_list
+
+        items = shortcut_list()
+        text = "\n".join(f"{item['keys']}\t{item['action']}" for item in items)
+        yield self._session_event(
+            "session.shortcuts",
+            {"items": [dict(item) for item in items], "text": text},
+        )
+
+    def _cmd_theme(self, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        from vera.terminal.theme import THEME_NAMES, normalize_theme
+
+        if not args:
+            yield self._session_event(
+                "session.theme",
+                {"theme": self.theme, "available": list(THEME_NAMES)},
+            )
+            return
+        selected = normalize_theme(args[0], self.theme)  # type: ignore[arg-type]
+        if selected is None:
+            yield self._session_event(
+                "session.message",
+                {"text": f"未知主题：{args[0]}。可用：{', '.join(THEME_NAMES)}"},
+            )
+            return
+        self.theme = selected
+        yield self._session_event(
+            "session.theme",
+            {"theme": self.theme, "available": list(THEME_NAMES)},
+        )
+
+    def _help_text(self) -> str:
+        from vera.session.command_catalog import CommandCatalog
+
+        return CommandCatalog().help_text(self.snapshot())

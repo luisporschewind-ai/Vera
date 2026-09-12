@@ -3,6 +3,8 @@ from pathlib import Path
 from vera.cli_driver import drive_run
 from vera.contracts.commands import StartRun
 from vera.contracts.compatibility import current_compatibility_manifest
+from vera.session.command_catalog import CommandCatalog
+from vera.session.controller import SessionSnapshot
 
 from .fakes import make_changeset_runtime, make_two_approval_runtime
 
@@ -65,3 +67,25 @@ def test_plain_driver_uses_frozen_core_commands_not_cli_text() -> None:
     assert "start_run" in names
     assert "resolve_approval" in names
     assert "cancel_run" in names
+
+
+def test_session_catalog_is_shared_across_driver_surface() -> None:
+    catalog = CommandCatalog()
+    names = {item.name for item in catalog.all()}
+    assert {
+        "/diff",
+        "/review",
+        "/doctor",
+        "/config",
+        "/usage",
+        "/shortcuts",
+        "/theme",
+    } <= names
+    snapshot = SessionSnapshot(
+        session_id="s1",
+        active_run_id=None,
+        pending_approval_id=None,
+        model_profile="fake",
+        closed=False,
+    )
+    assert catalog.parse(["/help"]).handler == catalog.list("/help", snapshot)[0].handler

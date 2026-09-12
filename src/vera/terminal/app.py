@@ -116,6 +116,29 @@ class VeraTerminalApp(App[int]):
     def submit_composer(self) -> None:
         self.query_one(PromptComposer).submit()
 
+    def on_text_area_changed(self, event) -> None:  # type: ignore[no-untyped-def]
+        composer = self.query_one(PromptComposer)
+        if event.text_area is not composer:
+            return
+        self._refresh_completions(composer.text)
+
+    def _refresh_completions(self, text: str) -> None:
+        completions = self.query_one(CompletionList)
+        stripped = text.lstrip()
+        if stripped.startswith("/"):
+            token = stripped.split()[0] if stripped.split() else stripped
+            completions.update_for_prefix(token, self.controller.snapshot())
+            return
+        mention = _mention_prefix(text)
+        if mention is not None:
+            completions.update_for_path(
+                mention,
+                self.workspace,
+                state_dir=self.controller.dependencies.config.state_dir,
+            )
+            return
+        completions.hide()
+
     def on_prompt_submitted(self, message: PromptSubmitted) -> None:
         text = message.text
         self.submitted.append(text)
@@ -233,10 +256,23 @@ class VeraTerminalApp(App[int]):
             if output.payload.get("changed") and isinstance(text, str):
                 self.query_one(PromptComposer).load_text(text)
             return
+        if output.type == "session.theme":
+            theme = output.payload.get("theme")
+            if isinstance(theme, str):
+                self._apply_theme(theme)
+            return
         if output.type == "session.action_rejected":
             message = output.payload.get("message")
             if isinstance(message, str) and message:
                 status.set_status(message)
+
+    def _apply_theme(self, name: str) -> None:
+        from vera.terminal.theme import THEME_NAMES, theme_class
+
+        for item in THEME_NAMES:
+            self.screen.remove_class(theme_class(item))
+        if name in THEME_NAMES:
+            self.screen.add_class(theme_class(name))
 
     def action_exit_if_idle(self) -> None:
         composer = self.query_one(PromptComposer)
@@ -256,6 +292,16 @@ class VeraTerminalApp(App[int]):
             self.activity.current,
             self.animation.frame(),
         )
+
+
+def _mention_prefix(text: str) -> str | None:
+    index = text.rfind("@")
+    if index < 0:
+        return None
+    fragment = text[index + 1 :]
+    if "\n" in fragment:
+        return None
+    return fragment
 
 
 def launch_tui(
