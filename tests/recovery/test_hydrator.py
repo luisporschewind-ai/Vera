@@ -43,6 +43,8 @@ def test_hydrate_changeset_approval_restores_exact_context(tmp_path: Path) -> No
     assert context.approval_gate.pending_approval == snapshot.pending_approval
     assert context.journal.read_all() == journal.read_all()
     assert context.messages == []
+    assert context.security_findings == ()
+    assert context.security_context_hash is not None
 
 
 def test_hydrate_verification_restores_index(tmp_path: Path) -> None:
@@ -102,6 +104,52 @@ def test_hydrate_refuses_missing_checkpoint(tmp_path: Path) -> None:
     journal = _journal(tmp_path)
     with pytest.raises(RecoveryHydrationError, match="checkpoint_missing"):
         RecoveryHydrator().hydrate(snapshot, journal)
+
+
+def test_hydrate_unavailable_findings_keep_tightening(tmp_path: Path) -> None:
+    from vera.content.detector import DetectionDisposition
+    from vera.content.envelope import (
+        ContentFinding,
+        build_content_envelope,
+        compute_security_context_hash,
+    )
+    from vera.policy.engine import PolicyEngine
+    from vera.policy.models import PolicyAction, PolicyActionKind, PolicyDecisionKind
+    from vera.policy.snapshot import EffectivePolicySnapshot
+    from vera.runtime.security import worst_disposition
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    envelope = build_content_envelope("x", source_kind="tool_output", origin="tool")
+    finding = ContentFinding(
+        envelope=envelope.model_copy(update={"risk_labels": ("detector_unavailable",)}),
+        disposition=DetectionDisposition.UNAVAILABLE.value,
+        reason_code="detector_error",
+        detector_version="unavailable",
+    )
+    snapshot = make_snapshot(workspace).model_copy(
+        update={
+            "security_findings": (finding,),
+            "security_context_hash": compute_security_context_hash((finding,)),
+        }
+    )
+    journal = _journal(tmp_path)
+    context = RecoveryHydrator().hydrate(snapshot, journal)
+    assert worst_disposition(context.security_findings) == DetectionDisposition.UNAVAILABLE.value
+    decision = PolicyEngine(EffectivePolicySnapshot(workspace_identity="ws")).decide(
+        PolicyAction(
+            kind=PolicyActionKind.COMMAND_EXECUTE,
+            workspace_identity="ws",
+            resource="git",
+            argv=("git", "status", "--short"),
+            metadata={
+                "cwd": ".",
+                "detector_disposition": worst_disposition(context.security_findings),
+                "risk_labels": ["detector_unavailable"],
+            },
+        )
+    )
+    assert decision.decision is PolicyDecisionKind.DENY
 
 
 def test_hydrate_refuses_intended_hash_mismatch(tmp_path: Path) -> None:

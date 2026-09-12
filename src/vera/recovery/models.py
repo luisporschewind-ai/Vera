@@ -11,6 +11,7 @@ from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from vera.content.envelope import ContentFinding
 from vera.contracts.approvals import ApprovalRequest
 from vera.contracts.changes import ChangeSet
 from vera.contracts.commands import StartRun
@@ -99,6 +100,8 @@ class RecoverySnapshot(FrozenPrivateModel):
     workspace_write_started: bool = False
     rollback_in_flight: bool = False
     recovery_plan: RecoveryPlan | None = None
+    security_findings: tuple[ContentFinding, ...] = ()
+    security_context_hash: str | None = None
     created_at: datetime
     updated_at: datetime
     vera_version: str

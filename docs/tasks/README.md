@@ -40,6 +40,7 @@
 - [任务 0021：命令、进程与秘密加固](0021-command-process-and-secret-hardening.md)
 - [任务 0022：状态、恢复与长会话加固](0022-state-recovery-and-long-run-hardening.md)
 - [任务 0023：代表性工程与安装升级](0023-representative-projects-and-install-upgrade.md)
+- [任务 0030：不可信内容与提示词投毒防御](0030-untrusted-content-and-prompt-injection.md)
 - [任务 0024：契约冻结与阶段五验收](0024-phase-5-contract-freeze-and-acceptance.md)
 - [阶段六执行顺序](phase-6-execution-order.md)
 - [任务 0025：Composer、历史、粘贴与单条队列](0025-composer-history-paste-and-queue.md)

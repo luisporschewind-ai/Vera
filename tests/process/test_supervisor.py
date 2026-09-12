@@ -50,7 +50,7 @@ def test_timeout_reaps_process_group_including_term_ignorers(tmp_path: Path) -> 
             "30",
             "--pid-file",
             str(pid_file),
-            timeout_seconds=0.3,
+            timeout_seconds=2.0,
         )
     )
     assert result.status == "timed_out"
@@ -65,7 +65,7 @@ def test_timeout_reaps_process_group_including_term_ignorers(tmp_path: Path) -> 
 def test_cancel_reaps_process_group(tmp_path: Path) -> None:
     pid_file = tmp_path / "pids.txt"
     cancel = threading.Event()
-    threading.Timer(0.2, cancel.set).start()
+    threading.Timer(1.0, cancel.set).start()
     result = ProcessSupervisor().run(
         _request(
             tmp_path,

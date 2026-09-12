@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Any
 
 from vera.contracts.verification import VerificationCommand
 from vera.policy.engine import PolicyEngine
@@ -49,14 +50,24 @@ class CommandPolicy:
             )
         )
 
-    def classify(self, command: VerificationCommand) -> CommandDecision:
+    def classify(
+        self,
+        command: VerificationCommand,
+        *,
+        risk_labels: tuple[str, ...] = (),
+        detector_disposition: str | None = None,
+    ) -> CommandDecision:
+        metadata: dict[str, Any] = {"cwd": command.cwd}
+        if detector_disposition is not None or risk_labels:
+            metadata["detector_disposition"] = detector_disposition or "clear"
+            metadata["risk_labels"] = list(risk_labels)
         decision = self.engine.decide(
             PolicyAction(
                 kind=PolicyActionKind.COMMAND_EXECUTE,
                 workspace_identity=self.workspace_identity,
                 resource=command.argv[0] if command.argv else "",
                 argv=command.argv,
-                metadata={"cwd": command.cwd},
+                metadata=metadata,
             )
         )
         return CommandDecision(

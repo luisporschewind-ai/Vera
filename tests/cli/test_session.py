@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from subprocess import CompletedProcess
 
@@ -223,7 +224,11 @@ def test_second_goal_receives_first_conversation_pair(tmp_path: Path) -> None:
     assert session.run() == 0
 
     second_messages = adapter.requests[1].messages
-    assert [(message.role, message.content) for message in second_messages[-3:]] == [
+    observed = []
+    for message in second_messages[-3:]:
+        payload = json.loads(message.content)
+        observed.append((message.role, payload["data"]))
+    assert observed == [
         ("user", "Hello"),
         ("assistant", "你好"),
         ("user", "刚才说了什么？"),
@@ -313,7 +318,7 @@ def test_context_limit_blocks_natural_language_but_allows_new(tmp_path: Path) ->
     output = "\n".join(io.output)
     assert "当前上下文已满" in output
     assert len(adapter.requests) == 1
-    assert adapter.requests[0].messages[-1].content == "ok"
+    assert json.loads(adapter.requests[0].messages[-1].content)["data"] == "ok"
 
 
 def test_warning_prompts_compact_after_near_capacity_response(tmp_path: Path) -> None:

@@ -26,6 +26,9 @@ def test_compaction_uses_no_tools_and_emits_summary(tmp_path: Path) -> None:
     events = list(runtime.handle(command))
 
     assert adapter.requests[0].tools == ()
+    assert adapter.requests[0].messages[0].role == "system"
+    user = next(message for message in adapter.requests[0].messages if message.role == "user")
+    assert '"vera_content":1' in user.content
     assert (
         next(event for event in events if event.type == "run.started").payload["kind"]
         == "compaction"

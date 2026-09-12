@@ -4,6 +4,7 @@ from enum import StrEnum
 from typing import Literal
 from uuid import uuid4
 
+from vera.content.envelope import ContentEnvelope
 from vera.contracts.approvals import ApprovalRequest
 from vera.contracts.commands import ResolveApproval
 
@@ -38,6 +39,9 @@ class ApprovalGate:
         workspace_identity: str | None = None,
         policy_hash: str | None = None,
         fact_hash: str | None = None,
+        security_context_hash: str | None = None,
+        risk_labels: tuple[str, ...] = (),
+        risk_sources: tuple[ContentEnvelope, ...] = (),
     ) -> ApprovalRequest:
         if self.pending_approval is not None:
             raise ApprovalMismatch("an approval is already pending", reason="duplicate_pending")
@@ -52,6 +56,9 @@ class ApprovalGate:
             workspace_identity=workspace_identity,
             policy_hash=policy_hash,
             fact_hash=fact_hash,
+            security_context_hash=security_context_hash,
+            risk_labels=risk_labels,
+            risk_sources=risk_sources,
         )
         self.pending_approval = request
         return request

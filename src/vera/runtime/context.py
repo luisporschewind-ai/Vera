@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-import hashlib
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from vera.content.envelope import ContentFinding
 from vera.contracts.checkpoints import CheckpointManifest
 from vera.contracts.commands import StartRun
 from vera.contracts.recovery import RecoveryPlan
 from vera.contracts.verification import VerificationCommand
 from vera.models.base import ModelMessage, ModelToolCall
 from vera.persistence.journal import EventJournal
-from vera.presentation.sanitize import sanitize_terminal_text
 from vera.redaction import Redactor
 from vera.runtime.approval import ApprovalGate
 from vera.runtime.state import RunStateMachine
@@ -20,18 +20,21 @@ from vera.tools.definitions import ToolResult
 from vera.workspace.changeset import BuiltChangeSet
 
 
-def tool_result_message(call: ModelToolCall, result: ToolResult) -> str:
-    path = ""
-    if isinstance(call.arguments, dict) and call.arguments.get("path") is not None:
-        path = str(call.arguments.get("path"))
-    text = str(result.content or "")
-    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
-    preview = sanitize_terminal_text(text[:240])
-    header = (
-        f"[tool_ref name={call.name} path={path} sha256={digest} "
-        f"bytes={len(text.encode('utf-8'))} truncated={str(bool(result.truncated)).lower()}]"
-    )
-    return str(Redactor().redact(f"{header}\n{preview}"))
+def tool_result_message(call: ModelToolCall, result: ToolResult, rendered: str) -> str:
+    del call, result
+    return str(Redactor().redact(rendered))
+
+
+def _omit_untrusted_body(content: str) -> str:
+    try:
+        payload = json.loads(content)
+    except json.JSONDecodeError:
+        return content.split("\n", 1)[0]
+    if not isinstance(payload, dict):
+        return content.split("\n", 1)[0]
+    payload["data"] = ""
+    payload["truncated"] = True
+    return json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
 
 
 def compact_run_messages(
@@ -59,14 +62,17 @@ def compact_run_messages(
             insert_at,
             ModelMessage(
                 role="tool",
-                content=f"[tool_ref_summary count={dropped} truncated=true]",
+                content=(
+                    '{"content_hash":"","notice":"dropped untrusted tool results",'
+                    f'"count":{dropped},"vera_content":1}}'
+                ),
             ),
         )
     used = sum(len(message.content.encode("utf-8")) for message in compacted)
     if used <= max_bytes:
         return compacted
     return [
-        message.model_copy(update={"content": message.content.split("\n", 1)[0]})
+        message.model_copy(update={"content": _omit_untrusted_body(message.content)})
         if message.role == "tool"
         else message
         for message in compacted
@@ -93,3 +99,6 @@ class RunContext:
     workspace_write_started: bool = False
     snapshot_created_at: datetime | None = None
     pending_recovery_plan: RecoveryPlan | None = None
+    security_findings: tuple[ContentFinding, ...] = ()
+    security_context_hash: str | None = None
+    findings_truncated: bool = False

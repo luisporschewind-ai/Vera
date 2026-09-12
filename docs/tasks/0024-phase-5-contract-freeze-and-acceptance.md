@@ -3,9 +3,9 @@
 > 供 Cursor 执行：按 `superpowers:executing-plans` 和 `superpowers:verification-before-completion` 实施；人工证据缺失时必须停在 `Ready for manual acceptance`。
 
 **状态：** Planned
-**执行就绪：** 任务 0020–0023 与已接受的提示词投毒安全增量合并后
+**执行就绪：** 任务 0020–0023 与任务 0030 合并后
 **分支：** `phase-5/0024-contract-freeze-acceptance`
-**依赖：** 任务 0020–0023 已合并；[不可信内容、提示词投毒与内容安全](../specs/2026-09-12-untrusted-content-and-prompt-injection-defense.md)已接受并完成阶段五增量
+**依赖：** 任务 0020–0023 与 [任务 0030](0030-untrusted-content-and-prompt-injection.md) 已合并
 **规格：** [阶段五 Core 加固](../specs/2026-09-12-core-security-and-reliability-hardening.md)、[不可信内容、提示词投毒与内容安全](../specs/2026-09-12-untrusted-content-and-prompt-injection-defense.md)
 
 ## 目标
