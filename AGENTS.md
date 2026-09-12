@@ -28,6 +28,7 @@ When these disagree, stop and resolve the conflict in the relevant document befo
 - The first stage covers the Agent loop, model adaptation, context, tools, approvals, workspace boundaries, Diff, verification, checkpoints and rollback, logs, recovery, and evals.
 - Multi-Agent orchestration, complex RAG, vector databases, and a plugin marketplace are outside the first-stage scope.
 - Do not lock in a desktop framework until the Core is stable enough for measured Electron, Wails, or Tauri experiments.
+- Phase 6 cannot be marked Complete from automated tests, Textual Pilot, or snapshots. Task 0029 stops at `Ready for manual acceptance` until the user confirms in writing: `CLI 版本达到预期，可以封存`. Without that confirmation, do not start Phase 7 or add any desktop-shell code.
 
 ## Required workflow
 
@@ -55,4 +56,4 @@ Before declaring completion:
 
 ## Approval boundaries
 
-Get explicit user approval before destructive or difficult-to-recover actions, external publication, remote changes, or expanding task scope. Do not create commits, push, or change Git remotes unless the current request authorizes that action.
+Get explicit user approval before destructive or difficult-to-recover actions, external publication, remote changes, or expanding task scope. Do not create commits, push, or change Git remotes unless the current request authorizes that action. Do not mark Phase 6 complete, start Phase 7, or introduce desktop frameworks without the user's explicit CLI seal confirmation.

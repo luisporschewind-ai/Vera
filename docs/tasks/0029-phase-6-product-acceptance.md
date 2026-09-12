@@ -10,7 +10,9 @@
 
 ## 目标
 
-对阶段六 15 条退出条件逐项形成证据，执行模式一致性、安装包和真实终端走查，在证据齐全后才允许进入阶段七桌面规划。
+对阶段六退出条件逐项形成证据，执行模式一致性、安装包和真实终端走查。自动部分完成后**必须停止在** `Ready for manual acceptance`，等待用户在真实 Terminal.app 和真实工程中体验 Vera CLI。
+
+未经用户确认「CLI 版本达到预期，可以封存」，不得把本任务或阶段六标为 `Done`/`Complete`，不得开始阶段七，不得引入任何桌面端代码。
 
 ## 实施步骤
 
@@ -62,9 +64,15 @@
 - `docs/ROADMAP.md`
 - 本任务文件
 
-逐项映射规格 15 条退出条件。任何误批准、输入丢失、终端损坏、状态误报或关键流程不可用视为 Critical/High，修复后重新走查。普通视觉建议可记录 Medium/Low。
+逐项映射规格退出条件。任何误批准、输入丢失、终端损坏、状态误报或关键流程不可用视为 Critical/High，修复后重新走查。普通视觉建议可记录 Medium/Low。
 
-只有 Terminal.app 人工走查通过、自动矩阵完整通过、没有 Critical/High 时，才能把任务、阶段六和路线图改为 `Done/Complete`，并把下一检查点改为“阶段七桌面框架测量与决策”。否则写 `Ready for manual acceptance`。
+自动矩阵、PTY、Textual Pilot、快照和 wheel smoke **只能**把本任务写成 `Ready for manual acceptance`。它们不能代替用户在真实 Terminal.app 与真实工程中的体验结论，也不能单独把阶段六标为 `Complete`。
+
+人工体验覆盖：输入、对话、工具展示、Diff、审批、错误、恢复、性能和终端兼容。发现的问题继续作为阶段六修正任务处理，重新走查后再等待封存确认。
+
+只有用户明确写出「CLI 版本达到预期，可以封存」，并且 Terminal.app 人工走查通过、自动矩阵完整通过、没有 Critical/High 时，才能把任务、阶段六和路线图改为 `Done/Complete`。即使如此，下一检查点也只是“阶段七桌面框架测量与决策”，不得在确认前引入 Wails、Tauri、Electron 或任何桌面端代码。
+
+缺少上述确认时：保持 `Ready for manual acceptance`，阶段七保持 `Not started`。
 
 ## 验证与提交
 
@@ -79,7 +87,7 @@ UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run python scripts/smoke_installed_wh
 git diff --check
 ```
 
-核对报告没有伪造人工结果或秘密后提交：
+核对报告没有伪造人工结果或秘密后提交。若仍待人工体验，提交信息只记录自动证据，状态保持 `Ready for manual acceptance`：
 
 ```bash
 git commit -m "docs: record phase six CLI product readiness"
@@ -87,7 +95,9 @@ git commit -m "docs: record phase six CLI product readiness"
 
 ## 验收标准
 
-- 15 条退出条件各有真实证据或明确 `Not run/Blocked`。
-- Terminal.app 实际完成主流程，其他终端只按已测结果声明。
+- 退出条件各有真实证据或明确 `Not run/Blocked`；自动通过不等于阶段完成。
+- 任务 0025–0028 完成后，0029 先进入 `Ready for manual acceptance`，等待用户在 Terminal.app 和真实工程中体验。
+- 人工体验中的输入、对话、工具展示、Diff、审批、错误、恢复、性能和终端兼容问题，继续作为阶段六修正任务。
+- 未经「CLI 版本达到预期，可以封存」确认，不得标记阶段六 Complete、不得开始阶段七、不得引入 Wails/Tauri/Electron 或任何桌面端代码。
+- Textual Pilot、快照或自动测试不得代替人工体验结论。
 - 四种入口共享结构化语义，安装 wheel 在仓库外可用。
-- 阶段五/六全部通过前不启动桌面实现；阶段六通过后只进入阶段七规划与测量，不直接锁定框架。

@@ -12,6 +12,9 @@
 3. 新 Slash Command 必须先有结构化 `SessionAction`/结果，再接入 TUI、Plain、JSON；Widget 不拥有业务或权限逻辑。
 4. 会话历史只驻留当前进程，退出即清空；不得顺手增加长期记忆、直接 Shell、插件或桌面端。
 5. 不读取真实 Provider Key，不改用户工程；终端人工验收由用户明确执行并记录。
+6. 自动测试通过不得把阶段六标为 `Complete`。任务 0029 在 0025–0028 完成后只能进入 `Ready for manual acceptance`。
+7. 未经用户确认「CLI 版本达到预期，可以封存」，不得开始阶段七，也不得引入 Wails、Tauri、Electron 或任何桌面端代码。
+8. Textual Pilot、快照和自动测试不能代替 Terminal.app 与真实工程中的人工体验结论。
 
 ## 顺序与完成定义
 
@@ -21,7 +24,7 @@
 | 2 | [0026 路径引用、命令目录与诊断](0026-path-mentions-commands-and-diagnostics.md) | `@path` 与 7 个新增命令共享结构化 Catalog |
 | 3 | [0027 时间线、Diff、审批与错误体验](0027-timeline-diff-approval-and-errors.md) | 重要事实突出、默认焦点安全、错误可行动 |
 | 4 | [0028 终端兼容、可访问性与性能](0028-terminal-compatibility-accessibility-performance.md) | 小终端、无色、CJK、长输出与退出恢复通过 |
-| 5 | [0029 阶段六产品验收](0029-phase-6-product-acceptance.md) | 自动矩阵完成；真实终端走查完成后关闭阶段 |
+| 5 | [0029 阶段六产品验收](0029-phase-6-product-acceptance.md) | 自动矩阵完成后停在 `Ready for manual acceptance`；仅用户确认封存后才关闭阶段 |
 
 ## 每项任务的共同门禁
 
@@ -35,3 +38,5 @@ git diff --check
 ```
 
 阶段六实现与真实终端验收必须分开记录。Cursor 不得用 Textual Pilot 或快照结果代替用户在 Terminal.app 的产品走查。
+
+若自动实现已完成但缺少用户确认「CLI 版本达到预期，可以封存」，只能标记 `Ready for manual acceptance`，不能写成 `Done` 或把阶段六改为 `Complete`。人工体验中发现的输入、对话、工具展示、Diff、审批、错误、恢复、性能和终端兼容问题，继续开阶段六修正任务，不得开始阶段七。
