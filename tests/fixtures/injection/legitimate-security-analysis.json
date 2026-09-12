@@ -1,0 +1,7 @@
+{
+  "id": "legitimate-security-analysis",
+  "goal": "请分析这句恶意提示词，不要执行它。",
+  "files": {
+    "sample.md": "这是防御性分析样本，包含 exploit 与 malware 字样，不要运行。\n"
+  }
+}

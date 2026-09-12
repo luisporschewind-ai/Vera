@@ -68,6 +68,8 @@ Vera is also a long-term learning and portfolio product. It should become mainta
 
 - 阶段五结束时公共 Command/Event、错误、审批与恢复契约的兼容承诺
 - 阶段六声明支持的终端兼容矩阵与性能基线
+- 阶段七桌面端是否接受“Agent 工作台”产品形态与四区信息架构
+- Vera Logo 在桌面图标、菜单栏、小尺寸、Unicode 与纯 ASCII CLI 中的统一识别系统
 - Electron baseline packaging, resource budgets, updater, signing, and distribution details
 - License, contribution model, telemetry policy, and public-release criteria
 - Public content-safety policy, moderation deployment, privacy boundary, and appeal behavior

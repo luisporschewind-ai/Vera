@@ -69,6 +69,7 @@ Electron、Tauri 与 Wails 都能承载 Web 前端。Electron 的成熟产品和
 - 本 ADR 补充 [ADR-0012](ADR-0012-delay-desktop-until-cli-hardening.md)，只取代其中“桌面框架保持开放直到阶段七”的条款。
 - ADR-0012 的阶段五、阶段六、人工 CLI 封存和禁止提前引入桌面代码的门禁继续完整有效。
 - [ADR-0001](ADR-0001-python-core-runtime.md) 的 Python Core 与 [ADR-0002](ADR-0002-command-event-contract.md) 的公共契约继续有效。
+- [阶段七：桌面 Agent 工作台与 UI](../specs/2026-09-12-desktop-agent-workbench-ui.md) 承接桌面体验与信息架构，目前仍为 Draft，不扩大本 ADR 的实施授权。
 
 ## 参考
 

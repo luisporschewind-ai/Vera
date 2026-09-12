@@ -83,3 +83,37 @@ def test_changed_policy_invalidates_pending_approval(tmp_path: Path) -> None:
     assert events[-1].type == "approval.invalidated"
     assert events[-1].payload["reason_code"] == "policy_changed"
     assert (workspace / "hello.txt").read_text(encoding="utf-8") == "old\n"
+
+
+def test_changed_security_context_invalidates_pending_approval(tmp_path: Path) -> None:
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    (workspace / "hello.txt").write_text("old\n", encoding="utf-8")
+    runtime = VeraRuntime(
+        FakeModelAdapter([_proposal()]),
+        ToolRegistry(),
+        tmp_path / "state",
+        installation_id="install",
+    )
+    approval = next(
+        event
+        for event in runtime.handle(
+            StartRun(goal="edit", workspace_root=workspace, model_profile="fake")
+        )
+        if event.type == "approval.required"
+    )
+    context = runtime.runs[approval.run_id]
+    context.security_context_hash = "b" * 64
+    events = tuple(
+        runtime.handle(
+            ResolveApproval(
+                run_id=approval.run_id,
+                approval_id=str(approval.payload["approval_id"]),
+                target_hash=str(approval.payload["target_hash"]),
+                decision="approve",
+            )
+        )
+    )
+    assert events[-1].type == "approval.invalidated"
+    assert events[-1].payload["reason_code"] == "security_context_changed"
+    assert (workspace / "hello.txt").read_text(encoding="utf-8") == "old\n"

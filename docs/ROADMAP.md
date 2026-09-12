@@ -57,14 +57,14 @@
 
 ## 阶段 5——Core 安全、权限与可靠性加固
 
-**状态：** Ready
+**状态：** In progress
 
 - 对阶段四交付执行独立安全、权限、路线和文档审查，关闭阻断项。
 - 在 Swift/Xcode、Python、Node/TypeScript 代表性工程上验证完整 CLI 工作流。
 - 加固文件、命令、审批、凭据、进程、恢复、安装升级和长会话边界。
-- 在任务 0024 冻结契约前完成[不可信内容、提示词投毒与内容安全](specs/2026-09-12-untrusted-content-and-prompt-injection-defense.md)的阶段五安全增量；规格接受后建立独立任务并插入 0023 与 0024 之间。
+- 在任务 0024 冻结契约前完成[任务 0030：不可信内容与提示词投毒防御](tasks/0030-untrusted-content-and-prompt-injection.md)。
 - 形成经真实工程验证的稳定 Core，并冻结后续客户端可依赖的结构化契约。
-- 按[阶段五执行顺序](tasks/phase-5-execution-order.md)实施任务 0020–0024。
+- 按[阶段五执行顺序](tasks/phase-5-execution-order.md)实施任务 0020–0023、0030、0024。
 
 **退出条件：** 阶段五规格的安全、权限、真实工程、稳定性、安装升级和提示词投毒对抗门禁全部通过，没有未关闭的 Critical/High 问题。
 
@@ -87,11 +87,14 @@
 **状态：** Not started
 **入口条件：** 阶段五 Complete，阶段六 Complete，且用户已确认「CLI 版本达到预期，可以封存」。未满足前不得引入 Wails、Tauri、Electron 或任何桌面端代码。
 
+**预先校准：** [阶段七：桌面 Agent 工作台与 UI](specs/2026-09-12-desktop-agent-workbench-ui.md) 当前为 Draft，只收束产品体验、信息架构与后续增量，不代表阶段七已经启动。“Agent 工作台”四区布局仍待用户确认。
+
 - 基于已加固的 Core 契约制作桌面壳原型。
 - 按 [ADR-0013](decisions/ADR-0013-electron-desktop-baseline.md) 使用 Electron 建立首个桌面底版，保持 Python Core 独立并通过结构化 Command/Event 接入。
 - 复用 Core 的来源、风险、审批与策略事实，并在真实 Mac 上验证安全提示和操作确认。
 - 测量安全边界、打包、进程控制、性能、体积和维护成本；Electron 未达到接受门禁时再以 Tauri 进行同契约对照。
 - 通过独立决策确定前端框架、进程传输和发布打包细节后实现桌面工作流。
+- 阶段七按“安全桌面壳 → 工作台骨架 → 证据闭环 → 产品体验 → 私有交付”拆分为五个可独立验收的增量。
 
 **退出条件：** 桌面客户端完成 Core 工作流，不复制 Runtime 逻辑，也不解析 CLI 输出。
 

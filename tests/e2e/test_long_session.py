@@ -81,7 +81,11 @@ def test_long_session_keeps_fact_refs_without_linear_full_text(tmp_path: Path) -
         message.content for message in context.messages
     )
     assert "\x1b" not in "\n".join(message.content for message in context.messages)
-    assert any("[tool_ref" in message.content for message in context.messages)
+    assert any(
+        "vera_content" in message.content and "content_hash" in message.content
+        for message in context.messages
+        if message.role == "tool"
+    )
     assert events[-1].type == "run.completed", events[-1].payload
 
     conversation = ConversationContext(8_000, max_items=24)

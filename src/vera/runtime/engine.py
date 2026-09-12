@@ -1,5 +1,6 @@
 """Bounded discovery loop that stops before any filesystem mutation."""
 
+import json
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import suppress
 from datetime import UTC, datetime
@@ -12,6 +13,18 @@ from pydantic import BaseModel
 
 from vera import __version__
 from vera.config import Limits
+from vera.content.detector import (
+    BaselinePromptInjectionDetector,
+    ContentDetector,
+    DetectionDisposition,
+    SafeContentDetector,
+)
+from vera.content.envelope import (
+    EMPTY_SECURITY_CONTEXT_HASH,
+    build_content_envelope,
+    render_content_for_model,
+)
+from vera.content.trust import source_kind_for_path
 from vera.contracts.approvals import ApprovalRequest
 from vera.contracts.commands import (
     AbandonRun,
@@ -56,6 +69,14 @@ from vera.redaction import Redactor
 from vera.runtime.approval import ApprovalGate, ApprovalKind, ApprovalMismatch
 from vera.runtime.context import RunContext, compact_run_messages, tool_result_message
 from vera.runtime.prompts import COMPACTION_PROMPT, SYSTEM_PROMPT
+from vera.runtime.security import (
+    MAX_SECURITY_FINDINGS,
+    collected_risk_labels,
+    current_security_hash,
+    merge_finding,
+    security_payload,
+    worst_disposition,
+)
 from vera.runtime.state import RunState, RunStateMachine
 from vera.tools.command_policy import CommandDecisionKind, CommandPolicy
 from vera.tools.registry import ToolRegistry
@@ -97,6 +118,7 @@ class VeraRuntime:
         policy_engine: PolicyEngine | None = None,
         retry_policy: RetryPolicy | None = None,
         sleep: Callable[[float], None] = default_sleep,
+        content_detector: ContentDetector | None = None,
     ) -> None:
         self.adapter = adapter
         self.registry = registry
@@ -105,6 +127,9 @@ class VeraRuntime:
         self.installation_id = installation_id or "local"
         self.retry_policy = retry_policy or RetryPolicy(max_attempts=self.limits.max_model_attempts)
         self.sleep = sleep
+        self.content_detector = SafeContentDetector(
+            content_detector or BaselinePromptInjectionDetector()
+        )
         if policy_engine is not None:
             self.policy_engine = policy_engine
         elif command_policy is not None:
@@ -130,6 +155,94 @@ class VeraRuntime:
         identity = workspace_identity(root, self.installation_id)
         return identity, self.policy_engine.policy_hash
 
+    def _security_approval_kwargs(self, context: RunContext) -> dict[str, Any]:
+        return {
+            "security_context_hash": context.security_context_hash or EMPTY_SECURITY_CONTEXT_HASH,
+            "risk_labels": collected_risk_labels(context.security_findings),
+            "risk_sources": tuple(item.envelope for item in context.security_findings),
+        }
+
+    def _prepare_content(
+        self,
+        context: RunContext,
+        text: str,
+        *,
+        source_kind: str | None,
+        origin: str,
+        truncated: bool = False,
+    ) -> tuple[Any, str, list[EventEnvelope]]:
+        envelope = build_content_envelope(
+            text,
+            source_kind=source_kind,
+            origin=origin,
+            truncated=truncated,
+        )
+        detection = self.content_detector.assess(envelope, text)
+        envelope = envelope.model_copy(update={"risk_labels": detection.risk_labels})
+        events: list[EventEnvelope] = []
+        if detection.disposition is not DetectionDisposition.CLEAR:
+            events.extend(self._record_finding(context, envelope, detection))
+        return envelope, render_content_for_model(envelope, text), events
+
+    def _record_finding(
+        self, context: RunContext, envelope: Any, detection: Any
+    ) -> list[EventEnvelope]:
+        if context.findings_truncated:
+            return []
+        merged, added = merge_finding(context.security_findings, envelope, detection)
+        if not added:
+            return []
+        if len(context.security_findings) >= MAX_SECURITY_FINDINGS:
+            context.findings_truncated = True
+            return [
+                self._event(
+                    context,
+                    "security.findings_truncated",
+                    {"limit": MAX_SECURITY_FINDINGS, "dropped": True},
+                )
+            ]
+        context.security_findings = merged
+        context.security_context_hash = current_security_hash(merged)
+        return [
+            self._event(context, "security.content_flagged", security_payload(envelope, detection))
+        ]
+
+    def _seed_context(self, context: RunContext) -> Iterator[EventEnvelope]:
+        command = context.command
+        system = COMPACTION_PROMPT if command.mode == "compact" else SYSTEM_PROMPT
+        context.messages.append(ModelMessage(role="system", content=system))
+        for message in command.conversation:
+            yield from self._append_conversation_message(context, message)
+        envelope, rendered, events = self._prepare_content(
+            context,
+            command.goal,
+            source_kind="user_goal",
+            origin="start_run.goal",
+        )
+        del envelope
+        context.messages.append(ModelMessage(role="user", content=rendered))
+        yield from events
+        context.context_bytes = sum(len(item.content.encode("utf-8")) for item in context.messages)
+
+    def _append_conversation_message(
+        self, context: RunContext, message: ConversationMessage
+    ) -> Iterator[EventEnvelope]:
+        role: Literal["user", "assistant"]
+        if message.role == "summary":
+            source_kind, origin, role = "conversation_summary", "conversation.summary", "assistant"
+        elif message.role == "assistant":
+            source_kind, origin, role = "model_output", "conversation.assistant", "assistant"
+        else:
+            source_kind, origin, role = "user_goal", "conversation.user", "user"
+        _envelope, rendered, events = self._prepare_content(
+            context,
+            message.content,
+            source_kind=source_kind,
+            origin=origin,
+        )
+        context.messages.append(ModelMessage(role=role, content=rendered))
+        yield from events
+
     def _approval_payload(
         self, request: ApprovalRequest, context: RunContext | None = None
     ) -> dict[str, Any]:
@@ -144,6 +257,9 @@ class VeraRuntime:
             "workspace_identity": request.workspace_identity,
             "policy_hash": request.policy_hash,
             "fact_hash": request.fact_hash,
+            "security_context_hash": request.security_context_hash,
+            "risk_labels": list(request.risk_labels),
+            "risk_sources": [item.model_dump(mode="json") for item in request.risk_sources],
         }
         if (
             context is not None
@@ -273,6 +389,8 @@ class VeraRuntime:
             verification_in_flight=verification_in_flight,
             workspace_write_started=context.workspace_write_started,
             recovery_plan=context.pending_recovery_plan,
+            security_findings=context.security_findings,
+            security_context_hash=context.security_context_hash,
             created_at=created_at,
             updated_at=now,
             vera_version=__version__,
@@ -387,6 +505,8 @@ class VeraRuntime:
             Literal["low", "medium", "high"],
             proposal.risk if proposal.risk in {"low", "medium", "high"} else "medium",
         )
+        if context.security_findings:
+            risk = "high"
         request = context.approval_gate.require(
             ApprovalKind.CHANGESET,
             change_set.changeset_id,
@@ -396,6 +516,7 @@ class VeraRuntime:
             workspace_identity=self._policy_binding(context.command.workspace_root)[0],
             policy_hash=self.policy_engine.policy_hash,
             fact_hash=built.facts_digest(),
+            **self._security_approval_kwargs(context),
         )
         yield self._stable_event(
             context,
@@ -414,7 +535,11 @@ class VeraRuntime:
         while context.verification_index < len(built.change_set.verification):
             index = context.verification_index
             command = built.change_set.verification[index]
-            decision = policy.classify(command)
+            decision = policy.classify(
+                command,
+                risk_labels=collected_risk_labels(context.security_findings),
+                detector_disposition=worst_disposition(context.security_findings),
+            )
             if decision.kind is CommandDecisionKind.FORBIDDEN:
                 context.verification_failed = True
                 context.verification_index += 1
@@ -432,9 +557,10 @@ class VeraRuntime:
                     f"verification_{index}",
                     built.change_set.content_hash,
                     "执行验证命令",
-                    "medium",
+                    "high" if context.security_findings else "medium",
                     workspace_identity=self._policy_binding(context.command.workspace_root)[0],
                     policy_hash=self.policy_engine.policy_hash,
+                    **self._security_approval_kwargs(context),
                 )
                 payload = self._approval_payload(request)
                 payload.update({"argv": list(command.argv), "cwd": command.cwd})
@@ -547,6 +673,20 @@ class VeraRuntime:
                     "approval_id": request.approval_id,
                     "run_id": context.run_id,
                     "reason_code": "workspace_identity_changed",
+                },
+                RecoveryStage.AWAITING_CHANGESET_APPROVAL,
+            )
+            return
+        current_security = context.security_context_hash or EMPTY_SECURITY_CONTEXT_HASH
+        request_security = request.security_context_hash or EMPTY_SECURITY_CONTEXT_HASH
+        if request_security != current_security:
+            yield self._stable_event(
+                context,
+                "approval.invalidated",
+                {
+                    "approval_id": request.approval_id,
+                    "run_id": context.run_id,
+                    "reason_code": "security_context_changed",
                 },
                 RecoveryStage.AWAITING_CHANGESET_APPROVAL,
             )
@@ -731,15 +871,37 @@ class VeraRuntime:
             yield from self._propose(context, call)
             return
         result = self.registry.execute(call.name, call.arguments)
+        origin = call.name
+        source_kind = "tool_output"
+        if isinstance(call.arguments, dict) and call.arguments.get("path") is not None:
+            relative = str(call.arguments.get("path"))
+            origin = f"{call.name}:{relative}"
+            if call.name == "read_file":
+                source_kind = source_kind_for_path(relative)
+        if result.content is None:
+            text = ""
+        else:
+            text = json.dumps(result.content, ensure_ascii=False, sort_keys=True)
+        envelope, rendered, events = self._prepare_content(
+            context,
+            text,
+            source_kind=source_kind,
+            origin=origin,
+            truncated=bool(result.truncated),
+        )
+        yield from events
         payload = {
             "name": call.name,
             "call_id": call.call_id,
             "ok": result.ok,
             "truncated": result.truncated,
             "error_code": result.error_code,
+            "source_kind": envelope.source_kind,
+            "trust_level": envelope.trust_level.value,
+            "content_hash": envelope.content_hash,
         }
         yield self._event(context, "tool.completed", payload)
-        tool_text = tool_result_message(call, result)
+        tool_text = tool_result_message(call, result, rendered)
         context.messages.append(
             ModelMessage(role="tool", content=tool_text, tool_call_id=call.call_id)
         )
@@ -873,6 +1035,14 @@ class VeraRuntime:
                     tool_calls=turn.tool_calls,
                 )
             )
+            if turn.assistant_text:
+                _envelope, _rendered, flagged = self._prepare_content(
+                    context,
+                    turn.assistant_text,
+                    source_kind="model_output",
+                    origin="model.assistant",
+                )
+                yield from flagged
             if not turn.tool_calls:
                 text = (turn.assistant_text or "").strip()
                 if not text:
@@ -907,24 +1077,18 @@ class VeraRuntime:
                 if context.tool_calls > self.limits.max_tool_calls:
                     yield from self._fail(context, "max_tool_calls")
                     return
+                encoded = json.dumps(call.arguments, ensure_ascii=False, sort_keys=True)
+                _envelope, _rendered, flagged = self._prepare_content(
+                    context,
+                    encoded,
+                    source_kind="model_output",
+                    origin=f"model.tool_call:{call.name}",
+                )
+                yield from flagged
                 yield from self._execute_tool(context, call)
                 if context.machine.state in {RunState.AWAITING_APPROVAL, RunState.FAILED}:
                     return
             context.machine.transition(RunState.DISCOVERING)
-
-    def _conversation_model_message(self, message: ConversationMessage) -> ModelMessage:
-        if message.role == "summary":
-            return ModelMessage(role="assistant", content=f"[会话摘要]\n{message.content}")
-        return ModelMessage(role=message.role, content=message.content)
-
-    def _start_messages(self, command: StartRun) -> list[ModelMessage]:
-        system = COMPACTION_PROMPT if command.mode == "compact" else SYSTEM_PROMPT
-        messages = [ModelMessage(role="system", content=system)]
-        messages.extend(
-            self._conversation_model_message(message) for message in command.conversation
-        )
-        messages.append(ModelMessage(role="user", content=command.goal))
-        return messages
 
     def _compact(self, context: RunContext) -> Iterator[RuntimeOutput]:
         request = ModelRequest(
@@ -949,6 +1113,13 @@ class VeraRuntime:
             yield from self._fail(context, "empty_model_response")
             return
         context.machine.transition(RunState.COMPLETED)
+        _envelope, _rendered, flagged = self._prepare_content(
+            context,
+            text,
+            source_kind="conversation_summary",
+            origin="conversation.compacted",
+        )
+        yield from flagged
         yield self._event(context, "conversation.compacted", {"summary": text})
         yield self._event(
             context,
@@ -1061,13 +1232,17 @@ class VeraRuntime:
             return
         run_id = f"run_{uuid4().hex}"
         kind = "compaction" if command.mode == "compact" else "task"
+        goal_envelope = build_content_envelope(
+            command.goal, source_kind="user_goal", origin="start_run.goal"
+        )
         context = RunContext(
             run_id=run_id,
             command=command,
             machine=RunStateMachine(),
             journal=EventJournal(self.state_dir, run_id, Redactor([])),
-            messages=self._start_messages(command),
+            messages=[],
             approval_gate=ApprovalGate(run_id),
+            security_context_hash=EMPTY_SECURITY_CONTEXT_HASH,
         )
         self.runs[run_id] = context
         context.machine.transition(RunState.DISCOVERING)
@@ -1076,13 +1251,15 @@ class VeraRuntime:
             "run.started",
             {
                 "run_id": run_id,
-                "goal": command.goal,
+                "goal_hash": goal_envelope.content_hash,
+                "goal_bytes": goal_envelope.byte_count,
                 "workspace_root": str(command.workspace_root),
                 "model_profile": command.model_profile,
                 "kind": kind,
             },
             RecoveryStage.STARTED,
         )
+        yield from self._seed_context(context)
         if command.mode == "compact":
             yield from self._compact(context)
             return
@@ -1339,6 +1516,7 @@ class VeraRuntime:
                 "high",
                 workspace_identity=self._policy_binding(context.command.workspace_root)[0],
                 policy_hash=self.policy_engine.policy_hash,
+                **self._security_approval_kwargs(context),
             )
         else:
             context.pending_recovery_plan = current

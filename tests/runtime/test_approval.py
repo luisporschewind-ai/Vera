@@ -64,6 +64,9 @@ def test_legacy_approval_request_defaults_missing_fact_hash() -> None:
         }
     )
     assert request.fact_hash is None
+    assert request.security_context_hash is None
+    assert request.risk_labels == ()
+    assert request.risk_sources == ()
     assert request.schema_version == 1
 
 
@@ -78,6 +81,26 @@ def test_require_stores_fact_hash() -> None:
         fact_hash="f" * 64,
     )
     assert request.fact_hash == "f" * 64
+
+
+def test_require_stores_security_context() -> None:
+    from vera.content.envelope import build_content_envelope
+
+    envelope = build_content_envelope("x", source_kind="tool_output", origin="read_file:notes.md")
+    gate = ApprovalGate(run_id="run_1")
+    request = gate.require(
+        ApprovalKind.CHANGESET,
+        "cs_1",
+        "hash",
+        "diff",
+        "high",
+        security_context_hash="a" * 64,
+        risk_labels=("instruction_override",),
+        risk_sources=(envelope,),
+    )
+    assert request.security_context_hash == "a" * 64
+    assert request.risk_labels == ("instruction_override",)
+    assert request.risk_sources == (envelope,)
     request = ApprovalRequest(
         approval_id="approval_1",
         run_id="run_1",

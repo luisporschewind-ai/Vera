@@ -7,6 +7,7 @@ from vera.persistence.journal import EventJournal
 from vera.recovery.models import RecoverySnapshot
 from vera.runtime.approval import ApprovalGate
 from vera.runtime.context import RunContext
+from vera.runtime.security import current_security_hash
 from vera.runtime.state import RunState, RunStateMachine
 from vera.workspace.checkpoint import CheckpointStore
 
@@ -81,4 +82,6 @@ class RecoveryHydrator:
             workspace_write_started=snapshot.workspace_write_started,
             snapshot_created_at=snapshot.created_at,
             pending_recovery_plan=snapshot.recovery_plan,
+            security_findings=snapshot.security_findings,
+            security_context_hash=current_security_hash(snapshot.security_findings),
         )

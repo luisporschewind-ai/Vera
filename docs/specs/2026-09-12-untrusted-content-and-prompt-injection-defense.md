@@ -1,7 +1,8 @@
 # Vera 不可信内容、提示词投毒与内容安全
 
-**状态：** Draft
+**状态：** Accepted
 **日期：** 2026-09-12
+**接受：** 2026-09-12 用户确认本规格
 
 ## 背景
 
@@ -208,4 +209,6 @@ PolicyEngine（唯一动作策略权威）
 - [阶段五 Core 安全、权限与可靠性加固](2026-09-12-core-security-and-reliability-hardening.md)
 - [ADR-0004：进程内会话上下文与状态边界](../decisions/ADR-0004-ephemeral-conversation-context.md)
 - [ADR-0007：统一 PolicyEngine 与策略指纹](../decisions/ADR-0007-unified-policy-engine.md)
+- [ADR-0015：不可信内容信任边界与提示词投毒分层防御](../decisions/ADR-0015-untrusted-content-trust-boundary.md)
+- [任务 0030：不可信内容与提示词投毒防御](../tasks/0030-untrusted-content-and-prompt-injection.md)
 - [任务 0024：契约冻结与阶段五验收](../tasks/0024-phase-5-contract-freeze-and-acceptance.md)

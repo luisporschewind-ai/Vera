@@ -9,7 +9,11 @@ from vera.config import RunSummary
 from vera.contracts.events import EventEnvelope
 from vera.persistence.errors import JournalCorrupt, StateVersionError
 from vera.persistence.journal import EventJournal
-from vera.persistence.recovery_snapshot import is_safe_run_id
+from vera.persistence.recovery_snapshot import (
+    RecoverySnapshotError,
+    RecoverySnapshotStore,
+    is_safe_run_id,
+)
 from vera.persistence.run_manifest import RunManifestStore
 
 
@@ -76,7 +80,7 @@ class RunStore:
             started = next((event for event in events if event.type == "run.started"), events[0])
             if not include_internal and started.payload.get("kind") == "compaction":
                 continue
-            goal = str(started.payload.get("goal", ""))
+            goal = self._goal_summary(run_dir.name, started)
             workspace = Path(str(started.payload.get("workspace_root", ".")))
             terminal_event = next(
                 (
@@ -102,6 +106,15 @@ class RunStore:
             )
         summaries.sort(key=lambda item: item.last_event_at, reverse=True)
         return tuple(summaries)
+
+    def _goal_summary(self, run_id: str, started: EventEnvelope) -> str:
+        goal = started.payload.get("goal")
+        if isinstance(goal, str) and goal:
+            return goal
+        try:
+            return RecoverySnapshotStore(self.state_dir).load(run_id).command.goal
+        except (RecoverySnapshotError, OSError, ValueError):
+            return str(started.payload.get("goal_hash") or "")
 
     def iter_run_ids(self) -> tuple[str, ...]:
         runs_dir = self.state_dir / "runs"
