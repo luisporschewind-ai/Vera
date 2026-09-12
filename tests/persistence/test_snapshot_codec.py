@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -46,3 +47,52 @@ def test_snapshot_codec_rejects_missing_version() -> None:
     with pytest.raises(StateVersionError) as caught:
         SnapshotCodec().decode(b'{"run_id":"run_1"}')
     assert caught.value.code == "missing_version"
+    assert "保留原文件" in caught.value.advice
+
+
+def test_snapshot_codec_rejects_missing_and_dangerous_fields() -> None:
+    snapshot = _snapshot()
+    payload = json.loads(SnapshotCodec().encode(snapshot).decode("utf-8"))
+    del payload["run_id"]
+    with pytest.raises(StateVersionError) as missing:
+        SnapshotCodec().decode(json.dumps(payload))
+    assert missing.value.code == "missing_field"
+
+    payload = json.loads(SnapshotCodec().encode(snapshot).decode("utf-8"))
+    payload["__proto__"] = {"admin": True}
+    with pytest.raises(StateVersionError) as extra:
+        SnapshotCodec().decode(json.dumps(payload))
+    assert extra.value.code == "unexpected_field"
+
+
+def test_snapshot_codec_rejects_checksum_mismatch() -> None:
+    snapshot = _snapshot()
+    payload = json.loads(SnapshotCodec().encode(snapshot).decode("utf-8"))
+    payload["workspace_identity"] = "b" * 64
+    decoded = SnapshotCodec().decode(json.dumps(payload))
+    assert decoded.workspace_identity == "b" * 64
+    payload["built_changeset"] = {
+        "change_set": {
+            "schema_version": 1,
+            "changeset_id": "cs_1",
+            "run_id": "run_1",
+            "summary": "edit",
+            "files": [
+                {
+                    "schema_version": 1,
+                    "operation": "update",
+                    "path": "a.py",
+                    "before_hash": "0" * 64,
+                    "after_hash": "1" * 64,
+                    "unified_diff": "@@\n",
+                }
+            ],
+            "verification": [],
+            "content_hash": "c" * 64,
+        },
+        "intended_content_b64": {"a.py": "YWZ0ZXI="},
+        "path_facts": {},
+    }
+    with pytest.raises(StateVersionError) as caught:
+        SnapshotCodec().decode(json.dumps(payload))
+    assert caught.value.code == "checksum_mismatch"

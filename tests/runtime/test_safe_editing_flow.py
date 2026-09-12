@@ -477,3 +477,63 @@ def test_reject_and_cancel_do_not_checkpoint_or_write(tmp_path: Path) -> None:
     assert cancelled[-1].type == "run.cancelled"
     assert not any(event.type == "checkpoint.created" for event in cancelled)
     assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "old\n"
+
+
+def test_apply_disk_error_never_emits_completed(tmp_path: Path) -> None:
+    import errno
+
+    class EnospcWriter:
+        def replace(self, path: Path, content: bytes, mode: int | None = None) -> None:
+            del path, content, mode
+            raise OSError(errno.ENOSPC, "No space left on device")
+
+        def delete(self, path: Path) -> None:
+            del path
+            raise OSError(errno.ENOSPC, "No space left on device")
+
+    (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
+    adapter = FakeModelAdapter(
+        [
+            ModelTurn(
+                finish_reason="tool_calls",
+                tool_calls=(
+                    ModelToolCall(
+                        call_id="1",
+                        name="propose_changeset",
+                        arguments={
+                            "summary": "edit",
+                            "changes": [
+                                {
+                                    "operation": "update",
+                                    "path": "hello.txt",
+                                    "after_content": "new\n",
+                                }
+                            ],
+                        },
+                    ),
+                ),
+            )
+        ]
+    )
+    runtime = VeraRuntime(
+        adapter,
+        ToolRegistry(),
+        tmp_path / "state",
+        file_writer=EnospcWriter(),
+    )
+    start = list(
+        runtime.handle(StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake"))
+    )
+    approval = next(event for event in start if event.type == "approval.required")
+    events = list(runtime.handle(resolve(approval, "approve")))
+    assert not any(event.type == "run.completed" for event in events)
+    failed = next(event for event in events if event.type == "run.failed")
+    assert failed.payload["reason"] == "no_space"
+    apply_event = next(
+        event
+        for event in events
+        if event.type in {"checkpoint.restore_failed", "checkpoint.restored"}
+    )
+    assert apply_event.payload["written"] is False
+    assert apply_event.payload["next_step"] == "restore"
+    assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "old\n"

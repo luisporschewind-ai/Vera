@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from vera.contracts.commands import StartRun
+from vera.contracts.commands import CancelRun, StartRun
 from vera.contracts.conversation import ConversationMessage
 from vera.models.base import FakeModelAdapter, ModelToolCall, ModelTurn
 from vera.runtime.engine import VeraRuntime
@@ -96,3 +96,34 @@ def test_agent_run_started_kind_is_task(tmp_path: Path) -> None:
         )
     )
     assert next(event for event in events if event.type == "run.started").payload["kind"] == "task"
+
+
+def test_cancel_after_compaction_replays_without_second_journal_event(tmp_path: Path) -> None:
+    from vera.persistence.journal import EventJournal
+    from vera.redaction import Redactor
+
+    adapter = FakeModelAdapter(
+        [ModelTurn(assistant_text="保留决策：使用 Python。", finish_reason="stop")]
+    )
+    runtime = VeraRuntime(adapter, ToolRegistry(), tmp_path / "state")
+    started = list(
+        runtime.handle(
+            StartRun(
+                goal="保留架构决策",
+                workspace_root=tmp_path,
+                model_profile="fake",
+                mode="compact",
+                conversation=(
+                    ConversationMessage(role="user", content="Core 用什么语言？"),
+                    ConversationMessage(role="assistant", content="使用 Python。"),
+                ),
+            )
+        )
+    )
+    run_id = started[0].run_id
+    first = list(runtime.handle(CancelRun(run_id=run_id)))
+    second = list(runtime.handle(CancelRun(run_id=run_id)))
+    journal = EventJournal(tmp_path / "state", run_id, Redactor([]))
+    assert sum(1 for event in journal.read_all() if event.type == "run.cancelled") == 1
+    assert first[-1].type == "run.cancelled"
+    assert second[-1].type == "run.cancelled"

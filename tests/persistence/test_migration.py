@@ -58,7 +58,12 @@ def test_failed_replace_keeps_legacy_readable(tmp_path: Path) -> None:
 
     result = service.apply(plan, replace=fail_replace)
     assert result.status == "failed"
+    assert result.reason_code == "migration_apply_failed"
+    assert result.advice is not None
+    assert "不要删除" in result.advice
     assert events_path.read_bytes() == before
+    assert events_path.exists()
     assert RunStore(legacy_state).format_status("run_legacy") is RunFormatStatus.LEGACY
     backup = events_path.parent / "migration-backup" / plan.migration_id / "events.jsonl"
     assert backup.read_bytes() == before
+    assert not (legacy_state / "runs" / "run_legacy" / "manifest.json").exists()

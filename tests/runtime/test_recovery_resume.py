@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from vera.contracts.commands import ResolveApproval, ResumeRun, StartRun
+from vera.contracts.commands import CancelRun, ResolveApproval, ResumeRun, RollbackRun, StartRun
 from vera.contracts.recovery import RecoveryStage
 from vera.models.base import FakeModelAdapter, ModelToolCall, ModelTurn
 from vera.persistence.journal import EventJournal
@@ -14,6 +14,7 @@ from vera.redaction import Redactor
 from vera.runtime.engine import VeraRuntime
 from vera.tools.command_policy import CommandPolicy
 from vera.tools.registry import ToolRegistry
+from vera.workspace.changeset import sha256_bytes
 
 
 def _proposal(verification: list[dict[str, object]] | None = None) -> ModelTurn:
@@ -249,7 +250,12 @@ def test_resume_partial_restore_requires_approval(tmp_path: Path) -> None:
     assert follow_up[-1].type == "run.completed"
     assert fixture.before_file.read_bytes() == b"before-a\n"
     assert fixture.after_file.read_bytes() == b"before-b\n"
-    assert tuple(runtime.handle(resolve(pending))) == ()
+    replay = tuple(runtime.handle(resolve(pending)))
+    assert any(event.type == "recovery.restored" for event in replay)
+    assert fixture.before_file.read_bytes() == b"before-a\n"
+    assert fixture.after_file.read_bytes() == b"before-b\n"
+    journal = EventJournal(fixture.state_dir, "run_1", Redactor([]))
+    assert sum(1 for event in journal.read_all() if event.type == "recovery.restored") == 1
 
 
 def test_reject_partial_restore_does_not_write(tmp_path: Path) -> None:
@@ -303,3 +309,97 @@ def test_wrong_recovery_hash_is_rejected(tmp_path: Path) -> None:
     assert events[-1].type == "approval.expired"
     assert events[-1].payload["expiry_reason"] == "target_hash_changed"
     assert fixture.after_file.read_bytes() == b"after-b\n"
+
+
+def test_resume_replay_does_not_append_or_reapply(tmp_path: Path) -> None:
+    (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
+    first, store = make_runtime(tmp_path, [_proposal()])
+    approval = next(
+        event
+        for event in first.handle(
+            StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake")
+        )
+        if event.type == "approval.required"
+    )
+    second, _store = make_runtime(tmp_path, [], snapshot_store=store)
+    tuple(second.handle(ResumeRun(run_id=approval.run_id)))
+    journal = EventJournal(tmp_path / "state", approval.run_id, Redactor([]))
+    before = [event.event_id for event in journal.read_all()]
+    replay = tuple(second.handle(ResumeRun(run_id=approval.run_id)))
+    after = EventJournal(tmp_path / "state", approval.run_id, Redactor([]))
+    assert [event.event_id for event in after.read_all()] == before
+    assert not any(event.type == "changeset.applied" for event in replay)
+    assert after.read_all()[-1].type != "changeset.applied"
+    assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "old\n"
+
+
+def test_resolve_approval_replay_does_not_repeat_side_effects(tmp_path: Path) -> None:
+    (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
+    runtime, _store = make_runtime(tmp_path, [_proposal()])
+    approval = next(
+        event
+        for event in runtime.handle(
+            StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake")
+        )
+        if event.type == "approval.required"
+    )
+    command = resolve(approval)
+    first = tuple(runtime.handle(command))
+    digest = sha256_bytes((tmp_path / "hello.txt").read_bytes())
+    journal = EventJournal(tmp_path / "state", approval.run_id, Redactor([]))
+    before_ids = [event.event_id for event in journal.read_all()]
+    applied = sum(1 for event in journal.read_all() if event.type == "changeset.applied")
+    replay = tuple(runtime.handle(command))
+    after = EventJournal(tmp_path / "state", approval.run_id, Redactor([]))
+    assert [event.event_id for event in after.read_all()] == before_ids
+    assert sum(1 for event in after.read_all() if event.type == "changeset.applied") == applied
+    assert sha256_bytes((tmp_path / "hello.txt").read_bytes()) == digest
+    assert any(event.type == "changeset.applied" for event in first)
+    assert any(event.type == "changeset.applied" for event in replay)
+
+
+def test_cancel_replay_does_not_append_second_cancel(tmp_path: Path) -> None:
+    (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
+    runtime, _store = make_runtime(tmp_path, [_proposal()])
+    approval = next(
+        event
+        for event in runtime.handle(
+            StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake")
+        )
+        if event.type == "approval.required"
+    )
+    first = tuple(runtime.handle(CancelRun(run_id=approval.run_id)))
+    journal = EventJournal(tmp_path / "state", approval.run_id, Redactor([]))
+    before = [event.event_id for event in journal.read_all()]
+    replay = tuple(runtime.handle(CancelRun(run_id=approval.run_id)))
+    after = EventJournal(tmp_path / "state", approval.run_id, Redactor([]))
+    assert [event.event_id for event in after.read_all()] == before
+    assert sum(1 for event in after.read_all() if event.type == "run.cancelled") == 1
+    assert first[-1].type == "run.cancelled"
+    assert replay[-1].type == "run.cancelled"
+    assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "old\n"
+
+
+def test_rollback_replay_does_not_rewrite_files(tmp_path: Path) -> None:
+    (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
+    runtime, _store = make_runtime(tmp_path, [_proposal()])
+    approval = next(
+        event
+        for event in runtime.handle(
+            StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake")
+        )
+        if event.type == "approval.required"
+    )
+    tuple(runtime.handle(resolve(approval)))
+    first = tuple(runtime.handle(RollbackRun(run_id=approval.run_id)))
+    digest = sha256_bytes((tmp_path / "hello.txt").read_bytes())
+    journal = EventJournal(tmp_path / "state", approval.run_id, Redactor([]))
+    before = [event.event_id for event in journal.read_all()]
+    replay = tuple(runtime.handle(RollbackRun(run_id=approval.run_id)))
+    after = EventJournal(tmp_path / "state", approval.run_id, Redactor([]))
+    assert [event.event_id for event in after.read_all()] == before
+    assert sha256_bytes((tmp_path / "hello.txt").read_bytes()) == digest
+    assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "old\n"
+    assert first[-1].type == "rollback.completed"
+    assert replay[-1].type == "rollback.completed"
+    assert sum(1 for event in after.read_all() if event.type == "rollback.completed") == 1

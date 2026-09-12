@@ -175,3 +175,18 @@ def test_missing_checkpoint_is_manual(tmp_path: Path) -> None:
     report = RecoveryClassifier().classify(snapshot, evidence, checkpoint_available=False)
     assert report.classification is RecoveryClassification.MANUAL_REQUIRED
     assert report.reason_code == "checkpoint_missing"
+
+
+def test_rollback_in_flight_is_manual(tmp_path: Path) -> None:
+    evidence = _evidence(FileRecoveryState.AFTER)
+    snapshot = make_snapshot(
+        tmp_path,
+        files=(("app0.py", "update", b"before\n", b"after\n"),),
+        stage=RecoveryStage.VERIFYING,
+        pending=False,
+        checkpoint_id="checkpoint_1",
+        workspace_write_started=True,
+    ).model_copy(update={"rollback_in_flight": True})
+    report = RecoveryClassifier().classify(snapshot, evidence, checkpoint_available=True)
+    assert report.classification is RecoveryClassification.MANUAL_REQUIRED
+    assert report.reason_code == "rollback_in_flight"

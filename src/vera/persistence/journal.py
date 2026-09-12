@@ -8,8 +8,9 @@ from pathlib import Path
 from uuid import uuid4
 
 from vera.contracts.codec import ContractCodec
+from vera.contracts.errors import classify_os_error
 from vera.contracts.events import EventEnvelope
-from vera.persistence.errors import JournalCorrupt, StateVersionError
+from vera.persistence.errors import JournalCorrupt, PersistenceFault, StateVersionError
 from vera.persistence.journal_codec import JournalCodec
 from vera.persistence.run_manifest import RunManifest, RunManifestStore
 from vera.redaction import Redactor
@@ -65,25 +66,47 @@ class EventJournal:
     ) -> list[EventEnvelope]:
         """Load and validate an existing journal without touching the filesystem."""
         reader = codec or JournalCodec(ContractCodec())
+        try:
+            raw = path.read_bytes()
+        except OSError as exc:
+            raise PersistenceFault(classify_os_error(exc), str(exc)) from exc
+        if not raw:
+            return []
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise JournalCorrupt(
+                "invalid encoding",
+                code="invalid_encoding",
+            ) from exc
+        complete_lines = text.split("\n")[:-1]
         events: list[EventEnvelope] = []
-        with path.open("r", encoding="utf-8") as handle:
-            for line_number, line in enumerate(handle, start=1):
-                if not line.strip():
-                    continue
-                try:
-                    event = reader.decode_line(
-                        line,
-                        run_id,
-                        len(events) + 1,
-                        journal_format_version=journal_format_version,
-                    )
-                except StateVersionError:
-                    raise
-                except JournalCorrupt:
-                    raise
-                except Exception as exc:
-                    raise JournalCorrupt(f"invalid event at line {line_number}") from exc
-                events.append(event)
+        for line_number, line in enumerate(complete_lines, start=1):
+            if not line.strip():
+                continue
+            try:
+                event = reader.decode_line(
+                    line,
+                    run_id,
+                    len(events) + 1,
+                    journal_format_version=journal_format_version,
+                )
+            except StateVersionError:
+                raise
+            except JournalCorrupt as exc:
+                raise JournalCorrupt(
+                    f"invalid event at line {line_number}",
+                    code=exc.code,
+                    advice=exc.advice,
+                    line=line_number,
+                ) from exc
+            except Exception as exc:
+                raise JournalCorrupt(
+                    f"invalid event at line {line_number}",
+                    code="mid_file_corrupt",
+                    line=line_number,
+                ) from exc
+            events.append(event)
         return events
 
     def append(self, event_type: str, payload: dict[str, object]) -> EventEnvelope:
@@ -101,10 +124,13 @@ class EventJournal:
             payload=self.redactor.redact(payload),
         )
         serialized = ContractCodec().encode_event(event).decode("utf-8") + "\n"
-        with self.path.open("a", encoding="utf-8") as handle:
-            handle.write(serialized)
-            handle.flush()
-            os.fsync(handle.fileno())
+        try:
+            with self.path.open("a", encoding="utf-8") as handle:
+                handle.write(serialized)
+                handle.flush()
+                os.fsync(handle.fileno())
+        except OSError as exc:
+            raise PersistenceFault(classify_os_error(exc), str(exc)) from exc
         self._events.append(event)
         return event
 

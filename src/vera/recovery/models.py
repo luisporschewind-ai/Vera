@@ -97,6 +97,7 @@ class RecoverySnapshot(FrozenPrivateModel):
     verification_failed: bool = False
     verification_in_flight: bool = False
     workspace_write_started: bool = False
+    rollback_in_flight: bool = False
     recovery_plan: RecoveryPlan | None = None
     created_at: datetime
     updated_at: datetime

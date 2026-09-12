@@ -9,10 +9,17 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from vera.persistence.errors import StateVersionError
+from vera.contracts.errors import CoreErrorCode, classify_os_error
+from vera.persistence.decode import classify_validation_error, inspect_payload, parse_json_object
+from vera.persistence.errors import PersistenceFault, StateVersionError
 from vera.persistence.recovery_snapshot import is_safe_run_id
+
+_MANIFEST_ALLOWED = frozenset(
+    {"manifest_version", "journal_format_version", "run_id", "created_at"}
+)
+_MANIFEST_REQUIRED = frozenset({"manifest_version", "run_id"})
 
 
 class RunManifest(BaseModel):
@@ -49,22 +56,29 @@ class RunManifestStore:
         if not path.is_file():
             raise StateVersionError("missing_manifest")
         try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as exc:
-            raise StateVersionError("invalid_manifest") from exc
-        if not isinstance(payload, dict) or "manifest_version" not in payload:
-            raise StateVersionError("missing_version")
-        version = payload["manifest_version"]
-        if not isinstance(version, int) or isinstance(version, bool):
-            raise StateVersionError("invalid_manifest")
-        if version != 1:
-            raise StateVersionError("unsupported_version", version)
+            payload = parse_json_object(path.read_bytes())
+            version = inspect_payload(
+                payload,
+                allowed_keys=_MANIFEST_ALLOWED,
+                required_keys=_MANIFEST_REQUIRED,
+                version_key="manifest_version",
+                supported_versions=frozenset({1}),
+            )
+        except PersistenceFault as exc:
+            raise StateVersionError(exc.code, exc.version) from exc
+        except OSError as exc:
+            raise StateVersionError(classify_os_error(exc)) from exc
         try:
             manifest = RunManifest.model_validate(payload)
+        except ValidationError as exc:
+            code = classify_validation_error(exc)
+            if code == "invalid_record":
+                code = "invalid_manifest"
+            raise StateVersionError(code, version) from exc
         except Exception as exc:
             raise StateVersionError("invalid_manifest", version) from exc
         if manifest.run_id != run_id:
-            raise StateVersionError("manifest_run_id_mismatch", version)
+            raise StateVersionError(CoreErrorCode.CHECKSUM_MISMATCH.value, version)
         if manifest.journal_format_version != 1:
             raise StateVersionError("unsupported_version", manifest.journal_format_version)
         return manifest
@@ -90,6 +104,9 @@ class RunManifestStore:
             os.chmod(temporary, 0o600)
             self._replace(temporary, target)
             os.chmod(target, 0o600)
+        except OSError as exc:
+            temporary.unlink(missing_ok=True)
+            raise PersistenceFault(classify_os_error(exc), str(exc)) from exc
         except Exception:
             temporary.unlink(missing_ok=True)
             raise

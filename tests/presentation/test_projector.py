@@ -109,3 +109,36 @@ def test_assistant_message_replaces_stream_body() -> None:
     assert isinstance(mutations[0], UpdateBlock)
     assert mutations[0].block.body == "final text"
     assert mutations[0].block.incomplete is False
+
+
+def test_projector_bounds_large_output_and_keeps_diff_approval() -> None:
+    projector = TimelineProjector(max_body_bytes=64, max_blocks=8)
+    huge = "line\n" * 10_000
+    projector.apply(
+        event(
+            "changeset.proposed",
+            payload={
+                "files": [{"path": "App.swift", "unified_diff": huge}],
+            },
+        )
+    )
+    projector.apply(
+        event("approval.required", sequence=2, payload={"approval_id": "a1", "risk": "low"})
+    )
+    projector.apply(event("run.failed", sequence=3, payload={"reason": "model_error"}))
+    for index in range(20):
+        projector.apply(
+            event(
+                "tool.completed",
+                sequence=4 + index,
+                payload={"name": "read_file", "result": huge, "ok": True},
+            )
+        )
+    kinds = [block.kind for block in projector.blocks()]
+    bodies = [block.body for block in projector.blocks()]
+    assert BlockKind.DIFF in kinds
+    assert BlockKind.APPROVAL in kinds
+    assert BlockKind.ERROR in kinds
+    assert all(len(body.encode("utf-8")) <= 64 for body in bodies)
+    assert any(block.truncated for block in projector.blocks())
+    assert len(projector.blocks()) <= 8

@@ -42,7 +42,20 @@ def test_code_run_stores_summary_without_diff_or_tool_output() -> None:
     context = ConversationContext(200_000, session_id_factory=lambda: "session-1")
     events = (
         event("tool.completed", {"name": "read_file", "content": "secret body"}),
-        event("changeset.proposed", {"unified_diff": "must-not-be-stored"}, sequence=2),
+        event(
+            "changeset.proposed",
+            {
+                "changeset_id": "cs_demo",
+                "files": [
+                    {
+                        "path": "ThirdViewController.swift",
+                        "operation": "create",
+                        "unified_diff": "must-not-be-stored",
+                    }
+                ],
+            },
+            sequence=2,
+        ),
         event("changeset.applied", {"status": "applied"}, sequence=3),
         event(
             "run.completed",
@@ -56,6 +69,9 @@ def test_code_run_stores_summary_without_diff_or_tool_output() -> None:
     serialized = "\n".join(message.content for message in context.snapshot())
     assert "change color" in serialized
     assert "已应用" in serialized
+    assert "cs_demo" in serialized
+    assert "ThirdViewController.swift" in serialized
+    assert "create" in serialized
     assert "secret body" not in serialized
     assert "must-not-be-stored" not in serialized
 
@@ -139,8 +155,44 @@ def test_failed_and_cancelled_runs_use_deterministic_summaries() -> None:
         "cancel me",
         "run run_456 已取消，工作区未应用该 Change Set。",
         "fail me",
-        "run run_789 失败：model_error。",
+        "run run_789 失败：model_error。\n[facts] run=run_789 error=model_error",
     ]
+
+
+def test_compaction_keeps_changeset_facts_without_full_diff() -> None:
+    context = ConversationContext(400, session_id_factory=lambda: "session-1", max_items=6)
+    for index in range(20):
+        context.record_run(
+            f"edit {index}",
+            (
+                event(
+                    "changeset.proposed",
+                    {
+                        "changeset_id": f"cs_{index}",
+                        "files": [
+                            {
+                                "path": f"Page{index}.swift",
+                                "operation": "create",
+                                "unified_diff": "SECRET_DIFF " + ("x" * 80),
+                            }
+                        ],
+                    },
+                    run_id=f"run_{index}",
+                ),
+                event(
+                    "run.completed",
+                    {"state": "completed", "outcome": "changed"},
+                    run_id=f"run_{index}",
+                    sequence=2,
+                ),
+            ),
+        )
+    serialized = "\n".join(message.content for message in context.snapshot())
+    assert context.stats().message_count <= 6
+    assert "cs_19" in serialized
+    assert "Page19.swift" in serialized
+    assert "SECRET_DIFF" not in serialized
+    assert context.stats().compaction_count >= 1
 
 
 def test_responded_run_stores_assistant_message_text() -> None:

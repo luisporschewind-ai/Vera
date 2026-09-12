@@ -42,5 +42,22 @@ def test_journal_codec_rejects_sequence_gap() -> None:
         type="run.started",
         payload={},
     )
-    with pytest.raises(JournalCorrupt):
+    with pytest.raises(JournalCorrupt) as caught:
         JournalCodec().decode_line(ContractCodec().encode_event(event), "run_1", 1)
+    assert caught.value.code == "checksum_mismatch"
+
+
+def test_journal_codec_rejects_dangerous_extra_field() -> None:
+    event = EventEnvelope(
+        event_id="evt_1",
+        run_id="run_1",
+        sequence=1,
+        timestamp=datetime(2026, 9, 11, tzinfo=UTC),
+        type="run.started",
+        payload={},
+    )
+    raw = ContractCodec().encode_event(event).decode("utf-8")
+    mutated = raw[:-1] + ',"constructor":"x"}'
+    with pytest.raises(JournalCorrupt) as caught:
+        JournalCodec().decode_line(mutated, "run_1", 1)
+    assert caught.value.code == "unexpected_field"
