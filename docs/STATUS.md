@@ -2,7 +2,7 @@
 
 **更新日期：** 2026-09-12
 **当前阶段：** 阶段 5——Core 安全、权限与可靠性加固（进行中）
-**仓库状态：** 任务 0021 已合并到 `main`；下一任务为 0022。阶段六封存门禁已写入规格。暂无远程，未推送。
+**仓库状态：** 任务 0021 已合并到 `main`；Cursor 正在独立工作树实施任务 0022。阶段七规划已在独立分支接受，尚未进入实现。暂无远程，未推送。
 
 ## 已完成
 
@@ -22,8 +22,14 @@
 
 ## 活动任务
 
-- [阶段五执行顺序](tasks/phase-5-execution-order.md)：下一步从干净 `main` 执行任务 0022。
+- [阶段五执行顺序](tasks/phase-5-execution-order.md)：任务 0022 正在 Cursor 的独立工作树实施；完成后继续 0023、0024。
 - [阶段六执行顺序](tasks/phase-6-execution-order.md)：阶段五完成前不开始；任务 0029 只能先进入 Ready for manual acceptance。
+- [阶段七执行顺序](tasks/phase-7-execution-order.md)：规划已接受，Wails 已选定；阶段五、阶段六及用户 CLI 封存门禁满足前不执行。
+
+## 当前阶段回顾
+
+- [阶段 0–7 规划回顾](retrospectives/2026-09-12-current-progress.md)：Core、TUI、评测、加固、剩余门禁和桌面规划的完整快照。
+- 用户已试用阶段三交付的初版 TUI，反馈“已经有点样了”。这是一条积极的早期人工体验信号，说明终端产品形态开始可感知；它不替代阶段六任务 0025–0029 和最终 CLI 封存验收。
 
 ## 最近验证
 
@@ -42,4 +48,4 @@
 
 按任务 0020–0024 完成阶段五 Core 加固。阶段五人工证据不足时停在 Ready for manual acceptance，不得开始阶段六。
 
-阶段六按 0025–0028 实施后，任务 0029 只能进入 Ready for manual acceptance，等待用户在真实 Terminal.app 和真实工程中体验。未经确认「CLI 版本达到预期，可以封存」，不得将阶段六标为 Complete、不得开始阶段七、不得引入 Wails/Tauri/Electron 或任何桌面端代码；Textual Pilot、快照和自动测试不能代替人工体验结论。人工体验发现问题继续作为阶段六修正任务。
+阶段六按 0025–0028 实施后，任务 0029 只能进入 Ready for manual acceptance，等待用户在真实 Terminal.app 和真实工程中体验。未经确认「CLI 版本达到预期，可以封存」，不得将阶段六标为 Complete、不得开始阶段七、不得引入 Wails 或任何桌面端代码；Textual Pilot、快照和自动测试不能代替人工体验结论。人工体验发现问题继续作为阶段六修正任务。

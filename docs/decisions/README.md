@@ -23,5 +23,8 @@
 - [ADR-0010：以瞬时 Stream Frame 承载模型流式输出](ADR-0010-transient-stream-frames.md)
 - [ADR-0011：评测工具作为隔离的 Core 客户端](ADR-0011-eval-harness-as-core-client.md)
 - [ADR-0012：桌面集成延后至 Core 加固与 CLI 产品化之后](ADR-0012-delay-desktop-until-cli-hardening.md)
+- `ADR-0013` 已由阶段五任务 0024 预留给 Core 客户端兼容性契约，尚未实施。
+- [ADR-0014：桌面壳与 Python Core 采用受监督 sidecar 进程边界（Accepted）](ADR-0014-desktop-core-process-boundary.md)
+- [ADR-0015：选择 Wails 作为 Vera 桌面壳（Accepted）](ADR-0015-select-wails-desktop-shell.md)
 
 Core Runtime、协议、持久化模型、关键依赖、安全边界或桌面框架等长期选择应建立决策记录；常规实现细节写入任务记录。

@@ -54,7 +54,7 @@ Vera is also a long-term learning and portfolio product. It should become mainta
 - The final product is a desktop Agent; the early CLI is internal.
 - Delivery order is Core-first, CLI-first, desktop-later.
 - Desktop integration starts only after Core hardening, CLI product-readiness gates, and the user's explicit confirmation that the CLI version meets expectations and may be sealed.
-- Until that confirmation, Wails, Tauri, Electron, and any other desktop-shell code stay out of the repository.
+- Wails is the accepted desktop shell, but until that confirmation all Wails and other desktop implementation code stays out of the repository; Tauri and Electron are not selected fallbacks.
 - Core clients communicate through structured contracts, not parsed CLI text.
 - Development is private until reliability and release-readiness checks are met.
 - SDD, small verified changes, and synchronized documentation are required.
