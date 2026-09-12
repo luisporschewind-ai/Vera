@@ -134,7 +134,7 @@ git commit -m "test: harden offline evaluation boundaries"
 - Evidence: 两次 suite canonical projection 相同
 - Evidence: 仓库外安装 wheel 后可发现并运行 14 个 case
 
-- [ ] **Step 1：编写双跑和安装产物测试**
+- [x] **Step 1：编写双跑和安装产物测试**
 
 ```python
 def test_offline_suite_is_repeatable(eval_runner) -> None:
@@ -154,13 +154,13 @@ def test_built_wheel_contains_runnable_corpus(installed_vera) -> None:
 
 wheel 测试使用临时 venv、临时 HOME/state/output，显式移除供应商变量并禁止网络；使用 `python -m pip install --no-index <本轮本地 wheel>`，不得访问索引或安装仓库外制品。
 
-- [ ] **Step 2：运行重复性与 wheel smoke**
+- [x] **Step 2：运行重复性与 wheel smoke**
 
 ```bash
 UV_CACHE_DIR=/private/tmp/vera-uv-cache uv run pytest tests/e2e/test_phase_4_repeatability.py tests/e2e/test_phase_4_wheel_smoke.py -v
 ```
 
-- [ ] **Step 3：提交可重复性证据测试**
+- [x] **Step 3：提交可重复性证据测试**
 
 ```bash
 git add tests/e2e/test_phase_4_repeatability.py tests/e2e/test_phase_4_wheel_smoke.py docs/tasks/0019-eval-phase-4-acceptance.md
