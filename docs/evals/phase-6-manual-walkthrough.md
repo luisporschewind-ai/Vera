@@ -3,7 +3,7 @@
 **规格：** [CLI 产品化与体验完善](../specs/2026-09-12-cli-productization-and-polish.md)  
 **任务：** [0029](../tasks/0029-phase-6-product-acceptance.md)  
 **日期：** 2026-09-13  
-**结果：** Not run（须由用户在真实 Terminal.app 与真实工程中填写）
+**结果：** In progress（用户在真实 Terminal.app 与真实工程中走查；第 1 项部分完成，第 2–7 项 Not run）
 
 自动测试、PTY、Textual Pilot、快照和 wheel smoke 不能填写本表的“实际”栏。Agent 不得把未观察的项写成通过。
 
@@ -24,12 +24,12 @@
 
 | 字段 | 内容 |
 |---|---|
-| 环境 | Not run |
-| 步骤 | 在未读外部教程的工程目录执行 `vera`；查看首屏、`/help`、模型、workspace 与安全边界 |
+| 环境 | macOS Terminal.app；`~/Desktop/VeraTestDemo`（Swift/Xcode）与 `~/Desktop/python-demo`（Python，非 Git 仓库）；editable 安装的 `vera`（`/Users/admin/.local/bin/vera` → 仓库 `src/vera`） |
+| 步骤 | 在工程目录执行 `vera`；查看首屏、`/help`、模型、workspace 与安全边界 |
 | 预期 | 首屏可见版本、模型、规范化工作区、Git、审批模式、无 OS 沙箱边界；可用 `/help` 发现命令 |
-| 实际 | Not run |
-| 严重度 | Not run |
-| 证据 | Not run |
+| 实际 | 部分走查。首屏八行状态（版本、模型、规范化工作区、Git 状态、会话、上下文、审批模式、`current user · no OS sandbox`）正常呈现；`/help` 按六组显示且七个阶段六新增命令均可见。**但用户无法从首屏判断所运行的是否为最新构建**：版本行恒为 `Vera 0.1.0`，开发期不随改动变化，且 `vera --version` 选项不存在，执行后返回 Usage error。首屏信息可读性、安全边界措辞与 `/help` 可发现性的主观结论仍未给出。 |
+| 严重度 | Medium（发现 1：缺版本自证手段） |
+| 证据 | `/help` 输出含「开始/会话/代码与证据/恢复/安全/外观」六组与 `/diff` `/review` `/doctor` `/config` `/usage` `/shortcuts` `/theme`；`vera --version` 返回 `Usage: vera [OPTIONS] COMMAND [ARGS]...` 与 No such option 错误 |
 
 ## 2. 输入与引用
 
@@ -96,6 +96,14 @@
 | 实际 | Not run |
 | 严重度 | Not run |
 | 证据 | Not run |
+
+## 发现清单
+
+按走查顺序累积。Critical/High 必须修复并重新走查；Medium/Low 可记录并由用户接受或转入后续修正任务。
+
+| # | 走查项 | 发现 | 严重度 | 状态 |
+|---|---|---|---|---|
+| 1 | 1 首启 | 无法自证所运行的版本：版本行恒为 `Vera 0.1.0`，且 `vera --version` 选项不存在（返回 Usage error）。产品作者本人也需要检查 `vera.__file__` 才能确认跑的是最新代码。 | Medium | 已记录，用户选择先继续走查 |
 
 ## 封存确认
 
