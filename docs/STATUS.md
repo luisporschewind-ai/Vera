@@ -31,6 +31,7 @@
 
 ## 活动任务
 
+- [任务 0031：CLI 版本身份与 `--version`](tasks/0031-cli-version-identity.md)：阶段六走查 Medium 修正；不封存阶段六。
 - [阶段六执行顺序](tasks/phase-6-execution-order.md)：0025–0029 自动部分已完成；0029 与阶段六停在 Ready for manual acceptance。
 - [阶段五执行顺序](tasks/phase-5-execution-order.md)：0024 自动门禁已完成；人工 dogfood 不足，阶段五保持 Ready for manual acceptance。
 - [ADR-0013：阶段七首个桌面底版采用 Electron](decisions/ADR-0013-electron-desktop-baseline.md)：Accepted；只固定未来实施方向，不改变 CLI 封存门禁，当前不引入 Electron 代码或依赖。

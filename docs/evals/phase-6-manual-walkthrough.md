@@ -27,7 +27,7 @@
 | 环境 | macOS Terminal.app；`~/Desktop/VeraTestDemo`（Swift/Xcode）与 `~/Desktop/python-demo`（Python，非 Git 仓库）；editable 安装的 `vera`（`/Users/admin/.local/bin/vera` → 仓库 `src/vera`） |
 | 步骤 | 在工程目录执行 `vera`；查看首屏、`/help`、模型、workspace 与安全边界 |
 | 预期 | 首屏可见版本、模型、规范化工作区、Git、审批模式、无 OS 沙箱边界；可用 `/help` 发现命令 |
-| 实际 | 部分走查。首屏八行状态（版本、模型、规范化工作区、Git 状态、会话、上下文、审批模式、`current user · no OS sandbox`）正常呈现；`/help` 按六组显示且七个阶段六新增命令均可见。**但用户无法从首屏判断所运行的是否为最新构建**：版本行恒为 `Vera 0.1.0`，开发期不随改动变化，且 `vera --version` 选项不存在，执行后返回 Usage error。首屏信息可读性、安全边界措辞与 `/help` 可发现性的主观结论仍未给出。 |
+| 实际 | 部分走查。首屏八行状态（版本、模型、规范化工作区、Git 状态、会话、上下文、审批模式、`current user · no OS sandbox`）正常呈现；`/help` 按六组显示且七个阶段六新增命令均可见。**当时无法从首屏判断所运行的是否为最新构建**：版本行恒为 `Vera 0.1.0`，且 `vera --version` 选项不存在。任务 0031 已补 `--version`/`-V` 与源码短 commit 身份；Terminal.app 复验仍待用户执行。 |
 | 严重度 | Medium（发现 1：缺版本自证手段） |
 | 证据 | `/help` 输出含「开始/会话/代码与证据/恢复/安全/外观」六组与 `/diff` `/review` `/doctor` `/config` `/usage` `/shortcuts` `/theme`；`vera --version` 返回 `Usage: vera [OPTIONS] COMMAND [ARGS]...` 与 No such option 错误 |
 
@@ -103,7 +103,7 @@
 
 | # | 走查项 | 发现 | 严重度 | 状态 |
 |---|---|---|---|---|
-| 1 | 1 首启 | 无法自证所运行的版本：版本行恒为 `Vera 0.1.0`，且 `vera --version` 选项不存在（返回 Usage error）。产品作者本人也需要检查 `vera.__file__` 才能确认跑的是最新代码。 | Medium | 已记录，用户选择先继续走查 |
+| 1 | 1 首启 | 无法自证所运行的版本：版本行恒为 `Vera 0.1.0`，且 `vera --version` 选项不存在（返回 Usage error）。产品作者本人也需要检查 `vera.__file__` 才能确认跑的是最新代码。 | Medium | 代码已修（任务 0031），待 Terminal.app 复验 `vera --version` |
 | 2 | 2 输入与对话 | 时间线不自动跟随底部，新消息到达后需手动滚动才能看到。根因：`ConversationTimeline._append` 调用的 `mount()` 在 Textual 中是异步的，`apply()` 随即调用 `scroll_end()` 时新块尚未进入布局，`virtual_size` 仍是旧值，因此滚到的是上一条内容的底部。`apply`、`flush_scheduled`、`return_to_tail` 三处同源。自动测试只断言 `follow_tail` 标志与代码分支，未断言真实 `scroll_y` 是否达到 `max_scroll_y`，因此漏检。 | High | 待修复；修复后需重走第 2 项并补充滚动位置断言 |
 | 3 | 2 输入与对话 | 执行任务时模型报错（用户确认 DeepSeek Key 有效、余额充足）。Vera 私有 run 日志中今日无任何新记录，最近记录均为 2026-09-11，说明失败发生在 run 落盘之前。同一工程 2026-09-11 的 run `run_98492fd8` 曾完成 `changeset.proposed` → `approval.required`（changeset + command）→ `run.completed` 完整闭环，证明该 Provider 的 tool calling 当时可用。 | 待定性（暂按 High 处理） | Blocked：需要错误原文或结构化错误事件才能定性为回归或环境故障 |
 
