@@ -115,14 +115,35 @@ class OpenAICompatibleAdapter:
             return ModelProviderError(ModelErrorCode.NETWORK, "provider network error")
         if isinstance(exc, APIStatusError):
             status = getattr(exc, "status_code", None)
-            code = ModelErrorCode.SERVICE if status and status >= 500 else ModelErrorCode.SERVICE
+            server_side = status is not None and status >= 500
             return ModelProviderError(
-                code,
-                "provider service error",
+                ModelErrorCode.SERVICE if server_side else ModelErrorCode.REQUEST_INVALID,
+                "provider service error" if server_side else "provider rejected the request",
                 status_code=status,
                 retry_after_seconds=self._retry_after(exc),
+                detail=self._status_detail(exc),
             )
         return ModelProviderError(ModelErrorCode.SERVICE, "provider request failed")
+
+    @staticmethod
+    def _status_detail(exc: Exception, *, limit: int = 200) -> str | None:
+        """Keep the provider's own reason; a generic label leaves 4xx undiagnosable."""
+
+        message: object = None
+        body = getattr(exc, "body", None)
+        if isinstance(body, dict):
+            error = body.get("error")
+            if isinstance(error, dict):
+                message = error.get("message")
+            elif isinstance(error, str):
+                message = error
+            if message is None:
+                message = body.get("message")
+        if not isinstance(message, str) or not message:
+            message = getattr(exc, "message", None)
+        if not isinstance(message, str) or not message:
+            return None
+        return " ".join(message.split())[:limit]
 
     @staticmethod
     def _retry_after(exc: Exception) -> float | None:

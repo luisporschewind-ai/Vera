@@ -28,6 +28,7 @@ class ConversationTimeline(VerticalScroll):
 
     def on_mount(self) -> None:
         self.can_focus = True
+        self.anchor()
 
     def apply(self, mutations: tuple[TimelineMutation, ...] | list[TimelineMutation]) -> None:
         previous_y = self.scroll_y
@@ -41,7 +42,7 @@ class ConversationTimeline(VerticalScroll):
                 if widget is not None:
                     widget.focus()
         if self.follow_tail and not self._user_scrolled_away:
-            self.scroll_end(animate=False)
+            self._request_tail_scroll()
         elif mutations:
             self.pending_update_count += 1
             self.scroll_to(y=previous_y, animate=False)
@@ -57,6 +58,22 @@ class ConversationTimeline(VerticalScroll):
             if isinstance(value, TimelineBlock):
                 self._update(value)
         if self.follow_tail and not self._user_scrolled_away:
+            self._request_tail_scroll()
+
+    def _request_tail_scroll(self) -> None:
+        """Keep the tail pinned while content mounts or grows.
+
+        A plain scroll_end here would measure the pre-growth height, so rely on
+        Textual anchoring and re-check once layout has settled.
+        """
+
+        if not self.is_mounted:
+            return
+        self.anchor()
+        self.call_after_refresh(self._scroll_to_tail)
+
+    def _scroll_to_tail(self) -> None:
+        if self.follow_tail and not self._user_scrolled_away:
             self.scroll_end(animate=False)
 
     def return_to_tail(self) -> None:
@@ -64,10 +81,13 @@ class ConversationTimeline(VerticalScroll):
         self._user_scrolled_away = False
         self.pending_update_count = 0
         self.scroll_end(animate=False)
+        self._request_tail_scroll()
 
     def mark_user_scrolled(self) -> None:
         self.follow_tail = False
         self._user_scrolled_away = True
+        if self.is_mounted:
+            self.anchor(False)
 
     def widget_count(self) -> int:
         return len(self._widgets)

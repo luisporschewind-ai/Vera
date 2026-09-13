@@ -49,3 +49,4 @@
 - [任务 0028：终端兼容、可访问性与性能](0028-terminal-compatibility-accessibility-performance.md)
 - [任务 0029：阶段六产品验收](0029-phase-6-product-acceptance.md)
 - [任务 0031：CLI 版本身份与 `--version`](0031-cli-version-identity.md)
+- [任务 0032：时间线信息层次与错误保真](0032-timeline-and-error-fidelity.md)

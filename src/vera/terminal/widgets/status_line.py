@@ -9,7 +9,7 @@ from vera.presentation.activity import ActivityState
 
 class VeraStatusLine(Static):
     def __init__(self, *, id: str | None = None) -> None:
-        super().__init__("就绪 · Esc/Ctrl-C 取消 · /help", id=id)
+        super().__init__("就绪 · /help 查看命令", id=id)
         self._pending = 0
 
     def set_status(self, text: str) -> None:
@@ -25,4 +25,6 @@ class VeraStatusLine(Static):
     def set_activity(self, state: ActivityState, frame: str) -> None:
         marker = frame if state.active else ("✓" if state.severity == "info" else "!")
         pending = f" · {self._pending} 条新消息 ↓" if self._pending else ""
-        self.update(f"{marker} {state.label} · Esc/Ctrl-C 取消{pending}")
+        # Offering cancel after a run reached a terminal state is a false affordance.
+        hint = " · Esc/Ctrl-C 取消" if state.active else " · /help 查看命令"
+        self.update(f"{marker} {state.label}{hint}{pending}")

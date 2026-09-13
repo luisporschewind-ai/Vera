@@ -14,6 +14,7 @@ class ModelErrorCode(StrEnum):
     TIMEOUT = "provider_timeout"
     RATE_LIMITED = "provider_rate_limited"
     SERVICE = "provider_service_error"
+    REQUEST_INVALID = "provider_request_invalid"
     INVALID_RESPONSE = "provider_invalid_response"
     CAPABILITY_MISMATCH = "capability_mismatch"
 
@@ -27,6 +28,7 @@ class ModelProviderError(Exception):
         retry_after_seconds: float | None = None,
         status_code: int | None = None,
         request_id: str | None = None,
+        detail: str | None = None,
     ) -> None:
         super().__init__(message)
         self.code = code
@@ -34,6 +36,7 @@ class ModelProviderError(Exception):
         self.retry_after_seconds = retry_after_seconds
         self.status_code = status_code
         self.request_id = request_id
+        self.detail = detail
 
     @property
     def retryable(self) -> bool:
@@ -56,4 +59,5 @@ def safe_error_payload(error: ModelProviderError, attempt: int) -> dict[str, Jso
         "status_code": error.status_code,
         "request_id": error.request_id,
         "retry_after_seconds": error.retry_after_seconds,
+        "detail": error.detail,
     }

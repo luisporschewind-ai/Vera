@@ -9,9 +9,21 @@ from pydantic import BaseModel, ConfigDict, Field
 from vera.contracts.events import EventEnvelope
 from vera.contracts.streaming import RuntimeOutput, StreamFrame, StreamFrameType
 from vera.presentation.disclosure import DisclosurePolicy
+from vera.presentation.errors import SideEffectFact
+from vera.presentation.event_copy import event_summary, event_title, is_silent
 from vera.presentation.sanitize import sanitize_terminal_text
 from vera.presentation.timeline import BlockKind, BlockStatus, TimelineBlock
 from vera.redaction import Redactor
+
+_SIDE_EFFECT_EVENTS = frozenset(
+    {
+        "changeset.applied",
+        "verification.started",
+        "verification.completed",
+        "rollback.completed",
+        "recovery.resumed",
+    }
+)
 
 
 class AppendBlock(BaseModel):
@@ -58,6 +70,8 @@ class TimelineProjector:
         self._tool_blocks: dict[tuple[str, str], str] = {}
         self._max_body_bytes = max_body_bytes
         self._max_blocks = max_blocks
+        self._side_effect_runs: set[str] = set()
+        self._model_failures: dict[str, dict[str, object]] = {}
 
     def apply(self, output: RuntimeOutput) -> tuple[TimelineMutation, ...]:
         output = self._redactor.redact_output(output)
@@ -146,8 +160,19 @@ class TimelineProjector:
             "session.action_rejected": self._error_event,
             "session.closed": self._status_event,
         }
+        if event.type in _SIDE_EFFECT_EVENTS:
+            self._side_effect_runs.add(event.run_id)
+        if event.type == "model.failed":
+            self._model_failures[event.run_id] = dict(event.payload)
+        if is_silent(event.type):
+            return ()
         handler = handlers.get(event.type, self._unknown_event)
         return handler(event)
+
+    def _side_effects_for(self, run_id: str) -> SideEffectFact:
+        """Only claim a side effect when a write or command event was observed."""
+
+        return "workspace_changed" if run_id in self._side_effect_runs else "no_workspace_change"
 
     def _truncate_body(self, body: str) -> tuple[str, bool]:
         encoded = body.encode("utf-8")
@@ -392,8 +417,12 @@ class TimelineProjector:
             block_id=f"{event.run_id}:{event.sequence}:error",
             run_id=event.run_id,
             kind=BlockKind.ERROR,
-            title="Run failed",
-            body=format_failure_body(event),
+            title="任务失败",
+            body=format_failure_body(
+                event,
+                side_effects=self._side_effects_for(event.run_id),
+                diagnostics=self._model_failures.get(event.run_id),
+            ),
             status=BlockStatus.FAILED,
         )
 
@@ -405,7 +434,10 @@ class TimelineProjector:
             run_id=event.run_id,
             kind=BlockKind.ERROR,
             title="已取消",
-            body=format_failure_body(event),
+            body=format_failure_body(
+                event,
+                side_effects=self._side_effects_for(event.run_id),
+            ),
             status=BlockStatus.CANCELLED,
         )
 
@@ -452,20 +484,13 @@ class TimelineProjector:
             block_id=f"{event.run_id}:{event.sequence}:status",
             run_id=event.run_id,
             kind=BlockKind.STATUS,
-            title=event.type,
-            body=str(event.payload),
+            title=event_title(event.type),
+            body=event_summary(event.payload),
             status=BlockStatus.SUCCEEDED,
         )
 
     def _unknown_event(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
-        return self._append(
-            block_id=f"{event.run_id}:{event.sequence}:status",
-            run_id=event.run_id,
-            kind=BlockKind.STATUS,
-            title=event.type,
-            body=sanitize_terminal_text(str(event.payload)),
-            status=BlockStatus.SUCCEEDED,
-        )
+        return self._status_event(event)
 
 
 def project_user_prompt(run_id: str, text: str, sequence: int = 0) -> TimelineBlock:

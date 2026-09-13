@@ -52,6 +52,84 @@ def make_block(index: int) -> TimelineBlock:
 
 
 @pytest.mark.asyncio
+async def test_follow_tail_reaches_real_bottom_without_manual_scroll(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    async with app.run_test(size=(80, 24)) as pilot:
+        timeline = app.query_one("#timeline")
+        timeline.apply(tuple(AppendBlock(block=make_block(i)) for i in range(40)))
+        await pilot.pause()
+        assert timeline.max_scroll_y > 0
+        assert timeline.scroll_y == timeline.max_scroll_y
+
+        timeline.apply((AppendBlock(block=make_block(40)),))
+        await pilot.pause()
+        assert timeline.scroll_y == timeline.max_scroll_y
+
+
+@pytest.mark.asyncio
+async def test_follow_tail_survives_event_by_event_arrival(tmp_path: Path) -> None:
+    """Real runs deliver one RuntimeOutput per message, not a batch."""
+
+    app = make_app(tmp_path)
+    async with app.run_test(size=(80, 24)) as pilot:
+        timeline = app.query_one("#timeline")
+        for index in range(1, 31):
+            app.append_output(
+                EventEnvelope(
+                    event_id=f"e{index}",
+                    run_id="run_1",
+                    sequence=index,
+                    timestamp=datetime.now(UTC),
+                    type="tool.completed",
+                    payload={"name": "read_file", "ok": True, "result": f"done-{index}"},
+                )
+            )
+            await pilot.pause()
+        assert timeline.max_scroll_y > 0
+        assert timeline.scroll_y == timeline.max_scroll_y
+
+
+@pytest.mark.asyncio
+async def test_streaming_updates_follow_tail_to_real_bottom(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    async with app.run_test(size=(80, 24)) as pilot:
+        timeline = app.query_one("#timeline")
+        timeline.apply(tuple(AppendBlock(block=make_block(i)) for i in range(30)))
+        await pilot.pause()
+        growing = TimelineBlock(
+            block_id="assistant_stream",
+            run_id="run_1",
+            kind=BlockKind.ASSISTANT,
+            title="助手",
+            body="\n".join(f"streamed-{i}" for i in range(40)),
+            status=BlockStatus.RUNNING,
+            expanded=True,
+        )
+        timeline.apply_streaming_update(growing)
+        timeline.flush_scheduled()
+        await pilot.pause()
+        assert timeline.scroll_y == timeline.max_scroll_y
+
+
+@pytest.mark.asyncio
+async def test_return_to_tail_reaches_real_bottom(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    async with app.run_test(size=(80, 24)) as pilot:
+        timeline = app.query_one("#timeline")
+        timeline.apply(tuple(AppendBlock(block=make_block(i)) for i in range(40)))
+        await pilot.pause()
+        timeline.scroll_to(y=0, animate=False)
+        timeline.mark_user_scrolled()
+        await pilot.pause()
+        timeline.apply((AppendBlock(block=make_block(99)),))
+        await pilot.pause()
+        timeline.return_to_tail()
+        await pilot.pause()
+        assert timeline.scroll_y == timeline.max_scroll_y
+        assert timeline.follow_tail is True
+
+
+@pytest.mark.asyncio
 async def test_new_output_does_not_steal_scroll_position(tmp_path: Path) -> None:
     app = make_app(tmp_path)
     async with app.run_test(size=(80, 24)) as pilot:

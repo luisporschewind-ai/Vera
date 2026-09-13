@@ -2,9 +2,9 @@
 
 > 供 Cursor 执行：阶段六人工走查发现 Medium 缺陷——`vera --version` 不存在，且首屏版本恒为 `0.1.0`，无法自证当前构建。
 
-**状态：** In progress
+**状态：** In progress（已 cherry-pick 到当前工作树；待 Terminal.app 复验）
 **执行就绪：** 任务 0029 停在 Ready for manual acceptance；本项为阶段六修正，不封存阶段六
-**分支：** `phase-6/0031-cli-version-identity`
+**分支：** `phase-6/0031-cli-version-identity`；已合入 `phase-6/0032-timeline-and-error-fidelity`
 **依赖：** 任务 0029 自动部分已完成
 **规格：** [阶段六 CLI 产品化](../specs/2026-09-12-cli-productization-and-polish.md)
 

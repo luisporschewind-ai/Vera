@@ -41,4 +41,4 @@ git diff --check
 
 任务 0025–0028 已合并。任务 0029 自动矩阵与 wheel smoke 已完成，状态为 `Ready for manual acceptance`。缺少用户确认「CLI 版本达到预期，可以封存」时，不能写成 `Done` 或把阶段六改为 `Complete`。人工体验中发现的输入、对话、工具展示、Diff、审批、错误、恢复、性能和终端兼容问题，继续开阶段六修正任务，不得开始阶段七。
 
-当前修正：[任务 0031：CLI 版本身份与 `--version`](0031-cli-version-identity.md)。
+当前修正：[任务 0031：CLI 版本身份与 `--version`](0031-cli-version-identity.md) 已合入当前工作树；[任务 0032：时间线信息层次与错误保真](0032-timeline-and-error-fidelity.md) 仍在进行。

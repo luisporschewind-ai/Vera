@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -14,6 +15,7 @@ from vera.evals.corpus import sha256_tree
 
 CLOSE_SESSION = '{"schema_version":1,"type":"session.close"}\n'
 PLACEHOLDER_KEY = "vera-test-placeholder-not-a-secret"
+_ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
 
 
 def _run(
@@ -58,6 +60,7 @@ def _isolated_env(home: Path) -> dict[str, str]:
         ):
             env.pop(key)
     env["VERA_PROVIDER_ENV_FILE"] = str(home / "missing-provider.env")
+    env.pop("PYTHONPATH", None)
     return env
 
 
@@ -114,10 +117,9 @@ def main(argv: list[str]) -> int:
         return repeat.returncode or 1
 
     help_proc = _run([str(vera), "--help"], cwd=workspace, env=env)
-    help_ok = help_proc.returncode == 0 and (
-        "Usage" in help_proc.stdout or "usage" in help_proc.stdout
-    )
-    if not help_ok or "--version" not in help_proc.stdout:
+    help_text = _ANSI.sub("", help_proc.stdout)
+    help_ok = help_proc.returncode == 0 and ("Usage" in help_text or "usage" in help_text)
+    if not help_ok or "--version" not in help_text:
         sys.stderr.write(help_proc.stdout + help_proc.stderr)
         return help_proc.returncode or 1
 
