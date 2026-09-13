@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from vera.cli_driver import drive_run
+from vera.cli_exit_codes import SUCCESS, USER_CANCEL, exit_code_for_events
 from vera.contracts.commands import StartRun
 from vera.contracts.compatibility import current_compatibility_manifest
 from vera.session.command_catalog import CommandCatalog
@@ -89,3 +90,26 @@ def test_session_catalog_is_shared_across_driver_surface() -> None:
         closed=False,
     )
     assert catalog.parse(["/help"]).handler == catalog.list("/help", snapshot)[0].handler
+
+
+def test_oneshot_exit_codes_follow_core_terminal_state(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    target = workspace / "hello.txt"
+    target.write_text("old\n", encoding="utf-8")
+    approved = drive_run(
+        make_changeset_runtime(workspace, tmp_path / "approved"),
+        StartRun(goal="edit", workspace_root=workspace, model_profile="fake"),
+        lambda _event: "approve",
+        lambda _batch: None,
+    )
+    cancelled = drive_run(
+        make_changeset_runtime(workspace, tmp_path / "cancelled"),
+        StartRun(goal="edit", workspace_root=workspace, model_profile="fake"),
+        lambda _event: "cancel",
+        lambda _batch: None,
+    )
+    assert exit_code_for_events(approved) == SUCCESS
+    assert approved[-1].type == "run.completed"
+    assert exit_code_for_events(cancelled) == USER_CANCEL
+    assert cancelled[-1].type == "run.cancelled"

@@ -2,7 +2,7 @@
 
 > 供 Cursor 执行：按 `superpowers:verification-before-completion` 收口；真实 Terminal.app 走查必须由用户确认，不能用自动测试替代。
 
-**状态：** Planned
+**状态：** Ready for manual acceptance
 **执行就绪：** 任务 0025–0028 合并后
 **分支：** `phase-6/0029-product-acceptance`
 **依赖：** 任务 0025–0028 已合并
@@ -101,3 +101,13 @@ git commit -m "docs: record phase six CLI product readiness"
 - 未经「CLI 版本达到预期，可以封存」确认，不得标记阶段六 Complete、不得开始阶段七、不得引入 Wails/Tauri/Electron 或任何桌面端代码。
 - Textual Pilot、快照或自动测试不得代替人工体验结论。
 - 四种入口共享结构化语义，安装 wheel 在仓库外可用。
+
+## 验证证据
+
+日期：2026-09-13
+
+- 完整非 live：`736 passed, 2 deselected, 4 warnings in 197.38s`
+- 产品矩阵：同一离线编辑场景下 TUI controller / JSON / Plain / `drive_run` 的审批事实、终态与 run 退出码一致；`/help`、`/doctor` 事件类型对齐且不含秘密。
+- wheel smoke：默认路由、`--plain`、`--json`、`vera run`、`vera eval`、`/doctor` 通过。
+- 人工走查七项与 Terminal.app 兼容项保持 `Not run`。
+- 状态停在 `Ready for manual acceptance`；阶段六未标 Complete；未引入桌面代码。

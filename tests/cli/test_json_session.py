@@ -78,3 +78,26 @@ def test_json_session_queues_without_parsing_ui_text(tmp_path: Path) -> None:
     assert queued["payload"]["queued"] is True
     assert "later" not in json.dumps(queued["payload"], ensure_ascii=False)
     assert "\u001b" not in target.getvalue()
+
+
+def test_json_help_and_doctor_are_structured_events(tmp_path: Path) -> None:
+    driver = make_driver(tmp_path, [])
+    source = StringIO(
+        encode_action(ExecuteSlashCommand(raw="/help"))
+        + "\n"
+        + encode_action(ExecuteSlashCommand(raw="/doctor"))
+        + "\n"
+        + encode_action(CloseSession())
+        + "\n"
+    )
+    target = StringIO()
+    assert driver.run(source, target) == 0
+    records = [json.loads(line) for line in target.getvalue().splitlines()]
+    types = [item["event"]["type"] for item in records if item.get("event")]
+    assert "session.help" in types
+    assert "session.doctor" in types
+    doctor = next(item["event"] for item in records if item["event"]["type"] == "session.doctor")
+    names = [entry["name"] for entry in doctor["payload"]["items"]]
+    assert names == ["version", "python", "terminal", "config", "state_dir", "git"]
+    assert "\u001b" not in target.getvalue()
+    assert "sk-" not in target.getvalue()

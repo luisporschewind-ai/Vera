@@ -55,3 +55,30 @@ def test_plain_session_queues_while_run_active(tmp_path: Path) -> None:
     assert driver.run() == 0
     assert any("排队" in line for line in io.output)
     assert controller.queued_prompt == "later"
+
+
+def test_plain_help_and_doctor_share_session_events(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    deps = RuntimeDependencies(
+        runtime=VeraRuntime(FakeModelAdapter([]), ToolRegistry(), tmp_path / "state"),
+        config=VeraConfig(state_dir=tmp_path / "state", limits=Limits(), providers={}),
+    )
+    controller = SessionController(deps, workspace, "fake")
+    collected: list[object] = []
+    original = controller.dispatch
+
+    def wrapped(action):  # type: ignore[no-untyped-def]
+        for item in original(action):
+            collected.append(item)
+            yield item
+
+    controller.dispatch = wrapped  # type: ignore[method-assign]
+    io = ScriptedIO(["/help", "/doctor", "/exit"])
+    driver = PlainSessionDriver(deps, workspace, "fake", io, controller=controller)
+    assert driver.run() == 0
+    rendered = "\n".join(io.output)
+    assert "/doctor" in rendered
+    assert "version" in rendered
+    assert any(getattr(item, "type", "") == "session.help" for item in collected)
+    assert any(getattr(item, "type", "") == "session.doctor" for item in collected)

@@ -78,7 +78,7 @@
 - 消除终端恢复、粘贴、Resize、长输出、Unicode、无色和低速终端中的高频低级问题。
 - 展示 Core 提供的内容来源、投毒风险和实际策略结果；CLI 不自行审核内容或决定权限。
 - 阶段五完成后按[阶段六执行顺序](tasks/phase-6-execution-order.md)实施任务 0025–0029。
-- 任务 0029 的自动部分完成后只能进入 `Ready for manual acceptance`，等待用户在真实 Terminal.app 和真实工程中体验。
+- 任务 0029 自动矩阵与 wheel smoke 已完成，当前为 `Ready for manual acceptance`，等待用户在真实 Terminal.app 和真实工程中体验。
 
 **退出条件：** 默认 TUI 和兼容模式完成产品级可用性验收，关键工作流无需记忆隐含操作，没有阻断使用的已知交互缺陷；用户明确确认「CLI 版本达到预期，可以封存」。自动测试通过不能单独将本阶段标为 Complete。
 
