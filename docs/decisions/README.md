@@ -26,5 +26,6 @@
 - [ADR-0013：阶段七首个桌面底版采用 Electron](ADR-0013-electron-desktop-baseline.md)
 - [ADR-0014：Core 客户端兼容契约](ADR-0014-core-client-compatibility-contract.md)
 - [ADR-0015：不可信内容信任边界与提示词投毒分层防御](ADR-0015-untrusted-content-trust-boundary.md)
+- [ADR-0016：持久化对话会话与 Run 恢复分离](ADR-0016-persistent-conversation-sessions.md)
 
 Core Runtime、协议、持久化模型、关键依赖、安全边界或桌面框架等长期选择应建立决策记录；常规实现细节写入任务记录。

@@ -22,5 +22,6 @@
 - [阶段四：评测与内部就绪](2026-09-12-evals-and-internal-readiness.md)
 - [阶段五：Core 安全、权限与可靠性加固](2026-09-12-core-security-and-reliability-hardening.md)
 - [阶段六：CLI 产品化与体验完善](2026-09-12-cli-productization-and-polish.md)
+- [持久化对话会话与个人主力 CLI](2026-09-13-persistent-conversation-sessions.md)
 - [不可信内容、提示词投毒与内容安全](2026-09-12-untrusted-content-and-prompt-injection-defense.md)
 - [阶段七：桌面 Agent 工作台与 UI（Draft）](2026-09-12-desktop-agent-workbench-ui.md)
