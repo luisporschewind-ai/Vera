@@ -152,9 +152,44 @@ def main(argv: list[str]) -> int:
         sys.stderr.write(json_session.stderr)
         return json_session.returncode or 1
 
-    plain = _run([str(vera), "--plain"], cwd=workspace, env=ready, input_text="/exit\n")
-    if plain.returncode != 0:
-        sys.stderr.write(plain.stderr)
+    doctor_input = (
+        '{"schema_version":1,"type":"session.command","raw":"/doctor"}\n' + CLOSE_SESSION
+    )
+    doctor = _run([str(vera), "--json"], cwd=workspace, env=ready, input_text=doctor_input)
+    if doctor.returncode != 0:
+        sys.stderr.write(doctor.stderr)
+        return doctor.returncode or 1
+    doctor_types = []
+    for line in doctor.stdout.splitlines():
+        if not line.strip():
+            continue
+        record = json.loads(line)
+        event = record.get("event") or {}
+        doctor_types.append(event.get("type"))
+        if event.get("type") == "session.doctor":
+            names = [item.get("name") for item in event.get("payload", {}).get("items", [])]
+            if names != ["version", "python", "terminal", "config", "state_dir", "git"]:
+                sys.stderr.write(doctor.stdout)
+                return 1
+    if "session.doctor" not in doctor_types or "\u001b" in doctor.stdout:
+        sys.stderr.write(doctor.stdout + doctor.stderr)
+        return 1
+
+    run_missing = _run([str(vera), "run", "hello"], cwd=workspace, env=env)
+    if run_missing.returncode != 5 or "missing_provider_config" not in (
+        run_missing.stderr + run_missing.stdout
+    ):
+        sys.stderr.write(run_missing.stdout + run_missing.stderr)
+        return run_missing.returncode or 1
+
+    plain = _run(
+        [str(vera), "--plain"],
+        cwd=workspace,
+        env=ready,
+        input_text="/doctor\n/exit\n",
+    )
+    if plain.returncode != 0 or "version" not in (plain.stdout + plain.stderr):
+        sys.stderr.write(plain.stdout + plain.stderr)
         return plain.returncode or 1
 
     blocked_parent = home / "blocked-parent"

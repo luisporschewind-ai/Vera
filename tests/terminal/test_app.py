@@ -12,7 +12,12 @@ from vera.contracts.compatibility import (
 from vera.contracts.events import EventEnvelope
 from vera.models.base import FakeModelAdapter
 from vera.runtime.engine import VeraRuntime
-from vera.session.actions import ClearQueuedPrompt, OpenExternalEditor, QueuePrompt
+from vera.session.actions import (
+    ClearQueuedPrompt,
+    ExecuteSlashCommand,
+    OpenExternalEditor,
+    QueuePrompt,
+)
 from vera.session.controller import SessionController
 from vera.terminal.app import VeraTerminalApp
 from vera.terminal.widgets.composer import PromptSubmitted
@@ -120,3 +125,32 @@ async def test_app_clear_queue_and_editor_bindings(tmp_path: Path) -> None:
         app.query_one("#composer").load_text("draft")
         app.action_open_editor()
         assert captured == [OpenExternalEditor(text="draft")]
+
+
+@pytest.mark.asyncio
+async def test_app_renders_help_and_doctor_as_display_only(tmp_path: Path) -> None:
+    controller = make_controller(tmp_path)
+    app = VeraTerminalApp(controller, controller.workspace, "fake", animations=False)
+    async with app.run_test(size=(80, 24)) as pilot:
+        timeline = app.query_one("#timeline")
+        for raw in ("/help", "/doctor"):
+            for item in controller.dispatch(ExecuteSlashCommand(raw=raw)):
+                if isinstance(item, EventEnvelope):
+                    timeline.apply(app.projector.apply(item))
+        await pilot.pause()
+        help_event = next(
+            item
+            for item in controller.dispatch(ExecuteSlashCommand(raw="/help"))
+            if isinstance(item, EventEnvelope) and item.type == "session.help"
+        )
+        doctor_event = next(
+            item
+            for item in controller.dispatch(ExecuteSlashCommand(raw="/doctor"))
+            if isinstance(item, EventEnvelope) and item.type == "session.doctor"
+        )
+        help_block = app.projector.apply(help_event)[0].block  # type: ignore[union-attr]
+        doctor_block = app.projector.apply(doctor_event)[0].block  # type: ignore[union-attr]
+        assert help_block.kind.value == "status"
+        assert "/doctor" in help_block.body or "开始" in help_block.body
+        assert doctor_block.kind.value == "status"
+        assert "version" in doctor_block.body
