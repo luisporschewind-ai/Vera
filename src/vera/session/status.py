@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import subprocess
 from collections.abc import Callable
-from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from subprocess import CompletedProcess
 from typing import Protocol
@@ -15,6 +14,7 @@ from vera.session.models import (
     PermissionStatus,
     SessionStatus,
 )
+from vera.version import current_display_version
 
 
 class GitRunner(Protocol):
@@ -73,12 +73,7 @@ class WorkspaceStatusProbe:
 
 
 def _package_version() -> str:
-    try:
-        return version("vera-agent")
-    except PackageNotFoundError:
-        return "unavailable"
-    except Exception:
-        return "unavailable"
+    return current_display_version()
 
 
 class SessionStatusService:

@@ -67,6 +67,8 @@ Vera 保持自身边界：不因竞品支持会话恢复、直接 Shell、自定
 - 非 Git 目录、缺失可选配置和单项状态读取失败必须局部降级；
 - 在用户 Home、文件系统根或过大目录启动时给出醒目但不阻塞的风险提示；
 - 退出时恢复 alternate screen、光标、回显和终端模式，不留下乱码或残余控制序列。
+- 发行包装版本保持 `vera-agent` 的 packaging version；源码或 editable 安装的首屏版本行必须附加 Vera 源码树的短 commit（有未提交变更时再标 `dirty`），wheel 安装只显示发行版本。
+- `vera --version` 与 `vera -V` 不启动会话、不要求工作区，退出码 0；人类输出包含发行版本、安装类型和正在执行的包装目录。`--json` 与 `--version` 同时出现时输出单行 JSON 对象，不是 NDJSON Session 协议。Vera 源码 git 探测只用固定 argv、无 Shell、短超时，失败时省略 git 字段，不得探测用户工作区 git。
 
 ## Composer 与输入体验
 
@@ -104,7 +106,7 @@ Vera 保持自身边界：不因竞品支持会话恢复、直接 Shell、自定
 |---|---|
 | `/diff [run-id]` | 展示当前待审批或指定 run 的权威 Diff；没有 Diff 时明确说明 |
 | `/review [run-id]` | 由确定性 Projector 基于已有 Diff、Event 和验证事实生成只读风险摘要；不调用 Provider、不自动修改文件 |
-| `/doctor` | 检查版本、Python、终端能力、配置存在性、状态目录权限和 Git 可用性；不显示秘密 |
+| `/doctor` | 检查版本（含安装类型与包装位置）、Python、终端能力、配置存在性、状态目录权限和 Git 可用性；不显示秘密 |
 | `/config` | 只读显示当前有效配置、来源和脱敏值；修改配置仍通过文件与文档完成 |
 | `/usage` | 显示当前会话可得的调用次数、token 和用量；缺失值显示 unavailable，不填零 |
 | `/shortcuts` | 显示当前终端可用快捷键和替代按键 |
@@ -139,6 +141,8 @@ Vera 保持自身边界：不因竞品支持会话恢复、直接 Shell、自定
 | `vera` | 默认 TUI，完整交互、滚动、折叠和审批 |
 | `vera --plain` | 原生 scrollback、无动态重绘，拥有同一命令和审批语义 |
 | `vera --json` | 稳定 NDJSON Session，无 ANSI、提示符或人类日志 |
+| `vera --version` / `vera -V` | 打印安装身份后退出；不启动会话、不要求工作区 |
+| `vera --version --json` | 单行 JSON 身份对象；不是 Session 协议，不含 ANSI |
 | `vera run <goal>` | 一次性执行，错误和退出码与交互模式一致 |
 | `vera run <goal> --json` | 保持既有 EventEnvelope 协议兼容 |
 | 非 TTY/管道 | 不猜测模式；根据调用显式进入受支持模式或给出可行动提示 |

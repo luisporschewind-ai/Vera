@@ -114,11 +114,31 @@ def main(argv: list[str]) -> int:
         return repeat.returncode or 1
 
     help_proc = _run([str(vera), "--help"], cwd=workspace, env=env)
-    if help_proc.returncode != 0 or (
-        "Usage" not in help_proc.stdout and "usage" not in help_proc.stdout
-    ):
+    help_ok = help_proc.returncode == 0 and (
+        "Usage" in help_proc.stdout or "usage" in help_proc.stdout
+    )
+    if not help_ok or "--version" not in help_proc.stdout:
         sys.stderr.write(help_proc.stdout + help_proc.stderr)
         return help_proc.returncode or 1
+
+    version_proc = _run([str(vera), "--version"], cwd=workspace, env=env)
+    if version_proc.returncode != 0 or "vera 0.1.0" not in version_proc.stdout:
+        sys.stderr.write(version_proc.stdout + version_proc.stderr)
+        return version_proc.returncode or 1
+    json_version = _run([str(vera), "--json", "--version"], cwd=workspace, env=env)
+    if json_version.returncode != 0:
+        sys.stderr.write(json_version.stdout + json_version.stderr)
+        return json_version.returncode or 1
+    version_payload = json.loads(json_version.stdout)
+    if (
+        version_payload.get("name") != "vera"
+        or version_payload.get("version") != "0.1.0"
+        or version_payload.get("install") != "wheel"
+        or "site-packages" not in str(version_payload.get("location", ""))
+        or "git" in version_payload
+    ):
+        sys.stderr.write(json_version.stdout)
+        return 1
 
     for args_cli in (["eval", "validate", "--json"], ["eval", "list", "--json"]):
         proc = _run([str(vera), *args_cli], cwd=workspace, env=env)

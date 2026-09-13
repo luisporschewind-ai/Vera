@@ -7,10 +7,10 @@ import sys
 from pathlib import Path
 from typing import Any, Literal
 
-from vera import __version__
 from vera.config import VeraConfig
 from vera.redaction import Redactor
 from vera.session.status import WorkspaceStatusProbe
+from vera.version import current_identity
 
 CheckStatus = Literal["pass", "warning", "fail", "unavailable"]
 
@@ -46,8 +46,14 @@ def doctor_report(
             state_detail = f"mode {oct(mode)}"
     git = WorkspaceStatusProbe().inspect(workspace)
     git_status: CheckStatus = "pass" if git.available else "warning"
+    try:
+        version_detail = current_identity().doctor_detail()
+        version_status: CheckStatus = "pass"
+    except Exception:
+        version_detail = "unavailable"
+        version_status = "unavailable"
     items = (
-        _item("version", "pass", __version__),
+        _item("version", version_status, version_detail),
         _item("python", python_status, f"{sys.version_info.major}.{sys.version_info.minor}"),
         _item("terminal", terminal_status, term_value or "unavailable"),
         _item(

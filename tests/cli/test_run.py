@@ -7,6 +7,7 @@ from vera.bootstrap import RuntimeDependencies
 from vera.cli import app
 from vera.config import Limits, VeraConfig
 from vera.models.base import FakeModelAdapter, ModelTurn
+from vera.presentation.sanitize import sanitize_terminal_text
 from vera.runtime.engine import VeraRuntime
 from vera.tools.registry import ToolRegistry
 
@@ -14,8 +15,10 @@ from vera.tools.registry import ToolRegistry
 def test_help_lists_formal_commands() -> None:
     result = CliRunner().invoke(app, ["--help"])
     assert result.exit_code == 0
+    help_text = sanitize_terminal_text(result.stdout)
     for command in ("run", "runs", "rollback", "config"):
-        assert command in result.stdout
+        assert command in help_text
+    assert "--version" in help_text
 
 
 def test_json_run_stays_noninteractive_and_cancels_at_approval(tmp_path: Path, monkeypatch) -> None:

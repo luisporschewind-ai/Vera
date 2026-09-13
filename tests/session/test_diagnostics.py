@@ -18,6 +18,9 @@ def test_doctor_and_config_never_leak_secrets(tmp_path: Path) -> None:
     )
     names = {item["name"] for item in report["items"]}
     assert names == {"version", "python", "terminal", "config", "state_dir", "git"}
+    version_item = next(item for item in report["items"] if item["name"] == "version")
+    assert "0.1.0" in version_item["detail"]
+    assert "vera" in version_item["detail"]
     dumped = str(report)
     assert "sk-" not in dumped
     assert "api_key" not in dumped

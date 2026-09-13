@@ -33,6 +33,7 @@ from vera.terminal.mode import (
     TerminalModeError,
     select_mode,
 )
+from vera.version import current_identity
 
 app = typer.Typer(
     invoke_without_command=True,
@@ -77,9 +78,20 @@ def main(
     model: Annotated[str | None, typer.Option()] = None,
     plain: Annotated[bool, typer.Option("--plain", help="逐行人类交互模式")] = False,
     json_output: Annotated[bool, typer.Option("--json", help="NDJSON Session 协议")] = False,
+    version: Annotated[
+        bool,
+        typer.Option("--version", "-V", help="显示安装版本与位置并退出"),
+    ] = False,
 ) -> None:
     """Start an interactive session when no subcommand is supplied."""
 
+    if version:
+        identity = current_identity()
+        if json_output:
+            typer.echo(json.dumps(identity.to_payload(), ensure_ascii=False, sort_keys=True))
+        else:
+            typer.echo(identity.to_text())
+        raise typer.Exit(0)
     if ctx.invoked_subcommand is not None:
         return
     resolved = workspace.resolve()
