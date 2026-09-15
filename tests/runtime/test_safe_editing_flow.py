@@ -1,15 +1,16 @@
-import sys
 from pathlib import Path
 
 from pydantic import BaseModel
 
 from vera.contracts.commands import ResolveApproval, RollbackRun, StartRun
+from vera.contracts.verification import VerificationCommand
 from vera.models.base import FakeModelAdapter, ModelToolCall, ModelTurn
 from vera.runtime.engine import VeraRuntime
 from vera.tools.command_policy import CommandPolicy
 from vera.tools.definitions import ToolResult
 from vera.tools.filesystem import read_file
 from vera.tools.registry import ToolRegistry
+from vera.workspace.changeset import ChangeProposal, ChangeSetBuilder
 from vera.workspace.paths import WorkspacePaths
 
 
@@ -67,21 +68,13 @@ def runtime_with_verification_command(
         ToolRegistry(),
         tmp_path / "state",
         command_policy=command_policy,
+        artifact_prefix=tmp_path.parent / f"{tmp_path.name}-vera-verification",
+        installation_id="install-test",
     )
 
 
 def runtime_with_approved_verification(tmp_path: Path) -> VeraRuntime:
-    return runtime_with_verification_command(
-        tmp_path,
-        (
-            sys.executable,
-            "-c",
-            "from pathlib import Path; "
-            "p=Path('verified.txt'); "
-            "old=p.read_text() if p.exists() else ''; "
-            "p.write_text(old + 'x')",
-        ),
-    )
+    return runtime_with_verification_command(tmp_path, ("ruff", "check", "."))
 
 
 def resolve(event, decision: str) -> ResolveApproval:
@@ -207,8 +200,13 @@ def test_approved_verification_command_runs_once_and_completes(tmp_path: Path) -
         "verification.completed",
         "run.completed",
     ]
-    assert (tmp_path / "verified.txt").read_text(encoding="utf-8") == "x"
+    assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "new\n"
+    assert not (tmp_path / "verified.txt").exists()
+    assert not (tmp_path / "build").exists()
     assert command_events[-1].payload["state"] == "completed"
+    completed = next(event for event in command_events if event.type == "verification.completed")
+    assert completed.payload["artifact_profile"] == "ruff_no_cache"
+    assert completed.payload["artifact_cleanup_status"] == "cleaned"
 
 
 def test_rejected_verification_command_keeps_change_and_finishes_failed(
@@ -336,10 +334,10 @@ def test_new_runtime_persisted_rollback_preserves_later_user_edit(tmp_path: Path
 
 def test_runtime_uses_injected_user_allowed_command_prefix(tmp_path: Path) -> None:
     (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
-    policy = CommandPolicy(user_allowed_prefixes=((sys.executable, "-c"),))
+    policy = CommandPolicy(user_allowed_prefixes=(("ruff", "check"),))
     runtime = runtime_with_verification_command(
         tmp_path,
-        (sys.executable, "-c", "print('verified')"),
+        ("ruff", "check", "."),
         command_policy=policy,
     )
 
@@ -354,7 +352,7 @@ def test_runtime_uses_injected_user_allowed_command_prefix(tmp_path: Path) -> No
     assert any(event.type == "verification.completed" for event in final_events)
 
 
-def test_forbidden_verification_is_rejected_without_running_or_reclassifying(
+def test_unisolated_verification_is_rejected_before_changeset(
     tmp_path: Path,
 ) -> None:
     marker = tmp_path / "should-not-exist.txt"
@@ -366,14 +364,61 @@ def test_forbidden_verification_is_rejected_without_running_or_reclassifying(
     start_events = list(
         runtime.handle(StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake"))
     )
-    approval = next(event for event in start_events if event.type == "approval.required")
-    final_events = list(runtime.handle(resolve(approval, "approve")))
-    completed = [event for event in final_events if event.type == "verification.completed"]
+    completed = [event for event in start_events if event.type == "tool.completed"]
     assert completed
-    assert completed[0].payload["status"] == "rejected"
-    assert not any(event.type == "approval.required" for event in final_events)
+    assert completed[0].payload["ok"] is False
+    assert completed[0].payload["reason_code"] == "verification_artifact_isolation_unavailable"
+    assert not any(event.type == "changeset.proposed" for event in start_events)
+    assert not any(event.type == "approval.required" for event in start_events)
     assert not marker.exists()
-    assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "new\n"
+    assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "old\n"
+
+
+def test_forbidden_verification_is_rejected_without_running_or_reclassifying(
+    tmp_path: Path,
+) -> None:
+    test_unisolated_verification_is_rejected_before_changeset(tmp_path)
+
+
+def test_planned_verification_enters_changeset_and_changes_hash(tmp_path: Path) -> None:
+    (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
+    runtime = runtime_with_verification_command(tmp_path, ("ruff", "check", "."))
+    events = list(
+        runtime.handle(StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake"))
+    )
+    run_id = events[0].run_id
+    built = runtime.runs[run_id].built_change_set
+    assert built is not None
+    planned = built.change_set.verification[0]
+    assert planned.artifact_plan is not None
+    assert planned.argv[-1] == "--no-cache"
+    assert planned.artifact_plan.profile == "ruff_no_cache"
+    unplanned = ChangeSetBuilder(WorkspacePaths(tmp_path)).build(
+        run_id,
+        "edit and verify",
+        [ChangeProposal(operation="update", path="hello.txt", after_content="new\n")],
+        [VerificationCommand(argv=("ruff", "check", "."), cwd=".")],
+    )
+    assert built.change_set.content_hash != unplanned.change_set.content_hash
+
+
+def test_command_approval_shows_final_planned_argv_and_profile(tmp_path: Path) -> None:
+    (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
+    runtime = runtime_with_verification_command(tmp_path, ("ruff", "check", "."))
+    start_events = list(
+        runtime.handle(StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake"))
+    )
+    changeset_approval = next(event for event in start_events if event.type == "approval.required")
+    apply_events = list(runtime.handle(resolve(changeset_approval, "approve")))
+    command_approval = next(event for event in apply_events if event.type == "approval.required")
+    pending = runtime.runs[start_events[0].run_id].pending_command
+    assert pending is not None
+    assert pending.artifact_plan is not None
+    assert command_approval.payload["argv"] == list(pending.argv)
+    assert command_approval.payload["cwd"] == pending.cwd
+    assert command_approval.payload["artifact_profile"] == pending.artifact_plan.profile
+    assert command_approval.payload["artifact_root"] == pending.artifact_plan.root
+    assert pending.argv == ("ruff", "check", ".", "--no-cache")
 
 
 def _start_edit(tmp_path: Path) -> tuple[VeraRuntime, object]:

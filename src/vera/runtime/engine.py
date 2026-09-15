@@ -43,7 +43,7 @@ from vera.contracts.conversation import ConversationMessage
 from vera.contracts.events import EventEnvelope
 from vera.contracts.recovery import RecoveryClassification, RecoveryReport, RecoveryStage
 from vera.contracts.streaming import RuntimeOutput, StreamFrame, StreamFrameType
-from vera.contracts.verification import VerificationCommand
+from vera.contracts.verification import VerificationCommand, VerificationResult
 from vera.models.base import ModelAdapter, ModelMessage, ModelRequest, ModelToolCall, ModelTurn
 from vera.models.errors import ModelErrorCode, ModelProviderError, safe_error_payload
 from vera.models.retry import RetryPolicy
@@ -80,6 +80,11 @@ from vera.runtime.security import (
 from vera.runtime.state import RunState, RunStateMachine
 from vera.tools.command_policy import CommandDecisionKind, CommandPolicy
 from vera.tools.registry import ToolRegistry
+from vera.verification.artifacts import (
+    VerificationArtifactError,
+    VerificationArtifactPlanner,
+    artifact_root,
+)
 from vera.verification.runner import VerificationRunner
 from vera.workspace.apply import ApplyStatus, ChangeApplier, FileWriter, RollbackStatus
 from vera.workspace.changeset import ChangeProposal, ChangeSetBuilder, sha256_bytes
@@ -144,6 +149,7 @@ class VeraRuntime:
         *,
         snapshot_store: RecoverySnapshotStore | None = None,
         installation_id: str | None = None,
+        artifact_prefix: Path | None = None,
         recovery_coordinator: RecoveryCoordinator | None = None,
         file_writer: FileWriter | None = None,
         policy_engine: PolicyEngine | None = None,
@@ -156,6 +162,7 @@ class VeraRuntime:
         self.state_dir = state_dir
         self.limits = limits or Limits()
         self.installation_id = installation_id or "local"
+        self.artifact_prefix = artifact_prefix
         self.retry_policy = retry_policy or RetryPolicy(max_attempts=self.limits.max_model_attempts)
         self.sleep = sleep
         self.content_detector = SafeContentDetector(
@@ -299,6 +306,10 @@ class VeraRuntime:
         ):
             payload["argv"] = list(context.pending_command.argv)
             payload["cwd"] = context.pending_command.cwd
+            plan = context.pending_command.artifact_plan
+            if plan is not None:
+                payload["artifact_profile"] = plan.profile
+                payload["artifact_root"] = plan.root
         return payload
 
     def _event(
@@ -494,17 +505,110 @@ class VeraRuntime:
             context.machine.transition(RunState.FAILED)
         yield self._stable_event(context, "run.failed", {"reason": reason}, RecoveryStage.TERMINAL)
 
+    def _planner(self) -> VerificationArtifactPlanner:
+        return VerificationArtifactPlanner(prefix=self.artifact_prefix)
+
+    def _verification_runner(self, context: RunContext) -> VerificationRunner:
+        return VerificationRunner(
+            context.command.workspace_root,
+            artifact_prefix=self.artifact_prefix,
+        )
+
+    def _plan_verification(
+        self,
+        context: RunContext,
+        commands: Sequence[VerificationCommand],
+    ) -> tuple[VerificationCommand, ...]:
+        planner = self._planner()
+        planned: list[VerificationCommand] = []
+        for index, command in enumerate(commands):
+            planned.append(
+                planner.plan(
+                    command,
+                    workspace_root=context.command.workspace_root,
+                    installation_id=self.installation_id,
+                    run_id=context.run_id,
+                    index=index,
+                )
+            )
+        return tuple(planned)
+
+    def _expected_artifact_root(self, context: RunContext, index: int) -> Path:
+        return artifact_root(
+            workspace_root=context.command.workspace_root,
+            installation_id=self.installation_id,
+            run_id=context.run_id,
+            index=index,
+            prefix=self.artifact_prefix,
+        )
+
+    def _verification_binding_matches(
+        self, context: RunContext, command: VerificationCommand, index: int
+    ) -> bool:
+        plan = command.artifact_plan
+        if plan is None or plan.root is None:
+            return False
+        return plan.root == str(self._expected_artifact_root(context, index))
+
+    def _verification_event_payload(
+        self,
+        index: int,
+        command: VerificationCommand,
+        result: VerificationResult | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        plan = command.artifact_plan
+        payload: dict[str, Any] = {
+            "index": index,
+            "argv": list(command.argv),
+            "cwd": command.cwd,
+            "artifact_profile": None if plan is None else plan.profile,
+            "artifact_root": None if plan is None else plan.root,
+        }
+        if result is not None:
+            payload.update(
+                {
+                    "status": result.status,
+                    "exit_code": result.exit_code,
+                    "stdout": result.stdout,
+                    "stderr": result.stderr,
+                    "stdout_truncated": result.stdout_truncated,
+                    "stderr_truncated": result.stderr_truncated,
+                    "artifact_cleanup_status": result.artifact_cleanup_status,
+                    "workspace_mutations": list(result.workspace_mutations),
+                    "reason_code": result.reason_code,
+                }
+            )
+        if extra:
+            payload.update(extra)
+        return payload
+
     def _propose(self, context: RunContext, call: ModelToolCall) -> Iterator[EventEnvelope]:
         try:
             proposal = ProposalInput.model_validate(call.arguments)
+            planned = self._plan_verification(context, proposal.verification)
             built = ChangeSetBuilder(WorkspacePaths(context.command.workspace_root)).build(
                 context.run_id,
                 proposal.summary,
                 proposal.changes,
-                proposal.verification,
+                planned,
             )
+        except VerificationArtifactError as exc:
+            failed = {
+                "name": call.name,
+                "ok": False,
+                "error": exc.code,
+                "reason_code": exc.code,
+                "basename": exc.basename,
+                "suggestion": exc.suggestion,
+            }
+            target = tool_call_target(call)
+            if target:
+                failed["target"] = target
+            yield self._event(context, "tool.completed", failed)
+            return
         except Exception as exc:
-            failed: dict[str, Any] = {"name": call.name, "ok": False, "error": str(exc)}
+            failed = {"name": call.name, "ok": False, "error": str(exc)}
             target = tool_call_target(call)
             if target:
                 failed["target"] = target
@@ -561,11 +665,29 @@ class VeraRuntime:
         if built is None:
             yield from self._fail(context, "missing_changeset")
             return
-        runner = VerificationRunner(context.command.workspace_root)
+        runner = self._verification_runner(context)
         policy = self.command_policy
         while context.verification_index < len(built.change_set.verification):
             index = context.verification_index
             command = built.change_set.verification[index]
+            if not self._verification_binding_matches(context, command, index):
+                context.verification_failed = True
+                context.verification_index += 1
+                context.pending_command = None
+                yield self._stable_event(
+                    context,
+                    "verification.completed",
+                    self._verification_event_payload(
+                        index,
+                        command,
+                        extra={
+                            "status": "rejected",
+                            "reason_code": "verification_not_planned",
+                        },
+                    ),
+                    RecoveryStage.VERIFYING,
+                )
+                continue
             decision = policy.classify(
                 command,
                 risk_labels=collected_risk_labels(context.security_findings),
@@ -577,7 +699,11 @@ class VeraRuntime:
                 yield self._stable_event(
                     context,
                     "verification.completed",
-                    {"index": index, "status": "rejected", "reason": decision.reason},
+                    self._verification_event_payload(
+                        index,
+                        command,
+                        extra={"status": "rejected", "reason": decision.reason},
+                    ),
                     RecoveryStage.VERIFYING,
                 )
                 continue
@@ -593,8 +719,7 @@ class VeraRuntime:
                     policy_hash=self.policy_engine.policy_hash,
                     **self._security_approval_kwargs(context),
                 )
-                payload = self._approval_payload(request)
-                payload.update({"argv": list(command.argv), "cwd": command.cwd})
+                payload = self._approval_payload(request, context)
                 yield self._stable_event(
                     context,
                     "approval.required",
@@ -605,7 +730,7 @@ class VeraRuntime:
             yield self._stable_event(
                 context,
                 "verification.started",
-                {"index": index, "argv": list(command.argv), "cwd": command.cwd},
+                self._verification_event_payload(index, command),
                 RecoveryStage.VERIFYING,
             )
             result = runner.run(command)
@@ -614,15 +739,7 @@ class VeraRuntime:
             yield self._stable_event(
                 context,
                 "verification.completed",
-                {
-                    "index": index,
-                    "status": result.status,
-                    "exit_code": result.exit_code,
-                    "stdout": result.stdout,
-                    "stderr": result.stderr,
-                    "stdout_truncated": result.stdout_truncated,
-                    "stderr_truncated": result.stderr_truncated,
-                },
+                self._verification_event_payload(index, command, result),
                 RecoveryStage.VERIFYING,
             )
         terminal = (
@@ -748,6 +865,18 @@ class VeraRuntime:
                     approval_id=request.approval_id,
                 )
                 return
+        if request.kind == ApprovalKind.COMMAND.value:
+            pending = context.pending_command
+            if pending is None or not self._verification_binding_matches(
+                context, pending, context.verification_index
+            ):
+                yield from self._expire_approval(
+                    context,
+                    command,
+                    "verification_binding_changed",
+                    approval_id=request.approval_id,
+                )
+                return
         yield self._event(
             context,
             "approval.resolved",
@@ -755,19 +884,25 @@ class VeraRuntime:
         )
         if request.kind == ApprovalKind.COMMAND.value:
             if decision == "reject":
+                index = context.verification_index
+                pending = context.pending_command
                 context.verification_failed = True
                 context.pending_command = None
                 context.verification_index += 1
                 yield self._stable_event(
                     context,
                     "verification.completed",
-                    {"index": context.verification_index - 1, "status": "rejected"},
+                    self._verification_event_payload(
+                        index,
+                        pending or VerificationCommand(argv=()),
+                        extra={"status": "rejected"},
+                    ),
                     RecoveryStage.VERIFYING,
                 )
             elif context.pending_command is not None:
-                result = VerificationRunner(context.command.workspace_root).run(
-                    context.pending_command
-                )
+                pending = context.pending_command
+                index = context.verification_index
+                result = self._verification_runner(context).run(pending)
                 context.verification_failed = (
                     context.verification_failed or result.status != "passed"
                 )
@@ -776,11 +911,7 @@ class VeraRuntime:
                 yield self._stable_event(
                     context,
                     "verification.completed",
-                    {
-                        "index": context.verification_index - 1,
-                        "status": result.status,
-                        "exit_code": result.exit_code,
-                    },
+                    self._verification_event_payload(index, pending, result),
                     RecoveryStage.VERIFYING,
                 )
             yield from self._verify(context)

@@ -95,7 +95,12 @@ class HumanPresenter:
             )
             self._write(f"开始验证：{command}")
         elif event.type == "verification.completed":
-            self._write(f"验证结果：{payload.get('status', 'unknown')}")
+            status = payload.get("status", "unknown")
+            reason = payload.get("reason_code")
+            if reason:
+                self._write(f"验证结果：{status}（{reason}）")
+            else:
+                self._write(f"验证结果：{status}")
             stdout = payload.get("stdout")
             stderr = payload.get("stderr")
             if isinstance(stdout, str) and stdout:

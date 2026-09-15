@@ -63,3 +63,12 @@ git diff --check
 - 当时未开始旧编号阶段七（现阶段八）的桌面集成，未引入桌面框架
 - 未读取真实 Provider Key，未跑 live
 - 未用 Textual Pilot 或快照代替人工体验结论
+
+## 任务 0042 验证产物隔离（2026-09-15）
+
+自动部分已在分支 `phase-6/0042-verification-artifact-isolation` 落地，未提交。Planner 在 Change Set hash 与命令审批前生成最终 `VerificationCommand`；Runner 只执行已规划命令，并把 Xcode/SwiftPM/pytest/Mypy/Ruff/Git/tsc 产物写到 workspace 外临时根。未知写入型命令失败关闭。
+
+- 聚焦测试与 `ruff`/`mypy`/`git diff --check` 通过。完整非 live `919 passed, 2 deselected`。
+- 两项既有 wheel smoke 因共享 `/private/tmp/vera-uv-cache` 缺少依赖 WHEEL 元数据失败，与隔离实现无关。
+- 真实 Terminal.app 对 `VeraTestDemo` 的 `xcodebuild` 隔离回归未跑；既有 `build/` 仍为发现，未清理。
+- 阶段六保持 `In progress`。不把外部产物隔离称为 OS 沙箱。

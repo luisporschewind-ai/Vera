@@ -238,6 +238,7 @@ class RunContext:
     context_bytes: int = 0
     built_change_set: BuiltChangeSet | None = None
     pending_command: VerificationCommand | None = None
+    """Planned VerificationCommand waiting for command approval; never a second derived copy."""
     verification_index: int = 0
     verification_failed: bool = False
     last_tool_signature: str | None = None

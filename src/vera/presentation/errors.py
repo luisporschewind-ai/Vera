@@ -43,6 +43,14 @@ _REASON_TEXT: dict[str, str] = {
     "provider_network_error": "无法连接模型供应商",
     "provider_request_invalid": "发给模型供应商的请求不被接受",
     "provider_service_error": "模型供应商返回服务错误",
+    "workspace_polluted": "验证意外写入了工作区",
+    "artifact_cleanup_failed": "外部验证产物清理失败",
+    "verification_not_planned": "验证命令尚未规划隔离",
+    "verification_artifact_isolation_unavailable": "该验证命令没有隔离 Profile",
+    "verification_output_inside_workspace": "验证输出路径位于工作区",
+    "verification_output_not_owned": "验证输出路径不受 Vera 管理",
+    "verification_artifact_root_unsafe": "验证产物根不安全",
+    "verification_binding_changed": "验证计划绑定已变化",
 }
 
 

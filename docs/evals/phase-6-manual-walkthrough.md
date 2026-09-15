@@ -62,7 +62,7 @@
 | 环境 | macOS Terminal.app；`~/Desktop/VeraTestDemo` |
 | 步骤 | 验证成功/失败、取消、恢复、回滚 |
 | 预期 | 终态文字不混淆；取消不重复副作用；恢复/回滚有明确事实 |
-| 实际 | 已走查。Ctrl+C 取消、回滚、审批 Tab、强制退出后的待恢复提示与 `/recover`/`/abandon` 已过。4A 验证成功已过（`test -f vera-walkthrough-verify.txt`，未跑 xcodebuild）。4B 验证失败已过：终态为「任务完成」且 `状态：verification_failed`，与任务失败区分。Finder 未见 `vera-walkthrough-fail.txt`（可能未落地或已回滚，不影响终态判定）。 |
+| 实际 | 已走查。Ctrl+C 取消、回滚、审批 Tab、强制退出后的待恢复提示与 `/recover`/`/abandon` 已过。4A 验证成功已过（`test -f vera-walkthrough-verify.txt`，未跑 xcodebuild）。4B 验证失败已过：终态为「任务完成」且 `状态：verification_failed`，与任务失败区分。Finder 未见 `vera-walkthrough-fail.txt`（可能未落地或已回滚，不影响终态判定）。任务 0042 已把验证产物规划到 workspace 外临时根；`VeraTestDemo/build` 既有污染未清理，真实 `xcodebuild` 隔离回归未走查。 |
 | 严重度 | 发现 28–30 已复验通过；4A、4B 通过 |
 | 证据 | 用户在 Terminal.app 的直接观察 |
 
@@ -135,6 +135,7 @@
 | 32 | 5 诊断 | 只读目录任务失败文案为裸 `permission_denied`。对文件 `chmod a-w` 挡不住原子替换；规格 5D 是只读目录。 | Low | 复验通过：只读目录下 Approve 后失败，Diff 为「未写入」，失败卡未产生工作区变化，磁盘仍为 `keep` |
 | 33 | 7 入口对照 | `--plain` 把 `model.requested` / `model.completed` 原样打出。TUI 已静默这些往返；HumanPresenter 未处理时回落到事件类型名。 | Low | 复验通过：`vera run` 人类输出无这两行；JSON 仍含事件名 |
 | 34 | 7 入口对照 | `vera run --json` 的 `run.started.model_profile` 为 `default`，TUI/Session 为 `deepseek`。实际仍打到同一供应商，字段名不一致。 | Low | 复验通过：`model_profile= deepseek`，`exit=0` |
+| 35 | 4 验证取消恢复 | `VeraTestDemo` 经用户批准的 `xcodebuild` 在工程根生成约 106 MB、354 个 `build/` 文件，其中 352 个进入 Git 暂存区。这是 Xcode 标准产物，不是 Vera 私有状态，但由未隔离的验证命令触发。 | High | 任务 0042 自动部分已落地：审批前规划外部产物根，未匹配 Profile 失败关闭。既有 `build/` 未删除、未取消暂存、未改 `.gitignore`。真实 Terminal.app Xcode 隔离回归未跑。 |
 
 ## 阶段七最终封存确认（沿用本记录）
 

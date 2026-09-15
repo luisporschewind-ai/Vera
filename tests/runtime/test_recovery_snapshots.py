@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 from vera.contracts.commands import ResolveApproval, StartRun
@@ -46,6 +45,7 @@ def make_runtime(
         command_policy=command_policy,
         snapshot_store=store,
         installation_id="install-1",
+        artifact_prefix=tmp_path.parent / f"{tmp_path.name}-vera-verification",
     )
     return runtime, store
 
@@ -91,14 +91,14 @@ def test_started_and_terminal_snapshots(tmp_path: Path) -> None:
 
 def test_checkpoint_apply_and_verification_snapshots(tmp_path: Path) -> None:
     (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
-    policy = CommandPolicy(user_allowed_prefixes=((sys.executable, "-c"),))
+    policy = CommandPolicy(user_allowed_prefixes=(("ruff", "check"),))
     runtime, store = make_runtime(
         tmp_path,
         [
             _proposal(
                 [
                     {
-                        "argv": [sys.executable, "-c", "print('ok')"],
+                        "argv": ["ruff", "check", "."],
                         "cwd": ".",
                     }
                 ]
@@ -130,7 +130,7 @@ def test_checkpoint_apply_and_verification_snapshots(tmp_path: Path) -> None:
 
 def test_verification_started_snapshot_marks_in_flight(tmp_path: Path) -> None:
     (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
-    policy = CommandPolicy(user_allowed_prefixes=((sys.executable, "-c"),))
+    policy = CommandPolicy(user_allowed_prefixes=(("ruff", "check"),))
     stages: list[RecoveryStage] = []
     in_flight: list[bool] = []
 
@@ -142,7 +142,7 @@ def test_verification_started_snapshot_marks_in_flight(tmp_path: Path) -> None:
 
     runtime, _store = make_runtime(
         tmp_path,
-        [_proposal([{"argv": [sys.executable, "-c", "print('ok')"], "cwd": "."}])],
+        [_proposal([{"argv": ["ruff", "check", "."], "cwd": "."}])],
         snapshot_store=RecordingStore(tmp_path / "state"),
         command_policy=policy,
     )
@@ -308,3 +308,135 @@ def test_tampered_snapshot_findings_reject_old_approval(tmp_path: Path) -> None:
     assert follow[-1].type == "approval.invalidated"
     assert follow[-1].payload["reason_code"] == "security_context_changed"
     assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "old\n"
+
+
+def test_planned_verification_survives_snapshot_round_trip(tmp_path: Path) -> None:
+    (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
+    runtime, store = make_runtime(
+        tmp_path,
+        [_proposal([{"argv": ["ruff", "check", "."], "cwd": "."}])],
+    )
+    events = list(
+        runtime.handle(StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake"))
+    )
+    snapshot = store.load(events[0].run_id)
+    restored = store.load(events[0].run_id)
+    assert restored == snapshot
+    planned = restored.built_changeset.change_set.verification[0]  # type: ignore[union-attr]
+    assert planned.artifact_plan is not None
+    assert planned.argv[-1] == "--no-cache"
+    assert planned.artifact_plan.profile == "ruff_no_cache"
+    assert planned.artifact_plan.root is not None
+
+
+def test_missing_artifact_root_is_recreated_not_workspace_damage(tmp_path: Path) -> None:
+    from vera.contracts.commands import ResumeRun
+
+    (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
+    first, store = make_runtime(
+        tmp_path,
+        [_proposal([{"argv": ["ruff", "check", "."], "cwd": "."}])],
+    )
+    start = list(first.handle(StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake")))
+    changeset = next(event for event in start if event.type == "approval.required")
+    follow = list(first.handle(resolve(changeset)))
+    assert any(event.type == "approval.required" for event in follow)
+    pending = first.runs[start[0].run_id].pending_command
+    assert pending is not None and pending.artifact_plan is not None
+    root = Path(pending.artifact_plan.root)
+    if root.exists():
+        import shutil
+
+        shutil.rmtree(root)
+    second, _store = make_runtime(tmp_path, [], snapshot_store=store)
+    resumed = tuple(second.handle(ResumeRun(run_id=start[0].run_id)))
+    pending_event = next(event for event in resumed if event.type == "approval.required")
+    finished = tuple(
+        second.handle(
+            ResolveApproval(
+                run_id=pending_event.run_id,
+                approval_id=str(pending_event.payload["approval_id"]),
+                target_hash=str(pending_event.payload["target_hash"]),
+                decision="approve",
+            )
+        )
+    )
+    assert finished[-1].type == "run.completed"
+    assert finished[-1].payload["state"] == "completed"
+    assert not root.exists()
+
+
+def test_verification_binding_mismatch_expires_old_approval(tmp_path: Path) -> None:
+    from vera.contracts.commands import ResumeRun
+
+    (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
+    first, store = make_runtime(
+        tmp_path,
+        [_proposal([{"argv": ["ruff", "check", "."], "cwd": "."}])],
+    )
+    start = list(first.handle(StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake")))
+    changeset = next(event for event in start if event.type == "approval.required")
+    follow = list(first.handle(resolve(changeset)))
+    assert any(event.type == "approval.required" for event in follow)
+    second = VeraRuntime(
+        FakeModelAdapter([]),
+        ToolRegistry(),
+        tmp_path / "state",
+        snapshot_store=store,
+        installation_id="install-1",
+        artifact_prefix=tmp_path.parent / f"{tmp_path.name}-vera-verification-other",
+    )
+    resumed = tuple(second.handle(ResumeRun(run_id=start[0].run_id)))
+    pending = next(event for event in resumed if event.type == "approval.required")
+    finished = tuple(
+        second.handle(
+            ResolveApproval(
+                run_id=pending.run_id,
+                approval_id=str(pending.payload["approval_id"]),
+                target_hash=str(pending.payload["target_hash"]),
+                decision="approve",
+            )
+        )
+    )
+    assert finished[-1].type == "approval.expired"
+    assert finished[-1].payload["expiry_reason"] == "verification_binding_changed"
+
+
+def test_legacy_unplanned_snapshot_does_not_run_verification(tmp_path: Path) -> None:
+    from vera.contracts.commands import ResumeRun
+
+    (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
+    first, store = make_runtime(
+        tmp_path,
+        [_proposal([{"argv": ["ruff", "check", "."], "cwd": "."}])],
+    )
+    start = list(first.handle(StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake")))
+    changeset = next(event for event in start if event.type == "approval.required")
+    follow = list(first.handle(resolve(changeset)))
+    assert any(event.type == "approval.required" for event in follow)
+    snapshot = store.load(start[0].run_id)
+    built = snapshot.built_changeset
+    assert built is not None
+    unplanned = built.change_set.verification[0].model_copy(update={"artifact_plan": None})
+    updated_set = built.change_set.model_copy(update={"verification": (unplanned,)})
+    store.save(
+        snapshot.model_copy(
+            update={"built_changeset": built.model_copy(update={"change_set": updated_set})}
+        )
+    )
+    second, _store = make_runtime(tmp_path, [], snapshot_store=store)
+    resumed = tuple(second.handle(ResumeRun(run_id=start[0].run_id)))
+    pending = next(event for event in resumed if event.type == "approval.required")
+    finished = tuple(
+        second.handle(
+            ResolveApproval(
+                run_id=pending.run_id,
+                approval_id=str(pending.payload["approval_id"]),
+                target_hash=str(pending.payload["target_hash"]),
+                decision="approve",
+            )
+        )
+    )
+    assert finished[-1].type == "approval.expired"
+    assert finished[-1].payload["expiry_reason"] == "verification_binding_changed"
+    assert not any(event.type == "verification.started" for event in finished)

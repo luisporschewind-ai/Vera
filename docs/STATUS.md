@@ -2,7 +2,7 @@
 
 **更新日期：** 2026-09-15
 **当前阶段：** 阶段 6——CLI 功能与可靠性收口（In progress）
-**仓库状态：** 阶段五停在 Ready for manual acceptance。任务 0025–0029 自动部分已完成，任务 0031–0033 代码在当前工作树。用户 2026-09-15 停止 TUI 视觉走查，任务 0033 到此为止；下一步是任务 0042。阶段七 CLI 体验与阶段八桌面集成都未开始；不引入 Electron 代码。暂无远程时可不推送。
+**仓库状态：** 阶段五停在 Ready for manual acceptance。任务 0025–0029 自动部分已完成，任务 0031–0033 代码在当前工作树。用户 2026-09-15 停止 TUI 视觉走查，任务 0033 到此为止。任务 0042 自动步骤已在 `phase-6/0042-verification-artifact-isolation` 落地，未提交；真实 Xcode/Terminal.app 回归未跑。阶段七 CLI 体验与阶段八桌面集成都未开始；不引入 Electron 代码。暂无远程时可不推送。
 
 ## 已完成
 
@@ -32,10 +32,10 @@
 ## 活动任务
 
 - [任务 0033：用户消息、工具块与 tool_call_id](tasks/0033-cli-dogfood-bugs.md)：Done。视觉走查由用户停止；TUI 修正留在未提交工作树。不封存阶段六。
-- [任务 0042：验证产物隔离与工作区无污染](tasks/0042-verification-artifact-isolation.md)：Ready；规格与 ADR 已接受，代码尚未落地。新 session 从步骤 1 开始。
+- [任务 0042：验证产物隔离与工作区无污染](tasks/0042-verification-artifact-isolation.md)：In progress；步骤 1–8 自动部分已落地，未提交。真实 Terminal.app Xcode 回归未跑；`VeraTestDemo/build` 仍为发现，未清理。阶段六保持 In progress。
 - [任务 0032：时间线信息层次与错误保真](tasks/0032-timeline-and-error-fidelity.md)：代码已合入当前工作树；待 Terminal.app 复验滚动与失败文案。
 - [任务 0031：CLI 版本身份与 `--version`](tasks/0031-cli-version-identity.md)：已合入当前工作树；待 Terminal.app 复验 `vera --version`。
-- [阶段六执行顺序](tasks/phase-6-execution-order.md)：0025–0029 自动部分已完成；0031–0033 已合入或收口；当前实施任务 0042。
+- [阶段六执行顺序](tasks/phase-6-execution-order.md)：0025–0029 自动部分已完成；0031–0033 已合入或收口；0042 自动部分已落地，待真实 Xcode 回归。
 - [阶段五执行顺序](tasks/phase-5-execution-order.md)：0024 自动门禁已完成；人工 dogfood 不足，阶段五保持 Ready for manual acceptance。
 - [ADR-0017：插入 CLI 体验阶段并顺延桌面路线](decisions/ADR-0017-insert-cli-experience-stage.md)：Accepted；阶段七用于 CLI 体验与个人主力化，原桌面阶段顺延为阶段八。
 - [验证产物隔离与工作区无污染](specs/2026-09-14-verification-artifact-isolation.md)与 [ADR-0018](decisions/ADR-0018-isolate-verification-artifacts.md)：Accepted；最终验证计划必须在审批前形成，构建/缓存产物写到 workspace 外。
@@ -49,7 +49,8 @@
 
 ## 最近验证
 
-- 走查新发现：`VeraTestDemo` 的 Xcode 验证在工程根生成约 106 MB、354 个 `build/` 文件，其中 352 个进入 Git 暂存区。已确认是 Vera 触发 `xcodebuild` 后的标准 Xcode 产物；未自动清理、取消暂存或修改用户 `.gitignore`。
+- 走查新发现：`VeraTestDemo` 的 Xcode 验证在工程根生成约 106 MB、354 个 `build/` 文件，其中 352 个进入 Git 暂存区。已确认是 Vera 触发 `xcodebuild` 后的标准 Xcode 产物；未自动清理、取消暂存或修改用户 `.gitignore`。任务 0042 已把后续验证产物规划到 workspace 外临时根；该既有 `build/` 仍视为用户数据。
+- 任务 0042：聚焦契约/Planner/Runner/Runtime/恢复与多生态 Fake 测试通过；`ruff`/`mypy`/`git diff --check` 通过。完整非 live `919 passed, 2 deselected`；两项既有 wheel smoke 因共享 uv cache 缺少 WHEEL 元数据失败，与隔离行为无关。真实 Terminal.app Xcode 隔离回归未跑。阶段六未封存。
 - 任务 0033：走查发现 1–3、8–17、19–34 已复验。第 4–7 项主路径已过。用户 2026-09-15 停止视觉走查。当前冻结视觉：用户卡片 `$secondary` 填充、无蓝色描边、上下内边距 1 格、12 小时 AM/PM 灰色时间、左右 2 列与输入框对齐、时间线滚动条隐藏、输入区无独立底色。`VeraTestDemo/build` 仍为发现记录，未清理。阶段六未封存。
 - 任务 0029：[phase-6-cli-product-acceptance](evals/phase-6-cli-product-acceptance.md)；人工走查见 [phase-6-manual-walkthrough](evals/phase-6-manual-walkthrough.md)，七项均为 Not run
 - 任务 0028：终端能力探测、尺寸矩阵、时间线预算与兼容记录
@@ -76,7 +77,7 @@
 
 ## 下一检查点
 
-1. 新 session 按[任务 0042](tasks/0042-verification-artifact-isolation.md)从步骤 1 实施验证产物隔离；未完成前不得关闭阶段六。
+1. 任务 0042 自动部分已落地，未提交；真实 Terminal.app Xcode 回归完成前不得关闭阶段六。
 2. 0042 提交不得混入任务 0033 未提交的 TUI 文件；不自动删除、取消暂存或忽略 `VeraTestDemo/build`。
 3. 阶段七持久化会话、项目指令、TUI 视觉体验和个人 dogfood 的[任务级实施计划](tasks/phase-7-execution-order.md)已补齐；新增用户消息滚动锚点/时间、底部上下文/模型/推理状态带、输入箭头、状态层级与审批密度验收；阶段六关闭前不开始实现。
 4. 阶段五仍缺 20 次真实 dogfood 与三类真实工程走查，不得把阶段五标为 Complete。

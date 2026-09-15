@@ -10,7 +10,12 @@ from vera.contracts.checkpoints import CheckpointFile, CheckpointManifest
 from vera.contracts.commands import CancelRun, ResolveApproval, RollbackRun, StartRun
 from vera.contracts.conversation import ConversationMessage
 from vera.contracts.events import EventEnvelope
-from vera.contracts.verification import VerificationCommand, VerificationResult
+from vera.contracts.verification import (
+    ARTIFACT_PROFILES,
+    VerificationArtifactPlan,
+    VerificationCommand,
+    VerificationResult,
+)
 
 
 def test_start_run_accepts_conversation_and_round_trips() -> None:
@@ -147,3 +152,40 @@ def test_event_round_trip_and_sequence_validation(tmp_path: Path) -> None:
             type="run.started",
             payload={},
         )
+
+
+@pytest.mark.parametrize("profile", ARTIFACT_PROFILES)
+def test_artifact_plan_serializes_legal_profiles(profile: str) -> None:
+    plan = VerificationArtifactPlan(
+        profile=profile,  # type: ignore[arg-type]
+        root="/private/tmp/vera-verification/abc123def456/run_1/000",
+    )
+    restored = VerificationArtifactPlan.model_validate_json(plan.model_dump_json())
+    assert restored == plan
+    assert restored.schema_version == 1
+    assert restored.cleanup == "always"
+
+
+def test_artifact_plan_rejects_relative_root_cleanup_and_extra_fields() -> None:
+    with pytest.raises(ValidationError):
+        VerificationArtifactPlan(profile="pytest", root="relative/root")
+    with pytest.raises(ValidationError):
+        VerificationArtifactPlan(profile="pytest", cleanup="never")  # type: ignore[arg-type]
+    with pytest.raises(ValidationError):
+        VerificationArtifactPlan.model_validate(
+            {
+                "schema_version": 1,
+                "profile": "pytest",
+                "root": "/private/tmp/vera-verification/abc/run/000",
+                "cleanup": "always",
+                "extra": True,
+            }
+        )
+
+
+def test_legacy_verification_command_defaults_artifact_plan_to_none() -> None:
+    restored = VerificationCommand.model_validate({"argv": ["pytest", "-q"], "cwd": "."})
+    assert restored.artifact_plan is None
+    command = VerificationCommand(argv=("pytest", "-q"), cwd=".")
+    assert "artifact_plan" in command.model_dump(mode="json")
+    assert command.model_dump(mode="json")["artifact_plan"] is None

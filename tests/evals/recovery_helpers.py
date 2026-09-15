@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 from vera.cli_driver import ApprovalDecision
@@ -33,8 +32,8 @@ def two_file_proposal(*, verification: bool = True) -> ModelTurn:
     }
     if verification:
         arguments["verification"] = [
-            {"argv": [sys.executable, "-c", "print('one')"], "cwd": "."},
-            {"argv": [sys.executable, "-c", "print('two')"], "cwd": "."},
+            {"argv": ["ruff", "check", "."], "cwd": "."},
+            {"argv": ["ruff", "format", "--check", "."], "cwd": "."},
         ]
     return ModelTurn(
         finish_reason="tool_calls",

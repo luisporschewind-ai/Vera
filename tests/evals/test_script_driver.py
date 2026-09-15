@@ -73,7 +73,7 @@ def test_driver_replaces_eval_python_and_applies_create(loaded_and_isolated) -> 
                                 ],
                                 "verification": [
                                     {
-                                        "argv": ["$VERA_EVAL_PYTHON", "-c", "print(1)"],
+                                        "argv": ["ruff", "check", "."],
                                         "cwd": ".",
                                     }
                                 ],

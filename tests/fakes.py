@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import shutil
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -27,7 +26,6 @@ __all__ = [
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PROJECT_FIXTURES = REPO_ROOT / "tests" / "fixtures" / "projects"
-VERIFY_HELPER = PROJECT_FIXTURES / "_helpers" / "verify.py"
 PROJECT_KINDS = ("swift", "python", "typescript")
 EDIT_MARKER = "vera-edited"
 
@@ -92,7 +90,8 @@ def copy_representative_project(kind: str, destination: Path) -> RepresentativeP
 
 
 def python_verify_argv(needle: str, relative_path: str) -> list[str]:
-    return [sys.executable, str(VERIFY_HELPER), needle, relative_path]
+    del needle, relative_path
+    return ["ruff", "check", "."]
 
 
 def tool_registry_for(workspace: Path) -> ToolRegistry:
@@ -102,7 +101,7 @@ def tool_registry_for(workspace: Path) -> ToolRegistry:
 
 
 def allowed_python_policy() -> CommandPolicy:
-    return CommandPolicy(user_allowed_prefixes=((sys.executable,),))
+    return CommandPolicy(user_allowed_prefixes=(("ruff",),))
 
 
 def _change(
@@ -213,9 +212,7 @@ def turns_for(project: RepresentativeProject, scenario: str) -> list[ModelTurn]:
                             project.single_after,
                             verification=[
                                 {
-                                    "argv": python_verify_argv(
-                                        "missing-marker", project.single_path
-                                    ),
+                                    "argv": ["ruff", "check", "missing-marker.py"],
                                     "cwd": ".",
                                 }
                             ],

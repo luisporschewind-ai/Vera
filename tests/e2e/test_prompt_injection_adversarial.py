@@ -75,6 +75,7 @@ def _runtime(
         FakeModelAdapter(turns),
         _registry(workspace),
         tmp_path / "state",
+        artifact_prefix=tmp_path / "vera-verification",
         **kwargs,
     )
 
@@ -250,7 +251,7 @@ def test_flagged_git_status_requires_approval_and_hard_denies_remain(tmp_path: P
             "notes.md",
             change_path="notes.md",
             after="changed\n",
-            verification=[{"argv": ["git", "status", "--short"], "cwd": "."}],
+            verification=[{"argv": ["git", "status"], "cwd": "."}],
         ),
     )
     events = list(
@@ -274,7 +275,7 @@ def test_flagged_git_status_requires_approval_and_hard_denies_remain(tmp_path: P
     assert "verification.started" not in [event.type for event in applied]
     command = next(event for event in applied if event.type == "approval.required")
     assert command.payload["kind"] == "command"
-    assert command.payload["argv"] == ["git", "status", "--short"]
+    assert command.payload["argv"] == ["git", "status"]
     spec = _load("tool-output.json")
     workspace = _workspace(tmp_path / "deny-ws", spec)
     denied = _runtime(
@@ -297,21 +298,12 @@ def test_flagged_git_status_requires_approval_and_hard_denies_remain(tmp_path: P
             StartRun(goal=str(spec["goal"]), workspace_root=workspace, model_profile="fake")
         )
     )
-    first = next(event for event in deny_events if event.type == "approval.required")
-    after_apply = list(
-        denied.handle(
-            ResolveApproval(
-                run_id=first.run_id,
-                approval_id=str(first.payload["approval_id"]),
-                target_hash=str(first.payload["target_hash"]),
-                decision="approve",
-            )
-        )
-    )
-    rejected = [event for event in after_apply if event.type == "verification.completed"]
-    assert rejected
-    assert all(event.payload.get("status") == "rejected" for event in rejected)
-    assert "verification.started" not in [event.type for event in after_apply]
+    completed = [event for event in deny_events if event.type == "tool.completed"]
+    assert completed
+    assert completed[-1].payload.get("ok") is False
+    assert completed[-1].payload.get("reason_code") == "verification_artifact_isolation_unavailable"
+    assert "verification.started" not in [event.type for event in deny_events]
+    assert "changeset.applied" not in [event.type for event in deny_events]
 
 
 def test_unavailable_detector_allows_readonly_not_writes(tmp_path: Path) -> None:

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import pytest
@@ -51,6 +50,7 @@ def make_runtime(
         command_policy=command_policy,
         snapshot_store=store,
         installation_id="install-1",
+        artifact_prefix=tmp_path.parent / f"{tmp_path.name}-vera-verification",
     )
     return runtime, store
 
@@ -120,17 +120,8 @@ def test_resume_then_approve_creates_checkpoint_once(tmp_path: Path) -> None:
 
 def test_new_runtime_resumes_verification_index(tmp_path: Path) -> None:
     (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
-    first_cmd = (
-        sys.executable,
-        "-c",
-        "from pathlib import Path; p=Path('v1.txt'); "
-        "p.write_text((p.read_text() if p.exists() else '') + 'x')",
-    )
-    second_cmd = (
-        sys.executable,
-        "-c",
-        "from pathlib import Path; Path('v2.txt').write_text('ok')",
-    )
+    first_cmd = ("ruff", "check", ".")
+    second_cmd = ("ruff", "format", "--check", ".")
 
     class CrashAfterFirstVerification(RecoverySnapshotStore):
         def save(self, snapshot):  # type: ignore[no-untyped-def]
@@ -166,8 +157,7 @@ def test_new_runtime_resumes_verification_index(tmp_path: Path) -> None:
     with pytest.raises(RuntimeError, match="simulated crash"):
         list(first.handle(resolve(approval)))
 
-    assert (tmp_path / "v1.txt").read_text(encoding="utf-8") == "x"
-    assert not (tmp_path / "v2.txt").exists()
+    assert store.load(approval.run_id).verification_index == 1
 
     second, _again = make_runtime(
         tmp_path,
@@ -178,8 +168,7 @@ def test_new_runtime_resumes_verification_index(tmp_path: Path) -> None:
     resumed = tuple(second.handle(ResumeRun(run_id=approval.run_id)))
 
     assert second.adapter.requests == []
-    assert (tmp_path / "v1.txt").read_text(encoding="utf-8") == "x"
-    assert (tmp_path / "v2.txt").read_text(encoding="utf-8") == "ok"
+    assert store.load(approval.run_id).verification_index == 2
     assert any(event.type == "verification.completed" for event in resumed)
     assert resumed[-1].type == "run.completed"
 

@@ -64,7 +64,7 @@ class EvalRuntimeFactory:
         registry.register(SearchTextTool(paths))
         installation_id = f"eval-{loaded.case.case_id}"
         identity = workspace_identity(isolated.workspace, installation_id)
-        prefixes = ((sys.executable, "-c"),)
+        prefixes = (("ruff",),)
         engine = PolicyEngine(
             EffectivePolicySnapshot(
                 workspace_identity=identity,
@@ -102,6 +102,7 @@ class EvalRuntimeFactory:
             recovery_coordinator=coordinator,
             policy_engine=engine,
             file_writer=file_writer,
+            artifact_prefix=isolated.state_dir.parent / "vera-verification",
         )
 
 
