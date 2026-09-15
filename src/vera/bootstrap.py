@@ -27,6 +27,7 @@ from vera.workspace.paths import WorkspacePaths
 class RuntimeDependencies:
     runtime: VeraRuntime
     config: VeraConfig
+    installation_id: str = ""
 
 
 type RuntimeBuilder = Callable[[Path, str | None], RuntimeDependencies]
@@ -114,4 +115,8 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
         recovery_coordinator=coordinator,
         policy_engine=engine,
     )
-    return RuntimeDependencies(runtime=runtime, config=config)
+    return RuntimeDependencies(
+        runtime=runtime,
+        config=config,
+        installation_id=installation_id,
+    )
