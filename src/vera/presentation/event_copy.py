@@ -55,6 +55,8 @@ _TITLES: dict[str, str] = {
     "session.permissions": "权限",
     "session.review": "审查",
     "session.diff": "Diff",
+    "session.persistence_changed": "会话未保存",
+    "session.close_warning": "退出前警告",
 }
 
 _FIELD_LABELS: dict[str, str] = {

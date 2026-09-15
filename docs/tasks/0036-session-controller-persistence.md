@@ -2,8 +2,8 @@
 
 > 供主实现 Agent 执行：按 `superpowers:test-driven-development` 实施；不得让 TUI、Plain 或 JSON 直接操作 Store。
 
-**状态：** Planned
-**执行就绪：** 否；等待任务 0035 完成
+**状态：** Done
+**执行就绪：** 否；本任务已完成
 **分支：** `phase-7/0036-session-controller-persistence`
 **依赖：** 任务 0035
 **规格：** [持久化对话会话](../specs/2026-09-13-persistent-conversation-sessions.md)
@@ -44,42 +44,42 @@ def commit_turn(self, turn: ConversationTurn) -> None: ...
 
 ### 1. 提取唯一 Turn 投影
 
-- [ ] 新增 `tests/session/test_turns.py`，覆盖普通回复、已应用变更、失败、取消、恢复、空助手消息、脱敏后事实和只引用 `run_id`。
-- [ ] 运行测试，确认缺少投影器而失败。
-- [ ] 新增 `src/vera/session/turns.py`，把现有 `ConversationContext` 中 Event 摘要逻辑迁移为纯投影；保留兼容调用直到 Controller 切换完成。
-- [ ] 断言 Turn 不包含 Event 列表、Diff、stdout/stderr、审批 Payload 或 Checkpoint。
+- [x] 新增 `tests/session/test_turns.py`，覆盖普通回复、已应用变更、失败、取消、恢复、空助手消息、脱敏后事实和只引用 `run_id`。
+- [x] 运行测试，确认缺少投影器而失败。
+- [x] 新增 `src/vera/session/turns.py`，把现有 `ConversationContext` 中 Event 摘要逻辑迁移为纯投影；保留兼容调用直到 Controller 切换完成。
+- [x] 断言 Turn 不包含 Event 列表、Diff、stdout/stderr、审批 Payload 或 Checkpoint。
 
 ### 2. Context 恢复与显式提交
 
-- [ ] 扩展 `tests/session/test_conversation.py`，覆盖指定 session id 恢复、摘要加后续消息、超限拒绝、compaction count、`commit_turn` 与自动容量折叠。
-- [ ] 实现 `ConversationContext.restore` 和 `commit_turn`；禁止调用方写私有字段。
-- [ ] 恢复内容超过当前限制时整体失败，不静默丢消息；引导在兼容版本中先压缩或新建。
+- [x] 扩展 `tests/session/test_conversation.py`，覆盖指定 session id 恢复、摘要加后续消息、超限拒绝、compaction count、`commit_turn` 与自动容量折叠。
+- [x] 实现 `ConversationContext.restore` 和 `commit_turn`；禁止调用方写私有字段。
+- [x] 恢复内容超过当前限制时整体失败，不静默丢消息；引导在兼容版本中先压缩或新建。
 
 ### 3. 稳定终态事务顺序
 
-- [ ] 在 `tests/session/test_controller.py` 使用记录调用顺序的 Fake Store，先断言 `append_turn` 在 `commit_turn` 前完成。
-- [ ] 修改 `SessionController._finish_active_run`：只对稳定终态生成一次 Turn，Store 成功后提交内存；不得为审批暂停或未结束模型输出提交半轮。
-- [ ] 增加崩溃点测试：追加前失败不产生新 turn；追加中失败保留旧完整前缀；追加成功后进程崩溃可在重启时只恢复一次。
-- [ ] 队列 flush 必须在当前 Turn 的保存结果已明确后再启动下一 Run，不能把两轮合并。
+- [x] 在 `tests/session/test_controller.py` 使用记录调用顺序的 Fake Store，先断言 `append_turn` 在 `commit_turn` 前完成。
+- [x] 修改 `SessionController._finish_active_run`：只对稳定终态生成一次 Turn，Store 成功后提交内存；不得为审批暂停或未结束模型输出提交半轮。
+- [x] 增加崩溃点测试：追加前失败不产生新 turn；追加中失败保留旧完整前缀；追加成功后进程崩溃可在重启时只恢复一次。
+- [x] 队列 flush 必须在当前 Turn 的保存结果已明确后再启动下一 Run，不能把两轮合并。
 
 ### 4. `unsaved` 与退出警告
 
-- [ ] 测试 Session Journal 写入失败时：Run Journal 与工作区结果保留、当前进程可继续使用该轮内存、状态持续为 `unsaved`、关闭前再次发出结构化警告。
-- [ ] 实现 `session.persistence_changed` / `session.close_warning` Event；Payload 只含状态、错误 code 和可行动建议，不含秘密或原异常路径细节。
-- [ ] 后续任一成功写入不得自动宣称先前丢失轮次已经补存；必须保持 `unsaved`，直到用户新建或显式恢复到权威前缀。
+- [x] 测试 Session Journal 写入失败时：Run Journal 与工作区结果保留、当前进程可继续使用该轮内存、状态持续为 `unsaved`、关闭前再次发出结构化警告。
+- [x] 实现 `session.persistence_changed` / `session.close_warning` Event；Payload 只含状态、错误 code 和可行动建议，不含秘密或原异常路径细节。
+- [x] 后续任一成功写入不得自动宣称先前丢失轮次已经补存；必须保持 `unsaved`，直到用户新建或显式恢复到权威前缀。
 
 ### 5. 压缩、新建、清屏与关闭
 
-- [ ] 测试 `/compact` 先追加 `context.compacted` 再替换 Context；失败时磁盘和内存均保留原上下文。
-- [ ] 测试 `/new` 创建新持久化会话、旧会话保留；`/clear` 复用同一语义并额外请求清屏。
-- [ ] 测试正常 `/exit` 追加 `session.closed`；缺少 closed 记录仍可恢复，不把异常退出视为损坏。
-- [ ] 恢复用户消息写回 `PromptHistory`，但 Composer 自己的临时历史不得成为第二套磁盘权威。
+- [x] 测试 `/compact` 先追加 `context.compacted` 再替换 Context；失败时磁盘和内存均保留原上下文。
+- [x] 测试 `/new` 创建新持久化会话、旧会话保留；`/clear` 复用同一语义并额外请求清屏。
+- [x] 测试正常 `/exit` 追加 `session.closed`；缺少 closed 记录仍可恢复，不把异常退出视为损坏。
+- [x] 恢复用户消息写回 `PromptHistory`，但 Composer 自己的临时历史不得成为第二套磁盘权威。
 
 ### 6. 状态模型与三客户端契约
 
-- [ ] 扩展 `src/vera/session/models.py` 的 `ConversationStats`/`SessionStatus`，加入 source、title、persistent state、last saved sequence；更新 `tests/session/test_status.py`。
-- [ ] 更新 Plain/JSON/TUI controller Fake，但不在三个客户端内拼接 Session JSONL。
-- [ ] JSON Event 使用稳定字段；Plain/TUI 人类文案从结构化结果投影。
+- [x] 扩展 `src/vera/session/models.py` 的 `ConversationStats`/`SessionStatus`，加入 source、title、persistent state、last saved sequence；更新 `tests/session/test_status.py`。
+- [x] 更新 Plain/JSON/TUI controller Fake，但不在三个客户端内拼接 Session JSONL。
+- [x] JSON Event 使用稳定字段；Plain/TUI 人类文案从结构化结果投影。
 
 ## 局部验证与提交
 
@@ -101,3 +101,10 @@ git commit -m "feat: persist controller conversation turns"
 - 正常路径严格先 fsync Session Journal，再更新内存 Context。
 - 写入失败不回滚已完成工作，也不会隐藏 `unsaved` 风险。
 - `/compact`、`/new`、`/clear`、`/exit` 的磁盘与内存语义一致。
+
+## 验证证据（2026-09-16）
+
+- 分支：`phase-7/0036-session-controller-persistence`
+- 局部测试 67 passed：`test_turns`、`test_conversation`、`test_controller`、`test_status`、`test_plain_session`、`test_json_session`、`test_app`
+- 完整非 live：`964 passed, 2 deselected`
+- `ruff` / `mypy` 针对 session、presentation 与 CLI 相关文件通过

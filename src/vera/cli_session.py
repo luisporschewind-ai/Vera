@@ -219,6 +219,11 @@ class InteractiveSession:
             rejected = event.payload.get("message")
             self.io.write(str(rejected) if isinstance(rejected, str) else "操作被拒绝。")
             return
+        if event.type in {"session.persistence_changed", "session.close_warning"}:
+            advice = event.payload.get("advice")
+            if isinstance(advice, str) and advice.strip():
+                self.io.write(advice.strip())
+            return
         fallback = event.payload.get("text")
         if isinstance(fallback, str) and fallback:
             self.io.write(fallback)

@@ -66,6 +66,8 @@ def test_status_contains_safe_session_fields(tmp_path: Path) -> None:
     assert status.version == "0.1.0"
     assert status.model_profile == "deepseek"
     assert status.model_name == "deepseek-flash"
+    assert status.context.persistent_state == "saved"
+    assert status.context.source == "new"
     assert "api" not in status.model_dump_json().lower()
 
 

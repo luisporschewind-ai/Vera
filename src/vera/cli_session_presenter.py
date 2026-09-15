@@ -25,6 +25,9 @@ class SessionPresenter:
             f" ({ratio:.0%}){warning}"
         )
         self._write(f"Session  {stats.session_id}")
+        self._write(f"State    {stats.persistent_state} · {stats.source}")
+        if stats.last_error_code:
+            self._write(f"Persist  {stats.last_error_code}")
         self._write(f"Compacted {stats.compaction_count}")
 
     def write_permissions(self, status: PermissionStatus) -> None:

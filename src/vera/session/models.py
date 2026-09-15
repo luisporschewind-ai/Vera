@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -16,6 +17,11 @@ class ConversationStats(BaseModel):
     max_bytes: int = Field(ge=1)
     warning: bool
     compaction_count: int = Field(ge=0)
+    source: Literal["new", "continued", "resumed"] = "new"
+    title: str = "新会话"
+    persistent_state: Literal["saved", "unsaved"] = "saved"
+    last_saved_sequence: int | None = Field(default=None, ge=1)
+    last_error_code: str | None = None
 
 
 class PermissionStatus(BaseModel):

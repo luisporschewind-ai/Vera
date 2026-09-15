@@ -4,6 +4,7 @@ import pytest
 
 from vera.contracts.conversation import ConversationMessage
 from vera.contracts.events import EventEnvelope
+from vera.contracts.sessions import ConversationTurn
 from vera.session.conversation import ConversationContext
 
 
@@ -213,3 +214,60 @@ def test_responded_run_stores_assistant_message_text() -> None:
         ConversationMessage(role="user", content="Hello"),
         ConversationMessage(role="assistant", content="你好"),
     )
+
+
+def test_restore_uses_given_session_id_and_compaction_count() -> None:
+    restored = ConversationContext.restore(
+        200_000,
+        session_id="session-restored",
+        messages=(
+            ConversationMessage(role="summary", content="先前结论：使用 Python。"),
+            ConversationMessage(role="user", content="继续"),
+            ConversationMessage(role="assistant", content="好的"),
+        ),
+        compaction_count=2,
+    )
+    assert restored.stats().session_id == "session-restored"
+    assert restored.stats().compaction_count == 2
+    assert restored.snapshot()[0].role == "summary"
+    restored.commit_turn(
+        ConversationTurn(
+            user_text="下一轮",
+            assistant_text="完成",
+            run_id="run_next",
+            terminal_state="response",
+        )
+    )
+    assert restored.snapshot()[-2:] == (
+        ConversationMessage(role="user", content="下一轮"),
+        ConversationMessage(role="assistant", content="完成"),
+    )
+
+
+def test_restore_rejects_over_limit_without_dropping_messages() -> None:
+    messages = (
+        ConversationMessage(role="user", content="x" * 20),
+        ConversationMessage(role="assistant", content="y" * 20),
+    )
+    with pytest.raises(ValueError, match="capacity exceeded"):
+        ConversationContext.restore(
+            10,
+            session_id="session-too-big",
+            messages=messages,
+            compaction_count=0,
+        )
+
+
+def test_commit_turn_folds_when_capacity_requires_it() -> None:
+    context = ConversationContext(80, session_id_factory=lambda: "session-1", max_items=4)
+    for index in range(6):
+        context.commit_turn(
+            ConversationTurn(
+                user_text=f"u{index}" + ("a" * 8),
+                assistant_text=f"a{index}" + ("b" * 8),
+                run_id=f"run_{index}",
+                terminal_state="response",
+            )
+        )
+    assert context.stats().message_count <= 4
+    assert context.stats().compaction_count >= 1

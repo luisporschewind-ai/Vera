@@ -238,8 +238,7 @@ def test_second_goal_receives_first_conversation_pair(tmp_path: Path) -> None:
 def test_new_clears_context_and_changes_session_id(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
-    ids = iter(["session-a", "session-b"])
-    conversation = ConversationContext(200_000, session_id_factory=lambda: next(ids))
+    conversation = ConversationContext(200_000, session_id_factory=lambda: "session-injected")
     session, adapter, io = make_session(
         workspace,
         [
@@ -249,11 +248,12 @@ def test_new_clears_context_and_changes_session_id(tmp_path: Path) -> None:
         ["Hello", "/new", "Hi", "/exit"],
         conversation=conversation,
     )
+    original = session.conversation.stats().session_id
 
     assert session.run() == 0
-    assert session.conversation.stats().session_id == "session-b"
+    assert session.conversation.stats().session_id != original
     assert all(message.content != "Hello" for message in adapter.requests[1].messages)
-    assert "已开始新会话：session-b" in "\n".join(io.output)
+    assert "已开始新会话：" in "\n".join(io.output)
 
 
 def test_clear_resets_context_and_clears_display(tmp_path: Path) -> None:

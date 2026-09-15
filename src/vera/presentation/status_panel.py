@@ -16,7 +16,10 @@ def format_status_panel(status: SessionStatus) -> str:
             f"Model       {status.model_profile} / {status.model_name}",
             f"Workspace   {status.workspace}",
             f"Git         {git}",
-            f"Session     {session.session_id} · {session.message_count} messages",
+            f"Session     {session.session_id} · {session.message_count} messages"
+            f" · {session.persistent_state}"
+            + (f" · {session.source}" if session.source != "new" else "")
+            + (f" · {session.title}" if session.title and session.title != "新会话" else ""),
             (
                 "Context     "
                 f"{session.context_bytes}/{session.max_bytes} bytes"

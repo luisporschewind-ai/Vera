@@ -20,10 +20,13 @@ from vera.contracts.commands import (
     RollbackRun,
     StartRun,
 )
+from vera.contracts.errors import classify_os_error
 from vera.contracts.events import EventEnvelope
 from vera.contracts.recovery import RecoveryClassification
 from vera.contracts.streaming import RuntimeOutput
+from vera.persistence.errors import PersistenceFault
 from vera.persistence.run_store import RunStore
+from vera.persistence.session_store import ConversationSessionStore, LoadedConversationSession
 from vera.session.actions import (
     CancelActiveRun,
     ClearQueuedPrompt,
@@ -39,8 +42,10 @@ from vera.session.actions import (
 from vera.session.conversation import ConversationContext
 from vera.session.external_editor import ExternalEditor, ExternalEditorError
 from vera.session.history import PromptHistory
+from vera.session.models import ConversationStats
 from vera.session.permissions import permission_status
 from vera.session.status import SessionStatusService
+from vera.session.turns import ConversationTurnProjector
 
 _TERMINAL_TYPES = frozenset(
     {
@@ -52,6 +57,11 @@ _TERMINAL_TYPES = frozenset(
         "rollback.conflicted",
         "recovery.manual_required",
     }
+)
+
+_UNSAVED_ADVICE = (
+    "会话记录写入失败。工作区与 Run 证据已保留；当前进程可继续使用本轮，"
+    "但退出前请新建会话或从已保存前缀恢复。"
 )
 
 
@@ -76,14 +86,19 @@ class SessionController:
         conversation: ConversationContext | None = None,
         status_service: SessionStatusService | None = None,
         runtime_builder: RuntimeBuilder | None = None,
+        session_store: ConversationSessionStore | None = None,
+        loaded_session: LoadedConversationSession | None = None,
+        source: Literal["new", "continued", "resumed"] | None = None,
     ) -> None:
         self.dependencies = dependencies
         self.workspace = workspace.resolve()
         self.model_profile = model_profile
         self.store = RunStore(dependencies.config.state_dir)
-        self.conversation = conversation or ConversationContext(
-            dependencies.config.limits.max_conversation_bytes
+        self.session_store = session_store or ConversationSessionStore(
+            dependencies.config.state_dir,
+            dependencies.installation_id,
         )
+        self.turn_projector = ConversationTurnProjector()
         self.status_service = status_service or SessionStatusService()
         self.runtime_builder = runtime_builder or build_runtime
         self._active_run_id: str | None = None
@@ -99,6 +114,22 @@ class SessionController:
         self._editor_confirmed = False
         self._editor_draft: Path | None = None
         self.theme = "default"
+        self._persistence_state: Literal["saved", "unsaved"] = "saved"
+        self._last_error_code: str | None = None
+        self._title = "新会话"
+        self._last_saved_sequence: int | None = None
+        self._source: Literal["new", "continued", "resumed"] = source or "new"
+        if loaded_session is None:
+            loaded_session = self.session_store.create(self.workspace)
+            self._source = source or "new"
+            if conversation is not None:
+                conversation.bind_session_id(loaded_session.session_id)
+                self.conversation = conversation
+                self._bind_persistence(loaded_session, restore_history=False)
+                return
+        else:
+            self._source = source or "resumed"
+        self._apply_loaded_session(loaded_session, restore_history=True)
 
     @property
     def active_run_id(self) -> str | None:
@@ -119,6 +150,92 @@ class SessionController:
             model_profile=self.model_profile,
             closed=self._closed,
         )
+
+    def _apply_loaded_session(
+        self, loaded: LoadedConversationSession, *, restore_history: bool
+    ) -> None:
+        self.conversation = ConversationContext.restore(
+            self.dependencies.config.limits.max_conversation_bytes,
+            session_id=loaded.session_id,
+            messages=loaded.model_messages,
+            compaction_count=loaded.compaction_count,
+        )
+        self._bind_persistence(loaded, restore_history=restore_history)
+
+    def _bind_persistence(
+        self, loaded: LoadedConversationSession, *, restore_history: bool
+    ) -> None:
+        self._title = loaded.title
+        self._last_saved_sequence = loaded.records[-1].sequence if loaded.records else None
+        self._persistence_state = "saved"
+        self._last_error_code = None
+        if restore_history:
+            self.history.clear()
+            for message in loaded.history_messages:
+                if message.role == "user":
+                    self.history.record(message.content)
+
+    def _conversation_stats(self) -> ConversationStats:
+        return self.conversation.stats().model_copy(
+            update={
+                "source": self._source,
+                "title": self._title,
+                "persistent_state": self._persistence_state,
+                "last_saved_sequence": self._last_saved_sequence,
+                "last_error_code": self._last_error_code,
+            }
+        )
+
+    def _persistence_code(self, exc: BaseException) -> str:
+        if isinstance(exc, PersistenceFault):
+            return exc.code
+        return classify_os_error(exc)
+
+    def _mark_unsaved(self, code: str) -> EventEnvelope:
+        self._persistence_state = "unsaved"
+        self._last_error_code = code
+        return self._session_event(
+            "session.persistence_changed",
+            {"state": "unsaved", "error_code": code, "advice": _UNSAVED_ADVICE},
+        )
+
+    def _persist_turn(
+        self, user_text: str, events: tuple[EventEnvelope, ...]
+    ) -> Iterator[RuntimeOutput]:
+        turn = self.turn_projector.from_run(user_text, events)
+        session_id = self.conversation.stats().session_id
+        try:
+            record = self.session_store.append_turn(session_id, turn)
+        except Exception as exc:
+            self.conversation.commit_turn(turn)
+            yield self._mark_unsaved(self._persistence_code(exc))
+            return
+        self.conversation.commit_turn(turn)
+        if self._persistence_state != "unsaved":
+            self._last_saved_sequence = record.sequence
+            self._title = self.session_store.load(session_id, self.workspace).title
+            self._last_error_code = None
+
+    def _persist_compaction(self, summary: str) -> Iterator[RuntimeOutput]:
+        session_id = self.conversation.stats().session_id
+        through = self._last_saved_sequence or 1
+        try:
+            record = self.session_store.append_compaction(session_id, summary, through)
+        except Exception as exc:
+            yield self._mark_unsaved(self._persistence_code(exc))
+            return
+        self.conversation.replace_with_summary(summary)
+        if self._persistence_state != "unsaved":
+            self._last_saved_sequence = record.sequence
+            self._last_error_code = None
+        yield self._session_event("session.message", {"text": "上下文压缩完成。"})
+
+    def _open_new_persistent_session(self) -> str:
+        loaded = self.session_store.create(self.workspace)
+        self._source = "new"
+        self._apply_loaded_session(loaded, restore_history=True)
+        self.queued_prompt = None
+        return loaded.session_id
 
     def mark_active(self, run_id: str) -> None:
         """Test helper: mark a run as active without starting Core."""
@@ -322,6 +439,31 @@ class SessionController:
             yield from self._resolve_approval(approval_id, "cancel")
         if self._active_run_id is not None:
             yield from self._cancel(self._active_run_id)
+        if self._persistence_state == "unsaved":
+            yield self._session_event(
+                "session.close_warning",
+                {
+                    "state": "unsaved",
+                    "error_code": self._last_error_code or "write_failed",
+                    "advice": _UNSAVED_ADVICE,
+                },
+            )
+        else:
+            try:
+                record = self.session_store.close(
+                    self.conversation.stats().session_id, "user_close"
+                )
+                self._last_saved_sequence = record.sequence
+            except Exception as exc:
+                yield self._mark_unsaved(self._persistence_code(exc))
+                yield self._session_event(
+                    "session.close_warning",
+                    {
+                        "state": "unsaved",
+                        "error_code": self._last_error_code or "write_failed",
+                        "advice": _UNSAVED_ADVICE,
+                    },
+                )
         self._closed = True
         self.exit_requested = True
         self.history.clear()
@@ -349,14 +491,14 @@ class SessionController:
                     produced_terminal = True
             yield output
         if produced_terminal or self._pending_approval is None:
-            self._finish_active_run(record_conversation=record_conversation)
+            yield from self._finish_active_run(record_conversation=record_conversation)
             queued = self.queued_prompt
             if queued and self._active_run_id is None and not self._closed:
                 self.queued_prompt = None
                 yield self._session_event("session.prompt_queue_flushed", {"queued": True})
                 yield from self._submit(queued)
 
-    def _finish_active_run(self, *, record_conversation: bool = True) -> None:
+    def _finish_active_run(self, *, record_conversation: bool = True) -> Iterator[RuntimeOutput]:
         goal = self._goal_for_active
         events = tuple(self._events_for_active)
         self._active_run_id = None
@@ -364,7 +506,7 @@ class SessionController:
         self._goal_for_active = None
         self._events_for_active = []
         if record_conversation and goal is not None and events:
-            self.conversation.record_run(goal, events)
+            yield from self._persist_turn(goal, events)
 
     def _slash(self, raw: str) -> Iterator[RuntimeOutput]:
         if self._active_run_id is not None and self._pending_approval is None:
@@ -463,8 +605,7 @@ class SessionController:
             and completed.type == "run.completed"
             and completed.payload.get("outcome") == "compacted"
         ):
-            self.conversation.replace_with_summary(summary)
-            yield self._session_event("session.message", {"text": "上下文压缩完成。"})
+            yield from self._persist_compaction(summary)
             return
         assert self.conversation.snapshot() == before
         yield self._session_event("session.message", {"text": "上下文压缩失败，已保留原上下文。"})
@@ -607,7 +748,7 @@ class SessionController:
             workspace=self.workspace,
             model_profile=self.model_profile,
             model_name=self._model_name(),
-            conversation=self.conversation.stats(),
+            conversation=self._conversation_stats(),
             permissions=permission_status(self.dependencies.runtime.command_policy),
         )
         return self._session_event("session.status", status.model_dump(mode="json"))
@@ -644,17 +785,10 @@ class SessionController:
         yield self._status_event()
 
     def _cmd_context(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
-        stats = self.conversation.stats()
+        stats = self._conversation_stats()
         yield self._session_event(
             "session.context",
-            {
-                "session_id": stats.session_id,
-                "message_count": stats.message_count,
-                "context_bytes": stats.context_bytes,
-                "max_bytes": stats.max_bytes,
-                "warning": stats.warning,
-                "compaction_count": stats.compaction_count,
-            },
+            stats.model_dump(mode="json"),
         )
 
     def _cmd_permissions(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
@@ -662,13 +796,11 @@ class SessionController:
         yield self._session_event("session.permissions", status.model_dump(mode="json"))
 
     def _cmd_new(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
-        self.queued_prompt = None
-        session_id = self.conversation.reset()
+        session_id = self._open_new_persistent_session()
         yield self._session_event("session.message", {"text": f"已开始新会话：{session_id}"})
 
     def _cmd_clear(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
-        self.queued_prompt = None
-        session_id = self.conversation.reset()
+        session_id = self._open_new_persistent_session()
         self.clear_display_requested = True
         yield self._session_event("session.message", {"clear_display": True, "text": ""})
         yield from self.bootstrap_events()

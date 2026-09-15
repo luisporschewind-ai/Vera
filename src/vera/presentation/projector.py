@@ -190,6 +190,8 @@ class TimelineProjector:
             "session.diff": self._session_diff,
             "session.action_rejected": self._error_event,
             "session.closed": self._status_event,
+            "session.persistence_changed": self._persistence_warning,
+            "session.close_warning": self._persistence_warning,
         }
         if event.type in _SIDE_EFFECT_EVENTS:
             self._side_effect_runs.add(event.run_id)
@@ -687,6 +689,21 @@ class TimelineProjector:
             title=title,
             body=body,
             status=BlockStatus.SUCCEEDED,
+        )
+
+    def _persistence_warning(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
+        advice = event.payload.get("advice")
+        if isinstance(advice, str) and advice.strip():
+            body = advice.strip()
+        else:
+            body = event_summary(event.payload)
+        return self._append(
+            block_id=f"{event.run_id}:{event.sequence}:error",
+            run_id=event.run_id,
+            kind=BlockKind.ERROR,
+            title=event_title(event.type),
+            body=sanitize_terminal_text(body),
+            status=BlockStatus.FAILED,
         )
 
     def _status_event(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
