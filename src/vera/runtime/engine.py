@@ -9,7 +9,7 @@ from time import sleep as default_sleep
 from typing import Any, Literal, cast
 from uuid import uuid4
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from vera import __version__
 from vera.config import Limits
@@ -136,6 +136,23 @@ class ProposalInput(BaseModel):
     changes: tuple[ChangeProposal, ...]
     verification: tuple[VerificationCommand, ...] = ()
     risk: str = "medium"
+
+    @field_validator("verification", mode="before")
+    @classmethod
+    def ignore_model_artifact_plan(cls, value: object) -> object:
+        if not isinstance(value, list | tuple):
+            return value
+        cleaned: list[object] = []
+        for item in value:
+            if isinstance(item, dict):
+                payload = dict(item)
+                payload.pop("artifact_plan", None)
+                cleaned.append(payload)
+            elif isinstance(item, VerificationCommand):
+                cleaned.append(item.model_copy(update={"artifact_plan": None}))
+            else:
+                cleaned.append(item)
+        return cleaned
 
 
 class VeraRuntime:

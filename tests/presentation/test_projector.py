@@ -77,6 +77,43 @@ def test_changeset_and_approval_are_expanded() -> None:
     assert isinstance(approval_mutations[-1], FocusBlock)
 
 
+def test_command_approval_shows_planned_argv_profile_and_root() -> None:
+    projector = TimelineProjector()
+    block = only_appended_block(
+        projector.apply(
+            event(
+                "approval.required",
+                payload={
+                    "approval_id": "a-cmd",
+                    "kind": "command",
+                    "target_id": "verification_0",
+                    "description": "执行验证命令",
+                    "risk": "medium",
+                    "argv": [
+                        "xcodebuild",
+                        "-project",
+                        "Demo.xcodeproj",
+                        "-scheme",
+                        "Demo",
+                        "build",
+                        "-derivedDataPath",
+                        "/private/tmp/vera-verification/abcd/run_1/000/DerivedData",
+                    ],
+                    "cwd": ".",
+                    "artifact_profile": "xcode",
+                    "artifact_root": "/private/tmp/vera-verification/abcd/run_1/000",
+                },
+            )
+        )
+    )
+    assert block.kind is BlockKind.APPROVAL
+    derived = "-derivedDataPath /private/tmp/vera-verification/abcd/run_1/000/DerivedData"
+    assert derived in block.body
+    assert "Profile xcode" in block.body
+    assert "产物根 /private/tmp/vera-verification/abcd/run_1/000" in block.body
+    assert "verification_0" not in block.body
+
+
 def test_session_diff_is_a_diff_block() -> None:
     projector = TimelineProjector()
     filled = only_appended_block(

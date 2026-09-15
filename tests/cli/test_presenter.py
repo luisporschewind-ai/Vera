@@ -79,6 +79,37 @@ def test_presenter_displays_command_boundary_without_shell_execution() -> None:
     assert presenter.approval_prompt(approval).startswith("批准这条验证命令")
 
 
+def test_presenter_shows_artifact_profile_and_root_on_command_approval() -> None:
+    output: list[str] = []
+    presenter = HumanPresenter(output.append)
+    presenter.write_events(
+        (
+            event(
+                "approval.required",
+                {
+                    "kind": "command",
+                    "argv": [
+                        "xcodebuild",
+                        "-scheme",
+                        "Demo",
+                        "build",
+                        "-derivedDataPath",
+                        "/private/tmp/vera-verification/root/DerivedData",
+                    ],
+                    "cwd": ".",
+                    "risk": "medium",
+                    "artifact_profile": "xcode",
+                    "artifact_root": "/private/tmp/vera-verification/root",
+                },
+            ),
+        )
+    )
+    text = "\n".join(output)
+    assert "Profile：xcode" in text
+    assert "产物根：/private/tmp/vera-verification/root" in text
+    assert "-derivedDataPath /private/tmp/vera-verification/root/DerivedData" in text
+
+
 def test_presenter_keeps_tool_output_compact_and_shows_terminal_state() -> None:
     output: list[str] = []
     presenter = HumanPresenter(output.append)

@@ -62,9 +62,9 @@
 | 环境 | macOS Terminal.app；`~/Desktop/VeraTestDemo` |
 | 步骤 | 验证成功/失败、取消、恢复、回滚 |
 | 预期 | 终态文字不混淆；取消不重复副作用；恢复/回滚有明确事实 |
-| 实际 | 已走查。Ctrl+C 取消、回滚、审批 Tab、强制退出后的待恢复提示与 `/recover`/`/abandon` 已过。4A 验证成功已过（`test -f vera-walkthrough-verify.txt`，未跑 xcodebuild）。4B 验证失败已过：终态为「任务完成」且 `状态：verification_failed`，与任务失败区分。Finder 未见 `vera-walkthrough-fail.txt`（可能未落地或已回滚，不影响终态判定）。任务 0042 已把验证产物规划到 workspace 外临时根；`VeraTestDemo/build` 既有污染未清理，真实 `xcodebuild` 隔离回归未走查。 |
-| 严重度 | 发现 28–30 已复验通过；4A、4B 通过 |
-| 证据 | 用户在 Terminal.app 的直接观察 |
+| 实际 | 已走查。Ctrl+C 取消、回滚、审批 Tab、强制退出后的待恢复提示与 `/recover`/`/abandon` 已过。4A 验证成功已过（`test -f vera-walkthrough-verify.txt`）。4B 验证失败已过。2026-09-15 用户删除既有 `build/` 后，用 `vera 0.1.0+940bd29` 在 Terminal.app 对 `ViewController.swift` 按钮文案做小改并批准 `xcodebuild`：验证 `passed`/`exit_code=0`，最终 argv 含 `-derivedDataPath /private/tmp/vera-verification/.../000/DerivedData`，工程根未再生成 `build/`，精确产物根 `.../000` 已清理。TUI 命令审批卡当时只显示 `verification_0` / 「执行验证命令」，看不到最终 argv（发现 36）。2026-09-16 用已落地的 projector/Presenter 再走一张 command 卡（`run_54d549ca3e9d4e578f65443fb8f7302e`）：卡上出现 `命令 xcodebuild ... -derivedDataPath /private/tmp/vera-verification/f6f5956b5edf/run_54d549ca3e9d4e578f65443fb8f7302e/000/DerivedData`、`Profile xcode`、`产物根 .../000`、`工作目录 .`，默认焦点 Cancel；用户 Reject 后 `Verification · failed` / `rejected`，任务 `verification_failed`。工程根仍无 `build/`。Git 索引里仍有旧 `AD build/`，未取消暂存。 |
+| 严重度 | 发现 28–30 已复验通过；4A、4B 通过；发现 35 隔离复验通过；发现 36 审批展示复验通过 |
+| 证据 | 用户 Terminal.app 截图（changeset + command 批准、`Verification · passed`、任务完成；2026-09-16 command 卡含命令/Profile/产物根后 Reject）；Journal `run_187c2fe2abf94d7a91d35d790bb55568`、`run_54d549ca3e9d4e578f65443fb8f7302e`；磁盘无 `~/Desktop/VeraTestDemo/build` |
 
 ## 5. 诊断与异常环境
 
@@ -135,7 +135,9 @@
 | 32 | 5 诊断 | 只读目录任务失败文案为裸 `permission_denied`。对文件 `chmod a-w` 挡不住原子替换；规格 5D 是只读目录。 | Low | 复验通过：只读目录下 Approve 后失败，Diff 为「未写入」，失败卡未产生工作区变化，磁盘仍为 `keep` |
 | 33 | 7 入口对照 | `--plain` 把 `model.requested` / `model.completed` 原样打出。TUI 已静默这些往返；HumanPresenter 未处理时回落到事件类型名。 | Low | 复验通过：`vera run` 人类输出无这两行；JSON 仍含事件名 |
 | 34 | 7 入口对照 | `vera run --json` 的 `run.started.model_profile` 为 `default`，TUI/Session 为 `deepseek`。实际仍打到同一供应商，字段名不一致。 | Low | 复验通过：`model_profile= deepseek`，`exit=0` |
-| 35 | 4 验证取消恢复 | `VeraTestDemo` 经用户批准的 `xcodebuild` 在工程根生成约 106 MB、354 个 `build/` 文件，其中 352 个进入 Git 暂存区。这是 Xcode 标准产物，不是 Vera 私有状态，但由未隔离的验证命令触发。 | High | 任务 0042 自动部分已落地：审批前规划外部产物根，未匹配 Profile 失败关闭。既有 `build/` 未删除、未取消暂存、未改 `.gitignore`。真实 Terminal.app Xcode 隔离回归未跑。 |
+| 35 | 4 验证取消恢复 | `VeraTestDemo` 经用户批准的 `xcodebuild` 在工程根生成约 106 MB、354 个 `build/` 文件，其中 352 个进入 Git 暂存区。这是 Xcode 标准产物，不是 Vera 私有状态，但由未隔离的验证命令触发。 | High | 复验通过（2026-09-15，`vera 0.1.0+940bd29`）：用户先手动删除磁盘 `build/`；再批准隔离后的 `xcodebuild`，产物写入 `/private/tmp/vera-verification/.../000`，工程根未重建 `build/`，验证 passed。Git 索引仍有旧 `AD build/`，未取消暂存、未改 `.gitignore`。 |
+| 36 | 4 验证取消恢复 | 命令审批卡只显示 `动作 command`、`目标 verification_0`、`效果 执行验证命令`，不展示最终 argv、`artifact_profile`、外部产物根。用户在看不见 `-derivedDataPath` 的情况下批准了验证。Plain 模式能打印 argv。规格要求批准的是实际执行语义。 | High | 复验通过（2026-09-16，`run_54d549ca3e9d4e578f65443fb8f7302e`）：TUI command 卡展示最终 `命令`、`Profile xcode`、`产物根`；默认焦点 Cancel。用户按约定 Reject，未再执行构建。 |
+| 37 | 4 验证取消恢复 | 模型在 `propose_changeset.verification[]` 里自带 `artifact_plan.root='.'`，`ProposalInput` 校验失败，任务无法提出 Change Set。隔离根必须由 Planner 生成，不能接受模型字段。 | High | 复验通过：`ProposalInput` 丢弃模型提供的 `artifact_plan`。重启后同任务提出成功，Planner 挂上外部根（同上 run）。 |
 
 ## 阶段七最终封存确认（沿用本记录）
 

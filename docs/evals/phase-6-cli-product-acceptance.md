@@ -66,9 +66,10 @@ git diff --check
 
 ## 任务 0042 验证产物隔离（2026-09-15）
 
-自动部分已在分支 `phase-6/0042-verification-artifact-isolation` 落地，未提交。Planner 在 Change Set hash 与命令审批前生成最终 `VerificationCommand`；Runner 只执行已规划命令，并把 Xcode/SwiftPM/pytest/Mypy/Ruff/Git/tsc 产物写到 workspace 外临时根。未知写入型命令失败关闭。
+自动部分已提交 `940bd29`。Planner 在 Change Set hash 与命令审批前生成最终 `VerificationCommand`；Runner 只执行已规划命令，并把 Xcode/SwiftPM/pytest/Mypy/Ruff/Git/tsc 产物写到 workspace 外临时根。未知写入型命令失败关闭。
 
 - 聚焦测试与 `ruff`/`mypy`/`git diff --check` 通过。完整非 live `919 passed, 2 deselected`。
-- 两项既有 wheel smoke 因共享 `/private/tmp/vera-uv-cache` 缺少依赖 WHEEL 元数据失败，与隔离实现无关。
-- 真实 Terminal.app 对 `VeraTestDemo` 的 `xcodebuild` 隔离回归未跑；既有 `build/` 仍为发现，未清理。
-- 阶段六保持 `In progress`。不把外部产物隔离称为 OS 沙箱。
+- 2026-09-15 Terminal.app 真实 `xcodebuild` 隔离复验通过：产物在 `/private/tmp/vera-verification/.../000`，工程根未重建 `build/`。
+- 发现 36：2026-09-16 Terminal.app 复验通过；command 卡展示最终 argv、`Profile xcode`、产物根。
+- 发现 37：模型注入 `artifact_plan` 曾使 propose 失败；`ProposalInput` 已剥离，重启后提出成功。
+- Git 索引残留旧 `AD build/`，未取消暂存。阶段六保持 `In progress`。不把外部产物隔离称为 OS 沙箱。

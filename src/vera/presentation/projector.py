@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shlex
 from datetime import datetime
 from typing import Annotated, Literal
 
@@ -464,11 +465,24 @@ class TimelineProjector:
             or event.payload.get("description")
             or "批准后才会执行该动作"
         )
+        argv = event.payload.get("argv", [])
+        command = (
+            shlex.join(str(part) for part in argv)
+            if kind == "command" and isinstance(argv, list) and argv
+            else ""
+        )
+        profile = event.payload.get("artifact_profile") if kind == "command" else None
+        root = event.payload.get("artifact_root") if kind == "command" else None
+        cwd = event.payload.get("cwd") if kind == "command" else None
         body = "\n".join(
             part
             for part in (
                 f"动作 {kind}",
-                f"目标 {target}" if target else "",
+                f"命令 {command}" if command else "",
+                f"Profile {profile}" if profile else "",
+                f"产物根 {root}" if root else "",
+                f"工作目录 {cwd}" if cwd else "",
+                f"目标 {target}" if target and not command else "",
                 f"风险 {risk}",
                 f"工作区 {workspace}" if workspace else "",
                 f"效果 {effect}",

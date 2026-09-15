@@ -44,4 +44,4 @@ git diff --check
 
 阶段七负责持久化会话、TUI 视觉识别、完整体验收口和个人长期 dogfood。用户最终封存确认属于阶段七；桌面集成已经顺延到阶段八。
 
-当前修正：[任务 0031：CLI 版本身份与 `--version`](0031-cli-version-identity.md) 与 [任务 0032：时间线信息层次与错误保真](0032-timeline-and-error-fidelity.md) 已合入当前工作树；[任务 0033：用户消息、工具块与 tool_call_id](0033-cli-dogfood-bugs.md) 已 Done（视觉走查由用户停止，TUI 修正未提交）；[任务 0042：验证产物隔离与工作区无污染](0042-verification-artifact-isolation.md) 自动步骤已落地，待真实 Terminal.app Xcode 回归。
+当前修正：[任务 0031：CLI 版本身份与 `--version`](0031-cli-version-identity.md) 与 [任务 0032：时间线信息层次与错误保真](0032-timeline-and-error-fidelity.md) 已合入当前工作树；[任务 0033：用户消息、工具块与 tool_call_id](0033-cli-dogfood-bugs.md) 已 Done；[任务 0042：验证产物隔离与工作区无污染](0042-verification-artifact-isolation.md) 真实 Xcode 隔离、发现 36 审批卡与发现 37 均已复验。

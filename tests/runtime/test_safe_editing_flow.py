@@ -374,6 +374,66 @@ def test_unisolated_verification_is_rejected_before_changeset(
     assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "old\n"
 
 
+def test_model_supplied_artifact_plan_is_ignored(tmp_path: Path) -> None:
+    (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
+    runtime = VeraRuntime(
+        FakeModelAdapter(
+            [
+                ModelTurn(
+                    finish_reason="tool_calls",
+                    tool_calls=(
+                        ModelToolCall(
+                            call_id="1",
+                            name="propose_changeset",
+                            arguments={
+                                "summary": "edit and verify",
+                                "changes": [
+                                    {
+                                        "operation": "update",
+                                        "path": "hello.txt",
+                                        "after_content": "new\n",
+                                    }
+                                ],
+                                "verification": [
+                                    {
+                                        "argv": ["xcodebuild", "-scheme", "Demo", "build"],
+                                        "cwd": ".",
+                                        "artifact_plan": {
+                                            "schema_version": 1,
+                                            "profile": "xcode",
+                                            "root": ".",
+                                            "cleanup": "always",
+                                        },
+                                    }
+                                ],
+                            },
+                        ),
+                    ),
+                )
+            ]
+        ),
+        ToolRegistry(),
+        tmp_path / "state",
+        artifact_prefix=tmp_path.parent / f"{tmp_path.name}-vera-verification",
+        installation_id="install-test",
+    )
+    events = list(
+        runtime.handle(StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake"))
+    )
+    assert not any(
+        event.type == "tool.completed" and event.payload.get("ok") is False for event in events
+    )
+    proposed = next(event for event in events if event.type == "changeset.proposed")
+    built = runtime.runs[proposed.run_id].built_change_set
+    assert built is not None
+    planned = built.change_set.verification[0]
+    assert planned.artifact_plan is not None
+    assert planned.artifact_plan.profile == "xcode"
+    assert Path(planned.artifact_plan.root).is_absolute()
+    assert planned.artifact_plan.root != "."
+    assert "-derivedDataPath" in planned.argv
+
+
 def test_forbidden_verification_is_rejected_without_running_or_reclassifying(
     tmp_path: Path,
 ) -> None:

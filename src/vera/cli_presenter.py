@@ -70,6 +70,12 @@ class HumanPresenter:
                 )
                 self._write(f"待批准的验证命令：{command}")
                 self._write(f"工作目录：{payload.get('cwd', '.')}")
+                profile = payload.get("artifact_profile")
+                root = payload.get("artifact_root")
+                if profile:
+                    self._write(f"Profile：{profile}")
+                if root:
+                    self._write(f"产物根：{root}")
                 self._write(f"风险：{payload.get('risk', 'unknown')}")
                 self._write("该进程以当前系统用户权限运行，Vera 第一版不提供 OS 沙箱。")
             elif payload.get("kind") == "recovery":
