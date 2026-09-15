@@ -2,8 +2,8 @@
 
 > 供主实现 Agent 执行：按 `superpowers:test-driven-development` 实施；完成前使用 `superpowers:verification-before-completion` 复核。
 
-**状态：** Planned
-**执行就绪：** 否；等待阶段六关闭及阶段七实施计划接受
+**状态：** Done
+**执行就绪：** 否；本任务已完成
 **分支：** `phase-7/0034-session-record-contracts`
 **依赖：** 任务 0033、任务 0042 与阶段六关闭
 **规格：** [持久化对话会话](../specs/2026-09-13-persistent-conversation-sessions.md)
@@ -57,24 +57,24 @@ class SessionCodec:
 
 ### 1. 冻结契约模型
 
-- [ ] 新增 `tests/contracts/test_session_records.py`，先覆盖五种有效 Record、空白文本、负 sequence、payload/type 不匹配、extra 字段和模型冻结。
-- [ ] 运行 `uv run pytest tests/contracts/test_session_records.py -q`，确认因模块不存在而失败。
-- [ ] 新增 `src/vera/contracts/sessions.py`，只实现使测试通过的模型与验证器。
-- [ ] 明确 `ConversationTurn.terminal_state` 只允许 `completed|failed|cancelled|recovery|response`，避免任意 UI 文案成为磁盘契约。
+- [x] 新增 `tests/contracts/test_session_records.py`，先覆盖五种有效 Record、空白文本、负 sequence、payload/type 不匹配、extra 字段和模型冻结。
+- [x] 运行 `uv run pytest tests/contracts/test_session_records.py -q`，确认因模块不存在而失败。
+- [x] 新增 `src/vera/contracts/sessions.py`，只实现使测试通过的模型与验证器。
+- [x] 明确 `ConversationTurn.terminal_state` 只允许 `completed|failed|cancelled|recovery|response`，避免任意 UI 文案成为磁盘契约。
 
 ### 2. 实现确定性 Codec
 
-- [ ] 新增 `tests/persistence/test_session_codec.py`，覆盖稳定 key 顺序、UTC 时间、Unicode/CJK、Redactor 已处理后的文本、版本、ID、sequence 和错误分类。
-- [ ] 运行测试并确认缺少 `SessionCodec` 的预期失败。
-- [ ] 新增 `src/vera/persistence/session_codec.py`，复用 `parse_json_object`/Pydantic 验证约定，但不调用文件系统。
-- [ ] 解码未知未来版本时只返回 `StateVersionError`，不得尝试按 v1 猜测或写回。
+- [x] 新增 `tests/persistence/test_session_codec.py`，覆盖稳定 key 顺序、UTC 时间、Unicode/CJK、Redactor 已处理后的文本、版本、ID、sequence 和错误分类。
+- [x] 运行测试并确认缺少 `SessionCodec` 的预期失败。
+- [x] 新增 `src/vera/persistence/session_codec.py`，复用 `parse_json_object`/Pydantic 验证约定，但不调用文件系统。
+- [x] 解码未知未来版本时只返回 `StateVersionError`，不得尝试按 v1 猜测或写回。
 
 ### 3. 冻结兼容夹具
 
-- [ ] 新增 `tests/fixtures/state/sessions/v1-valid/session.jsonl`，包含 created、renamed、turn、compacted、closed 的最小连续序列。
-- [ ] 新增 `tests/fixtures/state/sessions/v2-future/session.jsonl`，仅用于证明未来版本失败关闭。
-- [ ] 在 `tests/persistence/test_session_codec.py` 从夹具读取每行，验证 v1 可重放、v2 不被误解码。
-- [ ] 检查夹具不含真实路径、Key、Token 或用户源码。
+- [x] 新增 `tests/fixtures/state/sessions/v1-valid/session.jsonl`，包含 created、renamed、turn、compacted、closed 的最小连续序列。
+- [x] 新增 `tests/fixtures/state/sessions/v2-future/session.jsonl`，仅用于证明未来版本失败关闭。
+- [x] 在 `tests/persistence/test_session_codec.py` 从夹具读取每行，验证 v1 可重放、v2 不被误解码。
+- [x] 检查夹具不含真实路径、Key、Token 或用户源码。
 
 ## 局部验证与提交
 
@@ -96,3 +96,12 @@ git commit -m "feat: define persistent conversation session records"
 - 会话磁盘记录与 `vera.session.protocol.SessionRecord` 名称和职责清楚分离。
 - 未知版本、错误 ID、断裂 sequence 和 payload/type 不一致均失败关闭。
 - 契约不包含完整工具、Diff、审批、Checkpoint 或 Provider Payload。
+
+## 验证证据（2026-09-16）
+
+- 分支：`phase-7/0034-session-record-contracts`
+- `tests/contracts/test_session_records.py` 与 `tests/persistence/test_session_codec.py` **9 passed**
+- `ruff check src tests`、`mypy src/vera/contracts/sessions.py src/vera/persistence/session_codec.py` 通过
+- 完整非 live 在沙箱中 924 passed，git/pty 项因沙箱限制失败；无沙箱复跑上述 11 项通过
+- 夹具仅含 `/workspace/demo`，无真实路径或密钥
+

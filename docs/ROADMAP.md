@@ -85,7 +85,7 @@
 
 ## 阶段 7——CLI 体验收口与个人主力化
 
-**状态：** Not started
+**状态：** In progress
 **入口条件：** 阶段六 Complete，且[阶段七规格](specs/2026-09-13-cli-experience-and-personal-dogfood.md)与任务顺序已经接受。
 
 - 实现持久化对话会话、退出后继续和安全的历史选择，使 CLI 具备长期任务连续性。

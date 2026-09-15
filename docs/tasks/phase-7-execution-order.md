@@ -2,7 +2,7 @@
 
 > **供主实现 Agent 执行：** 必须按任务逐项使用 `superpowers:subagent-driven-development`（推荐）或 `superpowers:executing-plans`；每个实施步骤使用 `- [ ]` 跟踪。未经用户接受本计划、阶段六关闭及对应视觉审批门通过，不得开始实现。
 
-**状态：** Planned，等待用户接受后执行
+**状态：** In progress
 **目标：** 在不改变 Core 权威与安全边界的前提下，把 Vera CLI 收口为用户愿意长期使用的个人主力 Coding Agent，并为阶段八桌面端冻结可复用的会话与视觉语义。
 **架构：** 持久化会话由 UI 无关的 `ConversationSessionStore` 统一提供，项目说明由 UI 无关的 `ProjectInstructionService` 以 Run 快照加载，`SessionController` 负责事务编排，TUI、Plain、JSON 只消费结构化 Session Event；视觉层只投影既有 Core 事实。阶段按“存储契约 → 安全存储 → Controller 接入 → 启动恢复 → 项目指令与初始化 → 可见原型审批 → TUI 状态收敛 → 时间线/Composer 收口 → 真实 dogfood”推进。
 **技术栈：** Python 3.12、Pydantic 2、Typer、Textual 8、pytest、PTY 测试、Ruff、Mypy、uv/hatchling。
@@ -10,7 +10,7 @@
 
 ## 全局约束
 
-- [ ] 阶段六任务 0033、任务 0042、必要复验和阶段六关闭事实完成后，再从最新干净 `main` 创建第一个阶段七分支。
+- [x] 阶段六任务 0033、任务 0042、必要复验和阶段六关闭事实完成后，再从最新干净 `main` 创建第一个阶段七分支。
 - [ ] 每个任务只有一个主实现 Agent；前一任务完成测试、文档、提交并合并后，下一任务才从新的 `main` 开始。
 - [ ] 每个行为变化遵循 Red → Green → Refactor；先看到针对该行为的失败，再写最小实现。
 - [ ] 不读取真实 Provider Key，不修改用户真实工程，不把 live 网络作为自动门禁前提。

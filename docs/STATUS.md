@@ -1,8 +1,8 @@
 # Vera 状态
 
 **更新日期：** 2026-09-16
-**当前阶段：** 阶段 6——CLI 功能与可靠性收口（Complete）
-**仓库状态：** 阶段五停在 Ready for manual acceptance。阶段六任务 0025–0029、0031–0033、0042 已 Done。真实 Terminal.app 走查 High 项已复验；隔离 `xcodebuild` 与命令审批卡已过。阶段七 CLI 体验与阶段八桌面集成都未开始；不引入 Electron 代码。暂无远程时可不推送。
+**当前阶段：** 阶段 7——CLI 体验收口与个人主力化（In progress）
+**仓库状态：** 阶段五停在 Ready for manual acceptance。阶段六已 Complete。阶段七任务 0034 进行中。不引入 Electron 代码。暂无远程时可不推送。
 
 ## 已完成
 
@@ -36,7 +36,7 @@
 
 ## 活动任务
 
-- [阶段七执行顺序](tasks/phase-7-execution-order.md)：已写成，等待用户接受后才开始实现。不得在阶段七封存确认前引入 Electron。
+- [阶段七执行顺序](tasks/phase-7-execution-order.md)：用户已授权开始；当前任务 0034。不得在阶段七封存确认前引入 Electron。
 - [阶段五执行顺序](tasks/phase-5-execution-order.md)：0024 自动门禁已完成；人工 dogfood 不足，阶段五保持 Ready for manual acceptance。
 - [ADR-0017：插入 CLI 体验阶段并顺延桌面路线](decisions/ADR-0017-insert-cli-experience-stage.md)：Accepted；阶段七用于 CLI 体验与个人主力化，原桌面阶段顺延为阶段八。
 - [验证产物隔离与工作区无污染](specs/2026-09-14-verification-artifact-isolation.md)与 [ADR-0018](decisions/ADR-0018-isolate-verification-artifacts.md)：Accepted；最终验证计划必须在审批前形成，构建/缓存产物写到 workspace 外。
@@ -75,7 +75,7 @@
 
 ## 下一检查点
 
-1. 阶段六已关闭。不开始阶段七实现，除非用户接受 [阶段七实施计划](tasks/phase-7-execution-order.md)。
+1. 阶段七任务 0034 进行中。不开始阶段八，不引入 Electron。
 2. 不自动删除、取消暂存或忽略 `VeraTestDemo` 索引里残留的 `AD build/`；未改 `.gitignore`。
 3. 阶段五仍缺 20 次真实 dogfood 与三类真实工程走查，不得把阶段五标为 Complete。
 4. 未经确认「CLI 版本达到预期，可以封存」，不得将阶段七标为 Complete、不得开始阶段八、不得引入 Electron 或其他桌面端代码。

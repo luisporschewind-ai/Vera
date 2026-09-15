@@ -27,6 +27,10 @@ _DEFAULT_ADVICE: dict[str, str] = {
     "invalid_manifest": "Run manifest 无法解析。保留原文件并人工检查。",
     "migration_apply_failed": "迁移失败，已保留原始字节。不要删除 run 目录。",
     "missing_version": "缺少版本字段。保留原文件并人工检查。",
+    "unsupported_session_version": "会话格式版本不受支持。升级 Vera 或保留原数据，不要改写。",
+    "session_id_mismatch": "会话记录 ID 与期望不一致。保留原文件并人工检查。",
+    "session_sequence_mismatch": "会话记录序号不连续。保留原文件，不要跳过损坏行。",
+    "invalid_session_record": "会话记录无法解析。保留原文件并人工检查。",
 }
 
 
