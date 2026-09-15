@@ -4,8 +4,8 @@
 
 **规格：** [CLI 产品化与体验完善](../specs/2026-09-12-cli-productization-and-polish.md)  
 **任务：** [0029](../tasks/0029-phase-6-product-acceptance.md)  
-**日期：** 2026-09-13  
-**结果：** In progress（第 1–3 项主路径已复验；第 4 项取消、回滚、审批 Tab、恢复、验证成功与验证失败已过；第 5–7 项已过；`/new`/`/clear`/`/theme` 已复验）
+**日期：** 2026-09-16
+**结果：** 第 1–7 项主路径已过；发现 1–37 中 High 均已复验。阶段六基线走查完成；封存确认归阶段七。
 
 自动测试、PTY、Textual Pilot、快照和 wheel smoke 不能填写本表的“实际”栏。Agent 不得把未观察的项写成通过。
 

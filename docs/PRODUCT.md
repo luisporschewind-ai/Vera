@@ -69,7 +69,7 @@ Vera is also a long-term learning and portfolio product. It should become mainta
 ## Open decisions
 
 - 阶段五结束时公共 Command/Event、错误、审批与恢复契约的兼容承诺
-- 阶段六声明支持的终端兼容矩阵与性能基线
+- 阶段六声明支持的终端：macOS Terminal.app 已走查；iTerm2/Warp/Linux/Windows Terminal 保持 `Not run`
 - 阶段七 CLI 的最终 Logo、首屏、信息密度与深海主题细节
 - 阶段八桌面端是否接受“Agent 工作台”产品形态与四区信息架构
 - 桌面基线后的 Core 原生 Skills 是否插入公开准备之前，以及本地来源、Manifest 格式、自动选择边界与 workspace Skill 信任策略；它与远程插件市场分开决策

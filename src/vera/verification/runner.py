@@ -256,8 +256,7 @@ def _mutations(
     after_git: str,
 ) -> tuple[str, ...]:
     changed = sorted(
-        set(before) ^ set(after)
-        | {path for path in after if before.get(path) != after.get(path)}
+        set(before) ^ set(after) | {path for path in after if before.get(path) != after.get(path)}
     )
     if before_git != after_git and not changed:
         return ("git-status",)

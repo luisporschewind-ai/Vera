@@ -2,8 +2,8 @@
 
 > 供 Cursor 执行：阶段六人工走查发现 Medium 缺陷——`vera --version` 不存在，且首屏版本恒为 `0.1.0`，无法自证当前构建。
 
-**状态：** In progress（`vera --version` 已 Terminal.app 复验通过；阶段六未封存）
-**执行就绪：** 任务 0029 停在 Ready for manual acceptance；本项为阶段六修正，不封存阶段六
+**状态：** Done
+**执行就绪：** 否；本任务已 Done
 **分支：** `phase-6/0031-cli-version-identity`；已合入 `phase-6/0032-timeline-and-error-fidelity`
 **依赖：** 任务 0029 自动部分已完成
 **规格：** [阶段六 CLI 产品化](../specs/2026-09-12-cli-productization-and-polish.md)
@@ -72,4 +72,10 @@ git diff --check
 - `--json --version` 为可解析单行 JSON，含 `name`、`version`、`location`、`install`。
 - 源码/editable 安装的展示版本含短 commit；wheel 安装不含 git 字段。
 - 版本查询不启动 TUI/会话，不要求工作区存在。
-- `__version__` 仍为 `0.1.0`；任务 0029 保持 Ready for manual acceptance。
+- `__version__` 仍为 `0.1.0`。
+
+## 验证证据
+
+- 提交：`c128bd5 feat: add CLI version identity`，后经 0032/0033/0042 分支合入当前工作树。
+- Terminal.app 复验（走查发现 1）：`vera --version` 显示发行版本、源码短 commit、editable 路径，不启动会话。
+- 2026-09-16 文档对齐时本任务按已有复验关闭。

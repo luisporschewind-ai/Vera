@@ -2,8 +2,8 @@
 
 > **供主实现 Agent 执行：** 必须按 `superpowers:subagent-driven-development`（推荐）或 `superpowers:executing-plans` 逐项实施；每个行为变化先使用 `superpowers:test-driven-development`，结束前使用 `superpowers:verification-before-completion`。
 
-**状态：** In progress
-**执行就绪：** 隔离实现已提交 `940bd29`；发现 36/37 的审批展示与模型 `artifact_plan` 剥离随本提交纳入。阶段六保持 In progress
+**状态：** Done
+**执行就绪：** 隔离实现 `940bd29`；发现 36/37 为 `c51909d`。真实 Xcode 隔离与命令审批卡已复验。阶段六由任务 0029 收口。
 **分支：** `phase-6/0042-verification-artifact-isolation`
 **依赖：** 任务 0033 已 Done；不得与其他 Agent 同时改同一工作树
 **规格：** [验证产物隔离与工作区无污染](../specs/2026-09-14-verification-artifact-isolation.md)
@@ -17,12 +17,12 @@
 
 ## 新 session 交接
 
-- 0042 自动步骤已提交 `940bd29`。2026-09-15 Terminal.app 真实 `xcodebuild` 隔离复验通过。
+- 0042 自动步骤已提交 `940bd29`，发现 36/37 为 `c51909d`。
+- 2026-09-15 Terminal.app 真实 `xcodebuild` 隔离复验通过。
 - 发现 36：2026-09-16 Terminal.app 已复验 command 卡展示最终 argv、`Profile xcode`、产物根；用户 Reject。
 - 发现 37：模型注入 `artifact_plan.root='.'` 曾使 propose 失败；`ProposalInput` 已剥离该字段，同会话重启后提出成功。
 - 不自动删除、取消暂存或忽略 `VeraTestDemo` 索引里残留的 `AD build/`。
-- 不开始阶段七/八，不引入 Electron，不把阶段六标为 Complete。
-- 未经用户明确要求不要提交。
+- 不开始阶段七/八，不引入 Electron。阶段六关闭只表示功能与可靠性基线成立。
 
 ## Global Constraints
 
@@ -195,7 +195,7 @@ class VerificationArtifactPlanner:
 - [x] 在 macOS/Xcode 可用环境增加真实 `xcodebuild` 测试标记；产物根必须位于 `/private/tmp`，临时工程根不得出现 `build/`。
 - [x] 将本次 `VeraTestDemo/build` 记录为阶段六发现，不伪造“已清理”或“已复验”。
 - [x] 在用户明确批准前，不删除现有 build、不取消暂存、不写 `.gitignore`；批准后先保存 `git status`，只处理精确目标，再复验同一流程不重建。
-- [x] 更新阶段六验收映射；任务 0042 与真实 Terminal.app 回归未完成前，阶段六保持 `In progress`。
+- [x] 更新阶段六验收映射；真实 Terminal.app Xcode 回归与发现 36/37 已复验。
 
 ## 局部验证
 
@@ -228,18 +228,18 @@ git commit -m "fix: isolate verification artifacts from workspaces"
 - 当前 `VeraTestDemo/build` 只有在用户单独批准后才处理，处理范围和可恢复性有记录。
 - 自动门禁与真实 Terminal.app Xcode 回归通过，阶段六无未关闭的同类 High 问题。
 
-## 验证证据（2026-09-15）
+## 验证证据（2026-09-16）
 
-- 分支：`phase-6/0042-verification-artifact-isolation`，提交 `940bd29`。
-- 聚焦：上述 8 个测试文件 **106 passed**。
+- 分支：`phase-6/0042-verification-artifact-isolation`；隔离 `940bd29`，审批展示与模型 plan 剥离 `c51909d`。
+- 聚焦：上述 8 个测试文件 **106 passed**（隔离落地时）。
 - `ruff check src tests`、`ruff format --check src tests`、`mypy src`、`git diff --check` 通过。
-- 完整非 live：`919 passed, 2 deselected`；wheel smoke 两项因共享 uv cache 缺少 WHEEL 元数据失败，与隔离行为无关。
+- 2026-09-16 完整非 live：先 `922 passed, 2 deselected`，两项 wheel smoke 因共享 uv cache 缺 WHEEL 元数据失败；重建 `/private/tmp/vera-uv-cache` 后 `tests/e2e/test_phase_4_wheel_smoke.py` 与 `test_smoke_installed_wheel_outside_repo` **2 passed**。
 - 真实 Terminal.app（2026-09-15）：`vera 0.1.0+940bd29`，`run_187c2fe2abf94d7a91d35d790bb55568`，`xcodebuild ... -derivedDataPath /private/tmp/vera-verification/.../000/DerivedData`，`passed`，工程根无 `build/`，精确根已清理。
-- 发现 36：审批卡当时不展示 argv。2026-09-16 Terminal.app 复验通过（`run_54d549ca3e9d4e578f65443fb8f7302e`）：command 卡含 `命令`/`Profile xcode`/`产物根`；用户 Reject，`verification_failed`/`rejected`。工程根仍无 `build/`。
+- 发现 36：2026-09-16 Terminal.app 复验通过（`run_54d549ca3e9d4e578f65443fb8f7302e`）：command 卡含 `命令`/`Profile xcode`/`产物根`；用户 Reject，`verification_failed`/`rejected`。工程根仍无 `build/`。
 - 发现 37：模型注入 `artifact_plan.root='.'` 使 propose 失败；`ProposalInput` 剥离后重启再提成功。
 - 未读取真实 Provider Key，未改 `.gitignore`，未取消暂存旧 `AD build/`。
 
 ## 未决
 
-- `VeraTestDemo` Git 索引仍有旧 `AD build/`；空的 `/private/tmp/vera-verification/.../run_*` 父目录会留下，精确 `000` 根会删。
-- 阶段六保持 In progress，不开始阶段七/八。
+- `VeraTestDemo` Git 索引仍有旧 `AD build/`；空的 `/private/tmp/vera-verification/.../run_*` 父目录会留下，精确 `000` 根会删。这是用户数据残留，不阻断本任务。
+- 阶段七/八未开始。

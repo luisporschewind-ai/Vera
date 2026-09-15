@@ -2,8 +2,8 @@
 
 > 供 Cursor 执行：阶段六人工走查暴露的一组缺陷修正。规格条款早已接受，是实现未达成，因此不需要新规格。
 
-**状态：** In progress
-**执行就绪：** 任务 0029 停在 Ready for manual acceptance；本项为阶段六修正，不封存阶段六
+**状态：** Done
+**执行就绪：** 否；本任务已 Done
 **分支：** `phase-6/0032-timeline-and-error-fidelity`
 **依赖：** 任务 0029 自动部分已完成；任务 0031 已 cherry-pick 到本分支，`vera --version` 可用
 **规格：** [阶段六 CLI 产品化](../specs/2026-09-12-cli-productization-and-polish.md)
@@ -122,4 +122,10 @@ git commit -m "fix: converge timeline display and preserve error fidelity"
 - 纯只读失败 run 的副作用结论为「未产生工作区变化」。
 - 4xx 与 5xx 映射到不同 code，4xx 不可重试，原始原因可脱敏诊断。
 - 终态状态行不提示取消。
-- 完整非 live、Ruff、格式、Mypy 与 `git diff --check` 通过；阶段六仍为 Ready for manual acceptance。
+- 完整非 live、Ruff、格式、Mypy 与 `git diff --check` 通过。
+
+## 验证证据
+
+- 提交：`60e13ef fix: converge timeline display and preserve error fidelity`。
+- Terminal.app：发现 2（跟随底部）、发现 9（工具目标/耗时）、发现 32（只读失败「未产生工作区变化」/「未写入」）、发现 33（人类输出不打印 `model.requested`）均已复验通过。
+- 2026-09-16 文档对齐时本任务按已有复验关闭。
