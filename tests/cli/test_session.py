@@ -446,3 +446,13 @@ def test_model_builder_error_keeps_runtime(tmp_path: Path) -> None:
     assert session.dependencies is before
     assert session.model_profile == "fake"
     assert "模型切换失败" in "\n".join(io.output)
+
+
+def test_sessions_lists_current_workspace_session(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    session, _adapter, io = make_session(workspace, [], ["/sessions", "/exit"])
+
+    assert session.run() == 0
+    output = "\n".join(io.output)
+    assert session.conversation.stats().session_id in output or "没有会话" in output

@@ -174,9 +174,52 @@ def main(argv: list[str]) -> int:
         sys.stderr.write(json_session.stderr)
         return json_session.returncode or 1
 
-    doctor_input = (
-        '{"schema_version":1,"type":"session.command","raw":"/doctor"}\n' + CLOSE_SESSION
+    no_continue = _run([str(vera), "--json", "-c"], cwd=workspace, env=ready)
+    if no_continue.returncode != 2:
+        sys.stderr.write(no_continue.stdout + no_continue.stderr)
+        return no_continue.returncode or 1
+    if "\u001b" in no_continue.stdout:
+        sys.stderr.write("continue json emitted ANSI\n")
+        return 1
+
+    picker = _run(
+        [str(vera), "--json", "-r"],
+        cwd=workspace,
+        env=ready,
+        input_text="should-not-be-id\n",
     )
+    if picker.returncode != 2 or "\u001b" in picker.stdout:
+        sys.stderr.write(picker.stdout + picker.stderr)
+        return picker.returncode or 1
+
+    missing_resume = _run(
+        [str(vera), "--json", "-r", "session_missing"],
+        cwd=workspace,
+        env=ready,
+    )
+    if missing_resume.returncode != 2:
+        sys.stderr.write(missing_resume.stdout + missing_resume.stderr)
+        return missing_resume.returncode or 1
+
+    listed = _run(
+        [str(vera), "--json"],
+        cwd=workspace,
+        env=ready,
+        input_text='{"schema_version":1,"type":"session.command","raw":"/sessions"}\n'
+        + CLOSE_SESSION,
+    )
+    if listed.returncode != 0:
+        sys.stderr.write(listed.stderr)
+        return listed.returncode or 1
+    if not any(
+        (json.loads(line).get("event") or {}).get("type") == "session.listed"
+        for line in listed.stdout.splitlines()
+        if line.strip()
+    ):
+        sys.stderr.write(listed.stdout)
+        return 1
+
+    doctor_input = '{"schema_version":1,"type":"session.command","raw":"/doctor"}\n' + CLOSE_SESSION
     doctor = _run([str(vera), "--json"], cwd=workspace, env=ready, input_text=doctor_input)
     if doctor.returncode != 0:
         sys.stderr.write(doctor.stderr)

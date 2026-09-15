@@ -151,6 +151,10 @@ class SessionController:
             closed=self._closed,
         )
 
+    @property
+    def session_source(self) -> Literal["new", "continued", "resumed"]:
+        return self._source
+
     def _apply_loaded_session(
         self, loaded: LoadedConversationSession, *, restore_history: bool
     ) -> None:
@@ -729,11 +733,32 @@ class SessionController:
 
     def bootstrap_events(self) -> tuple[EventEnvelope, ...]:
         events = [self._status_event()]
+        if self._source in {"continued", "resumed"}:
+            events.append(self._loaded_event())
         hint = self.recovery_hint()
         if hint is not None:
             events.append(hint)
         events.append(self._session_event("session.message", {"text": "输入 /help 查看命令"}))
         return tuple(events)
+
+    def _loaded_event(self) -> EventEnvelope:
+        from vera.session.startup import HISTORY_DISPLAY_LIMIT
+
+        items = [
+            {"role": message.role, "content": message.content}
+            for message in self.conversation.snapshot()[-HISTORY_DISPLAY_LIMIT:]
+        ]
+        stats = self._conversation_stats()
+        return self._session_event(
+            "session.loaded",
+            {
+                "session_id": stats.session_id,
+                "source": stats.source,
+                "title": stats.title,
+                "message_count": stats.message_count,
+                "items": items,
+            },
+        )
 
     def context_warning_event(self) -> EventEnvelope | None:
         if self.conversation.stats().warning:
@@ -794,6 +819,27 @@ class SessionController:
     def _cmd_permissions(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
         status = permission_status(self.dependencies.runtime.command_policy)
         yield self._session_event("session.permissions", status.model_dump(mode="json"))
+
+    def _cmd_sessions(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        summaries = self.session_store.list_for_workspace(self.workspace)
+        items = [
+            {
+                "session_id": item.session_id,
+                "title": item.title,
+                "updated_at": item.updated_at.isoformat().replace("+00:00", "Z"),
+                "message_count": item.message_count,
+                "recoverable": item.recoverable,
+                "latest_run_state": item.latest_run_state,
+            }
+            for item in summaries
+        ]
+        lines = [
+            f"{item['session_id']}\t{item['title']}\t{item['message_count']}" for item in items
+        ] or ["当前工作区没有会话。"]
+        yield self._session_event(
+            "session.listed",
+            {"items": items, "text": "\n".join(lines)},
+        )
 
     def _cmd_new(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
         session_id = self._open_new_persistent_session()

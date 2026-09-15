@@ -179,6 +179,8 @@ class InteractiveSession:
             "session.usage",
             "session.shortcuts",
             "session.theme",
+            "session.listed",
+            "session.loaded",
         }:
             text = event.payload.get("text")
             if isinstance(text, str) and text:
@@ -264,4 +266,10 @@ def _structured_plain(event_type: str, payload: dict[str, object]) -> str:
         return format_doctor_body(payload)
     if event_type == "session.config":
         return format_config_body(payload)
+    if event_type == "session.loaded":
+        session_id = payload.get("session_id", "")
+        title = payload.get("title", "")
+        return f"已恢复会话 {session_id} {title}".strip()
+    if event_type == "session.listed":
+        return str(payload.get("text") or "当前工作区没有会话。")
     return event_type

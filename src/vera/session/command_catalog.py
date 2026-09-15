@@ -111,6 +111,7 @@ DEFAULT_COMMANDS: tuple[CommandDescriptor, ...] = (
         "permissions",
     ),
     CommandDescriptor("/new", "/new", "清空上下文并开始新会话", "会话", "new"),
+    CommandDescriptor("/sessions", "/sessions", "列出当前工作区会话", "会话", "sessions"),
     CommandDescriptor("/clear", "/clear", "清空显示与上下文", "会话", "clear"),
     CommandDescriptor(
         "/compact",
@@ -172,7 +173,7 @@ DEFAULT_COMMANDS: tuple[CommandDescriptor, ...] = (
     CommandDescriptor(
         "/resume",
         "/resume <run-id>",
-        "继续可恢复任务",
+        "继续可恢复 Run",
         "恢复",
         "resume",
         args="required",

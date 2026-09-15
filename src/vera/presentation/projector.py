@@ -192,6 +192,9 @@ class TimelineProjector:
             "session.closed": self._status_event,
             "session.persistence_changed": self._persistence_warning,
             "session.close_warning": self._persistence_warning,
+            "session.loaded": self._session_loaded,
+            "session.listed": self._session_message,
+            "session.load_failed": self._persistence_warning,
         }
         if event.type in _SIDE_EFFECT_EVENTS:
             self._side_effect_runs.add(event.run_id)
@@ -705,6 +708,35 @@ class TimelineProjector:
             body=sanitize_terminal_text(body),
             status=BlockStatus.FAILED,
         )
+
+    def _session_loaded(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
+        from vera.session.startup import HISTORY_DISPLAY_LIMIT
+
+        items = event.payload.get("items") or []
+        if not isinstance(items, list):
+            items = []
+        bounded = items[-HISTORY_DISPLAY_LIMIT:]
+        mutations: list[TimelineMutation] = []
+        for index, item in enumerate(bounded):
+            if not isinstance(item, dict):
+                continue
+            role = str(item.get("role", ""))
+            content = str(item.get("content", "")).strip()
+            if not content:
+                continue
+            kind = BlockKind.USER if role == "user" else BlockKind.ASSISTANT
+            title = "你" if role == "user" else "Vera" if role == "assistant" else "摘要"
+            mutations.extend(
+                self._append(
+                    block_id=f"{event.run_id}:{event.sequence}:hist:{index}",
+                    run_id=event.run_id,
+                    kind=kind,
+                    title=title,
+                    body=sanitize_terminal_text(content),
+                    status=BlockStatus.SUCCEEDED,
+                )
+            )
+        return tuple(mutations)
 
     def _status_event(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
         return self._append(

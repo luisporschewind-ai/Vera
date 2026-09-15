@@ -33,6 +33,9 @@ class JsonSessionDriver:
 
     def run(self, input_stream: TextIO, output_stream: TextIO) -> int:
         exit_code = 0
+        if self.controller.session_source != "new":
+            for event in self.controller.bootstrap_events():
+                self._write_output(output_stream, event)
         for raw in input_stream:
             line = raw.strip()
             if not line:

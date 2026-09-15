@@ -57,6 +57,9 @@ _TITLES: dict[str, str] = {
     "session.diff": "Diff",
     "session.persistence_changed": "会话未保存",
     "session.close_warning": "退出前警告",
+    "session.loaded": "已恢复会话",
+    "session.listed": "会话列表",
+    "session.load_failed": "会话恢复失败",
 }
 
 _FIELD_LABELS: dict[str, str] = {

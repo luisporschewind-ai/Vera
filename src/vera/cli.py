@@ -26,7 +26,14 @@ from vera.contracts.commands import (
 )
 from vera.contracts.events import EventEnvelope
 from vera.persistence.run_store import RunStore
+from vera.persistence.session_store import ConversationSessionStore
 from vera.redaction import Redactor
+from vera.session.controller import SessionController
+from vera.session.startup import (
+    SessionOpenRequest,
+    SessionStartupError,
+    SessionStartupService,
+)
 from vera.terminal.mode import (
     PresentationMode,
     TerminalCapabilities,
@@ -44,11 +51,13 @@ runs_app = typer.Typer(help="inspect private run records")
 config_app = typer.Typer(help="inspect effective configuration")
 recover_app = typer.Typer(help="inspect and recover interrupted runs")
 state_app = typer.Typer(help="inspect and migrate private run state formats")
+sessions_app = typer.Typer(help="inspect and repair conversation sessions")
 app.add_typer(runs_app, name="runs")
 app.add_typer(config_app, name="config")
 app.add_typer(recover_app, name="recover")
 app.add_typer(state_app, name="state")
 app.add_typer(eval_app, name="eval")
+app.add_typer(sessions_app, name="sessions")
 
 
 def _fail_runtime_setup(exc: Exception) -> NoReturn:
@@ -82,6 +91,20 @@ def main(
         bool,
         typer.Option("--version", "-V", help="显示安装版本与位置并退出"),
     ] = False,
+    continue_session: Annotated[
+        bool,
+        typer.Option("-c", "--continue", help="继续当前工作区最近的可恢复会话"),
+    ] = False,
+    resume: Annotated[
+        str | None,
+        typer.Option(
+            "-r",
+            "--resume",
+            help="恢复会话 [SESSION_ID]；省略 ID 时在 TTY 中选择。"
+            " /resume <run-id> 继续可恢复 Run。",
+            flag_value="__PICKER__",
+        ),
+    ] = None,
 ) -> None:
     """Start an interactive session when no subcommand is supplied."""
 
@@ -99,6 +122,22 @@ def main(
         typer.echo(f"工作区必须是现有目录：{resolved}")
         raise typer.Exit(2)
     try:
+        if continue_session and resume is not None:
+            raise SessionStartupError(
+                "continue_resume_conflict",
+                "-c/--continue 与 -r/--resume 不能同时使用",
+            )
+        if continue_session:
+            request = SessionOpenRequest(mode="continue")
+        elif resume is None:
+            request = SessionOpenRequest(mode="new")
+        elif resume in {"__PICKER__", ""}:
+            request = SessionOpenRequest(mode="resume_picker")
+        else:
+            request = SessionOpenRequest(mode="resume_id", session_id=resume)
+    except SessionStartupError as exc:
+        _fail_session_startup(exc, json_output=json_output)
+    try:
         deps = build_runtime(resolved, model)
     except Exception as exc:
         _fail_runtime_setup(exc)
@@ -109,15 +148,36 @@ def main(
     except TerminalModeError as exc:
         typer.echo(exc.message, err=True)
         raise typer.Exit(exc.exit_code) from exc
+    store = ConversationSessionStore(deps.config.state_dir, deps.installation_id)
+    startup = SessionStartupService(store)
+    interactive = capabilities.stdin_tty and capabilities.stdout_tty
+    request = _maybe_pick_session(request, store, resolved, mode, interactive, json_output)
+    try:
+        loaded = startup.resolve(request, resolved, interactive_tty=interactive)
+    except SessionStartupError as exc:
+        _fail_session_startup(exc, json_output=json_output)
+    source = startup.source_for(request)
+    controller = SessionController(
+        deps,
+        resolved,
+        selected_model,
+        session_store=store,
+        loaded_session=loaded,
+        source=source,
+    )
     if mode is PresentationMode.JSON:
         raise typer.Exit(
-            JsonSessionDriver(deps, resolved, selected_model).run(sys.stdin, sys.stdout)
+            JsonSessionDriver(deps, resolved, selected_model, controller=controller).run(
+                sys.stdin, sys.stdout
+            )
         )
     if mode is PresentationMode.PLAIN:
         raise typer.Exit(
-            PlainSessionDriver(deps, resolved, selected_model, _ConsoleSessionIO()).run()
+            PlainSessionDriver(
+                deps, resolved, selected_model, _ConsoleSessionIO(), controller=controller
+            ).run()
         )
-    raise typer.Exit(_launch_tui_session(deps, resolved, selected_model))
+    raise typer.Exit(_launch_tui_session(deps, resolved, selected_model, controller))
 
 
 def detect_terminal_capabilities() -> TerminalCapabilities:
@@ -134,13 +194,86 @@ def detect_terminal_capabilities() -> TerminalCapabilities:
     )
 
 
+def _fail_session_startup(exc: SessionStartupError, *, json_output: bool) -> NoReturn:
+    if json_output:
+        event = {
+            "schema_version": 1,
+            "record_type": "event",
+            "event": {
+                "type": "session.load_failed",
+                "payload": {
+                    "error_code": exc.code,
+                    "advice": exc.advice,
+                },
+            },
+        }
+        typer.echo(json.dumps(event, ensure_ascii=False, sort_keys=True))
+    else:
+        typer.echo(exc.message, err=True)
+        if exc.advice and exc.advice != exc.message:
+            typer.echo(exc.advice, err=True)
+    raise typer.Exit(2) from exc
+
+
+def _maybe_pick_session(
+    request: SessionOpenRequest,
+    store: ConversationSessionStore,
+    workspace: Path,
+    mode: PresentationMode,
+    interactive: bool,
+    json_output: bool,
+) -> SessionOpenRequest:
+    if request.mode != "resume_picker":
+        return request
+    summaries = store.list_for_workspace(workspace)
+    if mode is PresentationMode.JSON or not interactive:
+        payload = {
+            "type": "session.listed",
+            "payload": {
+                "items": [
+                    {
+                        "session_id": item.session_id,
+                        "title": item.title,
+                        "recoverable": item.recoverable,
+                    }
+                    for item in summaries
+                ]
+            },
+        }
+        if json_output or mode is PresentationMode.JSON:
+            typer.echo(
+                json.dumps(
+                    {"schema_version": 1, "record_type": "event", "event": payload},
+                    ensure_ascii=False,
+                    sort_keys=True,
+                )
+            )
+        else:
+            typer.echo("非交互环境请使用 vera -r <session-id>。", err=True)
+            for item in summaries:
+                typer.echo(f"{item.session_id}\t{item.title}", err=True)
+        _fail_session_startup(
+            SessionStartupError(
+                "picker_requires_id",
+                "非交互环境不能打开会话选择器",
+                advice="请传入 vera -r <session-id>。",
+            ),
+            json_output=json_output or mode is PresentationMode.JSON,
+        )
+    from vera.terminal.widgets.session_picker import pick_session_id
+
+    selected = pick_session_id(summaries, plain=mode is PresentationMode.PLAIN)
+    if not selected:
+        raise typer.Exit(2)
+    return SessionOpenRequest(mode="resume_id", session_id=selected)
+
+
 def _launch_tui_session(
     dependencies: RuntimeDependencies,
     workspace: Path,
     model_profile: str,
+    controller: SessionController | None = None,
 ) -> int:
-    from vera.session.controller import SessionController
-
     try:
         from vera.terminal.app import launch_tui
     except Exception as exc:
@@ -149,9 +282,9 @@ def _launch_tui_session(
             err=True,
         )
         return 2
-    controller = SessionController(dependencies, workspace, model_profile)
+    session = controller or SessionController(dependencies, workspace, model_profile)
     try:
-        return launch_tui(controller, workspace, model_profile)
+        return launch_tui(session, workspace, model_profile)
     except Exception as exc:
         typer.echo(
             f"TUI 启动失败（{exc}）。请改用 --plain。",
@@ -370,3 +503,103 @@ def rollback(run_id: str = typer.Argument(...)) -> None:
 def config_show() -> None:
     config = load_config(Path.cwd(), {})
     typer.echo(json.dumps(config.model_dump(mode="json"), ensure_ascii=False, indent=2))
+
+
+@sessions_app.command("inspect")
+def sessions_inspect(
+    session_id: str,
+    workspace: Annotated[Path, typer.Option()] = Path("."),
+    json_output: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    try:
+        deps = build_runtime(workspace)
+    except Exception as exc:
+        _fail_runtime_setup(exc)
+    store = ConversationSessionStore(deps.config.state_dir, deps.installation_id)
+    try:
+        plan = store.inspect_repair(session_id, workspace.resolve())
+    except Exception as exc:
+        message = str(exc)
+        code = getattr(exc, "code", "invalid_session_record")
+        if json_output:
+            typer.echo(
+                json.dumps(
+                    {"error_code": code, "message": message},
+                    ensure_ascii=False,
+                    sort_keys=True,
+                )
+            )
+        else:
+            typer.echo(message, err=True)
+        raise typer.Exit(2) from exc
+    payload = plan.model_dump(mode="json")
+    if json_output:
+        typer.echo(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+    else:
+        typer.echo(
+            f"{plan.source_session_id}\t{plan.failure_code}\t"
+            f"through={plan.valid_through_sequence}\t"
+            f"repairable={plan.repairable_tail_only}"
+        )
+    raise typer.Exit(0)
+
+
+@sessions_app.command("repair")
+def sessions_repair(
+    session_id: str,
+    workspace: Annotated[Path, typer.Option()] = Path("."),
+    json_output: Annotated[bool, typer.Option("--json")] = False,
+    apply: Annotated[bool, typer.Option("--apply")] = False,
+) -> None:
+    try:
+        deps = build_runtime(workspace)
+    except Exception as exc:
+        _fail_runtime_setup(exc)
+    store = ConversationSessionStore(deps.config.state_dir, deps.installation_id)
+    root = workspace.resolve()
+    try:
+        plan = store.inspect_repair(session_id, root)
+        if not apply:
+            payload = plan.model_dump(mode="json")
+            payload["applied"] = False
+            if json_output:
+                typer.echo(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+            else:
+                typer.echo("未应用修复。使用 --apply 才会创建新副本。")
+                typer.echo(
+                    f"{plan.source_session_id}\t{plan.failure_code}\t"
+                    f"through={plan.valid_through_sequence}"
+                )
+            raise typer.Exit(0)
+        original = (deps.config.state_dir / "sessions" / session_id / "session.jsonl").read_bytes()
+        loaded = store.create_repaired_copy(plan, root)
+        unchanged = (
+            deps.config.state_dir / "sessions" / session_id / "session.jsonl"
+        ).read_bytes() == original
+        payload = {
+            "source_session_id": session_id,
+            "new_session_id": loaded.session_id,
+            "source_unchanged": unchanged,
+            "applied": True,
+        }
+        if json_output:
+            typer.echo(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        else:
+            typer.echo(f"新会话 {loaded.session_id}；原文件未改：{unchanged}")
+        raise typer.Exit(0 if unchanged else 2)
+    except typer.Exit:
+        raise
+    except Exception as exc:
+        message = str(exc)
+        code = getattr(exc, "code", "invalid_session_record")
+        if json_output:
+            typer.echo(
+                json.dumps(
+                    {"error_code": code, "message": message},
+                    ensure_ascii=False,
+                    sort_keys=True,
+                )
+            )
+        else:
+            typer.echo(message, err=True)
+        raise typer.Exit(2) from exc
