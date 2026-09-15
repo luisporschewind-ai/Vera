@@ -46,9 +46,53 @@ def test_verification_failure_expands() -> None:
 def test_session_and_unknown_events() -> None:
     projector = TimelineProjector()
     msg = projector.apply(event("session.message", payload={"text": "hello"}))
-    unknown = projector.apply(event("custom.unknown", sequence=2, payload={"x": 1}))
+    doctor = projector.apply(
+        event(
+            "session.doctor",
+            sequence=2,
+            payload={
+                "items": [
+                    {
+                        "name": "python",
+                        "status": "pass",
+                        "detail": "3.12",
+                    }
+                ]
+            },
+        )
+    )
+    config = projector.apply(
+        event(
+            "session.config",
+            sequence=3,
+            payload={
+                "sources": {"user": "absent", "project": "absent"},
+                "providers": {
+                    "fake": {
+                        "model": "fake-model",
+                        "base_url": "https://example.invalid",
+                        "api_key_env": "FAKE_API_KEY",
+                    }
+                },
+                "limits": {"max_tool_calls": 50},
+                "editor_argv": [],
+                "ui": {"theme": "default"},
+            },
+        )
+    )
+    unknown = projector.apply(event("custom.unknown", sequence=4, payload={"x": 1}))
     assert msg[0].block.kind is BlockKind.STATUS  # type: ignore[union-attr]
+    assert msg[0].block.title == "会话"  # type: ignore[union-attr]
+    assert msg[0].block.body == "hello"  # type: ignore[union-attr]
+    assert doctor[0].block.title == "诊断"  # type: ignore[union-attr]
+    assert doctor[0].block.body == "python  pass  3.12"  # type: ignore[union-attr]
+    assert doctor[0].block.expanded is True  # type: ignore[union-attr]
+    assert config[0].block.title == "配置"  # type: ignore[union-attr]
+    assert "user  absent" in config[0].block.body  # type: ignore[union-attr]
+    assert "fake  fake-model" in config[0].block.body  # type: ignore[union-attr]
+    assert "sources: 2" not in config[0].block.body  # type: ignore[union-attr]
     assert unknown[0].block.kind is BlockKind.STATUS  # type: ignore[union-attr]
+    assert unknown[0].block.title == "状态更新"  # type: ignore[union-attr]
 
 
 def test_disclosure_verification_succeeded_path() -> None:

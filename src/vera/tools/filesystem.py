@@ -1,5 +1,7 @@
 """Read-only filesystem tools constrained to a workspace."""
 
+from pathlib import Path
+
 from pydantic import Field
 
 from vera.tools.definitions import ToolResult
@@ -68,27 +70,39 @@ def search_text(paths: WorkspacePaths, query: str, path: str = ".") -> SearchRes
         root = paths.resolve_read(path)
     except WorkspaceBoundaryError:
         return SearchResult(ok=False, error_code="workspace_boundary")
-    if not root.is_dir():
-        return SearchResult(ok=False, error_code="not_a_directory")
     matches: list[SearchMatch] = []
+    if root.is_file():
+        _collect_search_matches(paths, root, query, matches)
+        return SearchResult(ok=True, matches=matches)
+    if not root.is_dir():
+        return SearchResult(ok=False, error_code="not_found")
     for file_path in sorted(root.rglob("*")):
-        relative = file_path.relative_to(paths.root)
-        if not file_path.is_file() or any(part in _IGNORED_DIRECTORIES for part in relative.parts):
-            continue
-        if paths.protected.is_protected(relative):
-            continue
-        try:
-            lines = file_path.read_text(encoding="utf-8").splitlines()
-        except (OSError, UnicodeDecodeError):
-            continue
-        for line_number, line in enumerate(lines, start=1):
-            if query in line:
-                matches.append(
-                    SearchMatch(
-                        ok=True,
-                        path=relative.as_posix(),
-                        line=line_number,
-                        text=line,
-                    )
-                )
+        _collect_search_matches(paths, file_path, query, matches)
     return SearchResult(ok=True, matches=matches)
+
+
+def _collect_search_matches(
+    paths: WorkspacePaths,
+    file_path: Path,
+    query: str,
+    matches: list[SearchMatch],
+) -> None:
+    relative = file_path.relative_to(paths.root)
+    if not file_path.is_file() or any(part in _IGNORED_DIRECTORIES for part in relative.parts):
+        return
+    if paths.protected.is_protected(relative):
+        return
+    try:
+        lines = file_path.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeDecodeError):
+        return
+    for line_number, line in enumerate(lines, start=1):
+        if query in line:
+            matches.append(
+                SearchMatch(
+                    ok=True,
+                    path=relative.as_posix(),
+                    line=line_number,
+                    text=line,
+                )
+            )

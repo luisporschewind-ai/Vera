@@ -11,7 +11,10 @@ from vera.persistence.run_store import RunStore
 def resolve_run_id(store: RunStore, requested: str | None, fallback: str | None) -> str | None:
     if requested:
         return requested
-    return fallback
+    if fallback:
+        return fallback
+    runs = store.list_runs()
+    return runs[0].run_id if runs else None
 
 
 def collect_diffs(events: tuple[EventEnvelope, ...]) -> tuple[dict[str, Any], ...]:

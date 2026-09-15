@@ -196,12 +196,13 @@ def execute_run(
             raise typer.BadParameter("必须明确输入 approve、reject 或 cancel")
         return cast(ApprovalDecision, decision)
 
+    selected = model_profile or next(iter(deps.config.providers), "default")
     events = drive_run(
         deps.runtime,
         StartRun(
             goal=goal,
             workspace_root=workspace,
-            model_profile=model_profile or "default",
+            model_profile=selected,
         ),
         decide,
         lambda batch: _render(list(batch), json_output),

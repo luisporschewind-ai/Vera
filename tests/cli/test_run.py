@@ -5,7 +5,7 @@ from typer.testing import CliRunner
 from tests.cli.fakes import make_changeset_runtime
 from vera.bootstrap import RuntimeDependencies
 from vera.cli import app
-from vera.config import Limits, VeraConfig
+from vera.config import Limits, ProviderConfig, VeraConfig
 from vera.models.base import FakeModelAdapter, ModelTurn
 from vera.presentation.sanitize import sanitize_terminal_text
 from vera.runtime.engine import VeraRuntime
@@ -74,3 +74,35 @@ def test_json_plain_response_contains_events_without_human_output(
     assert "Vera：" not in result.stdout
     assert "Vera >" not in result.stdout
     assert "\x1b" not in result.stdout
+
+
+def test_json_run_uses_configured_provider_profile_name(tmp_path: Path, monkeypatch) -> None:
+    state_dir = tmp_path / "state"
+    deps = RuntimeDependencies(
+        runtime=VeraRuntime(
+            FakeModelAdapter([ModelTurn(assistant_text="hello", finish_reason="stop")]),
+            ToolRegistry(),
+            state_dir,
+        ),
+        config=VeraConfig(
+            state_dir=state_dir,
+            limits=Limits(),
+            providers={
+                "deepseek": ProviderConfig(
+                    base_url="https://example.invalid",
+                    model="deepseek-flash",
+                    api_key_env="DEEPSEEK_API_KEY",
+                )
+            },
+        ),
+    )
+    monkeypatch.setattr("vera.cli.build_runtime", lambda *_args, **_kwargs: deps)
+
+    result = CliRunner().invoke(
+        app,
+        ["run", "Hello", "--workspace", str(tmp_path), "--json"],
+    )
+
+    assert result.exit_code == 0
+    assert '"model_profile":"deepseek"' in result.stdout
+    assert '"model_profile":"default"' not in result.stdout

@@ -15,7 +15,7 @@ def test_default_disclosure_table() -> None:
         BlockKind.APPROVAL: True,
         BlockKind.VERIFICATION: False,
         BlockKind.ERROR: True,
-        BlockKind.STATUS: False,
+        BlockKind.STATUS: True,
     }
     for kind, expanded in cases.items():
         assert policy.initial_state(kind, BlockStatus.SUCCEEDED) is expanded

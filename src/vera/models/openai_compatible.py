@@ -31,12 +31,38 @@ from vera.models.streaming import (
     ModelStreamItem,
     ModelTextDelta,
 )
+from vera.runtime.context import normalize_tool_transcript
 
 
 def _get(value: object, name: str, default: Any = None) -> Any:
     if isinstance(value, dict):
         return value.get(name, default)
     return getattr(value, name, default)
+
+
+def _provider_attr(value: object, *names: str) -> Any:
+    """Read declared fields or provider extras the OpenAI SDK may hide."""
+
+    if value is None:
+        return None
+    sources: list[object] = [value]
+    extra = _get(value, "model_extra") or _get(value, "__pydantic_extra__")
+    if isinstance(extra, dict):
+        sources.append(extra)
+    dump = getattr(value, "model_dump", None)
+    if callable(dump):
+        try:
+            payload = dump()
+        except Exception:
+            payload = None
+        if isinstance(payload, dict):
+            sources.append(payload)
+    for source in sources:
+        for name in names:
+            found = _get(source, name)
+            if isinstance(found, str) and found:
+                return found
+    return None
 
 
 class OpenAICompatibleAdapter:
@@ -71,13 +97,30 @@ class OpenAICompatibleAdapter:
     @staticmethod
     def _messages(request: ModelRequest) -> list[dict[str, object]]:
         messages: list[dict[str, object]] = []
-        for message in request.messages:
+        last_calls: dict[str, str] = {}
+        for message in normalize_tool_transcript(list(request.messages)):
+            content: object = message.content
+            if message.tool_calls and not message.content.strip():
+                content = None
             item: dict[str, object] = {
                 "role": message.role,
-                "content": message.content,
+                "content": content,
             }
-            if message.tool_call_id is not None:
+            if message.role == "assistant" and message.tool_calls:
+                last_calls = {
+                    call.call_id: call.name for call in message.tool_calls if call.call_id
+                }
+            if message.role == "tool":
+                if not message.tool_call_id:
+                    continue
                 item["tool_call_id"] = message.tool_call_id
+                name = last_calls.get(message.tool_call_id)
+                if name:
+                    item["name"] = name
+            elif message.tool_call_id is not None:
+                item["tool_call_id"] = message.tool_call_id
+            if message.reasoning_content:
+                item["reasoning_content"] = message.reasoning_content
             if message.tool_calls:
                 item["tool_calls"] = [
                     {
@@ -210,6 +253,13 @@ class OpenAICompatibleAdapter:
                 if isinstance(text, str) and text:
                     accumulator.push_text(text)
                     yield ModelTextDelta(text=text)
+                reasoning = (
+                    _provider_attr(delta, "reasoning_content", "reasoning")
+                    or _provider_attr(choice, "reasoning_content", "reasoning")
+                    or _provider_attr(_get(choice, "message"), "reasoning_content", "reasoning")
+                )
+                if isinstance(reasoning, str) and reasoning:
+                    accumulator.push_reasoning(reasoning)
                 for raw_call in _get(delta, "tool_calls") or []:
                     index = int(_get(raw_call, "index", 0) or 0)
                     function = _get(raw_call, "function") or {}
@@ -281,8 +331,12 @@ class OpenAICompatibleAdapter:
                 total_tokens=_get(usage_value, "total_tokens"),
             )
         request_id = _get(response, "_request_id") or _get(response, "id")
+        reasoning = _provider_attr(message, "reasoning_content", "reasoning")
+        if not isinstance(reasoning, str) or not reasoning.strip():
+            reasoning = None
         return ModelTurn(
             assistant_text=_get(message, "content"),
+            reasoning_content=reasoning,
             tool_calls=tuple(calls),
             finish_reason=finish_reason,
             usage=usage,

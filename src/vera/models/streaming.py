@@ -32,6 +32,7 @@ class _ToolDraft:
 @dataclass
 class ModelStreamAccumulator:
     text_parts: list[str] = field(default_factory=list)
+    reasoning_parts: list[str] = field(default_factory=list)
     tools: dict[int, _ToolDraft] = field(default_factory=dict)
     finish_reason: str | None = None
     usage: ModelUsage | None = None
@@ -40,6 +41,10 @@ class ModelStreamAccumulator:
     def push_text(self, text: str) -> None:
         if text:
             self.text_parts.append(text)
+
+    def push_reasoning(self, text: str) -> None:
+        if text:
+            self.reasoning_parts.append(text)
 
     def push_tool_delta(
         self,
@@ -94,8 +99,10 @@ class ModelStreamAccumulator:
                 )
             )
         text = "".join(self.text_parts) or None
+        reasoning = "".join(self.reasoning_parts) or None
         return ModelTurn(
             assistant_text=text,
+            reasoning_content=reasoning,
             tool_calls=tuple(calls),
             finish_reason=finish_reason,
             usage=usage or self.usage,

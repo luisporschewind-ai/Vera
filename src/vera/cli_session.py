@@ -10,6 +10,7 @@ from vera.cli_presenter import HumanPresenter
 from vera.cli_session_presenter import SessionPresenter
 from vera.contracts.events import EventEnvelope
 from vera.contracts.streaming import StreamFrame
+from vera.presentation.diagnostics_copy import format_config_body, format_doctor_body
 from vera.session.actions import (
     CloseSession,
     ExecuteSlashCommand,
@@ -185,6 +186,11 @@ class InteractiveSession:
                 return
             self.io.write(_structured_plain(event.type, event.payload))
             return
+        if event.type == "session.user_prompt":
+            prompt = str(event.payload.get("text", "")).strip()
+            if prompt:
+                self.io.write(f"你：{prompt}")
+            return
         if event.type == "session.message":
             message_text = str(event.payload.get("text", ""))
             if event.payload.get("clear_display"):
@@ -250,14 +256,7 @@ def _structured_plain(event_type: str, payload: dict[str, object]) -> str:
         files = payload.get("files") or []
         return f"review files={len(files) if isinstance(files, list) else 0}"
     if event_type == "session.doctor":
-        items = payload.get("items") or []
-        if isinstance(items, list):
-            return "\n".join(
-                f"{item.get('name')} {item.get('status')}"
-                for item in items
-                if isinstance(item, dict)
-            )
+        return format_doctor_body(payload)
     if event_type == "session.config":
-        sources = payload.get("sources")
-        return f"config sources={sources}"
+        return format_config_body(payload)
     return event_type

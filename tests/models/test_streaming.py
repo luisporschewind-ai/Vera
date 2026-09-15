@@ -32,6 +32,15 @@ def test_fake_adapter_emits_text_deltas() -> None:
     assert isinstance(items[-1], ModelStreamCompleted)
 
 
+def test_accumulator_keeps_reasoning_content() -> None:
+    accumulator = ModelStreamAccumulator()
+    accumulator.push_reasoning("先看目录")
+    accumulator.push_text("好的")
+    turn = accumulator.finish(finish_reason="stop")
+    assert turn.assistant_text == "好的"
+    assert turn.reasoning_content == "先看目录"
+
+
 def test_accumulator_joins_tool_arguments() -> None:
     accumulator = ModelStreamAccumulator()
     accumulator.push_tool_delta(0, call_id="c1", name="read_", arguments='{"pa')

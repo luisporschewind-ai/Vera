@@ -62,7 +62,7 @@ async def test_timeline_keys_and_focus_and_update(tmp_path: Path) -> None:
         )
         await pilot.pause()
         assert "updated body" in str(app.block("a1")._body.render())
-        timeline.on_key(type("E", (), {"key": "pageup", "stop": lambda self=None: None})())
+        timeline.mark_user_scrolled()
         assert timeline.follow_tail is False
         timeline.on_key(type("E", (), {"key": "end", "stop": lambda self=None: None})())
         assert timeline.follow_tail is True

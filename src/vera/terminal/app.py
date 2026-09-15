@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import os
+import subprocess
+import sys
 from pathlib import Path
 
 from textual.app import App, ComposeResult
+from textual.css.query import NoMatches
 from textual.events import Resize
 from textual.geometry import Size
 from textual.widgets import Static
@@ -14,6 +17,7 @@ from vera.contracts.events import EventEnvelope
 from vera.contracts.streaming import RuntimeOutput
 from vera.presentation.activity import ActivityPresenter
 from vera.presentation.projector import TimelineProjector, UpdateBlock
+from vera.presentation.timeline import BlockKind
 from vera.session.actions import (
     CancelActiveRun,
     ClearQueuedPrompt,
@@ -26,16 +30,20 @@ from vera.session.actions import (
     SubmitPrompt,
 )
 from vera.session.controller import SessionController
+from vera.terminal.alt_enter import install_alt_enter_mapping
 from vera.terminal.animation import AnimationClock
 from vera.terminal.bridge import RuntimeOutputReceived, TerminalBridge, WorkerStopped
 from vera.terminal.capabilities import detect_display_capabilities
-from vera.terminal.widgets.approval import ApprovalSelected
+from vera.terminal.widgets.approval import ApprovalBlockWidget, ApprovalSelected
 from vera.terminal.widgets.blocks import TimelineBlockWidget
 from vera.terminal.widgets.completions import CompletionList
-from vera.terminal.widgets.composer import PromptComposer, PromptSubmitted
+from vera.terminal.widgets.composer import ComposerBar, PromptComposer, PromptSubmitted
 from vera.terminal.widgets.header import VeraHeader
 from vera.terminal.widgets.status_line import VeraStatusLine
 from vera.terminal.widgets.timeline import ConversationTimeline
+from vera.terminal.widgets.user_sticky import UserStickyBar
+
+install_alt_enter_mapping()
 
 
 class VeraTerminalApp(App[int]):
@@ -49,6 +57,8 @@ class VeraTerminalApp(App[int]):
         ("ctrl+d", "exit_if_idle", "Exit"),
         ("ctrl+g", "open_editor", "Editor"),
         ("ctrl+u", "clear_composer_or_queue", "Clear"),
+        ("ctrl+shift+c", "copy_text", "Copy"),
+        ("cmd+c", "copy_text", "Copy"),
         ("end", "return_to_tail", "End"),
     ]
 
@@ -61,6 +71,11 @@ class VeraTerminalApp(App[int]):
         animations: bool | None = None,
     ) -> None:
         super().__init__()
+        from vera.terminal.theme import VERA_THEMES
+
+        for theme in VERA_THEMES:
+            self.register_theme(theme)
+        self.theme = "default"
         self.controller = controller
         self.workspace = workspace
         self.model_profile = model_profile
@@ -90,18 +105,27 @@ class VeraTerminalApp(App[int]):
             workspace_label=str(self.workspace),
             id="header",
         )
+        yield UserStickyBar(id="user-sticky")
         yield ConversationTimeline(id="timeline")
         yield CompletionList(id="completions")
-        yield PromptComposer(id="composer")
+        yield ComposerBar(id="composer-bar")
         yield VeraStatusLine(id="status-line")
         yield self._too_small
 
     def on_mount(self) -> None:
         self.query_one(PromptComposer).focus()
+        self.query_one(PromptComposer).sync_multiline_layout()
         self._apply_size(self.size)
         if not self.display_capabilities.color:
             self._apply_theme("no-color")
+        else:
+            self._apply_theme("default")
         self.set_interval(0.1, self._tick_status)
+        self._present_bootstrap()
+
+    def _present_bootstrap(self) -> None:
+        for event in self.controller.bootstrap_events():
+            self.on_runtime_output_received(RuntimeOutputReceived(event))
 
     def on_resize(self, event: Resize) -> None:
         self._apply_size(event.size)
@@ -128,14 +152,18 @@ class VeraTerminalApp(App[int]):
             return
         if event.text_area is not composer:
             return
+        composer.sync_multiline_layout()
         self._refresh_completions(composer.text)
 
     def _refresh_completions(self, text: str) -> None:
         completions = self.query_one(CompletionList)
-        stripped = text.lstrip()
-        if stripped.startswith("/"):
-            token = stripped.split()[0] if stripped.split() else stripped
-            completions.update_for_prefix(token, self.controller.snapshot())
+        snapshot = self.controller.snapshot()
+        if completions.update_for_input(text, snapshot):
+            if completions.needs_restore and completions.last_query and "@" not in text:
+                composer = self.query_one(PromptComposer)
+                if composer.text != completions.last_query:
+                    composer.load_text(completions.last_query)
+                    composer.cursor_location = (0, len(completions.last_query))
             return
         mention = _mention_prefix(text)
         if mention is not None:
@@ -148,6 +176,9 @@ class VeraTerminalApp(App[int]):
         completions.hide()
 
     def on_prompt_submitted(self, message: PromptSubmitted) -> None:
+        self.query_one(CompletionList).hide()
+        self.query_one(ConversationTimeline).return_to_tail()
+        self._focus_composer_unless_approval()
         text = message.text
         self.submitted.append(text)
         if text.startswith("/"):
@@ -155,12 +186,12 @@ class VeraTerminalApp(App[int]):
             return
         composer = self.query_one(PromptComposer)
         if self.controller.pending_approval_id is not None:
-            composer.load_text(text)
+            composer.restore_draft(text)
             self.query_one(VeraStatusLine).set_status("等待审批时不能排队下一条输入")
             return
         if self.controller.active_run_id is not None:
             if self.controller.queued_prompt is not None:
-                composer.load_text(text)
+                composer.restore_draft(text)
                 self.query_one(VeraStatusLine).set_status("已有一条排队输入，请先撤销再替换")
                 return
             self.bridge.submit(QueuePrompt(text=text))
@@ -175,6 +206,12 @@ class VeraTerminalApp(App[int]):
             )
         )
 
+    def _status_line(self) -> VeraStatusLine | None:
+        try:
+            return self.query_one(VeraStatusLine)
+        except NoMatches:
+            return None
+
     def on_runtime_output_received(self, message: RuntimeOutputReceived) -> None:
         output = message.output
         sequence = getattr(output, "sequence", None)
@@ -183,7 +220,16 @@ class VeraTerminalApp(App[int]):
         if isinstance(output, EventEnvelope):
             self._apply_session_chrome(output)
             state = self.activity.apply(output)
-            self.query_one(VeraStatusLine).set_activity(state, self.animation.frame())
+            status = self._status_line()
+            if status is not None:
+                status.set_activity(state, self.animation.frame())
+            if output.type == "session.closed":
+                self.exit(0)
+                return
+            if output.type == "session.message" and output.payload.get("clear_display"):
+                self._clear_timeline_display()
+                if not str(output.payload.get("text", "")).strip():
+                    return
         mutations = self.projector.apply(output)
         timeline = self.query_one(ConversationTimeline)
         streaming_updates = [
@@ -196,9 +242,30 @@ class VeraTerminalApp(App[int]):
                 timeline.apply_streaming_update(block)
         else:
             timeline.apply(mutations)
+        if isinstance(output, EventEnvelope) and output.type in {
+            "approval.resolved",
+            "approval.expired",
+            "approval.invalidated",
+            "run.completed",
+            "run.failed",
+            "run.cancelled",
+        }:
+            self._focus_composer_unless_approval()
         pending = timeline.pending_update_count
         if pending:
-            self.query_one(VeraStatusLine).set_pending(pending)
+            status = self._status_line()
+            if status is not None:
+                status.set_pending(pending)
+        if isinstance(output, EventEnvelope) and output.type == "session.message":
+            text = output.payload.get("text")
+            if isinstance(text, str) and text.strip():
+                status = self._status_line()
+                if status is not None:
+                    status.set_status(text)
+                timeline = self.query_one(ConversationTimeline)
+                if timeline.follow_tail:
+                    timeline.return_to_tail()
+                self._focus_composer_unless_approval()
 
     def block(self, block_id: str) -> TimelineBlockWidget:
         return self.query_one(ConversationTimeline).block_widget(block_id)
@@ -208,11 +275,14 @@ class VeraTerminalApp(App[int]):
         self.query_one(ConversationTimeline).apply(mutations)
 
     def on_worker_stopped(self, message: WorkerStopped) -> None:
-        status = self.query_one(VeraStatusLine)
+        status = self._status_line()
+        if status is None:
+            return
         if message.reason_code.startswith("worker_failed"):
             status.set_status("Worker 失败；可使用 /help 或 --plain")
-        else:
+        elif self.activity.current.active:
             status.set_activity(self.activity.current, self.animation.frame())
+        self._focus_composer_unless_approval()
 
     def action_cancel_or_clear(self) -> None:
         composer = self.query_one(PromptComposer)
@@ -243,7 +313,9 @@ class VeraTerminalApp(App[int]):
         self.bridge.submit(OpenExternalEditor(text=composer.text))
 
     def _apply_session_chrome(self, output: EventEnvelope) -> None:
-        status = self.query_one(VeraStatusLine)
+        status = self._status_line()
+        if status is None:
+            return
         if output.type == "session.prompt_queued":
             status.set_status("已排队下一条输入 · Ctrl+U 撤销")
             return
@@ -262,12 +334,17 @@ class VeraTerminalApp(App[int]):
         if output.type == "session.editor_closed":
             text = output.payload.get("text")
             if output.payload.get("changed") and isinstance(text, str):
-                self.query_one(PromptComposer).load_text(text)
+                self.query_one(PromptComposer).restore_draft(text)
             return
         if output.type == "session.theme":
             theme = output.payload.get("theme")
             if isinstance(theme, str):
                 self._apply_theme(theme)
+            text = output.payload.get("text")
+            if isinstance(text, str) and text.strip():
+                status.set_status(text.splitlines()[0])
+            elif isinstance(theme, str):
+                status.set_status(f"当前主题：{theme}")
             return
         if output.type == "session.action_rejected":
             message = output.payload.get("message")
@@ -277,10 +354,17 @@ class VeraTerminalApp(App[int]):
     def _apply_theme(self, name: str) -> None:
         from vera.terminal.theme import THEME_NAMES, theme_class
 
+        if name not in THEME_NAMES or name not in self.available_themes:
+            return
+        previous = self.theme
+        self.theme = name
+        if previous == name:
+            self.refresh_css(animate=False)
         for item in THEME_NAMES:
-            self.screen.remove_class(theme_class(item))
-        if name in THEME_NAMES:
-            self.screen.add_class(theme_class(name))
+            active = item == name
+            self.set_class(active, theme_class(item))
+            self.screen.set_class(active, theme_class(item))
+        self.refresh_css(animate=False)
 
     def action_exit_if_idle(self) -> None:
         composer = self.query_one(PromptComposer)
@@ -290,8 +374,112 @@ class VeraTerminalApp(App[int]):
         tuple(self.controller.dispatch(CloseSession()))
         self.exit(0)
 
+    def copy_to_clipboard(self, text: str) -> None:
+        super().copy_to_clipboard(text)
+        if sys.platform != "darwin" or not text:
+            return
+        try:
+            subprocess.run(
+                ["/usr/bin/pbcopy"],
+                input=text.encode("utf-8"),
+                check=False,
+            )
+        except OSError:
+            return
+
+    def on_text_selected(self) -> None:
+        selected = self.screen.get_selected_text()
+        if not selected:
+            return
+        self.copy_to_clipboard(selected)
+        self.query_one(VeraStatusLine).set_status("已复制选中文本")
+
+    def action_copy_text(self) -> None:
+        selected = self.screen.get_selected_text()
+        text = selected if selected else self._last_copyable_text()
+        status = self.query_one(VeraStatusLine)
+        if not text:
+            status.set_status("没有可复制的文本")
+            return
+        self.copy_to_clipboard(text)
+        status.set_status("已复制选中文本" if selected else "已复制最近一块文本")
+
+    def _last_copyable_text(self) -> str:
+        preferred = {
+            BlockKind.ERROR,
+            BlockKind.DIFF,
+            BlockKind.ASSISTANT,
+            BlockKind.STATUS,
+        }
+        for block in reversed(list(self.projector.blocks())):
+            if block.kind in preferred and block.body.strip():
+                return block.body
+        return ""
+
     def action_return_to_tail(self) -> None:
         self.query_one(ConversationTimeline).return_to_tail()
+
+    def on_key(self, event) -> None:  # type: ignore[no-untyped-def]
+        if event.key in {"tab", "shift+tab"} and self._cycle_approval_focus(
+            reverse=event.key == "shift+tab"
+        ):
+            event.prevent_default()
+            event.stop()
+            return
+        character = getattr(event, "character", None)
+        if not character or not character.isprintable():
+            return
+        if self.controller.pending_approval_id is not None:
+            return
+        try:
+            composer = self.query_one(PromptComposer)
+        except Exception:
+            return
+        if self.focused is composer:
+            return
+        composer.focus()
+        composer.insert(character)
+        event.prevent_default()
+        event.stop()
+
+    def on_mouse_scroll_up(self, event) -> None:  # type: ignore[no-untyped-def]
+        event.stop()
+
+    def on_mouse_scroll_down(self, event) -> None:  # type: ignore[no-untyped-def]
+        event.stop()
+
+    def _clear_timeline_display(self) -> None:
+        self.projector.reset()
+        self.activity.reset()
+        timeline = self.query_one(ConversationTimeline)
+        timeline.clear_blocks()
+        timeline.pin_home()
+
+    def _focus_composer_unless_approval(self) -> None:
+        widget = self._active_approval_widget()
+        if widget is not None:
+            widget.focus_default_action()
+            return
+        try:
+            self.query_one(PromptComposer).focus()
+        except Exception:
+            return
+
+    def _cycle_approval_focus(self, *, reverse: bool) -> bool:
+        widget = self._active_approval_widget()
+        if widget is None:
+            return False
+        return widget.cycle_focus(reverse=reverse)
+
+    def _active_approval_widget(self) -> ApprovalBlockWidget | None:
+        if self.controller.pending_approval_id is None:
+            return None
+        try:
+            return next(
+                item for item in reversed(list(self.query(ApprovalBlockWidget))) if not item._locked
+            )
+        except StopIteration:
+            return None
 
     def _tick_status(self) -> None:
         if not self.activity.current.active:
@@ -307,7 +495,9 @@ def _mention_prefix(text: str) -> str | None:
     if index < 0:
         return None
     fragment = text[index + 1 :]
-    if "\n" in fragment:
+    if not fragment:
+        return ""
+    if any(separator in fragment for separator in ("\n", " ", "\t")):
         return None
     return fragment
 

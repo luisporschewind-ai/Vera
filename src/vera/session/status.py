@@ -62,12 +62,12 @@ class WorkspaceStatusProbe:
 
         branch: str | None = None
         if branch_result is not None and branch_result.returncode == 0:
-            text = branch_result.stdout.strip()
+            text = (branch_result.stdout or "").strip()
             branch = text or None
 
         dirty: bool | None = None
         if status_result is not None and status_result.returncode == 0:
-            dirty = bool(status_result.stdout.strip())
+            dirty = bool((status_result.stdout or "").strip())
 
         return GitStatus(available=True, branch=branch, dirty=dirty)
 

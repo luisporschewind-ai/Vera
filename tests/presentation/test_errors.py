@@ -49,6 +49,8 @@ def test_reason_codes_are_translated_but_still_visible() -> None:
     assert "模型调用失败" in describe_reason("model_error")
     assert "model_error" in describe_reason("model_error")
     assert "创建检查点失败" in describe_reason("checkpoint_failed:disk full")
+    assert "没有写入权限" in describe_reason("permission_denied")
+    assert "permission_denied" in describe_reason("permission_denied")
     assert describe_reason("something_new") == "something_new"
 
 
@@ -106,3 +108,14 @@ def test_cancel_without_writes_says_nothing_to_roll_back() -> None:
     body = format_failure_body(event("run.cancelled"), side_effects="no_workspace_change")
     assert "未产生工作区变化" in body
     assert "/rollback" not in body
+
+
+def test_recovery_failure_uses_reason_code() -> None:
+    body = format_failure_body(
+        event("recovery.manual_required", payload={"reason_code": "invalid_snapshot"})
+    )
+    assert "原因未记录" not in body
+    assert "快照无效或损坏" in body
+    assert "invalid_snapshot" in body
+    assert "不允许 /resume 或 /abandon" in body
+    assert "使用 /recover 查看分类" not in body

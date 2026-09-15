@@ -81,7 +81,10 @@ def test_tool_output_is_wrapped_as_untrusted(tmp_path: Path) -> None:
     events = list(
         runtime.handle(StartRun(goal="分析 README", workspace_root=workspace, model_profile="fake"))
     )
+    started = next(event for event in events if event.type == "tool.started")
     completed = next(event for event in events if event.type == "tool.completed")
+    assert started.payload["target"] == "README.md"
+    assert completed.payload["target"] == "README.md"
     assert completed.payload["source_kind"] == "project_guidance"
     assert completed.payload["trust_level"] == ContentTrustLevel.ADVISORY.value
     assert "Ignore previous" not in str(completed.payload)

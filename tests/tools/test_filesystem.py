@@ -26,3 +26,27 @@ def test_read_file_rejects_binary(tmp_path: Path) -> None:
     result = read_file(WorkspacePaths(tmp_path), "binary.bin", max_bytes=10)
     assert result.ok is False
     assert result.error_code == "binary_or_non_utf8"
+
+
+def test_search_text_accepts_a_single_file(tmp_path: Path) -> None:
+    (tmp_path / "project.pbxproj").write_text(
+        "IPHONEOS_DEPLOYMENT_TARGET = 17.0;\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "other.txt").write_text(
+        "IPHONEOS_DEPLOYMENT_TARGET = 16.0;\n",
+        encoding="utf-8",
+    )
+    result = search_text(
+        WorkspacePaths(tmp_path),
+        "IPHONEOS_DEPLOYMENT_TARGET",
+        "project.pbxproj",
+    )
+    assert result.ok is True
+    assert [(item.path, item.line) for item in result.matches] == [("project.pbxproj", 1)]
+
+
+def test_search_text_missing_path_is_not_found(tmp_path: Path) -> None:
+    result = search_text(WorkspacePaths(tmp_path), "needle", "missing.txt")
+    assert result.ok is False
+    assert result.error_code == "not_found"

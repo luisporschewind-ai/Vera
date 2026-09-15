@@ -2,8 +2,14 @@ from datetime import UTC, datetime
 
 from vera.contracts.events import EventEnvelope
 from vera.contracts.streaming import StreamFrame, StreamFrameType
-from vera.presentation.projector import AppendBlock, FocusBlock, TimelineProjector, UpdateBlock
-from vera.presentation.timeline import BlockKind
+from vera.presentation.projector import (
+    AppendBlock,
+    FocusBlock,
+    TimelineProjector,
+    UpdateBlock,
+    project_user_prompt,
+)
+from vera.presentation.timeline import BlockKind, BlockStatus
 
 
 def event(
@@ -71,6 +77,38 @@ def test_changeset_and_approval_are_expanded() -> None:
     assert isinstance(approval_mutations[-1], FocusBlock)
 
 
+def test_session_diff_is_a_diff_block() -> None:
+    projector = TimelineProjector()
+    filled = only_appended_block(
+        projector.apply(
+            event(
+                "session.diff",
+                payload={
+                    "files": [{"path": "notes.md", "unified_diff": "--- a\n+++ b\n+hello\n"}],
+                    "text": "notes.md\n--- a\n+++ b\n+hello\n",
+                },
+            )
+        )
+    )
+    assert filled.kind is BlockKind.DIFF
+    assert filled.expanded is True
+    assert "notes.md" in filled.body
+    assert "hello" in filled.body
+    assert "文件数" not in filled.body
+    empty = only_appended_block(
+        projector.apply(
+            event(
+                "session.diff",
+                sequence=2,
+                payload={"files": [], "text": "没有 Diff。"},
+            )
+        )
+    )
+    assert empty.kind is BlockKind.DIFF
+    assert empty.title == "Diff"
+    assert empty.body == "没有 Diff。"
+
+
 def test_duplicate_delta_is_ignored() -> None:
     projector = TimelineProjector()
     frame = assistant_delta(stream_id="s1", index=0, text="你")
@@ -87,6 +125,57 @@ def test_gap_marks_incomplete_and_stops_deltas() -> None:
     assert gap and isinstance(gap[0], UpdateBlock)
     assert gap[0].block.incomplete is True
     assert projector.apply(assistant_delta("s1", 3, "d")) == () or gap[0].block.incomplete
+
+
+def test_user_prompt_becomes_visible_user_block() -> None:
+    projector = TimelineProjector()
+    prompt = event("session.user_prompt", payload={"text": "你好vera"})
+    block = only_appended_block(projector.apply(prompt))
+    assert block.kind is BlockKind.USER
+    assert block.title == "用户"
+    assert block.body == "你好vera"
+    assert block.expanded is True
+    assert block.created_at == prompt.timestamp
+    assert "session.user_prompt" not in block.title
+    assert project_user_prompt("run_1", "你好vera").kind is BlockKind.USER
+
+
+def test_list_directory_summary_has_target_and_body() -> None:
+    projector = TimelineProjector()
+    started = only_appended_block(
+        projector.apply(
+            event(
+                "tool.started",
+                payload={"name": "list_directory", "call_id": "c1", "target": "."},
+            )
+        )
+    )
+    assert started.kind is BlockKind.TOOL
+    assert "列出目录" in started.title
+    assert "目标：." in started.body
+    assert started.body != ""
+    completed = projector.apply(
+        event(
+            "tool.completed",
+            sequence=2,
+            payload={
+                "name": "list_directory",
+                "call_id": "c1",
+                "target": ".",
+                "ok": True,
+                "truncated": False,
+            },
+        )
+    )
+    assert isinstance(completed[0], UpdateBlock)
+    block = completed[0].block
+    assert "列出目录" in block.title
+    assert "目标：." in block.body
+    assert "状态：完成" in block.body
+    assert block.body != ""
+    assert "list_directory" not in block.title
+    assert "tool.completed" not in block.title
+    assert "tool.completed" not in block.body
 
 
 def test_tool_failure_expands_existing_block() -> None:
@@ -153,3 +242,165 @@ def test_projector_bounds_large_output_and_keeps_diff_approval() -> None:
     assert all(len(body.encode("utf-8")) <= 64 for body in bodies)
     assert any(block.truncated for block in projector.blocks())
     assert len(projector.blocks()) <= 8
+
+
+def test_session_status_is_startup_panel() -> None:
+    projector = TimelineProjector()
+    block = only_appended_block(
+        projector.apply(
+            event(
+                "session.status",
+                payload={
+                    "version": "0.1.0",
+                    "model_profile": "deepseek",
+                    "model_name": "deepseek-flash",
+                    "workspace": "/tmp/project",
+                    "git": {"available": False, "branch": None, "dirty": None},
+                    "context": {
+                        "session_id": "session-1",
+                        "message_count": 0,
+                        "context_bytes": 0,
+                        "max_bytes": 200_000,
+                        "warning": False,
+                        "compaction_count": 0,
+                    },
+                    "permissions": {
+                        "approval_mode": "manual",
+                        "changeset_approval": "required",
+                        "command_policy": "allow/deny/approval-required",
+                        "user_allowed_prefixes": [],
+                        "execution_boundary": "current user",
+                        "os_sandbox": False,
+                    },
+                },
+            )
+        )
+    )
+    assert block.kind is BlockKind.STATUS
+    assert block.title == "会话状态"
+    assert "Vera 0.1.0" in block.body
+    assert "Model       deepseek / deepseek-flash" in block.body
+    assert "Workspace" in block.body
+    assert "文件数" not in block.body
+    cleared = projector.apply(
+        event("session.message", sequence=2, payload={"clear_display": True, "text": ""})
+    )
+    assert cleared == ()
+
+
+def test_projector_reset_drops_blocks() -> None:
+    projector = TimelineProjector()
+    projector.apply(event("assistant.message", payload={"text": "旧回答"}))
+    assert projector.blocks()
+    projector.reset()
+    assert projector.blocks() == ()
+
+
+def test_recovery_detected_lists_run_id_and_next_commands() -> None:
+    projector = TimelineProjector()
+    block = only_appended_block(
+        projector.apply(
+            event(
+                "recovery.detected",
+                run_id="run_crash",
+                payload={
+                    "run_id": "run_crash",
+                    "classification": "resumable_approval",
+                    "stage": "awaiting_changeset_approval",
+                    "reason_code": "awaiting_changeset_approval",
+                    "allowed_actions": ["inspect", "resume", "abandon"],
+                    "workspace_root": "/tmp/project",
+                    "evidence": [{"path": "app.py", "state": "before"}],
+                },
+            )
+        )
+    )
+    assert block.kind is BlockKind.STATUS
+    assert block.status.value == "succeeded"
+    assert block.title == "发现可恢复任务"
+    assert "run-id：run_crash" in block.body
+    assert "可续跑（等待审批）" in block.body
+    assert "resumable_approval" in block.body
+    assert "/resume run_crash" in block.body
+    assert "/abandon run_crash" in block.body
+    assert "原因未记录" not in block.body
+    assert "恢复未完成" not in block.body
+    assert "recovery.detected" not in block.title
+    assert "recovery.detected" not in block.body
+
+
+def test_recovery_manual_required_uses_reason_code() -> None:
+    projector = TimelineProjector()
+    block = only_appended_block(
+        projector.apply(
+            event(
+                "recovery.manual_required",
+                payload={"reason_code": "verification_in_flight"},
+            )
+        )
+    )
+    assert block.kind is BlockKind.ERROR
+    assert "需要人工恢复" in block.title
+    assert "不能自动处理 run_1" in block.body
+    assert "验证进行中被中断" in block.body
+    assert "verification_in_flight" in block.body
+    assert "不允许 /resume 或 /abandon" in block.body
+    assert "原因未记录" not in block.body
+
+
+def test_permission_denied_marks_proposal_diff_unapplied() -> None:
+    projector = TimelineProjector()
+    projector.apply(
+        event(
+            "changeset.proposed",
+            payload={
+                "files": [{"path": "notes.md", "unified_diff": "--- a\n+++ b\n+hello\n"}],
+            },
+        )
+    )
+    mutations = projector.apply(
+        event("run.failed", sequence=2, payload={"reason": "permission_denied"})
+    )
+    diff_update = next(item for item in mutations if isinstance(item, UpdateBlock))
+    error = only_appended_block(mutations)
+    assert diff_update.block.title == "Diff · 未写入"
+    assert diff_update.block.status is BlockStatus.FAILED
+    assert "没有写入权限" in error.body
+    assert "未产生工作区变化" in error.body
+    assert "已写入工作区变更" not in error.body
+
+
+def test_applied_changeset_marks_proposal_diff_written() -> None:
+    projector = TimelineProjector()
+    projector.apply(
+        event(
+            "changeset.proposed",
+            payload={
+                "files": [{"path": "notes.md", "unified_diff": "--- a\n+++ b\n+hello\n"}],
+            },
+        )
+    )
+    mutations = projector.apply(
+        event("changeset.applied", sequence=2, payload={"status": "applied"})
+    )
+    diff_update = next(item for item in mutations if isinstance(item, UpdateBlock))
+    assert diff_update.block.title == "Diff · 已写入"
+    assert diff_update.block.status is BlockStatus.SUCCEEDED
+
+
+def test_session_diff_unapplied_keeps_proposal_label() -> None:
+    block = only_appended_block(
+        TimelineProjector().apply(
+            event(
+                "session.diff",
+                payload={
+                    "files": [{"path": "notes.md", "unified_diff": "--- a\n+++ b\n+hello\n"}],
+                    "applied": False,
+                    "text": "这是提案 Diff，未写入工作区。\n\nnotes.md\n--- a\n+++ b\n+hello\n",
+                },
+            )
+        )
+    )
+    assert "未写入" in block.title
+    assert "未写入工作区" in block.body
+    assert block.status is BlockStatus.FAILED

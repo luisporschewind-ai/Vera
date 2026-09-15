@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from vera.presentation.status_panel import format_status_panel
 from vera.session.models import ConversationStats, PermissionStatus, SessionStatus
 
 
@@ -12,22 +13,8 @@ class SessionPresenter:
         self._write = write
 
     def write_status(self, status: SessionStatus) -> None:
-        self._write(f"Vera {status.version}")
-        self._write("")
-        self._write(f"Model       {status.model_profile} / {status.model_name}")
-        self._write(f"Workspace   {status.workspace}")
-        self._write(f"Git         {self._git_line(status)}")
-        self._write(
-            f"Session     {status.context.session_id} · {status.context.message_count} messages"
-        )
-        self._write(
-            "Context     "
-            f"{status.context.context_bytes}/{status.context.max_bytes} bytes"
-            f" · compacted {status.context.compaction_count}"
-        )
-        self._write(f"Approval    {status.permissions.approval_mode}")
-        sandbox = "OS sandbox" if status.permissions.os_sandbox else "no OS sandbox"
-        self._write(f"Execution   {status.permissions.execution_boundary} · {sandbox}")
+        for line in format_status_panel(status).splitlines():
+            self._write(line)
 
     def write_context(self, stats: ConversationStats) -> None:
         ratio = (stats.context_bytes / stats.max_bytes) if stats.max_bytes else 0.0
@@ -57,12 +44,3 @@ class SessionPresenter:
         self._write(f"Execution         {status.execution_boundary}")
         sandbox = "OS sandbox" if status.os_sandbox else "no OS sandbox"
         self._write(f"Sandbox           {sandbox}")
-
-    @staticmethod
-    def _git_line(status: SessionStatus) -> str:
-        git = status.git
-        if not git.available:
-            return "not a repository"
-        branch = git.branch or "unavailable"
-        dirty = "unavailable" if git.dirty is None else "dirty" if git.dirty else "clean"
-        return f"{branch} · {dirty}"

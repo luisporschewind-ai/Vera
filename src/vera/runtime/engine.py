@@ -86,6 +86,37 @@ from vera.workspace.changeset import ChangeProposal, ChangeSetBuilder, sha256_by
 from vera.workspace.checkpoint import CheckpointStore
 from vera.workspace.paths import WorkspaceBoundaryError, WorkspacePaths
 
+_TOOL_LIMIT_WRAP_UP = (
+    "工具调用次数已达本次任务上限。请只根据已经收集到的证据给出结论，不要再调用任何工具。"
+)
+_TOOL_LIMIT_SKIPPED = (
+    '{"content_hash":"","notice":"skipped: tool call budget exhausted","vera_content":1}'
+)
+
+
+def tool_call_target(call: ModelToolCall) -> str:
+    arguments = call.arguments if isinstance(call.arguments, dict) else {}
+    if call.name == "propose_changeset":
+        summary = arguments.get("summary")
+        if isinstance(summary, str) and summary.strip():
+            return summary.strip()
+        changes = arguments.get("changes")
+        if isinstance(changes, list) and changes:
+            first = changes[0]
+            if isinstance(first, dict) and first.get("path"):
+                extra = f" 等{len(changes)}个文件" if len(changes) > 1 else ""
+                return f"{first['path']}{extra}"
+        return ""
+    path = arguments.get("path")
+    query = arguments.get("query")
+    if call.name == "search_text" and isinstance(query, str) and query:
+        if isinstance(path, str) and path and path != ".":
+            return f"{query} @ {path}"
+        return query
+    if isinstance(path, str) and path:
+        return path
+    return ""
+
 
 class SnapshotPersistError(RuntimeError):
     """Raised after a failed snapshot write so the Runtime can stop without looping."""
@@ -473,11 +504,11 @@ class VeraRuntime:
                 proposal.verification,
             )
         except Exception as exc:
-            yield self._event(
-                context,
-                "tool.completed",
-                {"name": call.name, "ok": False, "error": str(exc)},
-            )
+            failed: dict[str, Any] = {"name": call.name, "ok": False, "error": str(exc)}
+            target = tool_call_target(call)
+            if target:
+                failed["target"] = target
+            yield self._event(context, "tool.completed", failed)
             return
         context.built_change_set = built
         context.machine.transition(RunState.CHANGESET_PROPOSED)
@@ -861,12 +892,20 @@ class VeraRuntime:
             )
 
     def _execute_tool(self, context: RunContext, call: ModelToolCall) -> Iterator[EventEnvelope]:
-        key = f"{call.name}:{call.arguments}"
-        context.repeated_calls[key] = context.repeated_calls.get(key, 0) + 1
-        if context.repeated_calls[key] >= 3:
+        signature = f"{call.name}:{call.arguments}"
+        if context.last_tool_signature == signature:
+            context.repeated_tool_streak += 1
+        else:
+            context.last_tool_signature = signature
+            context.repeated_tool_streak = 1
+        if context.repeated_tool_streak >= 3:
             yield from self._fail(context, "repeated_tool_call")
             return
-        yield self._event(context, "tool.started", {"name": call.name, "call_id": call.call_id})
+        started: dict[str, Any] = {"name": call.name, "call_id": call.call_id}
+        target = tool_call_target(call)
+        if target:
+            started["target"] = target
+        yield self._event(context, "tool.started", started)
         if call.name == "propose_changeset":
             yield from self._propose(context, call)
             return
@@ -900,17 +939,12 @@ class VeraRuntime:
             "trust_level": envelope.trust_level.value,
             "content_hash": envelope.content_hash,
         }
+        if target:
+            payload["target"] = target
         yield self._event(context, "tool.completed", payload)
         tool_text = tool_result_message(call, result, rendered)
         context.messages.append(
             ModelMessage(role="tool", content=tool_text, tool_call_id=call.call_id)
-        )
-        context.context_bytes = sum(
-            len(message.content.encode("utf-8")) for message in context.messages
-        )
-        context.messages = compact_run_messages(
-            context.messages,
-            max_bytes=self.limits.max_context_bytes,
         )
         context.context_bytes = sum(
             len(message.content.encode("utf-8")) for message in context.messages
@@ -1033,6 +1067,7 @@ class VeraRuntime:
                     role="assistant",
                     content=turn.assistant_text or "",
                     tool_calls=turn.tool_calls,
+                    reasoning_content=turn.reasoning_content,
                 )
             )
             if turn.assistant_text:
@@ -1072,11 +1107,20 @@ class VeraRuntime:
                 )
                 return
             context.machine.transition(RunState.GENERATING)
-            for call in turn.tool_calls:
-                context.tool_calls += 1
-                if context.tool_calls > self.limits.max_tool_calls:
-                    yield from self._fail(context, "max_tool_calls")
+            pending = list(turn.tool_calls)
+            for index, call in enumerate(pending):
+                if context.tool_calls >= self.limits.max_tool_calls:
+                    for skipped in pending[index:]:
+                        context.messages.append(
+                            ModelMessage(
+                                role="tool",
+                                content=_TOOL_LIMIT_SKIPPED,
+                                tool_call_id=skipped.call_id,
+                            )
+                        )
+                    yield from self._finish_at_tool_limit(context)
                     return
+                context.tool_calls += 1
                 encoded = json.dumps(call.arguments, ensure_ascii=False, sort_keys=True)
                 _envelope, _rendered, flagged = self._prepare_content(
                     context,
@@ -1088,7 +1132,58 @@ class VeraRuntime:
                 yield from self._execute_tool(context, call)
                 if context.machine.state in {RunState.AWAITING_APPROVAL, RunState.FAILED}:
                     return
+            context.messages = compact_run_messages(
+                context.messages,
+                max_bytes=self.limits.max_context_bytes,
+            )
+            context.context_bytes = sum(
+                len(message.content.encode("utf-8")) for message in context.messages
+            )
             context.machine.transition(RunState.DISCOVERING)
+
+    def _finish_at_tool_limit(self, context: RunContext) -> Iterator[RuntimeOutput]:
+        if context.workspace_write_started or context.built_change_set is not None:
+            yield from self._fail(context, "max_tool_calls")
+            return
+        if context.model_turns >= self.limits.max_model_turns:
+            yield from self._fail(context, "max_tool_calls")
+            return
+        context.messages.append(ModelMessage(role="user", content=_TOOL_LIMIT_WRAP_UP))
+        context.model_turns += 1
+        request = ModelRequest(
+            messages=tuple(context.messages),
+            tools=(),
+            max_output_tokens=4_096,
+        )
+        turn: ModelTurn | None = None
+        for item in self._complete_with_retry(context, request):
+            if isinstance(item, (EventEnvelope, StreamFrame)):
+                yield item
+            else:
+                turn = item
+        if turn is None or turn.tool_calls:
+            yield from self._fail(context, "max_tool_calls")
+            return
+        text = (turn.assistant_text or "").strip()
+        if not text:
+            yield from self._fail(context, "max_tool_calls")
+            return
+        context.messages.append(
+            ModelMessage(
+                role="assistant",
+                content=text,
+                reasoning_content=turn.reasoning_content,
+            )
+        )
+        context.machine.transition(RunState.DISCOVERING)
+        context.machine.transition(RunState.COMPLETED)
+        yield self._event(context, "assistant.message", {"content": text})
+        yield self._stable_event(
+            context,
+            "run.completed",
+            {"state": RunState.COMPLETED.value, "outcome": "responded"},
+            RecoveryStage.TERMINAL,
+        )
 
     def _compact(self, context: RunContext) -> Iterator[RuntimeOutput]:
         request = ModelRequest(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -41,3 +42,16 @@ class TimelineBlock(BaseModel):
     incomplete: bool = False
     truncated: bool = False
     ref_id: str | None = None
+    created_at: datetime | None = None
+
+
+def format_block_clock(value: datetime | None) -> str:
+    """Local 12-hour wall-clock time with AM/PM. Empty when unknown."""
+
+    if value is None:
+        return ""
+    instant = value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+    local = instant.astimezone()
+    hour = local.hour % 12 or 12
+    suffix = "AM" if local.hour < 12 else "PM"
+    return f"{hour}:{local:%M} {suffix}"

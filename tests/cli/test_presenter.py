@@ -113,6 +113,21 @@ def test_presenter_displays_plain_assistant_message() -> None:
     assert output == ["Vera：你好"]
 
 
+def test_presenter_hides_silent_model_round_trips() -> None:
+    output: list[str] = []
+    presenter = HumanPresenter(output.append)
+    presenter.write_events(
+        (
+            event("model.requested", {"model": "deepseek-flash"}),
+            event("model.completed", {"model": "deepseek-flash"}, sequence=2),
+            event("tool.started", {"name": "list_directory", "target": "."}, sequence=3),
+        )
+    )
+    assert output == ["list_directory：执行中 · ."]
+    assert "model.requested" not in "\n".join(output)
+    assert "model.completed" not in "\n".join(output)
+
+
 def test_presenter_reports_recovery_without_file_bodies() -> None:
     output: list[str] = []
     presenter = HumanPresenter(output.append)

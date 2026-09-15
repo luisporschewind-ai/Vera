@@ -14,7 +14,7 @@ from vera.presentation.timeline import BlockKind, BlockStatus, TimelineBlock
         (BlockKind.ERROR, True),
         (BlockKind.USER, True),
         (BlockKind.ASSISTANT, True),
-        (BlockKind.STATUS, False),
+        (BlockKind.STATUS, True),
     ],
 )
 def test_initial_disclosure(kind: BlockKind, expanded: bool) -> None:

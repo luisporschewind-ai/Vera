@@ -45,6 +45,16 @@ _TITLES: dict[str, str] = {
     "run.completed": "任务完成",
     "session.status": "会话状态",
     "session.closed": "会话已关闭",
+    "session.message": "会话",
+    "session.help": "帮助",
+    "session.doctor": "诊断",
+    "session.theme": "主题",
+    "session.shortcuts": "快捷键",
+    "session.config": "配置",
+    "session.usage": "用量",
+    "session.permissions": "权限",
+    "session.review": "审查",
+    "session.diff": "Diff",
 }
 
 _FIELD_LABELS: dict[str, str] = {
@@ -55,6 +65,8 @@ _FIELD_LABELS: dict[str, str] = {
     "kind": "类型",
     "paths": "路径",
     "path": "路径",
+    "target": "目标",
+    "name": "动作",
     "files": "文件数",
     "checkpoint_id": "检查点",
     "changeset_id": "Change Set",
@@ -71,6 +83,100 @@ _FIELD_LABELS: dict[str, str] = {
     "message_count": "消息数",
     "format_status": "格式状态",
 }
+
+_TOOL_ACTIONS = {
+    "read_file": "读取文件",
+    "list_directory": "列出目录",
+    "search_text": "搜索文本",
+    "propose_changeset": "提出变更",
+}
+
+_TOOL_STATUS = {
+    "running": "进行中",
+    "completed": "完成",
+    "failed": "失败",
+}
+
+_CLASSIFICATION_TEXT = {
+    "resumable_approval": "可续跑（等待审批）",
+    "resumable_verification": "可续跑（等待验证）",
+    "recoverable_partial_apply": "部分写入，可还原",
+    "safe_to_abandon": "可安全放弃",
+    "manual_required": "需要人工处理",
+    "legacy_not_resumable": "旧格式，不可续跑",
+}
+
+_RECOVERY_REASON_TEXT = {
+    "awaiting_changeset_approval": "任务中断在变更审批",
+    "awaiting_verification": "任务中断在验证",
+    "recoverable_partial_apply": "部分文件已写入",
+    "safe_to_abandon": "工作区未写入，可放弃",
+    "manual_required": "无法自动判断恢复方式",
+    "legacy_not_resumable": "缺少可恢复快照",
+    "identity_mismatch": "工作区身份与快照不一致",
+    "workspace_missing": "工作区不可用",
+    "verification_in_flight": "验证进行中被中断",
+    "rollback_in_flight": "回滚进行中被中断",
+    "evidence_conflict": "工作区证据与快照冲突",
+    "unknown_hash": "文件哈希无法核对",
+    "checkpoint_missing": "缺少检查点",
+    "unsupported_version": "状态版本不受支持",
+    "invalid_snapshot": "快照无效或损坏",
+    "missing_journal": "缺少事件日志",
+    "not_resumable": "当前分类不可续跑",
+}
+
+_RECOVERY_ACTION_COMMANDS = {
+    "resume": "/resume {run_id}",
+    "abandon": "/abandon {run_id}",
+    "rollback": "/rollback {run_id}",
+    "restore": "/resume {run_id}",
+}
+
+
+def tool_action_label(name: str) -> str:
+    return _TOOL_ACTIONS.get(name, name)
+
+
+def format_tool_title(
+    name: str,
+    *,
+    target: str = "",
+    status: str,
+    duration_ms: int | None = None,
+) -> str:
+    parts = [tool_action_label(name)]
+    if target:
+        parts.append(target)
+    parts.append(_TOOL_STATUS.get(status, status))
+    if duration_ms is not None:
+        parts.append(f"{duration_ms}ms")
+    return " · ".join(parts)
+
+
+def format_tool_body(
+    *,
+    target: str = "",
+    status: str,
+    duration_ms: int | None = None,
+    error: str = "",
+    error_code: str = "",
+    truncated: bool = False,
+) -> str:
+    lines: list[str] = []
+    if target:
+        lines.append(f"目标：{target}")
+    lines.append(f"状态：{_TOOL_STATUS.get(status, status)}")
+    if duration_ms is not None:
+        lines.append(f"耗时：{duration_ms}ms")
+    if error:
+        lines.append(f"错误：{error}")
+    if error_code:
+        lines.append(f"错误码：{error_code}")
+    if truncated:
+        lines.append("输出已截断")
+    return "\n".join(lines)
+
 
 # Identifiers and hashes are useful in logs but only clutter a timeline summary.
 _HIDDEN_FIELDS = frozenset(
@@ -102,6 +208,74 @@ def event_title(event_type: str) -> str:
     return _TITLES.get(event_type, "状态更新")
 
 
+def classification_label(value: str) -> str:
+    text = _CLASSIFICATION_TEXT.get(value)
+    return f"{text}（{value}）" if text else value
+
+
+def recovery_reason_label(value: str) -> str:
+    text = _RECOVERY_REASON_TEXT.get(value)
+    return f"{text}（{value}）" if text else value
+
+
+def format_recovery_inspection(run_id: str, payload: Mapping[str, object]) -> str:
+    """Render a read-only recovery report, including the run-id needed for next commands."""
+
+    reported_id = str(payload.get("run_id") or run_id)
+    lines = [f"run-id：{reported_id}"]
+    classification = payload.get("classification")
+    if isinstance(classification, str) and classification:
+        lines.append(f"分类：{classification_label(classification)}")
+    stage = payload.get("stage")
+    if isinstance(stage, str) and stage:
+        lines.append(f"阶段：{stage}")
+    reason = payload.get("reason_code") or payload.get("reason")
+    if isinstance(reason, str) and reason:
+        lines.append(f"原因：{recovery_reason_label(reason)}")
+    workspace = payload.get("workspace_root")
+    if isinstance(workspace, str) and workspace:
+        lines.append(f"工作区：{workspace}")
+    evidence = payload.get("evidence")
+    if isinstance(evidence, list):
+        for item in evidence:
+            if not isinstance(item, dict):
+                continue
+            path = item.get("path")
+            state = item.get("state")
+            if isinstance(path, str) and path:
+                suffix = f"：{state}" if isinstance(state, str) and state else ""
+                lines.append(f"证据：{path}{suffix}")
+    next_step = _recovery_next_step(
+        reported_id,
+        payload.get("allowed_actions"),
+        classification if isinstance(classification, str) else "",
+    )
+    lines.append(f"下一步：{next_step}")
+    return "\n".join(lines)
+
+
+def _recovery_next_step(run_id: str, actions: object, classification: str = "") -> str:
+    if not isinstance(actions, list | tuple):
+        return "当前分类没有可执行的恢复命令。"
+    commands: list[str] = []
+    for action in actions:
+        if not isinstance(action, str) or action in {"inspect", "rerun"}:
+            continue
+        template = _RECOVERY_ACTION_COMMANDS.get(action)
+        if template is None:
+            continue
+        command = template.format(run_id=run_id)
+        if command not in commands:
+            commands.append(command)
+    if "rerun" in actions:
+        commands.append("重新发起任务")
+    if commands:
+        return " 或 ".join(commands)
+    if classification == "manual_required":
+        return "不能自动 /resume 或 /abandon。请核对上面的证据文件；Vera 不会改写工作区。"
+    return "当前分类没有可执行的恢复命令。"
+
+
 def _render_value(value: object) -> str:
     if isinstance(value, bool):
         return "是" if value else "否"
@@ -110,6 +284,17 @@ def _render_value(value: object) -> str:
             return "无"
         if all(isinstance(item, str) for item in value):
             return "、".join(str(item) for item in value)
+        if all(isinstance(item, dict) for item in value):
+            rendered: list[str] = []
+            for item in value:
+                name = item.get("name") or item.get("keys") or item.get("path")
+                extra = item.get("detail") or item.get("action") or item.get("status")
+                if name and extra:
+                    rendered.append(f"{name} {extra}")
+                elif name:
+                    rendered.append(str(name))
+            if rendered:
+                return "；".join(str(part) for part in rendered)
         return str(len(value))
     if isinstance(value, dict):
         return str(len(value))

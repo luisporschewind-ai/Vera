@@ -94,6 +94,33 @@ def test_status_marks_non_git_workspace(tmp_path: Path) -> None:
     assert status.git == GitStatus(available=False, branch=None, dirty=None)
 
 
+def test_status_tolerates_missing_git_stdout(tmp_path: Path) -> None:
+    runner = FakeGitRunner(
+        branch=CompletedProcess([], 0, None, None),  # type: ignore[arg-type]
+        status=CompletedProcess([], 0, None, None),  # type: ignore[arg-type]
+    )
+    service = SessionStatusService(version_reader=lambda: "0.1.0", git_runner=runner)
+
+    status = service.snapshot(
+        workspace=tmp_path,
+        model_profile="fake",
+        model_name="fake-model",
+        conversation=ConversationStats(
+            session_id="session-1",
+            message_count=0,
+            context_bytes=0,
+            max_bytes=200_000,
+            warning=False,
+            compaction_count=0,
+        ),
+        permissions=manual_permissions(),
+    )
+
+    assert status.git.available is True
+    assert status.git.branch is None
+    assert status.git.dirty is False
+
+
 def test_status_degrades_failed_fields(tmp_path: Path) -> None:
     runner = FakeGitRunner(
         branch=TimeoutError("timed out"),

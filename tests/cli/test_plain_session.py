@@ -80,5 +80,6 @@ def test_plain_help_and_doctor_share_session_events(tmp_path: Path) -> None:
     rendered = "\n".join(io.output)
     assert "/doctor" in rendered
     assert "version" in rendered
+    assert "pass" in rendered
     assert any(getattr(item, "type", "") == "session.help" for item in collected)
     assert any(getattr(item, "type", "") == "session.doctor" for item in collected)

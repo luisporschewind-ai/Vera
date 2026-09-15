@@ -15,12 +15,28 @@ _REASON_TEXT: dict[str, str] = {
     "max_context_bytes": "上下文超出预算，压缩后仍然超限",
     "max_tool_calls": "达到本次任务的工具调用上限",
     "empty_model_response": "模型返回了空响应",
+    "permission_denied": "没有写入权限",
     "invalid_compaction_response": "模型返回的压缩结果不可用",
     "repeated_tool_call": "模型重复了同一次工具调用",
     "missing_changeset": "模型没有给出可应用的 Change Set",
     "no_changes_proposed": "模型没有提出任何改动",
     "missing_recovery_plan": "缺少可用的恢复计划",
     "checkpoint_failed": "创建检查点失败",
+    "awaiting_changeset_approval": "任务中断在变更审批",
+    "awaiting_verification": "任务中断在验证",
+    "identity_mismatch": "工作区身份与快照不一致",
+    "workspace_missing": "工作区不可用",
+    "verification_in_flight": "验证进行中被中断",
+    "rollback_in_flight": "回滚进行中被中断",
+    "evidence_conflict": "工作区证据与快照冲突",
+    "unknown_hash": "文件哈希无法核对",
+    "checkpoint_missing": "缺少检查点",
+    "unsupported_version": "状态版本不受支持",
+    "invalid_snapshot": "快照无效或损坏",
+    "missing_journal": "缺少事件日志",
+    "not_resumable": "当前分类不可续跑",
+    "legacy_not_resumable": "缺少可恢复快照",
+    "manual_required": "无法自动判断恢复方式",
     "provider_timeout": "模型请求超时",
     "provider_authentication_error": "模型供应商认证失败",
     "provider_rate_limited": "模型供应商限流",
@@ -82,7 +98,12 @@ def explain_failure(
 ) -> dict[str, str]:
     event_type = event.type
     # Falling back to the event type would leak an internal identifier into copy.
-    raw_reason = str(event.payload.get("reason") or event.payload.get("message") or "")
+    raw_reason = str(
+        event.payload.get("reason")
+        or event.payload.get("message")
+        or event.payload.get("reason_code")
+        or ""
+    )
     reason = describe_reason(raw_reason) if raw_reason else "原因未记录"
     if event_type == "run.cancelled":
         if side_effects == "no_workspace_change":
@@ -108,6 +129,13 @@ def explain_failure(
             "what": f"任务失败：{reason}",
             "side_effects": effects,
             "next": next_step,
+        }
+    if event_type == "recovery.manual_required":
+        run_id = str(event.payload.get("run_id") or event.run_id)
+        return {
+            "what": f"不能自动处理 {run_id}：{reason}",
+            "side_effects": "这次命令没有改写工作区。",
+            "next": "此分类不允许 /resume 或 /abandon。请核对证据文件后再决定如何处理现场。",
         }
     if event_type.startswith("recovery."):
         return {

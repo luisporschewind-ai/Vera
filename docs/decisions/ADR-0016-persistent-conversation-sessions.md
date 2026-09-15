@@ -55,7 +55,7 @@ ADR-0004 对 `ConversationContext`、上下文内容限制、压缩安全级别�
 - 会话与 run 形成引用关系，列表和展示必须容忍关联 run 缺失，但不能伪造其状态。
 - SessionController 需要编排持久化失败状态；已完成的工作区副作用不能因为会话保存失败而回滚或重复执行。
 - 增加 Session Codec、Journal、Store、恢复投影、CLI 入口和跨进程测试，但不改变 VeraRuntime 的工具与审批权威。
-- 阶段六退出条件提高：自动测试通过仍不足，必须经过真实 Terminal.app 的退出—恢复—继续任务走查和持续个人 dogfood。
+- 阶段七退出条件提高：自动测试通过仍不足，必须经过真实 Terminal.app 的退出—恢复—继续任务走查和持续个人 dogfood。
 
 ## 验证与重审触发器
 
@@ -72,3 +72,4 @@ ADR-0004 对 `ConversationContext`、上下文内容限制、压缩安全级别�
 - [ADR-0004：进程内会话上下文与状态边界](ADR-0004-ephemeral-conversation-context.md)
 - [ADR-0005：确定性 Run 恢复边界](ADR-0005-deterministic-run-recovery.md)
 - [ADR-0006：版本化 Codec 与非破坏迁移](ADR-0006-versioned-state-codecs.md)
+- [ADR-0017：插入 CLI 体验阶段并顺延桌面路线](ADR-0017-insert-cli-experience-stage.md)

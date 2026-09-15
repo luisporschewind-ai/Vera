@@ -1,5 +1,7 @@
 # 验收：阶段六 CLI 产品化
 
+> 后续关系：[ADR-0017](../decisions/ADR-0017-insert-cli-experience-stage.md) 保留本报告作为阶段六自动基线证据；最终 CLI 体验、个人 dogfood 和用户封存确认已经移至阶段七。
+
 **规格：** [2026-09-12-cli-productization-and-polish](../specs/2026-09-12-cli-productization-and-polish.md)  
 **任务：** [0029](../tasks/0029-phase-6-product-acceptance.md)  
 **日期：** 2026-09-13  
@@ -52,12 +54,12 @@ git diff --check
 ## 已接受限制与 Medium/Low
 
 - 真实 Terminal.app / iTerm2 / Warp / Linux / Windows Terminal 兼容结论未测（Medium，明确 `Not run`）。
-- TUI 对 `session.doctor` 等诊断事件目前走通用 status 投影，人类文案不如 Plain 专门格式（Low）。
+- TUI `/doctor` `/config` 曾走通用 status 摘要（Medium，发现 31；Terminal.app 复验通过）。
 - 阶段五真实 dogfood 与三类工程走查仍不足，不阻塞阶段六自动部分，但不改变阶段五 Ready for manual acceptance。
 
 ## 明确未做
 
 - 未把任务 0029 或阶段六标为 Done/Complete
-- 未开始阶段七，未引入桌面框架
+- 当时未开始旧编号阶段七（现阶段八）的桌面集成，未引入桌面框架
 - 未读取真实 Provider Key，未跑 live
 - 未用 Textual Pilot 或快照代替人工体验结论

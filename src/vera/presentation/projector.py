@@ -2,18 +2,29 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from vera.contracts.events import EventEnvelope
 from vera.contracts.streaming import RuntimeOutput, StreamFrame, StreamFrameType
+from vera.presentation.diagnostics_copy import format_config_body, format_doctor_body
 from vera.presentation.disclosure import DisclosurePolicy
 from vera.presentation.errors import SideEffectFact
-from vera.presentation.event_copy import event_summary, event_title, is_silent
+from vera.presentation.event_copy import (
+    event_summary,
+    event_title,
+    format_recovery_inspection,
+    format_tool_body,
+    format_tool_title,
+    is_silent,
+)
 from vera.presentation.sanitize import sanitize_terminal_text
+from vera.presentation.status_panel import format_status_panel
 from vera.presentation.timeline import BlockKind, BlockStatus, TimelineBlock
 from vera.redaction import Redactor
+from vera.session.models import SessionStatus
 
 _SIDE_EFFECT_EVENTS = frozenset(
     {
@@ -72,6 +83,15 @@ class TimelineProjector:
         self._max_blocks = max_blocks
         self._side_effect_runs: set[str] = set()
         self._model_failures: dict[str, dict[str, object]] = {}
+        self._tool_started_at: dict[tuple[str, str], datetime] = {}
+
+    def reset(self) -> None:
+        self._blocks.clear()
+        self._streams.clear()
+        self._tool_blocks.clear()
+        self._side_effect_runs.clear()
+        self._model_failures.clear()
+        self._tool_started_at.clear()
 
     def apply(self, output: RuntimeOutput) -> tuple[TimelineMutation, ...]:
         output = self._redactor.redact_output(output)
@@ -146,17 +166,27 @@ class TimelineProjector:
             "approval.expired": self._approval_expired,
             "approval.invalidated": self._approval_expired,
             "checkpoint.created": self._status_event,
-            "changeset.applied": self._status_event,
+            "changeset.applied": self._changeset_applied,
             "verification.started": self._verification_started,
             "verification.completed": self._verification_completed,
             "run.completed": self._terminal_status,
             "run.failed": self._run_failed,
             "run.cancelled": self._run_cancelled,
             "recovery.detected": self._recovery_event,
+            "recovery.manual_required": self._recovery_event,
             "conversation.compacted": self._status_event,
-            "session.status": self._status_event,
+            "session.status": self._session_status,
             "session.message": self._session_message,
+            "session.user_prompt": self._user_prompt,
             "session.help": self._session_message,
+            "session.doctor": self._session_doctor,
+            "session.theme": self._session_message,
+            "session.shortcuts": self._session_message,
+            "session.config": self._session_config,
+            "session.usage": self._session_message,
+            "session.permissions": self._session_message,
+            "session.review": self._session_message,
+            "session.diff": self._session_diff,
             "session.action_rejected": self._error_event,
             "session.closed": self._status_event,
         }
@@ -167,12 +197,59 @@ class TimelineProjector:
         if is_silent(event.type):
             return ()
         handler = handlers.get(event.type, self._unknown_event)
-        return handler(event)
+        return self._with_created_at(handler(event), event.timestamp)
+
+    def _with_created_at(
+        self, mutations: tuple[TimelineMutation, ...], created_at: datetime
+    ) -> tuple[TimelineMutation, ...]:
+        stamped: list[TimelineMutation] = []
+        for item in mutations:
+            if isinstance(item, (AppendBlock, UpdateBlock)) and item.block.created_at is None:
+                block = item.block.model_copy(update={"created_at": created_at})
+                self._blocks[block.block_id] = block
+                item = item.model_copy(update={"block": block})
+            stamped.append(item)
+        return tuple(stamped)
 
     def _side_effects_for(self, run_id: str) -> SideEffectFact:
         """Only claim a side effect when a write or command event was observed."""
 
         return "workspace_changed" if run_id in self._side_effect_runs else "no_workspace_change"
+
+    def _unapplied_diffs(self, run_id: str) -> tuple[TimelineMutation, ...]:
+        """Keep proposal Diff visible, but never imply the workspace was written."""
+
+        if run_id in self._side_effect_runs:
+            return ()
+        return self._relabel_diffs(run_id, title="Diff · 未写入", status=BlockStatus.FAILED)
+
+    def _relabel_diffs(
+        self,
+        run_id: str,
+        *,
+        title: str,
+        status: BlockStatus,
+    ) -> tuple[TimelineMutation, ...]:
+        mutations: list[TimelineMutation] = []
+        for key, block in list(self._blocks.items()):
+            if block.run_id != run_id or block.kind is not BlockKind.DIFF:
+                continue
+            updated = block.model_copy(
+                update={
+                    "title": sanitize_terminal_text(title),
+                    "status": status,
+                }
+            )
+            self._blocks[key] = updated
+            mutations.append(UpdateBlock(block=updated))
+        return tuple(mutations)
+
+    def _changeset_applied(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
+        return self._relabel_diffs(
+            event.run_id,
+            title="Diff · 已写入",
+            status=BlockStatus.SUCCEEDED,
+        ) + self._status_event(event)
 
     def _truncate_body(self, body: str) -> tuple[str, bool]:
         encoded = body.encode("utf-8")
@@ -253,14 +330,16 @@ class TimelineProjector:
         name = str(event.payload.get("name", "tool"))
         block_id = f"{event.run_id}:{event.sequence}:tool"
         call_id = str(event.payload.get("call_id", event.sequence))
+        target = str(event.payload.get("target") or "")
         self._tool_blocks[(event.run_id, call_id)] = block_id
         self._tool_blocks[(event.run_id, name)] = block_id
+        self._tool_started_at[(event.run_id, call_id)] = event.timestamp
         return self._append(
             block_id=block_id,
             run_id=event.run_id,
             kind=BlockKind.TOOL,
-            title=f"{name} · running",
-            body="",
+            title=format_tool_title(name, target=target, status="running"),
+            body=format_tool_body(target=target, status="running"),
             status=BlockStatus.RUNNING,
         )
 
@@ -269,18 +348,50 @@ class TimelineProjector:
         ok = bool(event.payload.get("ok", True))
         status = BlockStatus.SUCCEEDED if ok else BlockStatus.FAILED
         call_id = str(event.payload.get("call_id", ""))
+        target = str(event.payload.get("target") or "")
+        started_at = self._tool_started_at.pop((event.run_id, call_id), None)
+        duration_ms: int | None = None
+        raw_duration = event.payload.get("duration_ms")
+        if isinstance(raw_duration, int):
+            duration_ms = raw_duration
+        elif started_at is not None:
+            duration_ms = max(0, int((event.timestamp - started_at).total_seconds() * 1000))
+        status_key = "completed" if ok else "failed"
+        error = str(event.payload.get("error") or "")
+        error_code = str(event.payload.get("error_code") or "")
+        truncated = bool(event.payload.get("truncated", False))
+        body = format_tool_body(
+            target=target,
+            status=status_key,
+            duration_ms=duration_ms,
+            error=error,
+            error_code=error_code,
+            truncated=truncated,
+        )
+        title = format_tool_title(name, target=target, status=status_key, duration_ms=duration_ms)
         block_id = self._tool_blocks.get((event.run_id, call_id)) or self._tool_blocks.get(
             (event.run_id, name)
         )
-        body = sanitize_terminal_text(
-            str(event.payload.get("error") or event.payload.get("result") or "")
-        )
         if block_id and block_id in self._blocks:
             existing = self._blocks[block_id]
+            if not target:
+                target = existing.body.partition("目标：")[2].split("\n", 1)[0]
+                if target:
+                    title = format_tool_title(
+                        name, target=target, status=status_key, duration_ms=duration_ms
+                    )
+                    body = format_tool_body(
+                        target=target,
+                        status=status_key,
+                        duration_ms=duration_ms,
+                        error=error,
+                        error_code=error_code,
+                        truncated=truncated,
+                    )
             updated = self.disclosure.on_status_change(existing, status).model_copy(
                 update={
-                    "title": sanitize_terminal_text(f"{name} · {'completed' if ok else 'failed'}"),
-                    "body": body or existing.body,
+                    "title": sanitize_terminal_text(title),
+                    "body": sanitize_terminal_text(body),
                 }
             )
             self._blocks[block_id] = updated
@@ -289,10 +400,17 @@ class TimelineProjector:
             block_id=f"{event.run_id}:{event.sequence}:tool",
             run_id=event.run_id,
             kind=BlockKind.TOOL,
-            title=f"{name} · {'completed' if ok else 'failed'}",
+            title=title,
             body=body,
             status=status,
         )
+
+    def _user_prompt(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
+        text = str(event.payload.get("text", ""))
+        block = project_user_prompt(event.run_id, text, event.sequence, created_at=event.timestamp)
+        self._blocks[block.block_id] = block
+        self._evict_if_needed()
+        return (AppendBlock(block=block),)
 
     def _changeset_proposed(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
         files = event.payload.get("files", [])
@@ -312,6 +430,27 @@ class TimelineProjector:
             title=f"Diff · {len(parts)} files",
             body=body,
             status=BlockStatus.PENDING,
+        )
+
+    def _session_diff(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
+        files = event.payload.get("files", [])
+        text = str(event.payload.get("text") or "").strip()
+        count = len(files) if isinstance(files, list) else 0
+        body = text if text else "没有 Diff。"
+        applied = event.payload.get("applied")
+        if count and applied is False:
+            title = f"Diff · {count} files · 未写入"
+        elif count:
+            title = f"Diff · {count} files"
+        else:
+            title = "Diff"
+        return self._append(
+            block_id=f"{event.run_id}:{event.sequence}:diff",
+            run_id=event.run_id,
+            kind=BlockKind.DIFF,
+            title=title,
+            body=sanitize_terminal_text(body),
+            status=BlockStatus.FAILED if applied is False else BlockStatus.SUCCEEDED,
         )
 
     def _approval_required(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
@@ -413,7 +552,7 @@ class TimelineProjector:
     def _run_failed(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
         from vera.presentation.errors import format_failure_body
 
-        return self._append(
+        return self._unapplied_diffs(event.run_id) + self._append(
             block_id=f"{event.run_id}:{event.sequence}:error",
             run_id=event.run_id,
             kind=BlockKind.ERROR,
@@ -429,7 +568,7 @@ class TimelineProjector:
     def _run_cancelled(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
         from vera.presentation.errors import format_failure_body
 
-        return self._append(
+        return self._unapplied_diffs(event.run_id) + self._append(
             block_id=f"{event.run_id}:{event.sequence}:error",
             run_id=event.run_id,
             kind=BlockKind.ERROR,
@@ -442,15 +581,24 @@ class TimelineProjector:
         )
 
     def _recovery_event(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
-        from vera.presentation.errors import format_failure_body
+        if event.type == "recovery.manual_required":
+            from vera.presentation.errors import format_failure_body
 
+            return self._append(
+                block_id=f"{event.run_id}:{event.sequence}:error",
+                run_id=event.run_id,
+                kind=BlockKind.ERROR,
+                title=event_title(event.type),
+                body=format_failure_body(event),
+                status=BlockStatus.FAILED,
+            )
         return self._append(
-            block_id=f"{event.run_id}:{event.sequence}:error",
+            block_id=f"{event.run_id}:{event.sequence}:recovery",
             run_id=event.run_id,
-            kind=BlockKind.ERROR,
-            title="恢复",
-            body=format_failure_body(event),
-            status=BlockStatus.FAILED,
+            kind=BlockKind.STATUS,
+            title=event_title(event.type),
+            body=format_recovery_inspection(event.run_id, event.payload),
+            status=BlockStatus.SUCCEEDED,
         )
 
     def _error_event(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
@@ -468,14 +616,62 @@ class TimelineProjector:
     def _terminal_status(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
         return self._status_event(event)
 
-    def _session_message(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
-        text = str(event.payload.get("text", ""))
+    def _session_status(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
+        try:
+            status = SessionStatus.model_validate(event.payload)
+        except ValidationError:
+            return self._session_message(event)
+        body = format_status_panel(status)
         return self._append(
             block_id=f"{event.run_id}:{event.sequence}:status",
             run_id=event.run_id,
             kind=BlockKind.STATUS,
-            title="Session",
-            body=text,
+            title=event_title(event.type),
+            body=sanitize_terminal_text(body),
+            status=BlockStatus.SUCCEEDED,
+        )
+
+    def _session_doctor(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
+        return self._append(
+            block_id=f"{event.run_id}:{event.sequence}:status",
+            run_id=event.run_id,
+            kind=BlockKind.STATUS,
+            title=event_title(event.type),
+            body=sanitize_terminal_text(format_doctor_body(event.payload)),
+            status=BlockStatus.SUCCEEDED,
+        )
+
+    def _session_config(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
+        return self._append(
+            block_id=f"{event.run_id}:{event.sequence}:status",
+            run_id=event.run_id,
+            kind=BlockKind.STATUS,
+            title=event_title(event.type),
+            body=sanitize_terminal_text(format_config_body(event.payload)),
+            status=BlockStatus.SUCCEEDED,
+        )
+
+    def _session_message(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
+        text = event.payload.get("text")
+        if isinstance(text, str) and text.strip():
+            body = text.strip()
+            lines = body.splitlines()
+            if len(lines) == 1:
+                title = event_title(event.type)
+            else:
+                first = lines[0]
+                title = first if len(first) <= 40 else first[:37] + "..."
+        elif event.payload.get("clear_display"):
+            return ()
+        else:
+            title = event_title(event.type)
+            body = event_summary(event.payload)
+        return self._append(
+            block_id=f"{event.run_id}:{event.sequence}:status",
+            run_id=event.run_id,
+            kind=BlockKind.STATUS,
+            title=title,
+            body=body,
             status=BlockStatus.SUCCEEDED,
         )
 
@@ -493,7 +689,13 @@ class TimelineProjector:
         return self._status_event(event)
 
 
-def project_user_prompt(run_id: str, text: str, sequence: int = 0) -> TimelineBlock:
+def project_user_prompt(
+    run_id: str,
+    text: str,
+    sequence: int = 0,
+    *,
+    created_at: datetime | None = None,
+) -> TimelineBlock:
     policy = DisclosurePolicy()
     return TimelineBlock(
         block_id=f"{run_id}:{sequence}:user",
@@ -503,4 +705,5 @@ def project_user_prompt(run_id: str, text: str, sequence: int = 0) -> TimelineBl
         body=sanitize_terminal_text(text),
         status=BlockStatus.SUCCEEDED,
         expanded=policy.initial_state(BlockKind.USER, BlockStatus.SUCCEEDED),
+        created_at=created_at,
     )

@@ -120,6 +120,7 @@ def test_session_recover_is_readonly(tmp_path: Path) -> None:
         "/recover",
         "/recover run_1",
         "/recover missing",
+        "/abandon",
         "/exit",
     ]
 
@@ -156,7 +157,11 @@ def test_session_recover_is_readonly(tmp_path: Path) -> None:
     assert session.run() == 0
     output = "\n".join(io.output)
     assert "发现 1 个待恢复任务" in output
+    assert "/recover" in output
     assert "resumable_approval" in output
     assert "未找到待恢复 run：missing" in output
+    assert "用法：/abandon <run-id>" in output
+    assert "可 abandon：" in output
+    assert "run_1" in output
     assert workspace_digest(harness.workspace) == before
     assert harness.adapter.requests == []

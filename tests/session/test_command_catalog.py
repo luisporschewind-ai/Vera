@@ -16,6 +16,7 @@ def test_slash_completion_comes_from_shared_catalog() -> None:
     catalog = CommandCatalog()
     names = [item.name for item in catalog.list("/rec", _snapshot())]
     assert names == ["/recover"]
+    assert [item.name for item in catalog.list("/DOC", _snapshot())] == ["/doctor"]
 
 
 def test_context_full_still_lists_compact_and_new() -> None:

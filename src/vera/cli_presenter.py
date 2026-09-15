@@ -6,6 +6,7 @@ import shlex
 from collections.abc import Callable, Sequence
 
 from vera.contracts.events import EventEnvelope
+from vera.presentation.event_copy import event_title, is_silent
 from vera.redaction import Redactor
 
 
@@ -31,15 +32,25 @@ class HumanPresenter:
         return "批准这个 Change Set？输入 approve、reject 或 cancel"
 
     def _write_event(self, event: EventEnvelope) -> None:
+        if is_silent(event.type):
+            return
         raw = self._redactor.redact(event.payload)
         payload = raw if isinstance(raw, dict) else {}
         if event.type == "run.started":
             self._write(f"任务开始：{event.run_id}")
         elif event.type == "tool.started":
-            self._write(f"{payload.get('name', 'tool')}：执行中")
+            target = payload.get("target")
+            suffix = f" · {target}" if target else ""
+            self._write(f"{payload.get('name', 'tool')}：执行中{suffix}")
         elif event.type == "tool.completed":
             status = "成功" if payload.get("ok") else "失败"
-            self._write(f"{payload.get('name', 'tool')}：{status}")
+            target = payload.get("target")
+            suffix = f" · {target}" if target else ""
+            self._write(f"{payload.get('name', 'tool')}：{status}{suffix}")
+        elif event.type == "session.user_prompt":
+            prompt = payload.get("text")
+            if isinstance(prompt, str) and prompt:
+                self._write(f"你：{prompt}")
         elif event.type == "changeset.proposed":
             self._write(f"Change Set：{payload.get('content_hash', '')}")
             files = payload.get("files", [])
@@ -146,4 +157,4 @@ class HumanPresenter:
                 f"审批已过期：{payload.get('approval_id', event.run_id)}（{reason}），需要重新生成"
             )
         else:
-            self._write(event.type)
+            self._write(event_title(event.type))

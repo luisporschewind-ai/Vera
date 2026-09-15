@@ -46,13 +46,13 @@ class CommandCatalog:
         return self._by_name.get(key)
 
     def list(self, prefix: str, snapshot: SessionSnapshot) -> tuple[CommandDescriptor, ...]:
-        needle = prefix if prefix.startswith("/") else f"/{prefix}"
+        needle = (prefix if prefix.startswith("/") else f"/{prefix}").casefold()
         return tuple(
             item
             for item in self._commands
             if (
-                item.name.startswith(needle)
-                or any(alias.startswith(needle) for alias in item.aliases)
+                item.name.casefold().startswith(needle)
+                or any(alias.casefold().startswith(needle) for alias in item.aliases)
             )
             and item.enabled_when(snapshot)
         )

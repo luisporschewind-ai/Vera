@@ -177,6 +177,7 @@ class SessionController:
         )
         self._goal_for_active = text
         self._events_for_active = []
+        yield self._session_event("session.user_prompt", {"text": text})
         yield from self._drive(command)
 
     def _queue_prompt(self, text: str) -> Iterator[RuntimeOutput]:
@@ -398,7 +399,11 @@ class SessionController:
             yield self._session_event("session.message", {"text": f"用法：{descriptor.usage}"})
             return
         if descriptor is not None and descriptor.args == "required" and not parsed.args:
-            yield self._session_event("session.message", {"text": f"用法：{descriptor.usage}"})
+            text = f"用法：{descriptor.usage}"
+            hint = self._required_run_id_hint(parsed.handler)
+            if hint:
+                text = f"{text}\n{hint}"
+            yield self._session_event("session.message", {"text": text})
             return
         if (
             descriptor is not None
@@ -561,10 +566,25 @@ class SessionController:
             "session.message",
             {
                 "text": (
-                    f"发现 {len(reports)} 个待恢复任务（最高风险：{highest.classification.value}）"
+                    f"发现 {len(reports)} 个待恢复任务"
+                    f"（最高风险：{highest.classification.value}）。"
+                    "使用 /recover 查看 run-id 后再 /resume 或 /abandon。"
                 )
             },
         )
+
+    def _required_run_id_hint(self, handler: str) -> str:
+        if handler not in {"abandon", "resume"}:
+            return ""
+        reports = self.dependencies.runtime.coordinator.scan()
+        matching = [item for item in reports if handler in item.allowed_actions]
+        if matching:
+            lines = [f"可 {handler}："]
+            lines.extend(f"{item.run_id}（{item.classification.value}）" for item in matching)
+            return "\n".join(lines)
+        if reports:
+            return f"当前没有可 {handler} 的待恢复任务。使用 /recover 查看需要人工处理的 run。"
+        return "当前没有待恢复任务。"
 
     def bootstrap_events(self) -> tuple[EventEnvelope, ...]:
         events = [self._status_event()]
@@ -609,6 +629,14 @@ class SessionController:
             payload=payload,
         )
 
+    def _events_for_run(self, run_id: str | None) -> tuple[EventEnvelope, ...]:
+        from vera.session.queries import load_run_events
+
+        events = load_run_events(self.store, run_id) if run_id else ()
+        if not events and run_id is not None and run_id == self._active_run_id:
+            events = tuple(self._events_for_active)
+        return events
+
     def _cmd_help(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
         yield self._session_event("session.help", {"text": self._help_text()})
 
@@ -634,15 +662,19 @@ class SessionController:
         yield self._session_event("session.permissions", status.model_dump(mode="json"))
 
     def _cmd_new(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        self.queued_prompt = None
         session_id = self.conversation.reset()
         yield self._session_event("session.message", {"text": f"已开始新会话：{session_id}"})
 
     def _cmd_clear(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        self.queued_prompt = None
         session_id = self.conversation.reset()
         self.clear_display_requested = True
+        yield self._session_event("session.message", {"clear_display": True, "text": ""})
+        yield from self.bootstrap_events()
         yield self._session_event(
             "session.message",
-            {"text": f"已清空显示并开始新会话：{session_id}", "clear_display": True},
+            {"text": f"已清空显示并开始新会话：{session_id}"},
         )
 
     def _cmd_compact(self, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
@@ -673,35 +705,40 @@ class SessionController:
         yield from self._close()
 
     def _cmd_diff(self, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
-        from vera.session.queries import collect_diffs, load_run_events, resolve_run_id
+        from vera.session.queries import collect_diffs, resolve_run_id
 
         run_id = resolve_run_id(self.store, args[0] if args else None, self._active_run_id)
-        events = load_run_events(self.store, run_id) if run_id else ()
-        if not events and run_id == self._active_run_id:
-            events = tuple(self._events_for_active)
+        events = self._events_for_run(run_id)
         files = collect_diffs(events)
+        applied = any(event.type == "changeset.applied" for event in events)
         if not files:
             yield self._session_event(
                 "session.diff",
-                {"run_id": run_id, "files": [], "text": "没有 Diff。"},
+                {"run_id": run_id, "files": [], "applied": applied, "text": "没有 Diff。"},
             )
             return
-        text = "\n\n".join(
-            str(item.get("unified_diff", "")).rstrip() for item in files if item.get("unified_diff")
-        )
+        parts: list[str] = []
+        for item in files:
+            path = str(item.get("path", "")).strip()
+            diff = str(item.get("unified_diff", "")).rstrip()
+            if path and diff:
+                parts.append(f"{path}\n{diff}")
+            elif diff:
+                parts.append(diff)
+        body = "\n\n".join(parts) or "没有 Diff。"
+        if not applied:
+            body = "这是提案 Diff，未写入工作区。\n\n" + body
         yield self._session_event(
             "session.diff",
-            {"run_id": run_id, "files": list(files), "text": text or "没有 Diff。"},
+            {"run_id": run_id, "files": list(files), "applied": applied, "text": body},
         )
 
     def _cmd_review(self, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
         from vera.presentation.review import project_review
-        from vera.session.queries import load_run_events, resolve_run_id
+        from vera.session.queries import resolve_run_id
 
         run_id = resolve_run_id(self.store, args[0] if args else None, self._active_run_id)
-        events = load_run_events(self.store, run_id) if run_id else ()
-        if not events and run_id == self._active_run_id:
-            events = tuple(self._events_for_active)
+        events = self._events_for_run(run_id)
         review = project_review(events)
         review["run_id"] = run_id
         yield self._session_event("session.review", review)
@@ -769,12 +806,16 @@ class SessionController:
         )
 
     def _cmd_theme(self, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
-        from vera.terminal.theme import THEME_NAMES, normalize_theme
+        from vera.terminal.theme import THEME_NAMES, format_theme_status, normalize_theme
 
         if not args:
             yield self._session_event(
                 "session.theme",
-                {"theme": self.theme, "available": list(THEME_NAMES)},
+                {
+                    "theme": self.theme,
+                    "available": list(THEME_NAMES),
+                    "text": format_theme_status(self.theme),
+                },
             )
             return
         selected = normalize_theme(args[0], self.theme)  # type: ignore[arg-type]
@@ -787,7 +828,11 @@ class SessionController:
         self.theme = selected
         yield self._session_event(
             "session.theme",
-            {"theme": self.theme, "available": list(THEME_NAMES)},
+            {
+                "theme": self.theme,
+                "available": list(THEME_NAMES),
+                "text": format_theme_status(self.theme),
+            },
         )
 
     def _help_text(self) -> str:

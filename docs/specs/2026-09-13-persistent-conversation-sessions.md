@@ -7,7 +7,7 @@
 
 Vera 已有进程内 `ConversationContext`，能够在同一次 CLI 进程中保留用户消息、助手回复、run 结果摘要和压缩摘要；现有 `RunStore`、Event Journal 与 RecoverySnapshot 则负责保存工具、Diff、审批、Checkpoint、验证和中断恢复事实。
 
-当前进程退出后会丢弃活动对话。用户已确认：阶段七桌面开发继续暂停，阶段六先把 CLI 提升为本人愿意长期使用的主力 Coding Agent；Codex、Claude Code 和 Grok Build 只作为核心交互质量参考，不要求在阶段六复制它们的云端、多 Agent、插件市场或全部扩展能力。退出后恢复完整对话是这一目标的必需能力。
+当前进程退出后会丢弃活动对话。用户已确认：桌面开发顺延到阶段八，阶段七先把 CLI 提升为本人愿意长期使用的主力 Coding Agent；Codex、Claude Code 和 Grok Build 只作为核心交互质量参考，不要求复制它们的云端、多 Agent、插件市场或全部扩展能力。退出后恢复完整对话是这一目标的必需能力。
 
 本规格取代“退出后不恢复自然语言对话”的旧范围限制，但不把对话恢复与未完成 run 恢复混为一套机制。
 
@@ -27,8 +27,8 @@ Vera 已有进程内 `ConversationContext`，能够在同一次 CLI 进程中保
 - 不把完整工具输出、Diff、stdout、stderr、Checkpoint、Provider 请求或环境变量复制进会话日志。
 - 不自动跨 workspace 注入历史上下文，不自动把移动后的目录重新绑定为旧 workspace。
 - 不新增 Multi-Agent、MCP/插件市场、后台任务、云同步或账号系统。
-- 不启动阶段七，不添加 Electron、Tauri、Wails 或其他桌面端代码与依赖。
-- 不以功能数量追平竞品；阶段六只验证日常编码主链路的质量和可控性。
+- 不启动阶段八，不添加 Electron、Tauri、Wails 或其他桌面端代码与依赖。
+- 不以功能数量追平竞品；阶段七只验证日常编码主链路的质量和可控性。
 
 ## 产品行为
 
@@ -157,17 +157,17 @@ StartRun
 
 ## 实施增量
 
-本规格在阶段六内实施，使用一个主实现 Agent，按依赖顺序拆分：
+本规格在阶段七内实施，使用一个主实现 Agent，按依赖顺序拆分：
 
-1. 收口当前任务 0033 的真实 dogfood 缺陷与验证事实；
+1. 收口当前任务 0033、任务 0042 的真实 dogfood 缺陷与验证事实；
 2. 定义版本化 Session Record、Codec、Journal 和 workspace 绑定；
 3. 接入 `ConversationContext` 的创建、追加、加载、压缩和新建；
 4. 实现 `vera -c`、`vera -r`、选择器、`/sessions` 与状态展示；
 5. 加固损坏、迁移、权限、脱敏、超限和崩溃一致性；
 6. 对齐 TUI、Plain、JSON、wheel 安装和真实 Terminal.app；
-7. 进行个人长期 dogfood，阻断问题继续留在阶段六修正。
+7. 进行个人长期 dogfood，阻断问题继续留在阶段七修正。
 
-具体文件、测试和提交边界在用户审阅本规格后另写任务级实施计划。
+具体文件、测试和提交边界见[阶段七实施计划](../tasks/phase-7-execution-order.md)及任务 0034–0037。
 
 ## 验收标准
 
@@ -188,12 +188,13 @@ StartRun
 15. 自动测试不读取真实 Provider Key，不修改用户真实工程；包构建与仓库外 wheel smoke 覆盖新入口。
 16. 完整非 live、Ruff、格式、Mypy、构建、安装 smoke 和 `git diff --check` 通过。
 17. 用户在真实 Terminal.app 中至少完成：新建会话、两轮对话、代码修改、审批、验证、退出、`-c` 恢复、继续修改和查看旧 run 证据。
-18. 阶段六持续 dogfood 没有未关闭的 Critical/High 使用缺陷，并由用户明确确认「CLI 版本达到预期，可以封存」。
+18. 阶段七持续 dogfood 没有未关闭的 Critical/High 使用缺陷，并由用户明确确认「CLI 版本达到预期，可以封存」。
 
 ## 参考与关联
 
 - [普通对话、会话上下文与状态命令](2026-09-11-conversational-cli-and-session-status.md)
-- [阶段六：CLI 产品化与体验完善](2026-09-12-cli-productization-and-polish.md)
+- [阶段六：CLI 功能与可靠性收口](2026-09-12-cli-productization-and-polish.md)
+- [阶段七：CLI 体验收口与个人主力化](2026-09-13-cli-experience-and-personal-dogfood.md)
 - [ADR-0003：私有状态与 Checkpoint](../decisions/ADR-0003-private-state-and-checkpoints.md)
 - [ADR-0004：进程内会话上下文与状态边界](../decisions/ADR-0004-ephemeral-conversation-context.md)
 - [ADR-0005：确定性 Run 恢复边界](../decisions/ADR-0005-deterministic-run-recovery.md)
