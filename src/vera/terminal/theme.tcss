@@ -154,6 +154,7 @@ DiffBlockWidget {
 .theme-high-contrast #terminal-too-small,
 .-theme-high-contrast,
 .-theme-high-contrast #header,
+.-theme-high-contrast #welcome,
 .-theme-high-contrast #timeline,
 .-theme-high-contrast #completions,
 .-theme-high-contrast #composer-bar,
@@ -165,8 +166,7 @@ DiffBlockWidget {
 
 .theme-high-contrast #timeline,
 .-theme-high-contrast #timeline {
-    border: solid #ffffff;
-    border-right: none;
+    border: none;
     padding: 0;
     outline: none;
     scrollbar-background: #000000;

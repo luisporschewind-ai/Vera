@@ -399,6 +399,8 @@ class VeraTerminalApp(App[int]):
             self.set_class(active, theme_class(item))
             self.screen.set_class(active, theme_class(item))
         self.refresh_css(animate=False)
+        self.refresh()
+        self._sync_sticky_offset()
 
     def action_exit_if_idle(self) -> None:
         composer = self.query_one(PromptComposer)

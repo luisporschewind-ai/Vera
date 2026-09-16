@@ -110,10 +110,11 @@ async def test_theme_command_switches_app_theme_and_chrome(tmp_path: Path) -> No
         assert "255, 255, 0" in border
         header = str(app.query_one("#header").styles.background)
         assert "0, 0, 0" in header
+        welcome = str(app.query_one("#welcome").styles.background)
+        assert "0, 0, 0" in welcome
         timeline_border = str(app.query_one("#timeline").styles.border).lower()
-        assert "solid" in timeline_border
-        assert "tall" not in timeline_border
-        assert "255, 255, 255" in timeline_border
+        assert "solid" not in timeline_border
+        assert "round" not in timeline_border
         for item in app.controller.dispatch(ExecuteSlashCommand(raw="/theme no-color")):
             app.on_runtime_output_received(RuntimeOutputReceived(item))
         await pilot.pause()

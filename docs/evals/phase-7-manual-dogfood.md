@@ -3,7 +3,7 @@
 **规格：** [阶段七 CLI 体验收口](../specs/2026-09-13-cli-experience-and-personal-dogfood.md)  
 **任务：** [0041](../tasks/0041-phase-7-product-acceptance-and-dogfood.md)  
 **日期：** 2026-09-16  
-**结果：** 2026-09-16 原生 Terminal.app 主路径部分走查。发现 38–41、43 已复验关闭。`vera -c` 恢复会话、「继续」与「新建第五页」续写已通过。第 1 项尚未 `/runs`。发现 42：助手正文里路径高亮把标识符从中间折行。未收到封存原文。
+**结果：** 2026-09-16 原生 Terminal.app 主路径部分走查。发现 38–41、43 已复验关闭。`/runs` 通过。Resize、滚动锚点、复制通过。发现 44：`vera -r` 无参数失败。发现 45：`/new`/`/clear` 不清屏。发现 46：高对比度右侧残影。未收到封存原文。
 
 严重度：Critical（权限/数据/错误应用）、High（主流程不可用/输入丢失/状态误导）、Medium（高频摩擦）、Low（视觉细节）。
 
@@ -29,35 +29,35 @@
 | 工程 | VeraTestDemo（Swift/Xcode） |
 | 步骤 | 新会话 → 第四页加测试按钮 → 审批/验证 → 退出 → `vera -c` → 输入「继续」 |
 | 预期 | 会话可恢复；第二轮理解“刚才/继续”；审批默认 Cancel；验证产物不污染工程；旧 run 证据仍可打开 |
-| 实际 | 首次失败后 `b42ed76` 复验通过。`vera -c` 标题为「恢复会话」，「继续」能引用上一轮 changeset/run 与第四页已落地。Sticky 贴标题下，上下文条 `<1%`。`6c1ba9d` 后续写第五页通过。尚未 `/runs`。助手列表把 `FourthViewController.swift` / `Base.lproj` 从中间折行（发现 42）。 |
-| 严重度 | 发现 38–41、43 已复验关闭 |
+| 实际 | 首次失败后 `b42ed76` 复验通过。`vera -c` 标题为「恢复会话」，「继续」能引用上一轮 changeset/run 与第四页已落地。Sticky 贴标题下，上下文条 `<1%`。`6c1ba9d` 后续写第五页通过。`/runs` 与 `/show` 通过。助手列表把 `FourthViewController.swift` / `Base.lproj` 从中间折行（发现 42）。 |
+| 严重度 | 发现 38–41、43 已复验关闭；`/runs` 通过 |
 | 证据 | 脱敏：失败诊断含 `HTTP 400` 与 `reasoning_content`；验证错误码 `verification_artifact_isolation_unavailable`；无工作区副作用 |
 
 ## 2. 恢复与会话维护
 
 | 字段 | 内容 |
 |---|---|
-| 日期 | |
+| 日期 | 2026-09-16 |
 | 环境 | 原生 Terminal.app |
-| 工程 | |
+| 工程 | VeraTestDemo |
 | 步骤 | `-r` 选择历史、明确 ID 恢复、`/compact` 后重启、`/new`、`/clear`、取消、失败、恢复、无 Git、dirty workspace |
 | 预期 | 选择器可用；compact 后旧对话仍可查看；`/new`/`/clear` 不丢 Run 证据；无 Git/dirty 有克制提示 |
-| 实际 | Not run |
-| 严重度 | |
-| 证据 | |
+| 实际 | `vera -r` 无参数：`Option '-r' requires an argument`（发现 44）。`/new`/`/clear` 后上一会话时间线仍在，未清屏（发现 45）。其余未跑。 |
+| 严重度 | High |
+| 证据 | 脱敏：Click 报 `-r` 需要参数 |
 
 ## 3. 尺寸、兼容与导航
 
 | 字段 | 内容 |
 |---|---|
-| 日期 | |
-| 环境 | 60×16、80×24、120×40、Resize、`NO_COLOR`、`TERM=dumb`、关闭动画、CJK |
-| 工程 | |
+| 日期 | 2026-09-16 |
+| 环境 | 原生 Terminal.app；Resize、滚动、复制、`/theme high-contrast` |
+| 工程 | VeraTestDemo |
 | 步骤 | 复制、滚动、异常退出；确认用户消息锚点替换且右侧时间不变 |
 | 预期 | 输入不被挡；审批事实不丢；锚点替换正确；箭头不进入实际输入 |
-| 实际 | Not run |
-| 严重度 | |
-| 证据 | |
+| 实际 | Resize 无残影通过。滚动锚点通过。复制通过。切高对比度有残影、右侧异常（发现 46）。60×16、NO_COLOR、dumb、异常退出未跑。 |
+| 严重度 | Medium |
+| 证据 | 用户确认拖动无残影；高对比切主题后右侧异常 |
 
 ## 4. 信息层级与状态带
 
@@ -110,5 +110,8 @@
 | — | 主路径 | 工程根未长出 `build/` | 无 | 通过 |
 | 42 | `vera -c` | 助手 Markdown 路径高亮把 `FourthViewController.swift`、`Base.lproj` 从中间折行 | Low | 本阶段可修或后续汇总；不挡继续/恢复 |
 | 43 | `vera -c` 续写 | 大 `propose_changeset` 参数 JSON 非法/截断后整轮 `model_error` | High | 0045 修复；用户 2026-09-16 Terminal.app 复验通过 |
+| 44 | 会话维护 | `vera -r` 无参数：Option requires an argument | High | 待修；规格要求 TTY 打开选择器 |
+| 45 | 会话维护 | `/new`/`/clear` 后上一会话仍显示，未清屏 | High | 待修 |
+| 46 | 主题 | `/theme high-contrast` 残影、右侧异常 | Medium | 0046 修正；待用户复验 |
 
-发现 38–41、43 已关闭。主路径尚未 `/runs`。20 次 dogfood 未完成，阶段七仍不 Complete。
+发现 38–41、43 已关闭。`/runs`、Resize、滚动锚点、复制已过。发现 44–46 未关闭。20 次 dogfood 未完成，阶段七仍不 Complete。
