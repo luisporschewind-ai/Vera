@@ -3,14 +3,16 @@
 import json
 import sys
 from pathlib import Path
-from typing import Annotated, Literal, NoReturn, cast
+from typing import Annotated, Any, Literal, NoReturn, cast
 
 import typer
+from typer.core import TyperGroup
 
 from vera.bootstrap import RuntimeDependencies, build_runtime
 from vera.cli_driver import ApprovalDecision, drive_run
 from vera.cli_eval import eval_app
 from vera.cli_json_session import JsonSessionDriver
+from vera.cli_options import RESUME_PICKER_VALUE, normalize_resume_argv
 from vera.cli_plain_session import PlainSessionDriver
 from vera.cli_presenter import HumanPresenter
 from vera.config import ConfigurationError, load_config
@@ -43,7 +45,16 @@ from vera.terminal.mode import (
 )
 from vera.version import current_identity
 
+
+class SessionFlagGroup(TyperGroup):
+    """Accept bare ``-r``/``--resume`` as the TTY picker, matching session specs."""
+
+    def parse_args(self, ctx: Any, args: list[str]) -> list[str]:
+        return super().parse_args(ctx, normalize_resume_argv(args))
+
+
 app = typer.Typer(
+    cls=SessionFlagGroup,
     invoke_without_command=True,
     no_args_is_help=False,
     help="Vera local coding-agent Core",
@@ -103,7 +114,6 @@ def main(
             "--resume",
             help="恢复会话 [SESSION_ID]；省略 ID 时在 TTY 中选择。"
             " /resume <run-id> 继续可恢复 Run。",
-            flag_value="__PICKER__",
         ),
     ] = None,
 ) -> None:
@@ -132,7 +142,7 @@ def main(
             request = SessionOpenRequest(mode="continue")
         elif resume is None:
             request = SessionOpenRequest(mode="new")
-        elif resume in {"__PICKER__", ""}:
+        elif resume in {RESUME_PICKER_VALUE, ""}:
             request = SessionOpenRequest(mode="resume_picker")
         else:
             request = SessionOpenRequest(mode="resume_id", session_id=resume)

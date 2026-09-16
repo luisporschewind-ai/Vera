@@ -252,6 +252,7 @@ def test_new_clears_context_and_changes_session_id(tmp_path: Path) -> None:
 
     assert session.run() == 0
     assert session.conversation.stats().session_id != original
+    assert io.cleared >= 1
     assert all(message.content != "Hello" for message in adapter.requests[1].messages)
     assert "已开始新会话：" in "\n".join(io.output)
 

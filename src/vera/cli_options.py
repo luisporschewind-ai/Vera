@@ -11,6 +11,30 @@ ROOT_SUBCOMMANDS = frozenset(
 )
 _VALUE_OPTIONS = frozenset({"--workspace", "--model"})
 _FLAG_OPTIONS = frozenset({"--plain", "--json", "--version", "-V", "--help", "-h"})
+RESUME_PICKER_VALUE = "__PICKER__"
+
+
+def normalize_resume_argv(argv: Sequence[str]) -> list[str]:
+    """Give Click a value for bare ``-r``/``--resume`` so Typer does not error."""
+
+    tokens = list(argv)
+    result: list[str] = []
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        if token in {"-r", "--resume"}:
+            result.append(token)
+            nxt = tokens[index + 1] if index + 1 < len(tokens) else None
+            if nxt is None or nxt.startswith("-"):
+                result.append(RESUME_PICKER_VALUE)
+            else:
+                result.append(nxt)
+                index += 1
+            index += 1
+            continue
+        result.append(token)
+        index += 1
+    return result
 
 
 def parse_session_open_request(argv: Sequence[str]) -> SessionOpenRequest:

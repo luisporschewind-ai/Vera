@@ -118,7 +118,7 @@ DEFAULT_COMMANDS: tuple[CommandDescriptor, ...] = (
         "permissions",
     ),
     CommandDescriptor("/init", "/init", "提议创建或更新 VERA.md", "开始", "init"),
-    CommandDescriptor("/new", "/new", "清空上下文并开始新会话", "会话", "new"),
+    CommandDescriptor("/new", "/new", "清空显示与上下文并开始新会话", "会话", "new"),
     CommandDescriptor("/sessions", "/sessions", "列出当前工作区会话", "会话", "sessions"),
     CommandDescriptor("/clear", "/clear", "清空显示与上下文", "会话", "clear"),
     CommandDescriptor(

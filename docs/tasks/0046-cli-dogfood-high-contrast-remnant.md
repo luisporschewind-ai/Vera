@@ -39,6 +39,5 @@ git diff --check
 
 ## 未决
 
-- 发现 44：`vera -r` 无参数时报 Option requires an argument。
-- 发现 45：`/new`/`/clear` 后时间线仍显示上一会话。
+- 发现 44/45 改由 [任务 0047](0047-cli-dogfood-resume-picker-and-clear.md) 处理。
 - 未收到「CLI 版本达到预期，可以封存」。

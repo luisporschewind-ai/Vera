@@ -510,6 +510,8 @@ def test_new_and_clear_create_new_persistent_sessions(tmp_path: Path) -> None:
     new_id = controller.snapshot().session_id
     assert new_id != old_id
     assert controller.conversation.snapshot() == ()
+    assert controller.clear_display_requested is True
+    assert controller.session_source == "new"
     store.inner.load(old_id, workspace)
     tuple(controller.dispatch(ExecuteSlashCommand(raw="/clear")))
     assert controller.clear_display_requested is True

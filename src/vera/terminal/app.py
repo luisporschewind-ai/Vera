@@ -490,6 +490,11 @@ class VeraTerminalApp(App[int]):
         timeline = self.query_one(ConversationTimeline)
         timeline.clear_blocks()
         timeline.pin_home()
+        for sticky in self.query(UserStickyBar):
+            sticky.hide_message()
+        for composer in self.query(PromptComposer):
+            composer.prompt_history.clear()
+            composer.load_text("")
 
     def _focus_composer_unless_approval(self) -> None:
         widget = self._active_approval_widget()

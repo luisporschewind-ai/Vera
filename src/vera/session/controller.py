@@ -901,17 +901,19 @@ class SessionController:
         )
 
     def _cmd_new(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
-        session_id = self._open_new_persistent_session()
-        yield self._session_event("session.message", {"text": f"已开始新会话：{session_id}"})
+        yield from self._begin_fresh_session("已开始新会话：{session_id}")
 
     def _cmd_clear(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        yield from self._begin_fresh_session("已清空显示并开始新会话：{session_id}")
+
+    def _begin_fresh_session(self, message: str) -> Iterator[RuntimeOutput]:
         session_id = self._open_new_persistent_session()
         self.clear_display_requested = True
         yield self._session_event("session.message", {"clear_display": True, "text": ""})
         yield from self.bootstrap_events()
         yield self._session_event(
             "session.message",
-            {"text": f"已清空显示并开始新会话：{session_id}"},
+            {"text": message.format(session_id=session_id)},
         )
 
     def _cmd_compact(self, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:

@@ -325,7 +325,7 @@ async def test_app_renders_help_and_doctor_as_display_only(tmp_path: Path) -> No
 
 
 @pytest.mark.asyncio
-async def test_clear_wipes_timeline_and_new_keeps_history(tmp_path: Path) -> None:
+async def test_new_and_clear_wipe_timeline(tmp_path: Path) -> None:
     controller = make_controller(tmp_path)
     app = VeraTerminalApp(controller, controller.workspace, "fake", animations=False)
     async with app.run_test(size=(80, 24)) as pilot:
@@ -342,14 +342,25 @@ async def test_clear_wipes_timeline_and_new_keeps_history(tmp_path: Path) -> Non
         await pilot.pause()
         timeline = app.query_one("#timeline")
         assert timeline.widget_count() >= 1
-        kept = timeline.widget_count()
         for item in controller.dispatch(ExecuteSlashCommand(raw="/new")):
             if isinstance(item, EventEnvelope):
                 app.on_runtime_output_received(RuntimeOutputReceived(item))
         await pilot.pause()
         assert controller.conversation.snapshot() == ()
-        assert timeline.widget_count() >= kept
+        assert controller.session_source == "new"
+        assert "旧对话" not in " ".join(block.body for block in app.projector.blocks())
         assert any("已开始新会话" in block.body for block in app.projector.blocks())
+        app.append_output(
+            EventEnvelope(
+                event_id="e2",
+                run_id="run_2",
+                sequence=2,
+                timestamp=datetime.now(UTC),
+                type="assistant.message",
+                payload={"text": "又一段旧对话"},
+            )
+        )
+        await pilot.pause()
         for item in controller.dispatch(ExecuteSlashCommand(raw="/clear")):
             if isinstance(item, EventEnvelope):
                 app.on_runtime_output_received(RuntimeOutputReceived(item))
@@ -360,7 +371,7 @@ async def test_clear_wipes_timeline_and_new_keeps_history(tmp_path: Path) -> Non
         assert "Model" in blocks[0].body
         assert "Workspace" in blocks[0].body
         assert any("已清空显示" in block.body for block in blocks)
-        assert "旧对话" not in " ".join(block.body for block in blocks)
+        assert "又一段旧对话" not in " ".join(block.body for block in blocks)
         assert timeline.follow_tail is False
         assert timeline.widget_count() >= 1
 
