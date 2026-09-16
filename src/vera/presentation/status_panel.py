@@ -14,6 +14,7 @@ def format_status_panel(status: SessionStatus) -> str:
             f"Vera {status.version}",
             "",
             f"Model       {status.model_profile} / {status.model_name}",
+            f"Reasoning   {status.reasoning.display_label()}",
             f"Workspace   {status.workspace}",
             f"Git         {git}",
             f"Session     {session.session_id} · {session.message_count} messages"

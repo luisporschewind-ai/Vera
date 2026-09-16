@@ -35,6 +35,12 @@ def request() -> ModelRequest:
     )
 
 
+def test_openai_adapter_defaults_reasoning_to_provider_default() -> None:
+    adapter = OpenAICompatibleAdapter(provider(), client=object())
+    assert adapter.capabilities.reasoning == "provider_default"
+    assert provider().capabilities.reasoning == "unavailable"
+
+
 def test_adapter_normalizes_provider_tool_call() -> None:
     response = SimpleNamespace(
         choices=[

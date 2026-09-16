@@ -47,7 +47,7 @@ from vera.session.actions import (
 from vera.session.conversation import ConversationContext
 from vera.session.external_editor import ExternalEditor, ExternalEditorError
 from vera.session.history import PromptHistory
-from vera.session.models import ConversationStats
+from vera.session.models import ConversationStats, ReasoningStatus
 from vera.session.permissions import permission_status
 from vera.session.status import SessionStatusService
 from vera.session.turns import ConversationTurnProjector
@@ -785,8 +785,16 @@ class SessionController:
             model_name=self._model_name(),
             conversation=self._conversation_stats(),
             permissions=permission_status(self.dependencies.runtime.command_policy),
+            reasoning=self._reasoning_status(),
         )
         return self._session_event("session.status", status.model_dump(mode="json"))
+
+    def _reasoning_status(self) -> ReasoningStatus:
+        capabilities = getattr(self.dependencies.runtime.adapter, "capabilities", None)
+        mode = getattr(capabilities, "reasoning", "unavailable")
+        if mode == "provider_default":
+            return ReasoningStatus(mode="provider_default")
+        return ReasoningStatus(mode="unavailable")
 
     def _model_name(self) -> str:
         provider = self.dependencies.config.providers.get(self.model_profile)

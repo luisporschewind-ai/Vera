@@ -47,4 +47,14 @@ async def test_layout_matrix_keeps_composer_and_cjk_visible(
         await pilot.pause()
         assert "你好" in composer.text
         assert app.query_one("#timeline")
+        assert app.query_one("#header")
+        assert app.query_one("#welcome")
+        assert app.query_one("#status-line")
+        assert "VERA" in str(app.query_one("#header").render())
         assert app.query_one("#terminal-too-small").display is False
+        if size[0] < 80:
+            assert app.query_one("#welcome").display is False
+            assert "\n" not in str(app.query_one("#header").render())
+        else:
+            assert app.query_one("#welcome").display is True
+            assert "\n" in str(app.query_one("#header").render())

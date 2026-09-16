@@ -55,6 +55,10 @@ class ActivityPresenter:
     def reset(self) -> None:
         self._state = ActivityState("就绪", "idle", False)
 
+    def set_failed(self, label: str) -> ActivityState:
+        self._state = ActivityState(label, "error", False, "error")
+        return self._state
+
     @property
     def current(self) -> ActivityState:
         return self._state

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class ConversationStats(BaseModel):
@@ -46,6 +46,30 @@ class GitStatus(BaseModel):
     dirty: bool | None
 
 
+class ReasoningStatus(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    mode: Literal["explicit", "provider_default", "unavailable"]
+    effort: str | None = None
+
+    @model_validator(mode="after")
+    def _effort_matches_mode(self) -> ReasoningStatus:
+        if self.mode == "explicit":
+            if not self.effort:
+                raise ValueError("explicit reasoning requires effort")
+            return self
+        if self.effort is not None:
+            raise ValueError("non-explicit reasoning must omit effort")
+        return self
+
+    def display_label(self) -> str:
+        if self.mode == "explicit" and self.effort:
+            return self.effort
+        if self.mode == "provider_default":
+            return "模型默认"
+        return "不可用"
+
+
 class SessionStatus(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -56,3 +80,4 @@ class SessionStatus(BaseModel):
     git: GitStatus
     context: ConversationStats
     permissions: PermissionStatus
+    reasoning: ReasoningStatus = Field(default_factory=lambda: ReasoningStatus(mode="unavailable"))

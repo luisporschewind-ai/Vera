@@ -10,10 +10,19 @@ Screen {
 
 #header {
     dock: top;
-    height: 1;
+    height: auto;
+    min-height: 1;
     background: $boost;
     color: $text;
     padding: 0 2;
+}
+
+#welcome {
+    dock: top;
+    height: auto;
+    background: $boost;
+    color: $text-muted;
+    padding: 0 2 1 2;
 }
 
 #user-sticky {
@@ -73,7 +82,7 @@ Screen {
     background: transparent !important;
     scrollbar-size: 0 0;
     overflow-y: hidden;
-    color: #ffffff;
+    color: $text;
 }
 
 #composer .text-area--cursor-line {
@@ -113,6 +122,14 @@ UserBlockWidget .block-time {
     color: #6e7782 !important;
 }
 
+DiffBlockWidget .diff-add {
+    color: $success;
+}
+
+DiffBlockWidget .diff-remove {
+    color: $error;
+}
+
 DiffBlockWidget {
     height: auto;
 }
@@ -133,6 +150,7 @@ DiffBlockWidget {
 
 .theme-high-contrast,
 .theme-high-contrast #header,
+.theme-high-contrast #welcome,
 .theme-high-contrast #timeline,
 .theme-high-contrast #completions,
 .theme-high-contrast #composer-bar,
@@ -198,6 +216,7 @@ DiffBlockWidget {
 
 .theme-no-color,
 .theme-no-color #header,
+.theme-no-color #welcome,
 .theme-no-color #completions,
 .theme-no-color #status-line,
 .-theme-no-color,
@@ -239,7 +258,7 @@ DiffBlockWidget {
 .-theme-no-color #composer-bar:focus-within {
     background: #1a1a1a;
     color: #e0e0e0;
-    border: round #888888;
+    border: round #B0B0B0;
 }
 
 .theme-no-color #composer,

@@ -38,7 +38,7 @@ def make_app(tmp_path: Path) -> VeraTerminalApp:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("size", [(80, 24), (120, 40)])
+@pytest.mark.parametrize("size", [(60, 16), (80, 24), (120, 40)])
 async def test_timeline_snapshot_sizes(tmp_path: Path, size: tuple[int, int]) -> None:
     app = make_app(tmp_path)
     async with app.run_test(size=size) as pilot:

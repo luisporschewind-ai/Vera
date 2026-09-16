@@ -43,6 +43,7 @@ def test_session_presenter_renders_status_panel_without_secrets() -> None:
     text = "\n".join(output)
     assert "Vera 0.1.0" in text
     assert "deepseek / deepseek-flash" in text
+    assert "Reasoning   不可用" in text
     assert str(Path("/tmp/project").resolve()) in text
     assert "main · dirty" in text
     assert "session-1" in text

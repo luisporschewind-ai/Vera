@@ -22,16 +22,29 @@ def test_theme_is_session_only_and_named() -> None:
     assert theme_class("default") == "theme-default"
 
 
-def test_default_theme_uses_deep_blue_accent() -> None:
+def test_default_theme_uses_deep_sea_tokens() -> None:
+    from vera.terminal.theme import SEMANTIC_TOKENS, TOKEN_NAMES
+
+    for name in ("default", "high-contrast", "no-color"):
+        tokens = SEMANTIC_TOKENS[name]
+        assert tuple(tokens) == TOKEN_NAMES
     default = next(theme for theme in VERA_THEMES if theme.name == "default")
-    assert default.primary == "#1B4F8A"
-    assert default.secondary == "#0F2C4C"
-    assert default.accent == "#2A5F9E"
-    assert default.warning == "#C4A35A"
-    assert default.background == "#121212"
-    assert default.surface == "#121212"
+    assert default.background == "#0B1C28"
+    assert default.surface == "#122433"
+    assert default.accent == "#3D7A8C"
+    assert default.warning == "#B08A4A"
+    assert default.error == "#A85A5A"
+    assert default.success == "#4A8B6F"
+    assert default.foreground == "#D7E4EE"
     high_contrast = next(theme for theme in VERA_THEMES if theme.name == "high-contrast")
-    assert high_contrast.accent == "#ffff00"
+    assert high_contrast.accent == "#FFFF00"
+    no_color = next(theme for theme in VERA_THEMES if theme.name == "no-color")
+    assert no_color.accent == "#B0B0B0"
+
+
+def test_unknown_theme_is_rejected() -> None:
+    assert normalize_theme("neon") is None
+    assert normalize_theme("default.sh") is None
 
 
 def _make_app(tmp_path: Path) -> VeraTerminalApp:
@@ -66,10 +79,10 @@ async def test_default_theme_is_applied_so_composer_uses_deep_blue(tmp_path: Pat
         await pilot.pause()
         assert app.theme == "default"
         accent = app.get_css_variables().get("accent", "").lower()
-        assert accent == "#2a5f9e"
+        assert accent == "#3d7a8c"
         border = str(app.query_one("#composer-bar").styles.border)
         assert "round" in border.lower()
-        assert "42, 95, 158" in border
+        assert "61, 122, 140" in border
 
 
 def test_theme_status_text_is_human_readable() -> None:
@@ -106,6 +119,28 @@ async def test_theme_command_switches_app_theme_and_chrome(tmp_path: Path) -> No
         await pilot.pause()
         assert app.theme == "no-color"
         border = str(app.query_one("#composer-bar").styles.border)
-        assert "136, 136, 136" in border
+        assert "176, 176, 176" in border
         assert "theme-no-color" in app.classes
         assert "theme-high-contrast" not in app.classes
+
+
+@pytest.mark.asyncio
+async def test_no_color_env_selects_no_color_theme(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from vera.terminal.capabilities import detect_display_capabilities
+
+    monkeypatch.setattr(
+        "vera.terminal.app.detect_display_capabilities",
+        lambda **kwargs: detect_display_capabilities(
+            environ={"NO_COLOR": "1", "TERM": "xterm-256color"},
+            stdout_tty=True,
+            animations_config=kwargs.get("animations_config", True),
+        ),
+    )
+    app = _make_app(tmp_path)
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        assert app.theme == "no-color"
+        assert not app.display_capabilities.color
+        assert app.display_capabilities.term == "xterm-256color"

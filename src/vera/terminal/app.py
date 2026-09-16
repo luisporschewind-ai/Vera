@@ -30,6 +30,7 @@ from vera.session.actions import (
     SubmitPrompt,
 )
 from vera.session.controller import SessionController
+from vera.session.models import SessionStatus
 from vera.terminal.alt_enter import install_alt_enter_mapping
 from vera.terminal.animation import AnimationClock
 from vera.terminal.bridge import RuntimeOutputReceived, TerminalBridge, WorkerStopped
@@ -42,6 +43,7 @@ from vera.terminal.widgets.header import VeraHeader
 from vera.terminal.widgets.status_line import VeraStatusLine
 from vera.terminal.widgets.timeline import ConversationTimeline
 from vera.terminal.widgets.user_sticky import UserStickyBar
+from vera.terminal.widgets.welcome import VeraWelcome
 
 install_alt_enter_mapping()
 
@@ -94,6 +96,7 @@ class VeraTerminalApp(App[int]):
         self.received_sequences: list[int] = []
         self.submitted: list[str] = []
         self._editor_preview_pending = False
+        self._session_status: SessionStatus | None = None
         self._too_small = Static(
             "终端太小：请调整到至少 60×16",
             id="terminal-too-small",
@@ -105,6 +108,7 @@ class VeraTerminalApp(App[int]):
             workspace_label=str(self.workspace),
             id="header",
         )
+        yield VeraWelcome(id="welcome")
         yield UserStickyBar(id="user-sticky")
         yield ConversationTimeline(id="timeline")
         yield CompletionList(id="completions")
@@ -133,14 +137,31 @@ class VeraTerminalApp(App[int]):
     def on_unmount(self) -> None:
         self.bridge.cancel_workers()
 
+    def _unicode(self) -> bool:
+        term = self.display_capabilities.term.strip().lower()
+        return term not in {"", "dumb", "unavailable"}
+
     def _apply_size(self, size: Size) -> None:
         too_small = size.width < self.MINIMUM_SIZE.width or size.height < self.MINIMUM_SIZE.height
-        banner = self.query_one("#terminal-too-small", Static)
+        try:
+            banner = self.query_one("#terminal-too-small", Static)
+            header = self.query_one(VeraHeader)
+        except NoMatches:
+            return
         banner.display = too_small
-        header = self.query_one(VeraHeader)
-        header.set_narrow(size.width < 80)
+        header.apply_geometry(columns=size.width, rows=size.height, unicode=self._unicode())
+        status = self._status_line()
+        if status is not None:
+            status.set_geometry(columns=size.width, unicode=self._unicode())
+        if self._session_status is not None:
+            self._refresh_chrome()
+        else:
+            self._sync_sticky_offset()
         if not too_small:
-            self.query_one(PromptComposer).focus()
+            try:
+                self.query_one(PromptComposer).focus()
+            except NoMatches:
+                return
 
     def submit_composer(self) -> None:
         self.query_one(PromptComposer).submit()
@@ -219,6 +240,9 @@ class VeraTerminalApp(App[int]):
             self.received_sequences.append(sequence)
         if isinstance(output, EventEnvelope):
             self._apply_session_chrome(output)
+            if output.type == "session.status":
+                self._session_status = SessionStatus.model_validate(output.payload)
+                self._refresh_chrome()
             state = self.activity.apply(output)
             status = self._status_line()
             if status is not None:
@@ -279,7 +303,11 @@ class VeraTerminalApp(App[int]):
         if status is None:
             return
         if message.reason_code.startswith("worker_failed"):
-            status.set_status("Worker 失败；可使用 /help 或 --plain")
+            label = "Worker 失败；可使用 /help 或 --plain"
+            self.activity.set_failed(label)
+            status.set_status(label)
+            if self._session_status is not None:
+                self._refresh_chrome()
         elif self.activity.current.active:
             status.set_activity(self.activity.current, self.animation.frame())
         self._focus_composer_unless_approval()
@@ -481,13 +509,50 @@ class VeraTerminalApp(App[int]):
         except StopIteration:
             return None
 
+    def _sync_sticky_offset(self) -> None:
+        try:
+            welcome = self.query_one(VeraWelcome)
+            sticky = self.query_one(UserStickyBar)
+        except NoMatches:
+            return
+        columns = self.size.width
+        rows = self.size.height
+        top = 2 if columns >= 80 and rows >= 24 else 1
+        if welcome.display and columns >= 80:
+            top += 2
+        sticky.styles.margin = (top, 2, 0, 2)
+
+    def _refresh_chrome(self) -> None:
+        status = self._session_status
+        if status is None:
+            return
+        try:
+            header = self.query_one(VeraHeader)
+            welcome = self.query_one(VeraWelcome)
+        except NoMatches:
+            return
+        header.set_session_status(status)
+        mark = header.current_mark()
+        welcome.set_content(mark, status, columns=self.size.width)
+        self._sync_sticky_offset()
+        line = self._status_line()
+        if line is not None:
+            line.apply_session(status, self.activity.current, unread=line._pending)
+
     def _tick_status(self) -> None:
+        if not self.is_running:
+            return
+        if self._session_status is not None:
+            self._refresh_chrome()
+            line = self._status_line()
+            if line is not None and self.activity.current.active:
+                line.set_activity(self.activity.current, self.animation.frame())
+            return
         if not self.activity.current.active:
             return
-        self.query_one(VeraStatusLine).set_activity(
-            self.activity.current,
-            self.animation.frame(),
-        )
+        line = self._status_line()
+        if line is not None:
+            line.set_activity(self.activity.current, self.animation.frame())
 
 
 def _mention_prefix(text: str) -> str | None:

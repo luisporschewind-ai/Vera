@@ -68,7 +68,10 @@ def _provider_attr(value: object, *names: str) -> Any:
 class OpenAICompatibleAdapter:
     def __init__(self, provider: ProviderConfig, client: Any | None = None) -> None:
         self.provider = provider
-        self._capabilities = provider.capabilities
+        caps = provider.capabilities
+        if caps.reasoning == "unavailable":
+            caps = caps.model_copy(update={"reasoning": "provider_default"})
+        self._capabilities = caps
         self.client: Any = client or OpenAI(
             api_key=os.environ.get(provider.api_key_env),
             base_url=str(provider.base_url),

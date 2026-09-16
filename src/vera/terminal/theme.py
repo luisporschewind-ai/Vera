@@ -14,51 +14,95 @@ THEME_CHOICES: tuple[tuple[ThemeName, str], ...] = (
     ("no-color", "无色"),
 )
 
-VERA_THEMES: tuple[Theme, ...] = (
-    Theme(
-        name="default",
-        primary="#1B4F8A",
-        secondary="#0F2C4C",
-        accent="#2A5F9E",
-        warning="#C4A35A",
-        error="#ba3c5b",
-        success="#4EBF71",
-        foreground="#e0e0e0",
-        background="#121212",
-        surface="#121212",
-        dark=True,
-    ),
-    Theme(
-        name="high-contrast",
-        primary="#ffff00",
-        secondary="#00ffff",
-        accent="#ffff00",
-        warning="#ffff00",
-        error="#ff4444",
-        success="#00ff00",
-        foreground="#ffffff",
-        background="#000000",
-        surface="#000000",
-        panel="#000000",
-        boost="#000000",
-        dark=True,
-    ),
-    Theme(
-        name="no-color",
-        primary="#9a9a9a",
-        secondary="#7a7a7a",
-        accent="#b0b0b0",
-        warning="#c8c8c8",
-        error="#e0e0e0",
-        success="#b8b8b8",
-        foreground="#e0e0e0",
-        background="#1a1a1a",
-        surface="#2a2a2a",
-        panel="#222222",
-        boost="#202020",
-        dark=True,
-    ),
+TOKEN_NAMES: tuple[str, ...] = (
+    "background",
+    "surface",
+    "surface_elevated",
+    "text_primary",
+    "text_muted",
+    "accent",
+    "success",
+    "warning",
+    "danger",
+    "focus",
+    "diff_add",
+    "diff_remove",
 )
+
+SEMANTIC_TOKENS: dict[ThemeName, dict[str, str]] = {
+    "default": {
+        "background": "#0B1C28",
+        "surface": "#122433",
+        "surface_elevated": "#1A3144",
+        "text_primary": "#D7E4EE",
+        "text_muted": "#7E96A8",
+        "accent": "#3D7A8C",
+        "success": "#4A8B6F",
+        "warning": "#B08A4A",
+        "danger": "#A85A5A",
+        "focus": "#5B9BB0",
+        "diff_add": "#3D6B55",
+        "diff_remove": "#8B4A4A",
+    },
+    "high-contrast": {
+        "background": "#000000",
+        "surface": "#000000",
+        "surface_elevated": "#000000",
+        "text_primary": "#FFFFFF",
+        "text_muted": "#FFFFFF",
+        "accent": "#FFFF00",
+        "success": "#00FF00",
+        "warning": "#FFFF00",
+        "danger": "#FF4444",
+        "focus": "#FFFF00",
+        "diff_add": "#00FF00",
+        "diff_remove": "#FF4444",
+    },
+    "no-color": {
+        "background": "#1A1A1A",
+        "surface": "#2A2A2A",
+        "surface_elevated": "#222222",
+        "text_primary": "#E0E0E0",
+        "text_muted": "#B0B0B0",
+        "accent": "#B0B0B0",
+        "success": "#C8C8C8",
+        "warning": "#D0D0D0",
+        "danger": "#E0E0E0",
+        "focus": "#F0F0F0",
+        "diff_add": "#E0E0E0",
+        "diff_remove": "#E0E0E0",
+    },
+}
+
+
+def _theme(name: ThemeName) -> Theme:
+    tokens = SEMANTIC_TOKENS[name]
+    return Theme(
+        name=name,
+        primary=tokens["accent"],
+        secondary=tokens["surface"],
+        accent=tokens["accent"],
+        warning=tokens["warning"],
+        error=tokens["danger"],
+        success=tokens["success"],
+        foreground=tokens["text_primary"],
+        background=tokens["background"],
+        surface=tokens["surface"],
+        panel=tokens["surface_elevated"],
+        boost=tokens["surface_elevated"],
+        dark=True,
+    )
+
+
+VERA_THEMES: tuple[Theme, ...] = (
+    _theme("default"),
+    _theme("high-contrast"),
+    _theme("no-color"),
+)
+
+
+def semantic_tokens(name: ThemeName) -> dict[str, str]:
+    return dict(SEMANTIC_TOKENS[name])
 
 
 def normalize_theme(name: str | None, current: ThemeName = "default") -> ThemeName | None:

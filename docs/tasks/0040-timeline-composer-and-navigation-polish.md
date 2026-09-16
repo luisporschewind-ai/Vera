@@ -3,7 +3,7 @@
 > 供主实现 Agent 执行：按 `superpowers:test-driven-development` 实施；视觉层不得重新推断运行结果或审批风险。
 
 **状态：** Planned
-**执行就绪：** 否；等待任务 0039 完成
+**执行就绪：** 是；任务 0039 已完成
 **分支：** `phase-7/0040-terminal-workflow-polish`
 **依赖：** 任务 0039
 **规格：** [阶段七 CLI 体验收口](../specs/2026-09-13-cli-experience-and-personal-dogfood.md)

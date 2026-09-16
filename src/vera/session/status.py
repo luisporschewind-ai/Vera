@@ -12,6 +12,7 @@ from vera.session.models import (
     ConversationStats,
     GitStatus,
     PermissionStatus,
+    ReasoningStatus,
     SessionStatus,
 )
 from vera.version import current_display_version
@@ -94,6 +95,7 @@ class SessionStatusService:
         model_name: str,
         conversation: ConversationStats,
         permissions: PermissionStatus,
+        reasoning: ReasoningStatus | None = None,
     ) -> SessionStatus:
         try:
             package_version = self._version_reader()
@@ -109,4 +111,5 @@ class SessionStatusService:
             git=self._probe.inspect(workspace),
             context=conversation,
             permissions=permissions,
+            reasoning=reasoning or ReasoningStatus(mode="unavailable"),
         )

@@ -2,11 +2,11 @@
 
 > 供主实现 Agent 执行：只有任务 0038 的视觉规格为 Accepted 后才能按 `superpowers:test-driven-development` 实施。
 
-**状态：** Planned
-**执行就绪：** 是；任务 0038 视觉规格 Accepted
+**状态：** Done
+**执行就绪：** 已完成
 **分支：** `phase-7/0039-cli-brand-theme`
 **依赖：** 任务 0038
-**规格：** [阶段七 CLI 体验收口](../specs/2026-09-13-cli-experience-and-personal-dogfood.md)、任务 0038 产生并获接受的视觉 Token 规格
+**规格：** [阶段七 CLI 体验收口](../specs/2026-09-13-cli-experience-and-personal-dogfood.md)、[视觉 Token](../specs/2026-09-13-vera-cli-visual-tokens.md)
 
 ## 目标与边界
 
@@ -49,36 +49,36 @@ class SessionStatus(BaseModel):
 
 ### 1. Logo 选择与纯文本回退
 
-- [ ] 新增 `tests/terminal/test_brand.py`，先覆盖 full/compact/ascii 阈值、无 Nerd Font、行宽、CJK 邻接和 accessible label。
-- [ ] 新增 `src/vera/terminal/brand.py`，逐字符保证选中形态不超过可用列；60×16 不超过视觉规格冻结的最大行数。
-- [ ] `TERM=dumb`、非 Unicode 或不可靠宽度时使用 ASCII，不输出控制字符或 Emoji。
+- [x] 新增 `tests/terminal/test_brand.py`，先覆盖 full/compact/ascii 阈值、无 Nerd Font、行宽、CJK 邻接和 accessible label。
+- [x] 新增 `src/vera/terminal/brand.py`，逐字符保证选中形态不超过可用列；60×16 不超过视觉规格冻结的最大行数。
+- [x] `TERM=dumb`、非 Unicode 或不可靠宽度时使用 ASCII，不输出控制字符或 Emoji。
 
 ### 2. 语义 Theme Token
 
-- [ ] 扩展 `tests/terminal/test_theme.py`，覆盖 default/high-contrast/no-color 三组完整 Token、`NO_COLOR` 优先级和未知主题拒绝。
-- [ ] 扩展 `src/vera/terminal/theme.py`，让主题名映射冻结的语义 Token；`theme.tcss` 只引用这些语义，不按 Event 文案匹配颜色。
-- [ ] 修改 `src/vera/terminal/theme.tcss`，统一背景、表面、正文、弱化、焦点、成功、警告、危险和 Diff 色；无色主题保留边框/标签/符号差异。
+- [x] 扩展 `tests/terminal/test_theme.py`，覆盖 default/high-contrast/no-color 三组完整 Token、`NO_COLOR` 优先级和未知主题拒绝。
+- [x] 扩展 `src/vera/terminal/theme.py`，让主题名映射冻结的语义 Token；`theme.tcss` 只引用这些语义，不按 Event 文案匹配颜色。
+- [x] 修改 `src/vera/terminal/theme.tcss`，统一背景、表面、正文、弱化、焦点、成功、警告、危险和 Diff 色；无色主题保留边框/标签/符号差异。
 
 ### 3. 启动首屏
 
-- [ ] 新增 `src/vera/terminal/widgets/welcome.py` 和 `tests/terminal/test_welcome.py`，覆盖 new/resumed、Git clean/dirty、非 Git、saved/unsaved 和权限摘要。
-- [ ] 首屏固定优先级：Vera 标识 → workspace/session/model → 权限边界 → 可执行下一步；次要诊断留给 `/status`/`/doctor`。
-- [ ] 更新 `src/vera/terminal/app.py` 组合 Welcome、Header、Timeline、Composer、StatusLine；Resize 后只切换 BrandMode，不重建 SessionController。
+- [x] 新增 `src/vera/terminal/widgets/welcome.py` 和 `tests/terminal/test_welcome.py`，覆盖 new/resumed、Git clean/dirty、非 Git、saved/unsaved 和权限摘要。
+- [x] 首屏固定优先级：Vera 标识 → workspace/session/model → 权限边界 → 可执行下一步；次要诊断留给 `/status`/`/doctor`。
+- [x] 更新 `src/vera/terminal/app.py` 组合 Welcome、Header、Timeline、Composer、StatusLine；Resize 后只切换 BrandMode，不重建 SessionController。
 
 ### 4. 运行状态语义
 
-- [ ] 先新增 `tests/presentation/test_footer_status.py`，覆盖上下文 0%、正常、warning、100% 上限，模型 profile/name，显式推理强度、`provider_default`、`unavailable`，以及 idle/running/approval/verification/completed/cancelled/failed/recovery/unsaved。
-- [ ] 扩展 `SessionStatus` 的 Provider 中立推理状态；当前执行链只有在 Adapter 已实际采用显式强度时才能标记 `explicit`，否则使用 `provider_default` 或 `unavailable`。本任务不增加虚假的强度切换入口。
-- [ ] 实现 `FooterStatus` 纯投影，并扩展 `tests/terminal/test_status_line.py` 与 `test_app.py`，固定左侧“会话上下文条 + 百分比”、右侧“模型 + 推理强度”、中部活动/取消/未读提示的优先级。
-- [ ] 修改 `VeraHeader`/`VeraStatusLine`，避免顶部与底部重复模型和活动事实；状态始终有文字，颜色和动画只增强，不作为唯一信息。
-- [ ] 终端进度采用固定宽度短条形而非环形；高对比/无色保留边界与百分比，60×16 按任务 0038 用户确认的优先级缩短字段但不伪造零值。
-- [ ] `VERA_NO_ANIMATIONS`、reduced motion 或 no-color 时使用静态符号，不伪造进度百分比。
+- [x] 先新增 `tests/presentation/test_footer_status.py`，覆盖上下文 0%、正常、warning、100% 上限，模型 profile/name，显式推理强度、`provider_default`、`unavailable`，以及 idle/running/approval/verification/completed/cancelled/failed/recovery/unsaved。
+- [x] 扩展 `SessionStatus` 的 Provider 中立推理状态；当前执行链只有在 Adapter 已实际采用显式强度时才能标记 `explicit`，否则使用 `provider_default` 或 `unavailable`。本任务不增加虚假的强度切换入口。
+- [x] 实现 `FooterStatus` 纯投影，并扩展 `tests/terminal/test_status_line.py` 与 `test_app.py`，固定左侧“会话上下文条 + 百分比”、右侧“模型 + 推理强度”、中部活动/取消/未读提示的优先级。
+- [x] 修改 `VeraHeader`/`VeraStatusLine`，避免顶部与底部重复模型和活动事实；状态始终有文字，颜色和动画只增强，不作为唯一信息。
+- [x] 终端进度采用固定宽度短条形而非环形；高对比/无色保留边界与百分比，60×16 按任务 0038 用户确认的优先级缩短字段但不伪造零值。
+- [x] `VERA_NO_ANIMATIONS`、reduced motion 或 no-color 时使用静态符号，不伪造进度百分比。
 
 ### 5. 尺寸、快照与终端能力
 
-- [ ] 更新 `tests/terminal/test_layout_matrix.py`、`test_snapshots.py` 和快照夹具，固定 60×16、80×24、120×40 的 new/resumed/approval/failure。
-- [ ] 断言小终端仍可看到审批事实和 Composer；Logo 必须先降级或隐藏，不能挤走操作区。
-- [ ] 添加 Plain/JSON 回归，证明视觉改动没有 ANSI 泄漏或结构化字段变化。
+- [x] 更新 `tests/terminal/test_layout_matrix.py`、`test_snapshots.py` 和快照夹具，固定 60×16、80×24、120×40 的 new/resumed/approval/failure。
+- [x] 断言小终端仍可看到审批事实和 Composer；Logo 必须先降级或隐藏，不能挤走操作区。
+- [x] 添加 Plain/JSON 回归，证明视觉改动没有 ANSI 泄漏或结构化字段变化。
 
 ## 局部验证与提交
 
@@ -101,3 +101,14 @@ git commit -m "feat: add Vera terminal identity and themes"
 - full/compact/ascii 自动降级，不依赖 Nerd Font 或颜色。
 - 三类主题语义一致，状态移除颜色后仍可理解。
 - Plain/JSON、审批默认值、Core Event 和退出码未被视觉实现改变。
+
+## 验证证据
+
+- 局部测试：`tests/presentation/test_footer_status.py`、`tests/session/test_status.py`、`tests/terminal/test_brand.py`、`test_theme.py`、`test_welcome.py`、`test_status_line.py`、`test_layout.py`、`test_layout_matrix.py`、`test_snapshots.py`、`test_app.py`、`tests/cli/test_plain_session.py`、`test_json_session.py`、`test_session_presenter.py`、`tests/models/test_openai_compatible.py` 通过。
+- 共同门禁：完整非 live 产品测试 `1036 passed, 2 deselected`；`ruff check`/`ruff format --check`/`mypy src`/`git diff --check` 通过；`uv build` 产出 `dist/vera_agent-0.1.0-py3-none-any.whl`。
+- JSON `session.status` 增加 Provider 中立 `reasoning`；Fake 为 `unavailable`，OpenAI 兼容适配器为 `provider_default`；无 ANSI。TUI 60×16 保留上下文百分比并隐藏 Welcome；80×24 两行 `VERA` 品牌。未改审批默认值或退出码。
+
+## 未决
+
+- 时间线主轴、用户消息锚点与一行工具披露归任务 0040。
+- 真实 Terminal.app 走查仍待用户；不得因此将阶段七标为 Complete。

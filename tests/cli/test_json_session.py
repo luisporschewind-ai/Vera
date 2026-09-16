@@ -61,7 +61,10 @@ def test_invalid_line_emits_structured_error_and_continues(tmp_path: Path) -> No
     assert driver.run(source, target) == 0
     records = [json.loads(line) for line in target.getvalue().splitlines()]
     assert records[0]["event"]["type"] == "session.input_failed"
-    assert any(item.get("event") and item["event"]["type"] == "session.status" for item in records)
+    status = next(item["event"] for item in records if item["event"]["type"] == "session.status")
+    assert status["payload"]["reasoning"]["mode"] == "unavailable"
+    assert status["payload"]["reasoning"]["effort"] is None
+    assert "\u001b" not in target.getvalue()
 
 
 def test_json_session_queues_without_parsing_ui_text(tmp_path: Path) -> None:
