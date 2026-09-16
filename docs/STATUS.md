@@ -1,8 +1,8 @@
 # Vera 状态
 
-**更新日期：** 2026-09-16
+**更新日期：** 2026-09-17
 **当前阶段：** 阶段 7——CLI 体验收口与个人主力化（Ready for manual acceptance）
-**仓库状态：** 阶段五停在 Ready for manual acceptance。阶段六已 Complete。阶段七任务 0034–0037、0043、0038–0040、0044–0047 Done。任务 0041 自动门禁完成，停在 Ready for manual acceptance；`/runs`、Resize、滚动锚点、复制、高对比、`-r`、`/new`/`/clear`、60×16、NO_COLOR、异常退出已过。`TERM=dumb` 未跑。发现 42 Low 未关。20 次 dogfood 未完成。未收到封存原文。不引入 Electron 代码。暂无远程时可不推送。
+**仓库状态：** 阶段五停在 Ready for manual acceptance。阶段六已 Complete。阶段七任务 0034–0037、0043、0038–0040、0044–0047 Done。任务 0041 自动门禁完成，停在 Ready for manual acceptance；第 3 项尺寸/兼容已过。发现 42 Low 未关。第 2 项其余步骤、第 4 项与 20 次 dogfood 未完成。未收到封存原文。不引入 Electron 代码。暂无远程时可不推送。
 
 ## 已完成
 
@@ -50,6 +50,7 @@
 
 ## 最近验证
 
+- 2026-09-17 任务 0041 第 3 项：60×16、NO_COLOR、TERM=dumb、异常退出 Terminal.app 复验通过。
 - 2026-09-16 任务 0047：发现 44/45 Terminal.app 复验通过。`193d35b` 接受裸 `-r`；`fb4c256` 让 `/new`/`/clear` 回到干净首屏。
 - 2026-09-16 任务 0046：发现 46 Terminal.app 复验通过。`2413834` 已去掉高对比时间线白边并在切主题后重绘。
 - 2026-09-16 任务 0045：发现 43 Terminal.app 复验通过。`6c1ba9d` 已把非法 tool JSON 写回模型，不再整轮 `model_error`。
