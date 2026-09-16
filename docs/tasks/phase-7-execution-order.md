@@ -35,7 +35,7 @@
 | 8 | [0040 时间线、Composer 与导航收口](0040-timeline-composer-and-navigation-polish.md) | 对话主轴、用户消息锚点/时间、输入箭头、审批密度、稳定滚动 | PTY、Pilot、快照、性能矩阵通过 |
 | 9 | [0041 阶段七产品验收与个人 dogfood](0041-phase-7-product-acceptance-and-dogfood.md) | wheel 回归、真实 Terminal.app/工程证据、缺陷闭环 | 用户原文确认后才可封存阶段七 |
 | — | [0044 走查发现 38–41](0044-cli-dogfood-propose-and-sticky.md) | propose 失败回写、sticky/缩放、上下文条 | Done；用户 Terminal.app 复验通过 |
-| — | [0045 走查发现 43](0045-cli-dogfood-invalid-tool-arguments.md) | 非法 tool JSON 写回并重试，不杀死 Run | 局部测试通过；真实 Terminal.app 复验待用户 |
+| — | [0045 走查发现 43](0045-cli-dogfood-invalid-tool-arguments.md) | 非法 tool JSON 写回并重试，不杀死 Run | Done；用户 Terminal.app 复验通过 |
 
 任务必须严格按 0034 → 0035 → 0036 → 0037 → 0043 → 0038 → 0039 → 0040 → 0041 执行。0043 完成项目上下文基线后再进入视觉任务；0038 是产品视觉审批任务，不得与 0039 并行实施；0039–0040 不得为了视觉便利回改持久化或项目指令语义。
 

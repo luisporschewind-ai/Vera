@@ -2,8 +2,8 @@
 
 > 供主实现 Agent 执行：阶段七 Terminal.app 继续编辑路径上，截断/非法 tool JSON 应回写 tool 错误并让模型重试。不新开规格，不开始阶段八。
 
-**状态：** In progress
-**执行就绪：** 是；任务 0044 已 Done
+**状态：** Done
+**执行就绪：** 否；本任务已 Done
 **分支：** `phase-7/0041-product-acceptance`
 **依赖：** 任务 0041 自动门禁、任务 0044
 **规格：** [阶段七 CLI 体验收口](../specs/2026-09-13-cli-experience-and-personal-dogfood.md)
@@ -39,7 +39,7 @@ git diff --check
 
 - 局部测试：`tests/models/test_tool_arguments.py`、`test_streaming.py`、`test_openai_compatible.py`、`tests/runtime/test_safe_editing_flow.py`、`tests/presentation/test_errors.py` 共 44 passed。
 - `ruff check` / `ruff format --check` / `mypy src` / `git diff --check` 通过。
-- 真实 Terminal.app 复验待用户：同一句「新建第五页并从第四页接入跳转」。
+- 2026-09-16 用户在原生 Terminal.app / VeraTestDemo 对同一句「新建第五页并从第四页接入跳转」复验通过（`6c1ba9d`）。发现 43 关闭。
 
 ## 未决
 

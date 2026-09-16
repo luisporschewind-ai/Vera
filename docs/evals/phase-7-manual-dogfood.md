@@ -3,7 +3,7 @@
 **规格：** [阶段七 CLI 体验收口](../specs/2026-09-13-cli-experience-and-personal-dogfood.md)  
 **任务：** [0041](../tasks/0041-phase-7-product-acceptance-and-dogfood.md)  
 **日期：** 2026-09-16  
-**结果：** 2026-09-16 原生 Terminal.app 主路径部分走查。发现 38–41 已复验关闭。`vera -c` 恢复会话并通过「继续」理解上一轮；随后「新建第五页并从第四页接入跳转」失败 `model_error` / `invalid tool arguments`（发现 43）。未收到封存原文。
+**结果：** 2026-09-16 原生 Terminal.app 主路径部分走查。发现 38–41、43 已复验关闭。`vera -c` 恢复会话、「继续」与「新建第五页」续写已通过。第 1 项尚未 `/runs`。发现 42：助手正文里路径高亮把标识符从中间折行。未收到封存原文。
 
 严重度：Critical（权限/数据/错误应用）、High（主流程不可用/输入丢失/状态误导）、Medium（高频摩擦）、Low（视觉细节）。
 
@@ -29,8 +29,8 @@
 | 工程 | VeraTestDemo（Swift/Xcode） |
 | 步骤 | 新会话 → 第四页加测试按钮 → 审批/验证 → 退出 → `vera -c` → 输入「继续」 |
 | 预期 | 会话可恢复；第二轮理解“刚才/继续”；审批默认 Cancel；验证产物不污染工程；旧 run 证据仍可打开 |
-| 实际 | 首次失败后 `b42ed76` 复验通过。`vera -c` 标题为「恢复会话」，「继续」能引用上一轮 changeset/run 与第四页已落地，且因目标不够具体未擅自改文件。Sticky 贴标题下，上下文条 `<1%`。尚未 `/runs`。助手列表把 `FourthViewController.swift` / `Base.lproj` 从中间折行（发现 42）。同一会话续写第五页时 `model_error`（发现 43）。 |
-| 严重度 | 发现 38–41 已复验关闭 |
+| 实际 | 首次失败后 `b42ed76` 复验通过。`vera -c` 标题为「恢复会话」，「继续」能引用上一轮 changeset/run 与第四页已落地。Sticky 贴标题下，上下文条 `<1%`。`6c1ba9d` 后续写第五页通过。尚未 `/runs`。助手列表把 `FourthViewController.swift` / `Base.lproj` 从中间折行（发现 42）。 |
+| 严重度 | 发现 38–41、43 已复验关闭 |
 | 证据 | 脱敏：失败诊断含 `HTTP 400` 与 `reasoning_content`；验证错误码 `verification_artifact_isolation_unavailable`；无工作区副作用 |
 
 ## 2. 恢复与会话维护
@@ -81,8 +81,8 @@
 | 1 | 2026-09-16 | VeraTestDemo | 第四页加测试按钮 | 失败 `model_error` | 否 | High | 发现 38，已修 |
 | 2 | 2026-09-16 | VeraTestDemo | 同路径复验 `b42ed76` | 通过 | 否 | 无 | 发现 38–41 关闭 |
 | 3 | 2026-09-16 | VeraTestDemo | `vera -c` 后输入「继续」 | 完成（只读，未改文件） | 是 | Low | 发现 42 折行 |
-| 4 | 2026-09-16 | VeraTestDemo | `vera -c` 后「新建第五页并从第四页接入跳转」 | 失败 `model_error` | 是 | High | 发现 43 |
-| 5 | | | | Not run | | | |
+| 4 | 2026-09-16 | VeraTestDemo | `vera -c` 后「新建第五页并从第四页接入跳转」 | 失败 `model_error` | 是 | High | 发现 43，已修 |
+| 5 | 2026-09-16 | VeraTestDemo | 同路径复验 `6c1ba9d` | 通过 | 是 | 无 | 发现 43 关闭 |
 | 6 | | | | Not run | | | |
 | 7 | | | | Not run | | | |
 | 8 | | | | Not run | | | |
@@ -109,6 +109,6 @@
 | 41 | 主路径 | 短会话上下文条显示 0% | Medium | 0044 修复；复验通过 |
 | — | 主路径 | 工程根未长出 `build/` | 无 | 通过 |
 | 42 | `vera -c` | 助手 Markdown 路径高亮把 `FourthViewController.swift`、`Base.lproj` 从中间折行 | Low | 本阶段可修或后续汇总；不挡继续/恢复 |
-| 43 | `vera -c` 续写 | 大 `propose_changeset` 参数 JSON 非法/截断后整轮 `model_error` | High | 0045 修正；待用户 Terminal.app 复验 |
+| 43 | `vera -c` 续写 | 大 `propose_changeset` 参数 JSON 非法/截断后整轮 `model_error` | High | 0045 修复；用户 2026-09-16 Terminal.app 复验通过 |
 
-发现 38–41 已关闭。发现 43 待复验。主路径尚未 `/runs`。20 次 dogfood 未完成，阶段七仍不 Complete。
+发现 38–41、43 已关闭。主路径尚未 `/runs`。20 次 dogfood 未完成，阶段七仍不 Complete。
