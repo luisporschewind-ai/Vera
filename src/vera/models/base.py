@@ -18,6 +18,7 @@ class ModelToolCall(BaseModel):
     call_id: str
     name: str
     arguments: dict[str, JsonValue]
+    parse_error: str | None = None
 
 
 class ModelMessage(BaseModel):

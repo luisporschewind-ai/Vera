@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 from vera.models.base import ModelToolCall, ModelTurn, ModelUsage
 from vera.models.errors import ModelErrorCode, ModelProviderError
+from vera.models.tool_arguments import decode_tool_arguments
 
 
 @dataclass(frozen=True)
@@ -69,33 +69,21 @@ class ModelStreamAccumulator:
         usage: ModelUsage | None = None,
         provider_request_id: str | None = None,
     ) -> ModelTurn:
-        import json
-
         calls: list[ModelToolCall] = []
         for index in sorted(self.tools):
             draft = self.tools[index]
-            try:
-                arguments: Any = json.loads(draft.arguments or "{}")
-            except json.JSONDecodeError as exc:
-                raise ModelProviderError(
-                    ModelErrorCode.INVALID_RESPONSE,
-                    "provider returned invalid tool arguments",
-                ) from exc
-            if not isinstance(arguments, dict):
-                raise ModelProviderError(
-                    ModelErrorCode.INVALID_RESPONSE,
-                    "tool arguments must be an object",
-                )
             if not draft.name:
                 raise ModelProviderError(
                     ModelErrorCode.INVALID_RESPONSE,
                     "provider returned incomplete tool call",
                 )
+            arguments, parse_error = decode_tool_arguments(draft.arguments)
             calls.append(
                 ModelToolCall(
                     call_id=draft.call_id or f"call_{index}",
                     name=draft.name,
                     arguments=arguments,
+                    parse_error=parse_error,
                 )
             )
         text = "".join(self.text_parts) or None

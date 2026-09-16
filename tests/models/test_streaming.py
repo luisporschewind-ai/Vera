@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import pytest
+
 from vera.models.base import FakeModelAdapter, ModelMessage, ModelRequest, ModelTurn
+from vera.models.errors import ModelErrorCode, ModelProviderError
 from vera.models.streaming import ModelStreamAccumulator, ModelStreamCompleted, ModelTextDelta
 
 
@@ -48,3 +51,33 @@ def test_accumulator_joins_tool_arguments() -> None:
     turn = accumulator.finish(finish_reason="tool_calls")
     assert turn.tool_calls[0].name == "read_file"
     assert turn.tool_calls[0].arguments == {"path": "a.py"}
+    assert turn.tool_calls[0].parse_error is None
+
+
+def test_accumulator_invalid_json_sets_parse_error() -> None:
+    accumulator = ModelStreamAccumulator()
+    accumulator.push_tool_delta(
+        0,
+        call_id="c1",
+        name="propose_changeset",
+        arguments='{"summary":"fifth page","changes":[{"path":',
+    )
+    turn = accumulator.finish(finish_reason="tool_calls")
+    assert turn.tool_calls[0].name == "propose_changeset"
+    assert turn.tool_calls[0].arguments == {}
+    assert turn.tool_calls[0].parse_error == "invalid_tool_arguments"
+
+
+def test_accumulator_non_object_json_sets_parse_error() -> None:
+    accumulator = ModelStreamAccumulator()
+    accumulator.push_tool_delta(0, call_id="c1", name="read_file", arguments="[]")
+    turn = accumulator.finish(finish_reason="tool_calls")
+    assert turn.tool_calls[0].parse_error == "invalid_tool_arguments"
+
+
+def test_accumulator_still_rejects_incomplete_name() -> None:
+    accumulator = ModelStreamAccumulator()
+    accumulator.push_tool_delta(0, call_id="c1", arguments='{"path":"a.py"}')
+    with pytest.raises(ModelProviderError) as caught:
+        accumulator.finish(finish_reason="tool_calls")
+    assert caught.value.code is ModelErrorCode.INVALID_RESPONSE

@@ -1141,6 +1141,17 @@ class VeraRuntime:
         if target:
             started["target"] = target
         yield self._event(context, "tool.started", started)
+        if call.parse_error:
+            yield from self._reject_tool(
+                context,
+                call,
+                {
+                    "error": call.parse_error,
+                    "reason_code": call.parse_error,
+                    "suggestion": "resend the tool call as a single complete JSON object",
+                },
+            )
+            return
         if call.name == "propose_changeset":
             yield from self._propose(context, call)
             return

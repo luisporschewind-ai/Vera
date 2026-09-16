@@ -46,6 +46,7 @@ _REASON_TEXT: dict[str, str] = {
     "workspace_polluted": "验证意外写入了工作区",
     "artifact_cleanup_failed": "外部验证产物清理失败",
     "verification_not_planned": "验证命令尚未规划隔离",
+    "invalid_tool_arguments": "模型给出的工具参数不是合法 JSON",
     "verification_artifact_isolation_unavailable": "该验证命令没有隔离 Profile",
     "verification_output_inside_workspace": "验证输出路径位于工作区",
     "verification_output_not_owned": "验证输出路径不受 Vera 管理",

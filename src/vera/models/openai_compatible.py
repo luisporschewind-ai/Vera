@@ -31,6 +31,7 @@ from vera.models.streaming import (
     ModelStreamItem,
     ModelTextDelta,
 )
+from vera.models.tool_arguments import decode_tool_arguments
 from vera.runtime.context import normalize_tool_transcript
 
 
@@ -312,21 +313,18 @@ class OpenAICompatibleAdapter:
         calls: list[ModelToolCall] = []
         for raw_call in _get(message, "tool_calls", []) or []:
             function = _get(raw_call, "function")
-            try:
-                arguments = json.loads(_get(function, "arguments", "{}"))
-            except (TypeError, json.JSONDecodeError) as exc:
+            name = str(_get(function, "name", "") or "")
+            if not name:
                 raise ModelProviderError(
-                    ModelErrorCode.INVALID_RESPONSE, "provider returned invalid tool arguments"
-                ) from exc
-            if not isinstance(arguments, dict):
-                raise ModelProviderError(
-                    ModelErrorCode.INVALID_RESPONSE, "tool arguments must be an object"
+                    ModelErrorCode.INVALID_RESPONSE, "provider returned incomplete tool call"
                 )
+            arguments, parse_error = decode_tool_arguments(_get(function, "arguments", "{}"))
             calls.append(
                 ModelToolCall(
                     call_id=str(_get(raw_call, "id", "")),
-                    name=str(_get(function, "name", "")),
+                    name=name,
                     arguments=arguments,
+                    parse_error=parse_error,
                 )
             )
         usage_value = _get(response, "usage")

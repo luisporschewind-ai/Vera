@@ -459,6 +459,78 @@ def test_unisolated_verification_lets_model_retry_without_thinking_break(
     assert tool.tool_call_id == "call_bad"
 
 
+def test_invalid_tool_json_lets_model_retry_without_killing_run(tmp_path: Path) -> None:
+    (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
+    adapter = FakeModelAdapter(
+        [
+            ModelTurn(
+                finish_reason="tool_calls",
+                reasoning_content="准备提出第五页",
+                tool_calls=(
+                    ModelToolCall(
+                        call_id="call_truncated",
+                        name="propose_changeset",
+                        arguments={},
+                        parse_error="invalid_tool_arguments",
+                    ),
+                ),
+            ),
+            ModelTurn(
+                finish_reason="tool_calls",
+                reasoning_content="改成完整 JSON 再提",
+                tool_calls=(
+                    ModelToolCall(
+                        call_id="call_ok",
+                        name="propose_changeset",
+                        arguments={
+                            "summary": "add fifth page",
+                            "changes": [
+                                {
+                                    "operation": "update",
+                                    "path": "hello.txt",
+                                    "after_content": "new\n",
+                                }
+                            ],
+                        },
+                    ),
+                ),
+            ),
+        ]
+    )
+    runtime = VeraRuntime(
+        adapter,
+        ToolRegistry(),
+        tmp_path / "state",
+        artifact_prefix=tmp_path / "vera-verification",
+        installation_id="install-test",
+    )
+    start_events = list(
+        runtime.handle(StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake"))
+    )
+    completed = [event for event in start_events if event.type == "tool.completed"]
+    assert completed
+    assert completed[0].payload["ok"] is False
+    assert completed[0].payload["call_id"] == "call_truncated"
+    assert completed[0].payload["reason_code"] == "invalid_tool_arguments"
+    assert not any(event.type == "run.failed" for event in start_events)
+    assert any(event.type == "approval.required" for event in start_events)
+    assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "old\n"
+    follow_up = adapter.requests[1]
+    assistant = next(
+        message
+        for message in reversed(follow_up.messages)
+        if message.role == "assistant" and message.tool_calls
+    )
+    assert assistant.reasoning_content == "准备提出第五页"
+    assert assistant.tool_calls[0].call_id == "call_truncated"
+    tool = next(
+        message
+        for message in follow_up.messages
+        if message.role == "tool" and message.tool_call_id == "call_truncated"
+    )
+    assert "invalid_tool_arguments" in tool.content
+
+
 def test_model_supplied_artifact_plan_is_ignored(tmp_path: Path) -> None:
     (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
     runtime = VeraRuntime(
