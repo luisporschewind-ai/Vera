@@ -23,6 +23,7 @@ from vera.content.envelope import (
     EMPTY_SECURITY_CONTEXT_HASH,
     build_content_envelope,
     render_content_for_model,
+    render_project_guidance_for_model,
 )
 from vera.content.trust import source_kind_for_path
 from vera.contracts.approvals import ApprovalRequest
@@ -59,6 +60,7 @@ from vera.persistence.recovery_snapshot import RecoverySnapshotError, RecoverySn
 from vera.persistence.run_store import RunStore
 from vera.policy.engine import PolicyEngine
 from vera.policy.snapshot import EffectivePolicySnapshot
+from vera.project_instructions import ProjectInstructionService
 from vera.recovery.coordinator import RecoveryCoordinator
 from vera.recovery.hydrator import RecoveryHydrationError, RecoveryHydrator
 from vera.recovery.models import PersistedChangeSet, RecoverySnapshot
@@ -173,6 +175,7 @@ class VeraRuntime:
         retry_policy: RetryPolicy | None = None,
         sleep: Callable[[float], None] = default_sleep,
         content_detector: ContentDetector | None = None,
+        project_instructions: ProjectInstructionService | None = None,
     ) -> None:
         self.adapter = adapter
         self.registry = registry
@@ -185,6 +188,7 @@ class VeraRuntime:
         self.content_detector = SafeContentDetector(
             content_detector or BaselinePromptInjectionDetector()
         )
+        self.project_instructions = project_instructions or ProjectInstructionService()
         if policy_engine is not None:
             self.policy_engine = policy_engine
         elif command_policy is not None:
@@ -266,6 +270,8 @@ class VeraRuntime:
         command = context.command
         system = COMPACTION_PROMPT if command.mode == "compact" else SYSTEM_PROMPT
         context.messages.append(ModelMessage(role="system", content=system))
+        if command.mode != "compact":
+            yield from self._seed_project_instructions(context)
         for message in command.conversation:
             yield from self._append_conversation_message(context, message)
         envelope, rendered, events = self._prepare_content(
@@ -278,6 +284,54 @@ class VeraRuntime:
         context.messages.append(ModelMessage(role="user", content=rendered))
         yield from events
         context.context_bytes = sum(len(item.content.encode("utf-8")) for item in context.messages)
+
+    def _seed_project_instructions(self, context: RunContext) -> Iterator[EventEnvelope]:
+        loaded = self.project_instructions.load(context.command.workspace_root)
+        context.project_instructions = loaded
+        yield self._event(
+            context,
+            "project.instructions.loaded",
+            {
+                "guidance_hash": loaded.guidance_hash,
+                "sources": [
+                    {
+                        "name": item.name,
+                        "priority": item.priority,
+                        "content_hash": item.content_hash,
+                        "byte_count": item.byte_count,
+                    }
+                    for item in loaded.sources
+                ],
+            },
+        )
+        if loaded.issues:
+            yield self._event(
+                context,
+                "project.instructions.skipped",
+                {
+                    "issues": [
+                        {"name": item.name, "reason_code": item.reason_code}
+                        for item in loaded.issues
+                    ],
+                },
+            )
+        rendered_items: list[tuple[Any, str, int]] = []
+        for source in loaded.sources:
+            envelope, _rendered, events = self._prepare_content(
+                context,
+                source.content,
+                source_kind="project_guidance",
+                origin=source.name,
+            )
+            yield from events
+            rendered_items.append((envelope, source.content, source.priority))
+        if rendered_items:
+            context.messages.append(
+                ModelMessage(
+                    role="user",
+                    content=render_project_guidance_for_model(rendered_items),
+                )
+            )
 
     def _append_conversation_message(
         self, context: RunContext, message: ConversationMessage
@@ -603,6 +657,15 @@ class VeraRuntime:
     def _propose(self, context: RunContext, call: ModelToolCall) -> Iterator[EventEnvelope]:
         try:
             proposal = ProposalInput.model_validate(call.arguments)
+            invalid_init = context.command.mode == "project_init" and (
+                len(proposal.changes) != 1
+                or proposal.changes[0].path != "VERA.md"
+                or proposal.changes[0].operation not in {"create", "update"}
+                or proposal.verification
+            )
+            if invalid_init:
+                yield from self._fail(context, "project_init_scope_violation")
+                return
             planned = self._plan_verification(context, proposal.verification)
             built = ChangeSetBuilder(WorkspacePaths(context.command.workspace_root)).build(
                 context.run_id,
@@ -625,15 +688,24 @@ class VeraRuntime:
             yield self._event(context, "tool.completed", failed)
             return
         except Exception as exc:
+            if context.command.mode == "project_init":
+                yield from self._fail(context, "project_init_scope_violation")
+                return
             failed = {"name": call.name, "ok": False, "error": str(exc)}
             target = tool_call_target(call)
             if target:
                 failed["target"] = target
             yield self._event(context, "tool.completed", failed)
             return
+        change_set = built.change_set
+        if context.command.mode == "project_init":
+            try:
+                self.project_instructions.validate_init_changeset(change_set)
+            except ValueError:
+                yield from self._fail(context, "project_init_scope_violation")
+                return
         context.built_change_set = built
         context.machine.transition(RunState.CHANGESET_PROPOSED)
-        change_set = built.change_set
         yield self._event(
             context,
             "changeset.proposed",

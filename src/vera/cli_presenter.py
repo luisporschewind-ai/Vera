@@ -7,6 +7,7 @@ from collections.abc import Callable, Sequence
 
 from vera.contracts.events import EventEnvelope
 from vera.presentation.event_copy import event_title, is_silent
+from vera.project_instructions import format_instruction_status
 from vera.redaction import Redactor
 
 
@@ -113,6 +114,16 @@ class HumanPresenter:
                 self._write(stdout.rstrip("\n"))
             if isinstance(stderr, str) and stderr:
                 self._write(stderr.rstrip("\n"))
+        elif event.type in {
+            "project.instructions.loaded",
+            "project.instructions.skipped",
+            "project.instructions.status",
+        }:
+            text = payload.get("text")
+            if isinstance(text, str) and text.strip():
+                self._write(text)
+            else:
+                self._write(format_instruction_status(payload))
         elif event.type == "run.completed":
             self._write(f"任务完成：{event.run_id}（{payload.get('state', 'completed')}）")
         elif event.type == "run.failed":

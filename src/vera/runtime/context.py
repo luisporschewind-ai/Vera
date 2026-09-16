@@ -13,6 +13,7 @@ from vera.contracts.recovery import RecoveryPlan
 from vera.contracts.verification import VerificationCommand
 from vera.models.base import ModelMessage, ModelToolCall
 from vera.persistence.journal import EventJournal
+from vera.project_instructions import ProjectInstructionSet
 from vera.redaction import Redactor
 from vera.runtime.approval import ApprovalGate
 from vera.runtime.state import RunStateMachine
@@ -250,3 +251,4 @@ class RunContext:
     security_findings: tuple[ContentFinding, ...] = ()
     security_context_hash: str | None = None
     findings_truncated: bool = False
+    project_instructions: ProjectInstructionSet | None = None

@@ -3,7 +3,7 @@
 import json
 import sys
 from pathlib import Path
-from typing import Annotated, NoReturn, cast
+from typing import Annotated, Literal, NoReturn, cast
 
 import typer
 
@@ -28,6 +28,7 @@ from vera.contracts.events import EventEnvelope
 from vera.persistence.run_store import RunStore
 from vera.persistence.session_store import ConversationSessionStore
 from vera.redaction import Redactor
+from vera.runtime.prompts import PROJECT_INIT_GOAL
 from vera.session.controller import SessionController
 from vera.session.startup import (
     SessionOpenRequest,
@@ -314,6 +315,8 @@ def execute_run(
     model_profile: str | None,
     json_output: bool,
     dependencies: RuntimeDependencies | None = None,
+    *,
+    mode: Literal["agent", "project_init"] = "agent",
 ) -> int:
     try:
         deps = dependencies or build_runtime(workspace, model_profile)
@@ -336,6 +339,7 @@ def execute_run(
             goal=goal,
             workspace_root=workspace,
             model_profile=selected,
+            mode=mode,
         ),
         decide,
         lambda batch: _render(list(batch), json_output),
@@ -351,6 +355,25 @@ def run(
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
     raise typer.Exit(execute_run(goal, workspace.resolve(), model, json_output))
+
+
+@app.command(help="只提议 VERA.md，批准后写入")
+def init(
+    workspace: Annotated[Path, typer.Option()] = Path("."),
+    model: Annotated[str | None, typer.Option()] = None,
+    json_output: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """只提议 VERA.md，批准后写入。"""
+
+    raise typer.Exit(
+        execute_run(
+            PROJECT_INIT_GOAL,
+            workspace.resolve(),
+            model,
+            json_output,
+            mode="project_init",
+        )
+    )
 
 
 @runs_app.command("list")

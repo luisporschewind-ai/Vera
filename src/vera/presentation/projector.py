@@ -24,6 +24,7 @@ from vera.presentation.event_copy import (
 from vera.presentation.sanitize import sanitize_terminal_text
 from vera.presentation.status_panel import format_status_panel
 from vera.presentation.timeline import BlockKind, BlockStatus, TimelineBlock
+from vera.project_instructions import format_instruction_status
 from vera.redaction import Redactor
 from vera.session.models import SessionStatus
 
@@ -195,6 +196,9 @@ class TimelineProjector:
             "session.loaded": self._session_loaded,
             "session.listed": self._session_message,
             "session.load_failed": self._persistence_warning,
+            "project.instructions.loaded": self._instruction_status,
+            "project.instructions.skipped": self._instruction_status,
+            "project.instructions.status": self._instruction_status,
         }
         if event.type in _SIDE_EFFECT_EVENTS:
             self._side_effect_runs.add(event.run_id)
@@ -707,6 +711,21 @@ class TimelineProjector:
             title=event_title(event.type),
             body=sanitize_terminal_text(body),
             status=BlockStatus.FAILED,
+        )
+
+    def _instruction_status(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
+        text = event.payload.get("text")
+        if isinstance(text, str) and text.strip():
+            body = text.strip()
+        else:
+            body = format_instruction_status(dict(event.payload))
+        return self._append(
+            block_id=f"{event.run_id}:{event.sequence}:status",
+            run_id=event.run_id,
+            kind=BlockKind.STATUS,
+            title=event_title(event.type),
+            body=sanitize_terminal_text(body),
+            status=BlockStatus.SUCCEEDED,
         )
 
     def _session_loaded(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:

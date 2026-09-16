@@ -75,6 +75,8 @@ def test_manifest_serialization_is_stable_and_excludes_ui_surface() -> None:
     assert payload["compatibility_rules"]["additive"] == COMPATIBILITY_RULES["additive"]
     assert payload["compatibility_rules"]["deprecated"] == COMPATIBILITY_RULES["deprecated"]
     assert payload["compatibility_rules"]["breaking"] == COMPATIBILITY_RULES["breaking"]
+    assert "project_init" in payload["compatibility_rules"]["additive"]
+    assert "project.instructions.loaded" in payload["compatibility_rules"]["additive"]
 
 
 def test_public_models_still_round_trip_under_frozen_schema() -> None:

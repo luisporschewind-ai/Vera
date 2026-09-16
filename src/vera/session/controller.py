@@ -27,6 +27,11 @@ from vera.contracts.streaming import RuntimeOutput
 from vera.persistence.errors import PersistenceFault
 from vera.persistence.run_store import RunStore
 from vera.persistence.session_store import ConversationSessionStore, LoadedConversationSession
+from vera.project_instructions import (
+    format_instruction_status,
+    public_instruction_facts,
+)
+from vera.runtime.prompts import PROJECT_INIT_GOAL
 from vera.session.actions import (
     CancelActiveRun,
     ClearQueuedPrompt,
@@ -119,6 +124,7 @@ class SessionController:
         self._title = "新会话"
         self._last_saved_sequence: int | None = None
         self._source: Literal["new", "continued", "resumed"] = source or "new"
+        self._run_guidance_hash: str | None = None
         if loaded_session is None:
             loaded_session = self.session_store.create(self.workspace)
             self._source = source or "new"
@@ -239,6 +245,7 @@ class SessionController:
         self._source = "new"
         self._apply_loaded_session(loaded, restore_history=True)
         self.queued_prompt = None
+        self._run_guidance_hash = None
         return loaded.session_id
 
     def mark_active(self, run_id: str) -> None:
@@ -486,6 +493,9 @@ class SessionController:
                 self._events_for_active.append(output)
                 if output.type == "run.started" or self._active_run_id is None:
                     self._active_run_id = output.run_id
+                if output.type == "project.instructions.loaded":
+                    digest = output.payload.get("guidance_hash")
+                    self._run_guidance_hash = digest if isinstance(digest, str) else None
                 if output.type == "approval.required":
                     self._active_run_id = output.run_id
                     self._pending_approval = output
@@ -819,6 +829,47 @@ class SessionController:
     def _cmd_permissions(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
         status = permission_status(self.dependencies.runtime.command_policy)
         yield self._session_event("session.permissions", status.model_dump(mode="json"))
+
+    def _cmd_instructions(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        loaded = self.dependencies.project_instructions.load(self.workspace)
+        facts = public_instruction_facts(loaded)
+        pending = (
+            self._run_guidance_hash is not None and self._run_guidance_hash != loaded.guidance_hash
+        )
+        payload: dict[str, object] = {
+            **facts,
+            "run_guidance_hash": self._run_guidance_hash,
+            "not_found": not loaded.sources and not loaded.issues,
+            "pending_next_run": pending,
+        }
+        payload["text"] = format_instruction_status(payload)
+        yield self._session_event("project.instructions.status", payload)
+
+    def _cmd_init(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        if self._active_run_id is not None:
+            pending = self._pending_approval is not None
+            yield self._session_event(
+                "session.action_rejected",
+                {
+                    "reason_code": "approval_pending" if pending else "run_active",
+                    "message": (
+                        "等待审批时不能启动初始化。"
+                        if pending
+                        else "当前有运行中的任务，请先等待、取消或完成审批。"
+                    ),
+                },
+            )
+            return
+        command = StartRun(
+            goal=PROJECT_INIT_GOAL,
+            workspace_root=self.workspace,
+            model_profile=self.model_profile,
+            conversation=self.conversation.snapshot(),
+            mode="project_init",
+        )
+        self._goal_for_active = PROJECT_INIT_GOAL
+        self._events_for_active = []
+        yield from self._drive(command)
 
     def _cmd_sessions(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
         summaries = self.session_store.list_for_workspace(self.workspace)

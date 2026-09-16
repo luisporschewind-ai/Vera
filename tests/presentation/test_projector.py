@@ -425,6 +425,34 @@ def test_applied_changeset_marks_proposal_diff_written() -> None:
     assert diff_update.block.status is BlockStatus.SUCCEEDED
 
 
+def test_project_instruction_status_hides_body() -> None:
+    projector = TimelineProjector()
+    block = only_appended_block(
+        projector.apply(
+            event(
+                "project.instructions.status",
+                payload={
+                    "guidance_hash": "a" * 64,
+                    "sources": [
+                        {
+                            "name": "AGENTS.md",
+                            "priority": 10,
+                            "content_hash": "b" * 64,
+                            "byte_count": 12,
+                        }
+                    ],
+                    "issues": [],
+                    "text": "已加载 AGENTS.md 优先级 10 bbbbbbbbbbbb 12 bytes",
+                },
+            )
+        )
+    )
+    assert "已加载" in block.body
+    assert "AGENTS.md" in block.body
+    assert "secret-body" not in block.body
+    assert block.title == "项目指令"
+
+
 def test_session_diff_unapplied_keeps_proposal_label() -> None:
     block = only_appended_block(
         TimelineProjector().apply(

@@ -164,6 +164,14 @@ def main(argv: list[str]) -> int:
         sys.stderr.write(default_mode.stdout + default_mode.stderr)
         return default_mode.returncode or 1
 
+    no_continue = _run([str(vera), "--json", "-c"], cwd=workspace, env=ready)
+    if no_continue.returncode != 2:
+        sys.stderr.write(no_continue.stdout + no_continue.stderr)
+        return no_continue.returncode or 1
+    if "\u001b" in no_continue.stdout:
+        sys.stderr.write("continue json emitted ANSI\n")
+        return 1
+
     json_session = _run(
         [str(vera), "--json"],
         cwd=workspace,
@@ -173,14 +181,6 @@ def main(argv: list[str]) -> int:
     if json_session.returncode != 0:
         sys.stderr.write(json_session.stderr)
         return json_session.returncode or 1
-
-    no_continue = _run([str(vera), "--json", "-c"], cwd=workspace, env=ready)
-    if no_continue.returncode != 2:
-        sys.stderr.write(no_continue.stdout + no_continue.stderr)
-        return no_continue.returncode or 1
-    if "\u001b" in no_continue.stdout:
-        sys.stderr.write("continue json emitted ANSI\n")
-        return 1
 
     picker = _run(
         [str(vera), "--json", "-r"],
@@ -300,6 +300,55 @@ def main(argv: list[str]) -> int:
     after = sha256_tree(workspace)
     if after != before:
         sys.stderr.write("workspace hash changed during wheel smoke\n")
+        return 1
+
+    extra = home / "instruction-workspace"
+    extra.mkdir(parents=True)
+    (extra / "AGENTS.md").write_text("agents base\n", encoding="utf-8")
+    (extra / "VERA.md").write_text("vera extra\n", encoding="utf-8")
+    snap = sha256_tree(extra)
+    instruction_input = (
+        '{"schema_version":1,"type":"session.command","raw":"/instructions"}\n' + CLOSE_SESSION
+    )
+    instructions = _run(
+        [str(vera), "--workspace", str(extra), "--json"],
+        cwd=extra,
+        env=ready,
+        input_text=instruction_input,
+    )
+    if instructions.returncode != 0:
+        sys.stderr.write(instructions.stdout + instructions.stderr)
+        return instructions.returncode or 1
+    if "agents base" in instructions.stdout or "vera extra" in instructions.stdout:
+        sys.stderr.write("project instruction body leaked\n")
+        return 1
+    status_types = []
+    for line in instructions.stdout.splitlines():
+        if not line.strip():
+            continue
+        event = json.loads(line).get("event") or {}
+        status_types.append(event.get("type"))
+    if "project.instructions.status" not in status_types:
+        sys.stderr.write("missing project.instructions.status\n")
+        sys.stderr.write(instructions.stdout)
+        return 1
+    init_help = _run([str(vera), "init", "--help"], cwd=extra, env=env)
+    if init_help.returncode != 0 or "只提议 VERA.md" not in _ANSI.sub("", init_help.stdout):
+        sys.stderr.write(init_help.stdout + init_help.stderr)
+        return init_help.returncode or 1
+    init_json = _run(
+        [str(vera), "init", "--workspace", str(extra), "--json"],
+        cwd=extra,
+        env=ready,
+    )
+    if sha256_tree(extra) != snap:
+        sys.stderr.write("vera init wrote the workspace without approval\n")
+        return 1
+    if "agents base" in init_json.stdout:
+        sys.stderr.write("init output leaked project instruction body\n")
+        return 1
+    if sha256_tree(workspace) != before:
+        sys.stderr.write("instruction smoke mutated the primary workspace\n")
         return 1
     return 0
 

@@ -60,6 +60,9 @@ _TITLES: dict[str, str] = {
     "session.loaded": "已恢复会话",
     "session.listed": "会话列表",
     "session.load_failed": "会话恢复失败",
+    "project.instructions.loaded": "已加载项目指令",
+    "project.instructions.skipped": "已跳过项目指令",
+    "project.instructions.status": "项目指令",
 }
 
 _FIELD_LABELS: dict[str, str] = {

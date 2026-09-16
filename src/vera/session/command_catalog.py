@@ -102,6 +102,13 @@ def _always(_snapshot: SessionSnapshot) -> bool:
 DEFAULT_COMMANDS: tuple[CommandDescriptor, ...] = (
     CommandDescriptor("/help", "/help", "显示帮助", "开始", "help", enabled_when=_always),
     CommandDescriptor("/status", "/status", "显示会话状态", "开始", "status"),
+    CommandDescriptor(
+        "/instructions",
+        "/instructions",
+        "显示当前项目指令状态",
+        "开始",
+        "instructions",
+    ),
     CommandDescriptor("/context", "/context", "显示上下文统计", "会话", "context"),
     CommandDescriptor(
         "/permissions",
@@ -110,6 +117,7 @@ DEFAULT_COMMANDS: tuple[CommandDescriptor, ...] = (
         "安全",
         "permissions",
     ),
+    CommandDescriptor("/init", "/init", "提议创建或更新 VERA.md", "开始", "init"),
     CommandDescriptor("/new", "/new", "清空上下文并开始新会话", "会话", "new"),
     CommandDescriptor("/sessions", "/sessions", "列出当前工作区会话", "会话", "sessions"),
     CommandDescriptor("/clear", "/clear", "清空显示与上下文", "会话", "clear"),

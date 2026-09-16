@@ -181,6 +181,7 @@ class InteractiveSession:
             "session.theme",
             "session.listed",
             "session.loaded",
+            "project.instructions.status",
         }:
             text = event.payload.get("text")
             if isinstance(text, str) and text:
@@ -272,4 +273,11 @@ def _structured_plain(event_type: str, payload: dict[str, object]) -> str:
         return f"已恢复会话 {session_id} {title}".strip()
     if event_type == "session.listed":
         return str(payload.get("text") or "当前工作区没有会话。")
+    if event_type == "project.instructions.status":
+        from vera.project_instructions import format_instruction_status
+
+        text = payload.get("text")
+        if isinstance(text, str) and text:
+            return text
+        return format_instruction_status(payload)
     return event_type

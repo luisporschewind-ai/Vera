@@ -28,7 +28,9 @@ CURRENT_PROTOCOL_VERSION = 1
 COMPATIBILITY_RULES: dict[str, str] = {
     "additive": (
         "New optional fields, event types, or command names may be added at the "
-        "current schema_version. Existing clients may ignore unknown additive data."
+        "current schema_version. Existing clients may ignore unknown additive data. "
+        "StartRun.mode=project_init and project.instructions.loaded/skipped/status "
+        "are additive at schema_version 1; default mode remains agent."
     ),
     "deprecated": (
         "Deprecated fields remain readable at the current schema_version but must "

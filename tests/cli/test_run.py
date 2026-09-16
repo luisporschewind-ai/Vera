@@ -16,7 +16,7 @@ def test_help_lists_formal_commands() -> None:
     result = CliRunner().invoke(app, ["--help"])
     assert result.exit_code == 0
     help_text = sanitize_terminal_text(result.stdout)
-    for command in ("run", "runs", "rollback", "config"):
+    for command in ("run", "runs", "rollback", "config", "init"):
         assert command in help_text
     assert "--version" in help_text
 

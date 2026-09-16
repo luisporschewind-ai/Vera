@@ -19,6 +19,7 @@ from vera.content.envelope import (
     decode_content_envelope,
     public_envelope_facts,
     render_content_for_model,
+    render_project_guidance_for_model,
     sha256_text,
 )
 from vera.content.safety import AllowAllContentSafetyPolicy, ContentSafetyDecision
@@ -53,6 +54,7 @@ __all__ = [
     "normalize_origin",
     "public_envelope_facts",
     "render_content_for_model",
+    "render_project_guidance_for_model",
     "sha256_text",
     "source_kind_for_path",
 ]

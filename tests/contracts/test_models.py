@@ -35,6 +35,24 @@ def test_start_run_accepts_conversation_and_round_trips() -> None:
     assert restored.mode == "agent"
 
 
+def test_start_run_accepts_project_init_and_rejects_unknown_mode(tmp_path: Path) -> None:
+    command = StartRun(
+        goal="init",
+        workspace_root=tmp_path,
+        model_profile="fake",
+        mode="project_init",
+    )
+    restored = StartRun.model_validate_json(command.model_dump_json())
+    assert restored.mode == "project_init"
+    with pytest.raises(ValidationError):
+        StartRun(
+            goal="init",
+            workspace_root=tmp_path,
+            model_profile="fake",
+            mode="hack",
+        )
+
+
 def test_legacy_start_run_defaults_to_empty_agent_conversation() -> None:
     restored = StartRun.model_validate(
         {
