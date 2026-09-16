@@ -3,7 +3,7 @@
 **规格：** [阶段七 CLI 体验收口](../specs/2026-09-13-cli-experience-and-personal-dogfood.md)  
 **任务：** [0041](../tasks/0041-phase-7-product-acceptance-and-dogfood.md)  
 **日期：** 2026-09-16  
-**结果：** 2026-09-16 原生 Terminal.app 主路径部分走查。发现 38–41、43–46 已复验关闭。`/runs`、Resize、滚动锚点、复制、高对比、`-r`、`/new`/`/clear` 通过。未收到封存原文。
+**结果：** 2026-09-16 原生 Terminal.app 主路径部分走查。发现 38–41、43–46 已复验关闭。`/runs`、Resize、滚动锚点、复制、高对比、`-r`、`/new`/`/clear`、60×16、NO_COLOR、异常退出通过。`TERM=dumb` 未跑。未收到封存原文。
 
 严重度：Critical（权限/数据/错误应用）、High（主流程不可用/输入丢失/状态误导）、Medium（高频摩擦）、Low（视觉细节）。
 
@@ -51,13 +51,13 @@
 | 字段 | 内容 |
 |---|---|
 | 日期 | 2026-09-16 |
-| 环境 | 原生 Terminal.app；Resize、滚动、复制、`/theme high-contrast` |
+| 环境 | 原生 Terminal.app；Resize、滚动、复制、高对比、60×16、NO_COLOR、异常退出 |
 | 工程 | VeraTestDemo |
 | 步骤 | 复制、滚动、异常退出；确认用户消息锚点替换且右侧时间不变 |
 | 预期 | 输入不被挡；审批事实不丢；锚点替换正确；箭头不进入实际输入 |
-| 实际 | Resize 无残影通过。滚动锚点通过。复制通过。`2413834` 后高对比无残影通过。60×16、NO_COLOR、dumb、异常退出未跑。 |
+| 实际 | Resize、滚动锚点、复制、高对比通过。60×16、NO_COLOR、异常退出通过。`TERM=dumb` 未跑。 |
 | 严重度 | 发现 46 已复验关闭 |
-| 证据 | 用户确认拖动无残影；高对比切主题复验通过 |
+| 证据 | 用户确认 60×16 / NO_COLOR / 关窗口后再恢复通过 |
 
 ## 4. 信息层级与状态带
 
@@ -114,4 +114,4 @@
 | 45 | 会话维护 | `/new`/`/clear` 后上一会话仍显示，未清屏 | High | 0047 修复；用户 2026-09-16 Terminal.app 复验通过 |
 | 46 | 主题 | `/theme high-contrast` 残影、右侧异常 | Medium | 0046 修复；用户 2026-09-16 Terminal.app 复验通过 |
 
-发现 38–41、43–46 已关闭。`/runs`、Resize、滚动锚点、复制、高对比、`-r`、`/new`/`/clear` 已过。发现 42 Low 未关。第 2 项其余步骤与 20 次 dogfood 未完成，阶段七仍不 Complete。
+发现 38–41、43–46 已关闭。`/runs`、Resize、滚动锚点、复制、高对比、`-r`、`/new`/`/clear`、60×16、NO_COLOR、异常退出已过。发现 42 Low 未关。`TERM=dumb`、第 2 项其余步骤、第 4 项与 20 次 dogfood 未完成，阶段七仍不 Complete。
