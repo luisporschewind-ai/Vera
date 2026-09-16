@@ -47,7 +47,7 @@ from vera.session.actions import (
 from vera.session.conversation import ConversationContext
 from vera.session.external_editor import ExternalEditor, ExternalEditorError
 from vera.session.history import PromptHistory
-from vera.session.models import ConversationStats, ReasoningStatus
+from vera.session.models import ConversationStats, ReasoningStatus, SessionStatus
 from vera.session.permissions import permission_status
 from vera.session.status import SessionStatusService
 from vera.session.turns import ConversationTurnProjector
@@ -778,8 +778,8 @@ class SessionController:
             )
         return None
 
-    def _status_event(self) -> EventEnvelope:
-        status = self.status_service.snapshot(
+    def session_status(self) -> SessionStatus:
+        return self.status_service.snapshot(
             workspace=self.workspace,
             model_profile=self.model_profile,
             model_name=self._model_name(),
@@ -787,7 +787,9 @@ class SessionController:
             permissions=permission_status(self.dependencies.runtime.command_policy),
             reasoning=self._reasoning_status(),
         )
-        return self._session_event("session.status", status.model_dump(mode="json"))
+
+    def _status_event(self) -> EventEnvelope:
+        return self._session_event("session.status", self.session_status().model_dump(mode="json"))
 
     def _reasoning_status(self) -> ReasoningStatus:
         capabilities = getattr(self.dependencies.runtime.adapter, "capabilities", None)
@@ -909,11 +911,12 @@ class SessionController:
     def _begin_fresh_session(self, message: str) -> Iterator[RuntimeOutput]:
         session_id = self._open_new_persistent_session()
         self.clear_display_requested = True
-        yield self._session_event("session.message", {"clear_display": True, "text": ""})
-        yield from self.bootstrap_events()
         yield self._session_event(
             "session.message",
-            {"text": message.format(session_id=session_id)},
+            {
+                "clear_display": True,
+                "text": message.format(session_id=session_id),
+            },
         )
 
     def _cmd_compact(self, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:

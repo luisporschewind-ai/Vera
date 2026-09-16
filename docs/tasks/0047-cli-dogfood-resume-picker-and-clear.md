@@ -18,16 +18,16 @@
 ## 目标与边界
 
 - 裸 `vera -r` / `vera --resume` 在解析前补上内部哨兵，TTY 打开选择器；非 TTY 仍拒绝并提示传入 ID。
-- `/new` 与 `/clear` 都发出 `clear_display`、重新 bootstrap，并把标题/Welcome 切到新会话。
-- 清屏时隐藏 sticky、清空 Composer 输入历史。
+- `/new` 与 `/clear` 只发出 `clear_display`；TUI 回到干净首屏（品牌/Welcome/空时间线/Composer），不回放状态面板或恢复提示。确认只在状态栏。
+- 清屏时隐藏 sticky、清空 Composer 输入历史、清零未读条数，并保持在顶部。
 - 不改审批、不读取真实 Key、不引入桌面框架。
 
 ## 实施步骤
 
 - [x] `normalize_resume_argv`：裸 `-r`/`--resume` 补 `__PICKER__`。
 - [x] `SessionFlagGroup.parse_args` 在 Click 解析前规范化 argv。
-- [x] `/new` 与 `/clear` 共用清屏 + bootstrap；TUI 清 sticky 与 Composer 历史。
-- [x] 回写规格：`/new` 也清理当前终端展示。
+- [x] `/new` 与 `/clear` 共用清屏；TUI 回到干净首屏，不回放 bootstrap。
+- [x] 回写规格：`/new`/`/clear` 恢复干净首屏，不回放启动状态。
 
 ## 验证
 
@@ -38,10 +38,10 @@ git diff --check
 
 ## 验证证据
 
-- 局部测试：`tests/cli/test_session_flags.py`、`tests/cli/test_session.py`、`tests/session/test_controller.py`、`tests/terminal/test_app.py`、`tests/session/test_command_catalog.py` 共 69 passed。
-- 完整非 live：`1081 passed, 2 deselected`；`tests/terminal/test_scrolling.py::test_scrolled_off_user_sticks_until_replaced` 先失败后单独复跑通过，视为既有 Pilot 时序抖动，与本改动无关。
+- 局部测试：`tests/cli/test_session.py`、`tests/session/test_controller.py`、`tests/terminal/test_app.py`、`tests/presentation/test_projector.py` 等 86 passed。
+- 完整非 live：`1081 passed, 2 deselected`；滚动 sticky 一项仍是既有 Pilot 抖动。
 - `ruff check` / `ruff format --check` / `mypy src` / `git diff --check` 通过。
-- 发现 44/45 待用户在原生 Terminal.app 复验后关闭。
+- 用户 2026-09-16 复验：`-r` 选择器通过；`/new`/`/clear` 仍回放状态面板、恢复提示和「4 条新消息」，已改为干净首屏，待再验。
 
 ## 未决
 

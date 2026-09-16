@@ -258,8 +258,13 @@ class VeraTerminalApp(App[int]):
                 return
             if output.type == "session.message" and output.payload.get("clear_display"):
                 self._clear_timeline_display()
-                if not str(output.payload.get("text", "")).strip():
-                    return
+                text = str(output.payload.get("text", "")).strip()
+                if text:
+                    status = self._status_line()
+                    if status is not None:
+                        status.set_status(text)
+                self._focus_composer_unless_approval()
+                return
         mutations = self.projector.apply(output)
         timeline = self.query_one(ConversationTimeline)
         streaming_updates = [
@@ -282,16 +287,15 @@ class VeraTerminalApp(App[int]):
         }:
             self._focus_composer_unless_approval()
         pending = timeline.pending_update_count
-        if pending:
-            status = self._status_line()
-            if status is not None:
-                status.set_pending(pending)
+        status = self._status_line()
+        if status is not None:
+            status.set_pending(pending)
         if isinstance(output, EventEnvelope) and output.type == "session.message":
-            text = output.payload.get("text")
-            if isinstance(text, str) and text.strip():
+            message_text = output.payload.get("text")
+            if isinstance(message_text, str) and message_text.strip():
                 status = self._status_line()
                 if status is not None:
-                    status.set_status(text)
+                    status.set_status(message_text)
                 timeline = self.query_one(ConversationTimeline)
                 if timeline.follow_tail:
                     timeline.return_to_tail()
@@ -495,6 +499,12 @@ class VeraTerminalApp(App[int]):
         for composer in self.query(PromptComposer):
             composer.prompt_history.clear()
             composer.load_text("")
+        self._session_status = self.controller.session_status()
+        line = self._status_line()
+        if line is not None:
+            line.set_pending(0)
+        self._refresh_chrome()
+        timeline.pin_home()
 
     def _focus_composer_unless_approval(self) -> None:
         widget = self._active_approval_widget()

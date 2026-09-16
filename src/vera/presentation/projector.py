@@ -686,6 +686,8 @@ class TimelineProjector:
         )
 
     def _session_message(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
+        if event.payload.get("clear_display"):
+            return ()
         text = event.payload.get("text")
         if isinstance(text, str) and text.strip():
             body = text.strip()
@@ -695,8 +697,6 @@ class TimelineProjector:
             else:
                 first = lines[0]
                 title = first if len(first) <= 40 else first[:37] + "..."
-        elif event.payload.get("clear_display"):
-            return ()
         else:
             title = event_title(event.type)
             body = event_summary(event.payload)

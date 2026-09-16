@@ -506,12 +506,18 @@ def test_new_and_clear_create_new_persistent_sessions(tmp_path: Path) -> None:
     )
     tuple(controller.dispatch(SubmitPrompt(text="Hello")))
     old_id = controller.snapshot().session_id
-    tuple(controller.dispatch(ExecuteSlashCommand(raw="/new")))
+    events = [
+        item
+        for item in controller.dispatch(ExecuteSlashCommand(raw="/new"))
+        if isinstance(item, EventEnvelope)
+    ]
     new_id = controller.snapshot().session_id
     assert new_id != old_id
     assert controller.conversation.snapshot() == ()
     assert controller.clear_display_requested is True
     assert controller.session_source == "new"
+    assert events[0].payload.get("clear_display") is True
+    assert all(item.type != "session.status" for item in events)
     store.inner.load(old_id, workspace)
     tuple(controller.dispatch(ExecuteSlashCommand(raw="/clear")))
     assert controller.clear_display_requested is True

@@ -337,7 +337,11 @@ def test_session_status_is_startup_panel() -> None:
     assert "Workspace" in block.body
     assert "文件数" not in block.body
     cleared = projector.apply(
-        event("session.message", sequence=2, payload={"clear_display": True, "text": ""})
+        event(
+            "session.message",
+            sequence=2,
+            payload={"clear_display": True, "text": "已开始新会话"},
+        )
     )
     assert cleared == ()
 

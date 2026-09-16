@@ -348,8 +348,14 @@ async def test_new_and_clear_wipe_timeline(tmp_path: Path) -> None:
         await pilot.pause()
         assert controller.conversation.snapshot() == ()
         assert controller.session_source == "new"
-        assert "旧对话" not in " ".join(block.body for block in app.projector.blocks())
-        assert any("已开始新会话" in block.body for block in app.projector.blocks())
+        assert list(app.projector.blocks()) == []
+        assert timeline.widget_count() == 0
+        assert timeline.follow_tail is False
+        welcome = app.query_one("#welcome")
+        assert "新会话" in str(welcome.render())
+        assert "恢复会话" not in str(welcome.render())
+        footer = str(app.query_one("#status-line").render())
+        assert "条新消息" not in footer
         app.append_output(
             EventEnvelope(
                 event_id="e2",
@@ -366,14 +372,12 @@ async def test_new_and_clear_wipe_timeline(tmp_path: Path) -> None:
                 app.on_runtime_output_received(RuntimeOutputReceived(item))
         await pilot.pause()
         assert controller.conversation.snapshot() == ()
-        blocks = app.projector.blocks()
-        assert blocks
-        assert "Model" in blocks[0].body
-        assert "Workspace" in blocks[0].body
-        assert any("已清空显示" in block.body for block in blocks)
-        assert "又一段旧对话" not in " ".join(block.body for block in blocks)
+        assert list(app.projector.blocks()) == []
+        assert "又一段旧对话" not in str(app.query_one("#welcome").render())
         assert timeline.follow_tail is False
-        assert timeline.widget_count() >= 1
+        assert timeline.widget_count() == 0
+        footer = str(app.query_one("#status-line").render())
+        assert "条新消息" not in footer
 
 
 @pytest.mark.asyncio

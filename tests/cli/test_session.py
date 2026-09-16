@@ -271,7 +271,7 @@ def test_clear_resets_context_and_clears_display(tmp_path: Path) -> None:
     assert session.conversation.snapshot() == ()
     output = "\n".join(io.output)
     assert "已清空显示并开始新会话" in output
-    assert sum(1 for line in io.output if line.startswith("Model")) >= 2
+    assert sum(1 for line in io.output if line.startswith("Model")) == 1
 
 
 def test_readonly_commands_do_not_call_model(tmp_path: Path) -> None:
