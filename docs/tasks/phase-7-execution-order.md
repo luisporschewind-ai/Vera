@@ -38,7 +38,7 @@
 | — | [0045 走查发现 43](0045-cli-dogfood-invalid-tool-arguments.md) | 非法 tool JSON 写回并重试，不杀死 Run | Done；用户 Terminal.app 复验通过 |
 | — | [0046 走查发现 46](0046-cli-dogfood-high-contrast-remnant.md) | 高对比去掉时间线白边并切主题重绘 | Done；用户 Terminal.app 复验通过 |
 | — | [0047 走查发现 44–45](0047-cli-dogfood-resume-picker-and-clear.md) | 裸 `-r` 打开选择器；`/new`/`/clear` 干净首屏 | Done；用户 Terminal.app 复验通过 |
-| — | [0048 走查发现 47](0048-cli-dogfood-context-occupancy.md) | 状态带显示真实上下文已用/上限 | In progress |
+| — | [0048 走查发现 47](0048-cli-dogfood-context-occupancy.md) | 状态带显示真实上下文已用/上限 | Done；用户 Terminal.app 复验通过 |
 
 任务必须严格按 0034 → 0035 → 0036 → 0037 → 0043 → 0038 → 0039 → 0040 → 0041 执行。0043 完成项目上下文基线后再进入视觉任务；0038 是产品视觉审批任务，不得与 0039 并行实施；0039–0040 不得为了视觉便利回改持久化或项目指令语义。
 

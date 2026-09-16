@@ -2,8 +2,8 @@
 
 > 供主实现 Agent 执行：阶段七第 4 项走查。不开始阶段八。
 
-**状态：** In progress
-**执行就绪：** 是
+**状态：** Done
+**执行就绪：** 否；本任务已 Done
 **分支：** `phase-7/0041-product-acceptance`
 **依赖：** 任务 0041 自动门禁
 **规格：** [阶段七 CLI 体验收口](../specs/2026-09-13-cli-experience-and-personal-dogfood.md)、[视觉 Token](../specs/2026-09-13-vera-cli-visual-tokens.md)
@@ -35,9 +35,10 @@ git diff --check
 ## 验证证据
 
 - 2026-09-17：上列测试 `90 passed`；`ruff check` / `ruff format --check` 通过；`mypy` 对改动模块通过；`git diff --check` 无空白错误。
-- 未把 Textual Pilot 当作 Terminal.app 证据。发现 47 待用户在 80×24 复验短条旁 `已用/上限` 与 `/status` 同源。
+- 用户 2026-09-17 在 80×24 原生 Terminal.app 复验：状态带短条旁显示当前会话预算已用/上限字节。发现 47 关闭。
 
 ## 未决
 
-- 发现 47 待 Terminal.app 复验。
+- 发现 42 Low：Markdown 路径折行。
+- 第 2 项其余步骤与 20 次 dogfood 仍归 0041。
 - 未收到「CLI 版本达到预期，可以封存」。

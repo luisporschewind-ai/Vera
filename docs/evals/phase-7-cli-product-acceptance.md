@@ -3,7 +3,7 @@
 **规格：** [阶段七 CLI 体验收口](../specs/2026-09-13-cli-experience-and-personal-dogfood.md)、[持久化对话会话](../specs/2026-09-13-persistent-conversation-sessions.md)、[项目指令与 `VERA.md` 初始化](../specs/2026-09-14-project-instructions-and-vera-init.md)  
 **任务：** [0041](../tasks/0041-phase-7-product-acceptance-and-dogfood.md)  
 **日期：** 2026-09-16  
-**结果：** 自动门禁通过。Terminal.app 主路径与第 3 项尺寸/兼容已过；第 4 项 B/C/D 已过，A 为发现 47。发现 38–41、43–46 已复验关闭。20 次 dogfood 与封存原文未完成。阶段七保持 **Ready for manual acceptance**。未收到「CLI 版本达到预期，可以封存」。
+**结果：** 自动门禁通过。Terminal.app 主路径与第 3、第 4 项已过；发现 38–41、43–47 已复验关闭。20 次 dogfood 与封存原文未完成。阶段七保持 **Ready for manual acceptance**。未收到「CLI 版本达到预期，可以封存」。
 
 严重度：Critical（权限/数据/错误应用）、High（主流程不可用/输入丢失/状态误导）、Medium（高频摩擦）、Low（视觉细节）。
 
@@ -35,12 +35,12 @@ git diff --check
 
 | # | 条件 | 栏 | 说明 |
 |---|---|---|---|
-| 1 | 启动即可识别 Vera、工作区、会话、模型、权限 | 自动验证且通过 | 任务 0039；Pilot/快照。Terminal.app 见 [dogfood](phase-7-manual-dogfood.md) 第 1 项 `Not run` |
+| 1 | 启动即可识别 Vera、工作区、会话、模型、权限 | 自动验证且通过 | 任务 0039；Pilot/快照。Terminal.app 第 1 项已过 |
 | 2 | 深海/Unicode/ASCII/高对比/无色 | 自动验证且通过 | 任务 0039；产品矩阵三主题 |
 | 3 | 用户/助手主轴，工具次级，Diff/审批/验证/失败可辨 | 自动验证且通过 | 任务 0040；层级测试 |
 | 4 | 用户消息锚点与原始 `HH:mm` | 自动验证且通过 | 任务 0040；产品矩阵锚点。滚动替换人工通过 |
-| 5 | Composer 箭头不进草稿；状态带上下文/模型/推理 | 自动验证且通过 | 任务 0039/0040。80×24 连续可读：B/C/D 人工通过；A 发现 47 占用数字待复验 |
-| 6 | 审批卡无中断空白，三按钮连续可见 | 自动验证且通过 | 任务 0040 尺寸矩阵。主流程观感人工 `Not run` |
+| 5 | Composer 箭头不进草稿；状态带上下文/模型/推理 | 自动验证且通过 | 任务 0039/0040。80×24 连续可读人工通过；发现 47 占用数字已复验 |
+| 6 | 审批卡无中断空白，三按钮连续可见 | 自动验证且通过 | 任务 0040 尺寸矩阵。第 4 项 C 人工通过 |
 | 7 | 60×16/80×24/120×40 与 Resize | 自动验证且通过 | 产品矩阵 Resize。人工 60×16、Resize、NO_COLOR、dumb、异常退出通过；120×40 未单独定档 |
 | 8 | 退出/继续/选择/损坏不重复副作用 | 自动验证且通过 | 产品矩阵失败路径；wheel `-c`/`-r` |
 | 9 | 项目说明不授权限，init 须审批 | 自动验证且通过 | 任务 0043；wheel `/instructions`/`vera init` |
@@ -68,7 +68,7 @@ git diff --check
 | 14 | 恢复后 `/status` `/context` `/new` `/clear` `/compact` `/sessions` | 自动验证且通过 | 任务 0037。人工 `/new`/`/clear` 通过；`/status` `/context` `/compact` `/sessions` 组合 `Not run` |
 | 15 | 自动测试不读真实 Key、不改真实工程 | 自动验证且通过 | 门禁清除 Provider 环境 |
 | 16 | 静态门禁与 wheel smoke | 自动验证且通过 | 见质量门禁 |
-| 17 | Terminal.app 主路径走查 | Not run | [dogfood](phase-7-manual-dogfood.md) 第 1 项 |
+| 17 | Terminal.app 主路径走查 | 自动验证且通过 | [dogfood](phase-7-manual-dogfood.md) 第 1 项已过 |
 | 18 | 持续 dogfood 无未关闭 Critical/High，且用户封存 | Not run | 第 12 条 + 20 次 Run |
 
 ## 项目指令规格（8 条）
