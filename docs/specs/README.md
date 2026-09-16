@@ -26,6 +26,7 @@
 - [阶段七：CLI 体验收口与个人主力化](2026-09-13-cli-experience-and-personal-dogfood.md)
 - [持久化对话会话与个人主力 CLI](2026-09-13-persistent-conversation-sessions.md)
 - [项目指令发现与 `VERA.md` 初始化](2026-09-14-project-instructions-and-vera-init.md)
+- [Vera CLI 视觉 Token 与标识](2026-09-13-vera-cli-visual-tokens.md)
 - [不可信内容、提示词投毒与内容安全](2026-09-12-untrusted-content-and-prompt-injection-defense.md)
 - [阶段八：桌面 Agent 工作台与 UI（Draft）](2026-09-12-desktop-agent-workbench-ui.md)
 - [Core 原生 Skills 系统（Draft）](2026-09-15-core-native-skills-system.md)

@@ -3,7 +3,7 @@
 > 供主实现 Agent 执行：只有任务 0038 的视觉规格为 Accepted 后才能按 `superpowers:test-driven-development` 实施。
 
 **状态：** Planned
-**执行就绪：** 否；等待任务 0038 的用户视觉确认
+**执行就绪：** 是；任务 0038 视觉规格 Accepted
 **分支：** `phase-7/0039-cli-brand-theme`
 **依赖：** 任务 0038
 **规格：** [阶段七 CLI 体验收口](../specs/2026-09-13-cli-experience-and-personal-dogfood.md)、任务 0038 产生并获接受的视觉 Token 规格
