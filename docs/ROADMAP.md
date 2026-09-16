@@ -85,7 +85,7 @@
 
 ## 阶段 7——CLI 体验收口与个人主力化
 
-**状态：** In progress
+**状态：** Ready for manual acceptance
 **入口条件：** 阶段六 Complete，且[阶段七规格](specs/2026-09-13-cli-experience-and-personal-dogfood.md)与任务顺序已经接受。
 
 - 实现持久化对话会话、退出后继续和安全的历史选择，使 CLI 具备长期任务连续性。
@@ -96,7 +96,7 @@
 - Composer 下方以单一状态带收敛活动、未读、会话上下文占用、模型和有效推理强度；缺少权威值时显示“模型默认/不可用”。
 - 在小终端、CJK、无色、低速、Resize 和长时间线中保持清晰、稳定、可操作。
 - 使用真实 Terminal.app 与真实工程持续 dogfood，修复影响个人主力使用的高频摩擦。
-- 用户接受[阶段七实施计划](tasks/phase-7-execution-order.md)后，严格按 0034 → 0035 → 0036 → 0037 → 0043 → 0038 → 0039 → 0040 → 0041 实施。视觉方向已冻结为字标 A、两行品牌与深海 Token；0039–0040 已实现产品样式与时间线/Composer 收口，下一任务 0041。
+- 用户接受[阶段七实施计划](tasks/phase-7-execution-order.md)后，严格按 0034 → 0035 → 0036 → 0037 → 0043 → 0038 → 0039 → 0040 → 0041 实施。视觉方向已冻结为字标 A、两行品牌与深海 Token；0039–0040 已实现产品样式与时间线/Composer 收口；0041 自动矩阵与仓库外 wheel smoke 已通过，真实 Terminal.app / 20 次 dogfood 与封存原文仍待用户。
 
 **退出条件：** 默认 TUI 和兼容模式达到个人主力 CLI 标准，没有未关闭的 Critical/High 使用缺陷；用户明确确认「CLI 版本达到预期，可以封存」。自动测试、Textual Pilot、SVG 和快照不能代替该确认。
 

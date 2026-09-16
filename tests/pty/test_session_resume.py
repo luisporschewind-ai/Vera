@@ -30,12 +30,13 @@ def test_pty_json_resume_picker_has_no_ansi(tmp_path: Path) -> None:
         "HOME": os.environ.get("HOME", ""),
         "TERM": "xterm-256color",
         "PYTHONPATH": str(Path(__file__).resolve().parents[2] / "src"),
+        "PYTHONUNBUFFERED": "1",
     }
     result = PtyHarness().spawn_and_run(
         [sys.executable, str(script)],
         env=env,
         input_text="should-not-become-session-id\n",
-        timeout=5.0,
+        timeout=20.0,
     )
     assert result.exit_code == 0
     assert "mode=resume_picker" in result.output

@@ -87,6 +87,9 @@ def main(argv: list[str]) -> int:
     home = dist / "home"
     home.mkdir(parents=True, exist_ok=True)
     env = _isolated_env(home)
+    state_dir = home / "vera-state"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    env["VERA_STATE_DIR"] = str(state_dir)
     before = sha256_tree(workspace)
 
     created = _run(
@@ -217,6 +220,119 @@ def main(argv: list[str]) -> int:
         if line.strip()
     ):
         sys.stderr.write(listed.stdout)
+        return 1
+
+    session_dirs = [path for path in (state_dir / "sessions").iterdir() if path.is_dir()]
+    if not session_dirs:
+        sys.stderr.write("json session did not create VERA_STATE_DIR sessions\n")
+        return 1
+    session_id = session_dirs[0].name
+    journal_path = session_dirs[0] / "session.jsonl"
+    v1_bytes = journal_path.read_bytes()
+    if b'"session_format_version":1' not in v1_bytes.replace(b" ", b""):
+        sys.stderr.write("created session journal is not v1\n")
+        return 1
+
+    continued = _run(
+        [str(vera), "--json", "-c"],
+        cwd=workspace,
+        env=ready,
+        input_text=CLOSE_SESSION,
+    )
+    if continued.returncode != 0 or "\u001b" in continued.stdout:
+        sys.stderr.write(continued.stdout + continued.stderr)
+        return continued.returncode or 1
+    if "session.loaded" not in continued.stdout:
+        sys.stderr.write("continue did not emit session.loaded\n")
+        sys.stderr.write(continued.stdout)
+        return 1
+
+    healthy = _run(
+        [
+            str(vera),
+            "sessions",
+            "inspect",
+            session_id,
+            "--workspace",
+            str(workspace),
+            "--json",
+        ],
+        cwd=workspace,
+        env=ready,
+    )
+    if healthy.returncode != 2:
+        sys.stderr.write(healthy.stdout + healthy.stderr)
+        return healthy.returncode or 1
+
+    journal_path.write_bytes(v1_bytes + b'{"session_format_version":1')
+    inspect_trunc = _run(
+        [
+            str(vera),
+            "sessions",
+            "inspect",
+            session_id,
+            "--workspace",
+            str(workspace),
+            "--json",
+        ],
+        cwd=workspace,
+        env=ready,
+    )
+    if inspect_trunc.returncode != 0:
+        sys.stderr.write(inspect_trunc.stdout + inspect_trunc.stderr)
+        return inspect_trunc.returncode or 1
+    inspect_payload = json.loads(inspect_trunc.stdout.strip().splitlines()[-1])
+    if inspect_payload.get("failure_code") != "truncated_tail":
+        sys.stderr.write(inspect_trunc.stdout)
+        return 1
+    repair = _run(
+        [
+            str(vera),
+            "sessions",
+            "repair",
+            session_id,
+            "--workspace",
+            str(workspace),
+            "--json",
+        ],
+        cwd=workspace,
+        env=ready,
+    )
+    if repair.returncode != 0:
+        sys.stderr.write(repair.stdout + repair.stderr)
+        return repair.returncode or 1
+    repair_payload = json.loads(repair.stdout.strip().splitlines()[-1])
+    if repair_payload.get("applied") is not False:
+        sys.stderr.write(repair.stdout)
+        return 1
+    truncated = v1_bytes + b'{"session_format_version":1'
+    if journal_path.read_bytes() != truncated:
+        sys.stderr.write("repair dry-run mutated session journal\n")
+        return 1
+    journal_path.write_bytes(v1_bytes)
+
+    relisted = _run(
+        [str(vera), "--json"],
+        cwd=workspace,
+        env=ready,
+        input_text='{"schema_version":1,"type":"session.command","raw":"/sessions"}\n'
+        + CLOSE_SESSION,
+    )
+    if relisted.returncode != 0:
+        sys.stderr.write(relisted.stderr)
+        return relisted.returncode or 1
+    listed_ids: list[str] = []
+    for line in relisted.stdout.splitlines():
+        if not line.strip():
+            continue
+        event = json.loads(line).get("event") or {}
+        if event.get("type") == "session.listed":
+            listed_ids = [
+                str(item.get("session_id")) for item in event.get("payload", {}).get("items", [])
+            ]
+    if session_id not in listed_ids:
+        sys.stderr.write("v1 session disappeared from rebuilt list\n")
+        sys.stderr.write(relisted.stdout)
         return 1
 
     doctor_input = '{"schema_version":1,"type":"session.command","raw":"/doctor"}\n' + CLOSE_SESSION

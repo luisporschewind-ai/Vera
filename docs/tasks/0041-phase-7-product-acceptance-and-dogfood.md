@@ -2,7 +2,7 @@
 
 > 供主实现 Agent 执行：按 `superpowers:verification-before-completion` 收口；真实 Terminal.app 和真实工程结论只能由用户确认。
 
-**状态：** Planned
+**状态：** Ready for manual acceptance
 **执行就绪：** 是；任务 0040 已完成
 **分支：** `phase-7/0041-product-acceptance`
 **依赖：** 任务 0034–0040、0043
@@ -16,22 +16,22 @@
 
 ### 1. 验收追踪表
 
-- [ ] 新增 `docs/evals/phase-7-cli-product-acceptance.md`，逐项映射三份阶段七规格的验收标准、自动证据、人工证据、缺陷和最终状态。
-- [ ] 新增 `docs/evals/phase-7-manual-dogfood.md`，初始所有真实终端项为 `Not run`，字段固定为日期、环境、工程、步骤、预期、实际、严重度和脱敏证据。
-- [ ] 严重度固定为：Critical（权限/数据/错误应用）、High（主流程不可用/输入丢失/状态误导）、Medium（高频摩擦）、Low（视觉细节）。
+- [x] 新增 `docs/evals/phase-7-cli-product-acceptance.md`，逐项映射三份阶段七规格的验收标准、自动证据、人工证据、缺陷和最终状态。
+- [x] 新增 `docs/evals/phase-7-manual-dogfood.md`，初始所有真实终端项为 `Not run`，字段固定为日期、环境、工程、步骤、预期、实际、严重度和脱敏证据。
+- [x] 严重度固定为：Critical（权限/数据/错误应用）、High（主流程不可用/输入丢失/状态误导）、Medium（高频摩擦）、Low（视觉细节）。
 
 ### 2. 阶段七离线产品矩阵
 
-- [ ] 新增 `tests/e2e/test_phase_7_product_matrix.py`，用 Fake Model 和临时 state/workspace 覆盖新建、两轮对话、修改、审批、验证、退出、continue、再次修改、历史 run 查看。
-- [ ] 加入失败矩阵：无历史 continue、错误 ID、workspace 不匹配、尾部截断、中间损坏、未来版本、保存失败、恢复超限、缺失 run 证据。
-- [ ] 加入视觉/交互矩阵：三主题、60×16/80×24/120×40、CJK、Resize、运行/审批/验证/失败/恢复、长历史、用户消息滚动锚点与原始时间、Composer 箭头与焦点、下方上下文/模型/推理状态带、审批卡上下空白。
-- [ ] 对 TUI、Plain、JSON 和一次性模式比较结构化事实，快照只验证展示。
+- [x] 新增 `tests/e2e/test_phase_7_product_matrix.py`，用 Fake Model 和临时 state/workspace 覆盖新建、两轮对话、修改、审批、验证、退出、continue、再次修改、历史 run 查看。
+- [x] 加入失败矩阵：无历史 continue、错误 ID、workspace 不匹配、尾部截断、中间损坏、未来版本、保存失败、恢复超限、缺失 run 证据。
+- [x] 加入视觉/交互矩阵：三主题、60×16/80×24/120×40、CJK、Resize、运行/审批/验证/失败/恢复、长历史、用户消息滚动锚点与原始时间、Composer 箭头与焦点、下方上下文/模型/推理状态带、审批卡上下空白。尺寸与主题拆成两组参数，避免 3×3 全组合拖慢共同门禁。
+- [x] 对 TUI、Plain、JSON 和一次性模式比较结构化事实，快照只验证展示。
 
 ### 3. 仓库外 wheel 与升级回归
 
-- [ ] 扩展 `scripts/smoke_installed_wheel.py` 或新增 `scripts/smoke_phase_7_cli.py`，从 `/private/tmp` 全新 venv 安装本地 wheel。
-- [ ] 使用显式临时 `VERA_STATE_DIR`/workspace，清除所有 Provider Key；覆盖 `vera --help`、new、continue、resume id、非 TTY picker、session inspect/repair dry-run、Plain、JSON 和现有 `vera run/eval`。
-- [ ] 验证升级保留 v1 Journal，可重建列表；未知未来版本拒绝，测试不得触碰真实私有状态目录。
+- [x] 扩展 `scripts/smoke_installed_wheel.py` 或新增 `scripts/smoke_phase_7_cli.py`，从 `/private/tmp` 全新 venv 安装本地 wheel。
+- [x] 使用显式临时 `VERA_STATE_DIR`/workspace，清除所有 Provider Key；覆盖 `vera --help`、new、continue、resume id、非 TTY picker、session inspect/repair dry-run、Plain、JSON 和现有 `vera run/eval`。
+- [x] 验证升级保留 v1 Journal，可重建列表；未知未来版本拒绝，测试不得触碰真实私有状态目录。
 
 ### 4. 真实 Terminal.app 走查
 
@@ -51,9 +51,9 @@
 
 ### 6. 最终门禁与状态更新
 
-- [ ] 运行完整自动门禁并把实际命令、计数、耗时和失败/重跑原因写入验收文档。
-- [ ] 更新 `docs/STATUS.md`、`docs/ROADMAP.md` 和本任务文件；没有用户封存原文时只写 `Ready for manual acceptance`。
-- [ ] 向用户汇报已验证、人工待验和遗留缺陷，等待用户本人决定是否封存。
+- [x] 运行完整自动门禁并把实际命令、计数、耗时和失败/重跑原因写入验收文档。
+- [x] 更新 `docs/STATUS.md`、`docs/ROADMAP.md` 和本任务文件；没有用户封存原文时只写 `Ready for manual acceptance`。
+- [x] 向用户汇报已验证、人工待验和遗留缺陷，等待用户本人决定是否封存。
 - [ ] 只有收到用户原文「CLI 版本达到预期，可以封存」后，才把任务/阶段七标记完成，并把阶段八从门禁角度改为可规划；该句本身不自动授权阶段八实施。
 
 ## 自动验证
@@ -83,3 +83,18 @@ git commit -m "docs: record phase seven CLI acceptance"
 - wheel 在仓库外、临时私有状态与无 Provider Key 条件下完成全入口回归。
 - 真实 Terminal.app 与真实工程的持续 dogfood 无未关闭 Critical/High，Medium 均有处置。
 - 用户未给出精确封存原文前，阶段七不标记 Complete，阶段八不开始。
+
+## 验证证据
+
+- 完整非 live：`1068 passed, 2 deselected, 7 warnings in 728.48s`。
+- 聚焦：`tests/e2e/test_phase_7_product_matrix.py tests/pty tests/performance` → `22 passed in 36.36s`。
+- `ruff check` / `ruff format --check` / `mypy src` / `git diff --check` 通过。
+- `uv build --out-dir /private/tmp/vera-phase7-acceptance-dist` 产出 `vera_agent-0.1.0` sdist 与 wheel。
+- 仓库外 smoke 退出码 0；使用临时 `VERA_STATE_DIR`，未读真实 Key，未改真实工程。
+- PTY JSON `-r` 探针超时从 5s 调整为 20s，避免冷启动 SIGTERM 假失败。
+- 阶段七状态：Ready for manual acceptance。任务本身未标 Done。
+
+## 未决
+
+- [docs/evals/phase-7-manual-dogfood.md](../evals/phase-7-manual-dogfood.md) 第 1–4 项 Terminal.app 走查与第 5 项 20 次 dogfood 均为 `Not run`。
+- 未收到「CLI 版本达到预期，可以封存」。不得开始阶段八，不得引入 Electron。
