@@ -185,7 +185,7 @@ class SessionController:
                 if message.role == "user":
                     self.history.record(message.content)
 
-    def _conversation_stats(self) -> ConversationStats:
+    def conversation_stats(self) -> ConversationStats:
         return self.conversation.stats().model_copy(
             update={
                 "source": self._source,
@@ -758,7 +758,7 @@ class SessionController:
             {"role": message.role, "content": message.content}
             for message in self.conversation.snapshot()[-HISTORY_DISPLAY_LIMIT:]
         ]
-        stats = self._conversation_stats()
+        stats = self.conversation_stats()
         return self._session_event(
             "session.loaded",
             {
@@ -783,7 +783,7 @@ class SessionController:
             workspace=self.workspace,
             model_profile=self.model_profile,
             model_name=self._model_name(),
-            conversation=self._conversation_stats(),
+            conversation=self.conversation_stats(),
             permissions=permission_status(self.dependencies.runtime.command_policy),
             reasoning=self._reasoning_status(),
         )
@@ -830,7 +830,7 @@ class SessionController:
         yield self._status_event()
 
     def _cmd_context(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
-        stats = self._conversation_stats()
+        stats = self.conversation_stats()
         yield self._session_event(
             "session.context",
             stats.model_dump(mode="json"),

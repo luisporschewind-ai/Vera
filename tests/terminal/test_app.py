@@ -325,6 +325,21 @@ async def test_app_renders_help_and_doctor_as_display_only(tmp_path: Path) -> No
 
 
 @pytest.mark.asyncio
+async def test_footer_shows_live_context_bytes(tmp_path: Path) -> None:
+    controller = make_controller(tmp_path)
+    app = VeraTerminalApp(controller, controller.workspace, "fake", animations=False)
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        controller.conversation.record_response("你好", "世界")
+        app._tick_status()
+        await pilot.pause()
+        stats = controller.conversation.stats()
+        footer = str(app.query_one("#status-line").render())
+        assert stats.context_bytes > 0
+        assert f"{stats.context_bytes}/{stats.max_bytes}" in footer
+
+
+@pytest.mark.asyncio
 async def test_new_and_clear_wipe_timeline(tmp_path: Path) -> None:
     controller = make_controller(tmp_path)
     app = VeraTerminalApp(controller, controller.workspace, "fake", animations=False)

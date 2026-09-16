@@ -70,6 +70,29 @@ def context_bar(percent: int, cells: int, *, unicode: bool, used: int = 0) -> st
     return ("#" * filled) + ("." * (cells - filled))
 
 
+def _middle_candidates(footer: FooterStatus, *, marker: str) -> tuple[str, ...]:
+    activity = f"{marker} {footer.activity_label}"
+    optionals: list[str] = []
+    if footer.persist_label:
+        optionals.append(footer.persist_label)
+    if footer.activity_active:
+        optionals.append("Esc/Ctrl-C 取消")
+    else:
+        optionals.append("/help")
+    if footer.unread:
+        optionals.append(f"{footer.unread} 条新消息")
+    middles = [" · ".join((activity, *optionals[:keep])) for keep in range(len(optionals), -1, -1)]
+    return tuple(middles)
+
+
+def _fits_footer(left: str, middle: str, right: str, columns: int) -> bool:
+    blob = f"{left}  {middle}" if middle else left
+    right_width = display_width(right)
+    if right_width >= columns:
+        return False
+    return display_width(blob) <= columns - right_width - 1
+
+
 def render_footer_status(
     footer: FooterStatus,
     *,
@@ -77,36 +100,29 @@ def render_footer_status(
     unicode: bool,
     frame: str,
 ) -> str:
-    percent = footer.context_percent
-    percent_label = f"{percent}%"
-    if footer.context_used > 0 and percent == 0:
-        percent_label = "<1%"
+    occupancy = f"{footer.context_used}/{footer.context_max}"
     bar_cells = 8 if columns >= 80 else 6
-    bar = context_bar(percent, bar_cells, unicode=unicode, used=footer.context_used)
-    left = f"会话上下文 {bar} {percent_label}"
+    bar = context_bar(footer.context_percent, bar_cells, unicode=unicode, used=footer.context_used)
+    left = f"会话上下文 {bar} {occupancy}"
     if columns < 80:
-        left = f"上下文 {bar} {percent_label}"
-    right = f"{footer.model_name}  推理 {footer.reasoning_label}"
+        left = f"上下文 {bar} {occupancy}"
     idle_mark = "✓" if footer.activity_severity == "info" else "!"
     if not unicode:
         idle_mark = "+" if footer.activity_severity == "info" else "!"
     marker = frame if footer.activity_active else idle_mark
-    middle_bits = [f"{marker} {footer.activity_label}"]
-    if footer.activity_active:
-        middle_bits.append("Esc/Ctrl-C 取消")
-    else:
-        middle_bits.append("/help")
-    if footer.unread:
-        middle_bits.append(f"{footer.unread} 条新消息")
-    if footer.persist_label:
-        middle_bits.append(footer.persist_label)
-    middle = " · ".join(middle_bits)
     if columns < 80:
-        # Keep context percentage; drop model name. Keep reasoning if it still fits.
+        # Keep context occupancy bytes; drop model name. Keep reasoning if it still fits.
         right = f"推理 {footer.reasoning_label}"
         core = fit_left_right(left, right, columns)
         if display_width(core) > columns:
             return clip_display(left, columns)
         return core
-    left_and_mid = f"{left}  {middle}"
-    return fit_left_right(left_and_mid, right, columns)
+    right = f"{footer.model_name}  推理 {footer.reasoning_label}"
+    chosen = ""
+    for middle in _middle_candidates(footer, marker=marker):
+        if _fits_footer(left, middle, right, columns):
+            chosen = middle
+            break
+    if not chosen and not _fits_footer(left, "", right, columns):
+        return clip_display(left, columns)
+    return fit_left_right(f"{left}  {chosen}" if chosen else left, right, columns)

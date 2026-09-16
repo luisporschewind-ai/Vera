@@ -87,6 +87,15 @@ def test_controller_submits_prompt_through_runtime(tmp_path: Path) -> None:
     assert prompt.payload["text"] == "解释这个项目"
     assert any(isinstance(item, EventEnvelope) and item.type == "run.completed" for item in outputs)
     assert controller.active_run_id is None
+    stats = controller.conversation_stats()
+    assert stats.context_bytes > 0
+    status = next(
+        item
+        for item in controller.dispatch(ExecuteSlashCommand(raw="/status"))
+        if isinstance(item, EventEnvelope) and item.type == "session.status"
+    )
+    assert status.payload["context"]["context_bytes"] == stats.context_bytes
+    assert status.payload["context"]["max_bytes"] == stats.max_bytes
 
 
 def test_controller_rejects_second_prompt_while_run_active(tmp_path: Path) -> None:
@@ -461,8 +470,8 @@ def test_restart_after_saved_turn_restores_once(tmp_path: Path) -> None:
     )
     assert [item.content for item in second.conversation.snapshot()] == ["Hello", "你好"]
     assert second.history.search("Hello") == ("Hello",)
-    assert second._conversation_stats().source == "resumed"
-    assert second._conversation_stats().persistent_state == "saved"
+    assert second.conversation_stats().source == "resumed"
+    assert second.conversation_stats().persistent_state == "saved"
     reloaded = store.inner.load(session_id, workspace)
     assert len([item for item in reloaded.records if item.type == "turn.committed"]) == 1
 

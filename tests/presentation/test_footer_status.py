@@ -53,9 +53,10 @@ def test_context_percent_bounds() -> None:
     idle = ActivityState("就绪", "idle", False)
     empty = project_footer_status(_status(used=0), idle)
     assert empty.context_percent == 0
-    assert "0%" in render_footer_status(empty, columns=80, unicode=True, frame="·")
+    assert "0/100" in render_footer_status(empty, columns=80, unicode=True, frame="·")
     mid = project_footer_status(_status(used=24, maximum=100), idle)
     assert mid.context_percent == 24
+    assert "24/100" in render_footer_status(mid, columns=80, unicode=True, frame="·")
     full = project_footer_status(_status(used=100, maximum=100, warning=True), idle)
     assert full.context_percent == 100
     assert full.context_warning is True
@@ -66,7 +67,7 @@ def test_small_session_budget_is_not_shown_as_zero() -> None:
     tiny = project_footer_status(_status(used=50, maximum=200_000), idle)
     assert tiny.context_percent == 0
     text = render_footer_status(tiny, columns=80, unicode=True, frame="·")
-    assert "<1%" in text
+    assert "50/200000" in text
     assert " 0%" not in text
     assert "█" in text
 
@@ -97,17 +98,17 @@ def test_wide_footer_has_both_sides() -> None:
     footer = project_footer_status(_status(used=24, maximum=100), idle)
     text = render_footer_status(footer, columns=80, unicode=True, frame="·")
     assert "会话上下文" in text
-    assert "24%" in text
+    assert "24/100" in text
     assert "deepseek-chat" in text
     assert "推理 不可用" in text
     assert "就绪" in text
 
 
-def test_narrow_footer_keeps_percent_drops_model() -> None:
+def test_narrow_footer_keeps_occupancy_drops_model() -> None:
     idle = ActivityState("就绪", "idle", False)
     footer = project_footer_status(_status(used=24, maximum=100), idle)
     text = render_footer_status(footer, columns=60, unicode=True, frame="·")
-    assert "24%" in text
+    assert "24/100" in text
     assert "deepseek-chat" not in text
     assert "推理" in text
 
@@ -133,7 +134,17 @@ def test_activity_states_keep_words() -> None:
         footer = project_footer_status(_status(), ActivityState(label, phase, active, severity))
         text = render_footer_status(footer, columns=80, unicode=False, frame="o")
         assert label in text
-        if active:
-            assert "取消" in text
-        else:
+        assert "0/100" in text
+        if not active:
             assert "Esc/Ctrl-C 取消" not in text
+
+
+def test_footer_keeps_occupancy_while_thinking() -> None:
+    idle = ActivityState("正在思考", "thinking", True, "info")
+    footer = project_footer_status(_status(used=50, maximum=200_000), idle)
+    text = render_footer_status(footer, columns=80, unicode=True, frame="·")
+    assert "50/200000" in text
+    assert "正在思考" in text
+    assert " 0%" not in text
+    wide = render_footer_status(footer, columns=120, unicode=True, frame="·")
+    assert "Esc/Ctrl-C 取消" in wide

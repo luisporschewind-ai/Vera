@@ -70,13 +70,13 @@ def test_footer_shows_context_and_model_on_wide_line() -> None:
     line.apply_session(status, ActivityState("就绪", "idle", False))
     text = rendered(line)
     assert "会话上下文" in text
-    assert "24%" in text
+    assert "24/100" in text
     assert "fake-model" in text
     assert "模型默认" in text
     line.set_geometry(columns=60, unicode=True)
     line.apply_session(status, ActivityState("就绪", "idle", False))
     narrow = rendered(line)
-    assert "24%" in narrow
+    assert "24/100" in narrow
     assert "fake-model" not in narrow
 
 

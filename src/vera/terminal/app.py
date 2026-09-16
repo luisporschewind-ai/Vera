@@ -569,6 +569,9 @@ class VeraTerminalApp(App[int]):
         if not self.is_running:
             return
         if self._session_status is not None:
+            context = self.controller.conversation_stats()
+            if context != self._session_status.context:
+                self._session_status = self._session_status.model_copy(update={"context": context})
             self._refresh_chrome()
             line = self._status_line()
             if line is not None and self.activity.current.active:
