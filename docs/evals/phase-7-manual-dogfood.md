@@ -3,7 +3,7 @@
 **规格：** [阶段七 CLI 体验收口](../specs/2026-09-13-cli-experience-and-personal-dogfood.md)  
 **任务：** [0041](../tasks/0041-phase-7-product-acceptance-and-dogfood.md)  
 **日期：** 2026-09-16  
-**结果：** 2026-09-16 原生 Terminal.app 主路径部分走查。发现 38–41、43、46 已复验关闭。`/runs`、Resize、滚动锚点、复制、高对比通过。发现 44–45 由任务 0047 修复，待 Terminal.app 复验。未收到封存原文。
+**结果：** 2026-09-16 原生 Terminal.app 主路径部分走查。发现 38–41、43–46 已复验关闭。`/runs`、Resize、滚动锚点、复制、高对比、`-r`、`/new`/`/clear` 通过。未收到封存原文。
 
 严重度：Critical（权限/数据/错误应用）、High（主流程不可用/输入丢失/状态误导）、Medium（高频摩擦）、Low（视觉细节）。
 
@@ -42,9 +42,9 @@
 | 工程 | VeraTestDemo |
 | 步骤 | `-r` 选择历史、明确 ID 恢复、`/compact` 后重启、`/new`、`/clear`、取消、失败、恢复、无 Git、dirty workspace |
 | 预期 | 选择器可用；compact 后旧对话仍可查看；`/new`/`/clear` 不丢 Run 证据；无 Git/dirty 有克制提示 |
-| 实际 | `vera -r` 无参数：`Option '-r' requires an argument`（发现 44）。`/new`/`/clear` 后上一会话时间线仍在，未清屏（发现 45）。其余未跑。 |
-| 严重度 | High |
-| 证据 | 脱敏：Click 报 `-r` 需要参数 |
+| 实际 | `193d35b` 后 `vera -r` 可打开选择器并恢复会话。`fb4c256` 后 `/new`/`/clear` 回到干净首屏，无状态面板/恢复提示/未读残留。明确 ID、`/compact` 后重启、取消、失败、恢复、无 Git、dirty workspace 未跑。 |
+| 严重度 | 发现 44–45 已复验关闭 |
+| 证据 | 用户确认选择器、`/new`、`/clear` 通过 |
 
 ## 3. 尺寸、兼容与导航
 
@@ -110,8 +110,8 @@
 | — | 主路径 | 工程根未长出 `build/` | 无 | 通过 |
 | 42 | `vera -c` | 助手 Markdown 路径高亮把 `FourthViewController.swift`、`Base.lproj` 从中间折行 | Low | 本阶段可修或后续汇总；不挡继续/恢复 |
 | 43 | `vera -c` 续写 | 大 `propose_changeset` 参数 JSON 非法/截断后整轮 `model_error` | High | 0045 修复；用户 2026-09-16 Terminal.app 复验通过 |
-| 44 | 会话维护 | `vera -r` 无参数：Option requires an argument | High | 0047 修复；待 Terminal.app 复验 |
-| 45 | 会话维护 | `/new`/`/clear` 后上一会话仍显示，未清屏 | High | 0047 修复；待 Terminal.app 复验 |
+| 44 | 会话维护 | `vera -r` 无参数：Option requires an argument | High | 0047 修复；用户 2026-09-16 Terminal.app 复验通过 |
+| 45 | 会话维护 | `/new`/`/clear` 后上一会话仍显示，未清屏 | High | 0047 修复；用户 2026-09-16 Terminal.app 复验通过 |
 | 46 | 主题 | `/theme high-contrast` 残影、右侧异常 | Medium | 0046 修复；用户 2026-09-16 Terminal.app 复验通过 |
 
-发现 38–41、43、46 已关闭。`/runs`、Resize、滚动锚点、复制、高对比已过。发现 44–45 已改代码，待 Terminal.app 复验。20 次 dogfood 未完成，阶段七仍不 Complete。
+发现 38–41、43–46 已关闭。`/runs`、Resize、滚动锚点、复制、高对比、`-r`、`/new`/`/clear` 已过。发现 42 Low 未关。第 2 项其余步骤与 20 次 dogfood 未完成，阶段七仍不 Complete。

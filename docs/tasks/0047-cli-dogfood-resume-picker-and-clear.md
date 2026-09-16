@@ -41,10 +41,10 @@ git diff --check
 - 局部测试：`tests/cli/test_session.py`、`tests/session/test_controller.py`、`tests/terminal/test_app.py`、`tests/presentation/test_projector.py` 等 86 passed。
 - 完整非 live：`1081 passed, 2 deselected`；滚动 sticky 一项仍是既有 Pilot 抖动。
 - `ruff check` / `ruff format --check` / `mypy src` / `git diff --check` 通过。
-- 用户 2026-09-16 复验：`-r` 选择器通过；`/new`/`/clear` 仍回放状态面板、恢复提示和「4 条新消息」，已改为干净首屏，待再验。
+- 用户 2026-09-16 复验：`vera -r` 选择器通过；`fb4c256` 后 `/new`/`/clear` 干净首屏通过。发现 44/45 关闭。
 
 ## 未决
 
-- 发现 44/45 需用户在原生 Terminal.app 复验后才能关闭。
 - 发现 42 Low：Markdown 路径折行。
+- 会话维护其余步骤（明确 ID、`/compact` 重启、取消/失败/恢复、无 Git、dirty）仍归 0041。
 - 未收到「CLI 版本达到预期，可以封存」。
