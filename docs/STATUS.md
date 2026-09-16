@@ -2,7 +2,7 @@
 
 **更新日期：** 2026-09-16
 **当前阶段：** 阶段 7——CLI 体验收口与个人主力化（Ready for manual acceptance）
-**仓库状态：** 阶段五停在 Ready for manual acceptance。阶段六已 Complete。阶段七任务 0034–0037、0043、0038–0040 Done。任务 0041 自动门禁完成，停在 Ready for manual acceptance；真实 Terminal.app 与 20 次 dogfood 仍为 `Not run`。未收到封存原文。不引入 Electron 代码。暂无远程时可不推送。
+**仓库状态：** 阶段五停在 Ready for manual acceptance。阶段六已 Complete。阶段七任务 0034–0037、0043、0038–0040、0044 Done。任务 0041 自动门禁完成，停在 Ready for manual acceptance；Terminal.app 主路径部分走查，发现 38–41 已复验关闭。20 次 dogfood 未完成。未收到封存原文。不引入 Electron 代码。暂无远程时可不推送。
 
 ## 已完成
 
@@ -36,7 +36,7 @@
 
 ## 活动任务
 
-- [阶段七执行顺序](tasks/phase-7-execution-order.md)：用户已授权开始；任务 0034–0037、0043、0038–0040 Done。任务 0041 自动栏完成，阶段七 Ready for manual acceptance。不得在阶段七封存确认前引入 Electron。
+- [阶段七执行顺序](tasks/phase-7-execution-order.md)：用户已授权开始；任务 0034–0037、0043、0038–0040、0044 Done。任务 0041 自动栏完成，阶段七 Ready for manual acceptance。不得在阶段七封存确认前引入 Electron。
 - [阶段五执行顺序](tasks/phase-5-execution-order.md)：0024 自动门禁已完成；人工 dogfood 不足，阶段五保持 Ready for manual acceptance。
 - [ADR-0017：插入 CLI 体验阶段并顺延桌面路线](decisions/ADR-0017-insert-cli-experience-stage.md)：Accepted；阶段七用于 CLI 体验与个人主力化，原桌面阶段顺延为阶段八。
 - [验证产物隔离与工作区无污染](specs/2026-09-14-verification-artifact-isolation.md)与 [ADR-0018](decisions/ADR-0018-isolate-verification-artifacts.md)：Accepted；最终验证计划必须在审批前形成，构建/缓存产物写到 workspace 外。
@@ -50,6 +50,7 @@
 
 ## 最近验证
 
+- 2026-09-16 任务 0044：发现 38–41 Terminal.app 复验通过。`b42ed76` 已把 propose 失败写回模型、sticky 贴标题下、缩放重绘、上下文占用显示 `<1%`。
 - 2026-09-16 任务 0041 走查：发现 38–41。High：propose 失败未回写 tool 导致 thinking 400；sticky 叠在时间线中部。Medium：缩放右侧残留、上下文条 0%。工程未长出 `build/`。修正见 [任务 0044](tasks/0044-cli-dogfood-propose-and-sticky.md)。
 - 2026-09-16 任务 0041：阶段七自动验收。[phase-7-cli-product-acceptance](evals/phase-7-cli-product-acceptance.md)；人工项见 [phase-7-manual-dogfood](evals/phase-7-manual-dogfood.md)。完整非 live `1068 passed, 2 deselected`；聚焦矩阵/PTY/性能 `22 passed`；仓库外 wheel smoke 退出码 0。阶段七 Ready for manual acceptance，不是 Complete。
 - 2026-09-16 任务 0040：对话主轴、`occurred_at` 本地 `HH:mm`、用户消息滚动锚点、一行工具摘要、Composer `›`/`>` 回退与审批密度收口。共同门禁 `1057 passed, 2 deselected`。未改审批边界或 JSON/Plain 语义。
@@ -81,7 +82,7 @@
 
 ## 下一检查点
 
-1. 阶段七任务 0041 自动门禁完成，停在 Ready for manual acceptance。走查发现 38–41 由任务 0044 修正，待用户 Terminal.app 复验后继续主路径。不开始阶段八，不引入 Electron。
+1. 阶段七任务 0041 停在 Ready for manual acceptance。发现 38–41 已复验关闭。继续 Terminal.app 主路径：退出 → `vera -c` → 指代前文再改 → `/runs`；以及第 2–4 项与 20 次 dogfood。不开始阶段八，不引入 Electron。
 2. 不自动删除、取消暂存或忽略 `VeraTestDemo` 索引里残留的 `AD build/`；未改 `.gitignore`。
 3. 阶段五仍缺 20 次真实 dogfood 与三类真实工程走查，不得把阶段五标为 Complete。
 4. 未经确认「CLI 版本达到预期，可以封存」，不得将阶段七标为 Complete、不得开始阶段八、不得引入 Electron 或其他桌面端代码。

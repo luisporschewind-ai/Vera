@@ -2,8 +2,8 @@
 
 > 供主实现 Agent 执行：阶段七 Terminal.app 主路径走查的 High/Medium 修正。不新开规格，不开始阶段八。
 
-**状态：** In progress
-**执行就绪：** 是；任务 0041 自动栏已完成，走查进行中
+**状态：** Done
+**执行就绪：** 否；本任务已 Done
 **分支：** `phase-7/0041-product-acceptance`
 **依赖：** 任务 0041 自动门禁
 **规格：** [阶段七 CLI 体验收口](../specs/2026-09-13-cli-experience-and-personal-dogfood.md)、[验证产物隔离](../specs/2026-09-14-verification-artifact-isolation.md)
@@ -38,8 +38,12 @@ uv run pytest tests/runtime/test_safe_editing_flow.py tests/presentation/test_fo
 git diff --check
 ```
 
+## 验证证据
+
+- 局部测试：`test_safe_editing_flow`、`test_footer_status`、`test_user_prompt_anchor`、`test_scrolling`、phase-7 产品矩阵 38 passed（`b42ed76`）。
+- 2026-09-16 用户在原生 Terminal.app / VeraTestDemo 对同一小改动复验通过：可进入审批路径，sticky 贴标题下，缩放无右侧残影，发现 38–41 关闭。
+
 ## 未决
 
-- 用户须在 Terminal.app 复验同一小改动能进入审批，sticky 贴在标题下，缩放无右侧残影。
 - 主路径其余步骤（退出/`-c`/旧 run）和 20 次 dogfood 仍归 0041。
 - 未收到「CLI 版本达到预期，可以封存」。

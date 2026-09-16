@@ -96,5 +96,5 @@ git commit -m "docs: record phase seven CLI acceptance"
 
 ## 未决
 
-- [docs/evals/phase-7-manual-dogfood.md](../evals/phase-7-manual-dogfood.md) 第 1–4 项 Terminal.app 走查与第 5 项 20 次 dogfood 均为 `Not run`。
+- [docs/evals/phase-7-manual-dogfood.md](../evals/phase-7-manual-dogfood.md) 第 1 项部分走查（小改动复验通过；退出/`-c`/旧 run 未做）。第 2–4 项与 20 次 dogfood 未完成。发现 38–41 已关闭。
 - 未收到「CLI 版本达到预期，可以封存」。不得开始阶段八，不得引入 Electron。
