@@ -23,16 +23,12 @@ class UserPromptAnchor(Horizontal):
     can_focus = False
     DEFAULT_CSS = """
     UserPromptAnchor {
-        layer: overlay;
-        dock: top;
-        margin-top: 1;
-        margin-left: 2;
-        margin-right: 2;
-        width: 100%;
+        width: auto;
         height: 3;
         display: none;
         background: $secondary;
         border: none;
+        margin: 0 2 0 2;
         padding: 1 1;
     }
     UserPromptAnchor #user-sticky-prompt {
@@ -79,6 +75,9 @@ class UserPromptAnchor(Horizontal):
 
     def apply_geometry(self, *, columns: int, rows: int, unicode: bool = True) -> None:
         self.set_prompt(select_composer_prompt(unicode=unicode))
+        inset = 4
+        if columns > inset:
+            self.styles.width = columns - inset
         if columns < 60 or rows < 16:
             self._mode = "hidden"
         elif columns < 80 or rows < 24:

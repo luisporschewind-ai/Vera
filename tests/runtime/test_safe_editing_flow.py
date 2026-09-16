@@ -367,11 +367,96 @@ def test_unisolated_verification_is_rejected_before_changeset(
     completed = [event for event in start_events if event.type == "tool.completed"]
     assert completed
     assert completed[0].payload["ok"] is False
+    assert completed[0].payload["call_id"] == "1"
     assert completed[0].payload["reason_code"] == "verification_artifact_isolation_unavailable"
     assert not any(event.type == "changeset.proposed" for event in start_events)
     assert not any(event.type == "approval.required" for event in start_events)
     assert not marker.exists()
     assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "old\n"
+    context = runtime.runs[start_events[0].run_id]
+    tool_messages = [message for message in context.messages if message.role == "tool"]
+    assert tool_messages
+    assert tool_messages[-1].tool_call_id == "1"
+    assert "verification_artifact_isolation_unavailable" in tool_messages[-1].content
+
+
+def test_unisolated_verification_lets_model_retry_without_thinking_break(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
+    adapter = FakeModelAdapter(
+        [
+            ModelTurn(
+                finish_reason="tool_calls",
+                reasoning_content="先提出带构建验证的变更",
+                tool_calls=(
+                    ModelToolCall(
+                        call_id="call_bad",
+                        name="propose_changeset",
+                        arguments={
+                            "summary": "edit with unverifiable command",
+                            "changes": [
+                                {
+                                    "operation": "update",
+                                    "path": "hello.txt",
+                                    "after_content": "new\n",
+                                }
+                            ],
+                            "verification": [{"argv": ["rm", "-rf", "."], "cwd": "."}],
+                        },
+                    ),
+                ),
+            ),
+            ModelTurn(
+                finish_reason="tool_calls",
+                reasoning_content="去掉无法隔离的验证后再提",
+                tool_calls=(
+                    ModelToolCall(
+                        call_id="call_ok",
+                        name="propose_changeset",
+                        arguments={
+                            "summary": "edit only",
+                            "changes": [
+                                {
+                                    "operation": "update",
+                                    "path": "hello.txt",
+                                    "after_content": "new\n",
+                                }
+                            ],
+                        },
+                    ),
+                ),
+            ),
+        ]
+    )
+    runtime = VeraRuntime(
+        adapter,
+        ToolRegistry(),
+        tmp_path / "state",
+        artifact_prefix=tmp_path / "vera-verification",
+        installation_id="install-test",
+    )
+    start_events = list(
+        runtime.handle(StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake"))
+    )
+    assert any(event.type == "approval.required" for event in start_events)
+    assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "old\n"
+    assert len(adapter.requests) >= 2
+    follow_up = adapter.requests[1]
+    assistant = next(
+        message
+        for message in reversed(follow_up.messages)
+        if message.role == "assistant" and message.tool_calls
+    )
+    assert assistant.reasoning_content == "先提出带构建验证的变更"
+    assert assistant.tool_calls[0].call_id == "call_bad"
+    tool = next(
+        message
+        for message in follow_up.messages
+        if message.role == "tool" and message.tool_call_id == "call_bad"
+    )
+    assert "verification_" in tool.content
+    assert tool.tool_call_id == "call_bad"
 
 
 def test_model_supplied_artifact_plan_is_ignored(tmp_path: Path) -> None:

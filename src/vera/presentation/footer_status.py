@@ -61,8 +61,10 @@ def project_footer_status(
     )
 
 
-def context_bar(percent: int, cells: int, *, unicode: bool) -> str:
+def context_bar(percent: int, cells: int, *, unicode: bool, used: int = 0) -> str:
     filled = round(max(0, min(100, percent)) / 100 * cells)
+    if used > 0 and filled == 0:
+        filled = 1
     if unicode:
         return ("█" * filled) + ("░" * (cells - filled))
     return ("#" * filled) + ("." * (cells - filled))
@@ -76,11 +78,14 @@ def render_footer_status(
     frame: str,
 ) -> str:
     percent = footer.context_percent
+    percent_label = f"{percent}%"
+    if footer.context_used > 0 and percent == 0:
+        percent_label = "<1%"
     bar_cells = 8 if columns >= 80 else 6
-    bar = context_bar(percent, bar_cells, unicode=unicode)
-    left = f"会话上下文 {bar} {percent}%"
+    bar = context_bar(percent, bar_cells, unicode=unicode, used=footer.context_used)
+    left = f"会话上下文 {bar} {percent_label}"
     if columns < 80:
-        left = f"上下文 {bar} {percent}%"
+        left = f"上下文 {bar} {percent_label}"
     right = f"{footer.model_name}  推理 {footer.reasoning_label}"
     idle_mark = "✓" if footer.activity_severity == "info" else "!"
     if not unicode:

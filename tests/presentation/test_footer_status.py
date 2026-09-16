@@ -61,6 +61,16 @@ def test_context_percent_bounds() -> None:
     assert full.context_warning is True
 
 
+def test_small_session_budget_is_not_shown_as_zero() -> None:
+    idle = ActivityState("就绪", "idle", False)
+    tiny = project_footer_status(_status(used=50, maximum=200_000), idle)
+    assert tiny.context_percent == 0
+    text = render_footer_status(tiny, columns=80, unicode=True, frame="·")
+    assert "<1%" in text
+    assert " 0%" not in text
+    assert "█" in text
+
+
 def test_reasoning_modes() -> None:
     idle = ActivityState("就绪", "idle", False)
     explicit = project_footer_status(

@@ -173,3 +173,30 @@ async def test_narrow_terminal_compacts_then_hides_anchor(tmp_path: Path) -> Non
         assert str(app.query_one("#composer-prompt").render()) == select_composer_prompt(
             unicode=True
         )
+
+
+@pytest.mark.asyncio
+async def test_sticky_sits_below_header_without_overflowing_width(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    stamp = datetime(2026, 9, 15, 1, 0, tzinfo=UTC)
+    async with app.run_test(size=(80, 24)) as pilot:
+        timeline = app.query_one("#timeline")
+        timeline.apply(
+            (
+                AppendBlock(block=user_block("u1", "悬浮", stamp)),
+                *(AppendBlock(block=filler(index)) for index in range(40)),
+            )
+        )
+        sticky = await settle_scrolled_off_anchor(pilot, app)
+        header = app.query_one("#header")
+        assert sticky.display is True
+        assert sticky.region.y >= header.region.bottom
+        assert sticky.region.bottom <= timeline.region.y + 1
+        assert sticky.region.x >= 0
+        assert sticky.region.right <= app.size.width
+        await pilot.resize_terminal(96, 42)
+        await pilot.pause()
+        timeline.refresh_user_sticky()
+        await pilot.pause()
+        assert sticky.region.right <= app.size.width
+        assert sticky.region.y >= app.query_one("#header").region.bottom

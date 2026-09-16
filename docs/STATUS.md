@@ -50,6 +50,7 @@
 
 ## 最近验证
 
+- 2026-09-16 任务 0041 走查：发现 38–41。High：propose 失败未回写 tool 导致 thinking 400；sticky 叠在时间线中部。Medium：缩放右侧残留、上下文条 0%。工程未长出 `build/`。修正见 [任务 0044](tasks/0044-cli-dogfood-propose-and-sticky.md)。
 - 2026-09-16 任务 0041：阶段七自动验收。[phase-7-cli-product-acceptance](evals/phase-7-cli-product-acceptance.md)；人工项见 [phase-7-manual-dogfood](evals/phase-7-manual-dogfood.md)。完整非 live `1068 passed, 2 deselected`；聚焦矩阵/PTY/性能 `22 passed`；仓库外 wheel smoke 退出码 0。阶段七 Ready for manual acceptance，不是 Complete。
 - 2026-09-16 任务 0040：对话主轴、`occurred_at` 本地 `HH:mm`、用户消息滚动锚点、一行工具摘要、Composer `›`/`>` 回退与审批密度收口。共同门禁 `1057 passed, 2 deselected`。未改审批边界或 JSON/Plain 语义。
 - 2026-09-16 任务 0039：字标 `VERA`、深海三主题、Welcome 首屏与双侧状态带落地。Fake 推理 `unavailable`，OpenAI 兼容适配器 `provider_default`。60×16 保留上下文百分比。共同门禁 `1036 passed, 2 deselected`。
@@ -80,7 +81,7 @@
 
 ## 下一检查点
 
-1. 阶段七任务 0041 自动门禁完成，停在 Ready for manual acceptance。下一步是用户在原生 Terminal.app 走查，并完成至少 20 次真实工程 dogfood。不开始阶段八，不引入 Electron。
+1. 阶段七任务 0041 自动门禁完成，停在 Ready for manual acceptance。走查发现 38–41 由任务 0044 修正，待用户 Terminal.app 复验后继续主路径。不开始阶段八，不引入 Electron。
 2. 不自动删除、取消暂存或忽略 `VeraTestDemo` 索引里残留的 `AD build/`；未改 `.gitignore`。
 3. 阶段五仍缺 20 次真实 dogfood 与三类真实工程走查，不得把阶段五标为 Complete。
 4. 未经确认「CLI 版本达到预期，可以封存」，不得将阶段七标为 Complete、不得开始阶段八、不得引入 Electron 或其他桌面端代码。

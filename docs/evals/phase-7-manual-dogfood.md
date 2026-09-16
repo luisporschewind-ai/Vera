@@ -3,7 +3,7 @@
 **规格：** [阶段七 CLI 体验收口](../specs/2026-09-13-cli-experience-and-personal-dogfood.md)  
 **任务：** [0041](../tasks/0041-phase-7-product-acceptance-and-dogfood.md)  
 **日期：** 2026-09-16  
-**结果：** 模板已建立。所有真实终端项初始为 `Not run`。自动测试、PTY、Textual Pilot、快照和 wheel smoke 不能填写“实际”栏。
+**结果：** 2026-09-16 原生 Terminal.app 开始主路径走查。发现 38–41 为 High/Medium，修正见 [任务 0044](../tasks/0044-cli-dogfood-propose-and-sticky.md)。第 2–5 项仍为 `Not run`。自动测试不能填写“实际”栏。
 
 严重度：Critical（权限/数据/错误应用）、High（主流程不可用/输入丢失/状态误导）、Medium（高频摩擦）、Low（视觉细节）。
 
@@ -24,14 +24,14 @@
 
 | 字段 | 内容 |
 |---|---|
-| 日期 | |
-| 环境 | 必须为原生 macOS Terminal.app，不得用 Cursor 内嵌终端 |
-| 工程 | |
-| 步骤 | 新会话 → 两轮理解工程 → 代码修改 → 审批 → Diff → 验证 → 退出 → `vera -c` → 指代前文继续修改 → 查看旧 run |
+| 日期 | 2026-09-16 |
+| 环境 | 原生 macOS Terminal.app 96×42；`vera 0.1.0+b284bb2`；deepseek-flash；审批 manual |
+| 工程 | VeraTestDemo（Swift/Xcode） |
+| 步骤 | 新会话 → 请为第四个页面添加测试按钮并点击提示测试 |
 | 预期 | 会话可恢复；第二轮理解“刚才/继续”；审批默认 Cancel；验证产物不污染工程；旧 run 证据仍可打开 |
-| 实际 | Not run |
-| 严重度 | |
-| 证据 | |
+| 实际 | 部分走查。工程根未长出 `build/`。未进入审批：两次 `propose_changeset` 报 `verification_artifact_isolation_unavailable` 后任务失败 `model_error` / `provider_request_invalid` / thinking 模式未回传 `reasoning_content`。用户消息 sticky 不在标题下而叠在时间线中部。缩放后右侧有残留。会话上下文条保持 0%。未做到退出/`-c`/旧 run。 |
+| 严重度 | High（发现 38、39）；Medium（发现 40、41） |
+| 证据 | 脱敏：失败诊断含 `HTTP 400` 与 `reasoning_content`；验证错误码 `verification_artifact_isolation_unavailable`；无工作区副作用 |
 
 ## 2. 恢复与会话维护
 
@@ -78,7 +78,7 @@
 
 | # | 日期 | 工程 | 步骤摘要 | 结果 | 跨进程 | 严重度 | 证据 |
 |---|---|---|---|---|---|---|---|
-| 1 | | | | Not run | | | |
+| 1 | 2026-09-16 | VeraTestDemo | 第四页加测试按钮 | 失败 `model_error` | 否 | High | 发现 38 |
 | 2 | | | | Not run | | | |
 | 3 | | | | Not run | | | |
 | 4 | | | | Not run | | | |
@@ -101,4 +101,12 @@
 
 ## 缺陷处置
 
-当前无已记录的阶段七人工缺陷。发现 Critical/High 必须在阶段七建立修正任务并复验；Medium 必须写明本阶段修复、用户接受或后续任务；Low 可汇总。
+| # | 来源 | 摘要 | 严重度 | 处置 |
+|---|---|---|---|---|
+| 38 | 主路径 | `propose_changeset` 验证隔离失败只发 `tool.completed`，不写回 `role=tool`；thinking 下一轮 400：`reasoning_content` must be passed back | High | [任务 0044](../tasks/0044-cli-dogfood-propose-and-sticky.md) 本阶段修复 |
+| 39 | 主路径 | 用户消息 sticky 叠在时间线中部，不贴标题下方 | High | 0044 本阶段修复 |
+| 40 | 主路径 | 窗口缩放后右侧单元格残留 | Medium | 0044 本阶段修复 |
+| 41 | 主路径 | 短会话后上下文条仍显示 0%（200000 字节预算四舍五入） | Medium | 0044 本阶段修复（占用>0 显示 `<1%`） |
+| — | 主路径 | 工程根未长出 `build/` 等产物 | 无 | 通过 |
+
+发现 38/39 关闭前不把阶段七标为 Complete。

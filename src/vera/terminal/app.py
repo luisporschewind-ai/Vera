@@ -167,6 +167,7 @@ class VeraTerminalApp(App[int]):
                 self.query_one(PromptComposer).focus()
             except NoMatches:
                 return
+        self.refresh()
 
     def submit_composer(self) -> None:
         self.query_one(PromptComposer).submit()
@@ -516,7 +517,6 @@ class VeraTerminalApp(App[int]):
 
     def _sync_sticky_offset(self) -> None:
         try:
-            welcome = self.query_one(VeraWelcome)
             sticky = self.query_one(UserStickyBar)
             bar = self.query_one(ComposerBar)
         except NoMatches:
@@ -524,10 +524,7 @@ class VeraTerminalApp(App[int]):
         columns = self.size.width
         rows = self.size.height
         unicode = self._unicode()
-        top = 2 if columns >= 80 and rows >= 24 else 1
-        if welcome.display and columns >= 80:
-            top += 2
-        sticky.styles.margin = (top, 2, 0, 2)
+        sticky.styles.margin = (0, 2, 0, 2)
         sticky.apply_geometry(columns=columns, rows=rows, unicode=unicode)
         try:
             bar.set_prompt_glyph(select_composer_prompt(unicode=unicode))

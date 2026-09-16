@@ -382,8 +382,11 @@ async def test_scrolled_off_user_sticks_until_replaced(tmp_path: Path) -> None:
         )
 
         app.block("u2").scroll_visible(top=True, animate=False)
-        await pilot.pause()
-        timeline.refresh_user_sticky()
+        for _ in range(8):
+            timeline.refresh_user_sticky()
+            await pilot.pause()
+            if sticky.body_text == "第一问":
+                break
         assert sticky.body_text == "第一问"
         assert sticky.clock_text == format_block_clock(first_at)
 

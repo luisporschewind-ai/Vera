@@ -81,6 +81,7 @@ from vera.runtime.security import (
 )
 from vera.runtime.state import RunState, RunStateMachine
 from vera.tools.command_policy import CommandDecisionKind, CommandPolicy
+from vera.tools.definitions import ToolResult
 from vera.tools.registry import ToolRegistry
 from vera.verification.artifacts import (
     VerificationArtifactError,
@@ -654,6 +655,26 @@ class VeraRuntime:
             payload.update(extra)
         return payload
 
+    def _reject_tool(
+        self, context: RunContext, call: ModelToolCall, payload: dict[str, Any]
+    ) -> Iterator[EventEnvelope]:
+        failed = {"name": call.name, "call_id": call.call_id, "ok": False, **payload}
+        target = tool_call_target(call)
+        if target:
+            failed["target"] = target
+        yield self._event(context, "tool.completed", failed)
+        rendered = json.dumps(failed, ensure_ascii=False, sort_keys=True)
+        context.messages.append(
+            ModelMessage(
+                role="tool",
+                content=tool_result_message(call, ToolResult(ok=False, content=failed), rendered),
+                tool_call_id=call.call_id,
+            )
+        )
+        context.context_bytes = sum(
+            len(message.content.encode("utf-8")) for message in context.messages
+        )
+
     def _propose(self, context: RunContext, call: ModelToolCall) -> Iterator[EventEnvelope]:
         try:
             proposal = ProposalInput.model_validate(call.arguments)
@@ -674,28 +695,22 @@ class VeraRuntime:
                 planned,
             )
         except VerificationArtifactError as exc:
-            failed = {
-                "name": call.name,
-                "ok": False,
-                "error": exc.code,
-                "reason_code": exc.code,
-                "basename": exc.basename,
-                "suggestion": exc.suggestion,
-            }
-            target = tool_call_target(call)
-            if target:
-                failed["target"] = target
-            yield self._event(context, "tool.completed", failed)
+            yield from self._reject_tool(
+                context,
+                call,
+                {
+                    "error": exc.code,
+                    "reason_code": exc.code,
+                    "basename": exc.basename,
+                    "suggestion": exc.suggestion,
+                },
+            )
             return
         except Exception as exc:
             if context.command.mode == "project_init":
                 yield from self._fail(context, "project_init_scope_violation")
                 return
-            failed = {"name": call.name, "ok": False, "error": str(exc)}
-            target = tool_call_target(call)
-            if target:
-                failed["target"] = target
-            yield self._event(context, "tool.completed", failed)
+            yield from self._reject_tool(context, call, {"error": str(exc)})
             return
         change_set = built.change_set
         if context.command.mode == "project_init":

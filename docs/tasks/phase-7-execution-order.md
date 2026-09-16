@@ -34,6 +34,7 @@
 | 7 | [0039 Vera 标识、主题与启动状态实现](0039-cli-brand-theme-and-startup-chrome.md) | Logo 回退、主题、首屏、上下文/模型/推理双侧状态带 | 60×16/80×24/120×40 和回退测试通过 |
 | 8 | [0040 时间线、Composer 与导航收口](0040-timeline-composer-and-navigation-polish.md) | 对话主轴、用户消息锚点/时间、输入箭头、审批密度、稳定滚动 | PTY、Pilot、快照、性能矩阵通过 |
 | 9 | [0041 阶段七产品验收与个人 dogfood](0041-phase-7-product-acceptance-and-dogfood.md) | wheel 回归、真实 Terminal.app/工程证据、缺陷闭环 | 用户原文确认后才可封存阶段七 |
+| — | [0044 走查发现 38–41](0044-cli-dogfood-propose-and-sticky.md) | propose 失败回写、sticky/缩放、上下文条 | 0041 走查 High 关闭后继续人工项 |
 
 任务必须严格按 0034 → 0035 → 0036 → 0037 → 0043 → 0038 → 0039 → 0040 → 0041 执行。0043 完成项目上下文基线后再进入视觉任务；0038 是产品视觉审批任务，不得与 0039 并行实施；0039–0040 不得为了视觉便利回改持久化或项目指令语义。
 

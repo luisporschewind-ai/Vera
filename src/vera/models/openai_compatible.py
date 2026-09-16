@@ -62,6 +62,10 @@ def _provider_attr(value: object, *names: str) -> Any:
             found = _get(source, name)
             if isinstance(found, str) and found:
                 return found
+            if isinstance(found, dict):
+                nested = found.get("content") or found.get("text")
+                if isinstance(nested, str) and nested:
+                    return nested
     return None
 
 

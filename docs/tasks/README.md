@@ -60,5 +60,6 @@
 - [任务 0039：Vera 标识、主题与启动状态实现](0039-cli-brand-theme-and-startup-chrome.md)
 - [任务 0040：时间线、Composer 与导航收口](0040-timeline-composer-and-navigation-polish.md)
 - [任务 0041：阶段七产品验收与个人 dogfood](0041-phase-7-product-acceptance-and-dogfood.md)
+- [任务 0044：走查发现 38–41（propose 回写与 sticky）](0044-cli-dogfood-propose-and-sticky.md)
 - [任务 0042：验证产物隔离与工作区无污染](0042-verification-artifact-isolation.md)
 - [任务 0043：项目指令发现与 `VERA.md` 初始化](0043-project-instructions-and-init.md)
