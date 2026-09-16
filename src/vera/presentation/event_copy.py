@@ -153,13 +153,13 @@ def format_tool_title(
     status: str,
     duration_ms: int | None = None,
 ) -> str:
-    parts = [tool_action_label(name)]
-    if target:
-        parts.append(target)
-    parts.append(_TOOL_STATUS.get(status, status))
+    action = tool_action_label(name)
+    status_label = _TOOL_STATUS.get(status, status)
+    head = f"{action}  {target}".rstrip() if target else action
+    tail = [status_label]
     if duration_ms is not None:
-        parts.append(f"{duration_ms}ms")
-    return " · ".join(parts)
+        tail.append(f"{duration_ms}ms")
+    return f"{head}  · " + " · ".join(tail)
 
 
 def format_tool_body(

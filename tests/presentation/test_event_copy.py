@@ -134,7 +134,7 @@ def test_unknown_future_event_gets_generic_human_title() -> None:
 def test_tool_copy_uses_action_target_status_and_duration() -> None:
     title = format_tool_title("list_directory", target=".", status="completed", duration_ms=12)
     body = format_tool_body(target=".", status="completed", duration_ms=12)
-    assert title == "列出目录 · . · 完成 · 12ms"
+    assert title == "列出目录  .  · 完成 · 12ms"
     assert "目标：." in body
     assert "状态：完成" in body
     assert "耗时：12ms" in body

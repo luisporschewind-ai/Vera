@@ -110,5 +110,5 @@ git commit -m "feat: add Vera terminal identity and themes"
 
 ## 未决
 
-- 时间线主轴、用户消息锚点与一行工具披露归任务 0040。
+- 时间线主轴、用户消息锚点与一行工具披露已由任务 0040 完成。
 - 真实 Terminal.app 走查仍待用户；不得因此将阶段七标为 Complete。

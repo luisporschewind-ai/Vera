@@ -13,7 +13,8 @@ from textual.widgets import Collapsible, Static
 
 from vera.presentation.disclosure import DisclosurePolicy
 from vera.presentation.timeline import BlockKind, BlockStatus, TimelineBlock, format_block_clock
-from vera.terminal.widgets.composer import COMPOSER_PROMPT
+from vera.presentation.timeline_time import block_occurred_at
+from vera.terminal.widgets.composer import COMPOSER_PROMPT, select_composer_prompt
 
 _SELECTABLE_OPEN_KINDS = {
     BlockKind.USER,
@@ -39,7 +40,7 @@ class TimelineBlockWidget(Vertical):
     TimelineBlockWidget .block-body {
         padding: 0 1;
         height: auto;
-        color: #c8cdd3 !important;
+        color: $text !important;
     }
     TimelineBlockWidget .user-heading {
         height: 1;
@@ -63,7 +64,7 @@ class TimelineBlockWidget(Vertical):
         self.block = block
         self._body = Static("", classes="block-body")
         self._title = Static(self._title_text(block), classes="block-title")
-        self._time = Static(format_block_clock(block.created_at), classes="block-time")
+        self._time = Static(format_block_clock(block_occurred_at(block)), classes="block-time")
         self._collapsible: Collapsible | None = None
         self._markdown_render_key: tuple[str, int] | None = None
 
@@ -120,7 +121,7 @@ class TimelineBlockWidget(Vertical):
     def apply_block(self, block: TimelineBlock) -> None:
         self.block = block
         self._title.update(self._title_text(block))
-        self._time.update(format_block_clock(block.created_at))
+        self._time.update(format_block_clock(block_occurred_at(block)))
         if self._collapsible is not None:
             self._collapsible.title = self._title_text(block)
             self._collapsible.collapsed = not block.expanded
@@ -173,7 +174,7 @@ class UserBlockWidget(TimelineBlockWidget):
         padding: 1 1;
         background: $secondary;
         border: none;
-        color: #ffffff !important;
+        color: $text !important;
     }
     UserBlockWidget .user-heading {
         height: auto;
@@ -184,7 +185,7 @@ class UserBlockWidget(TimelineBlockWidget):
     UserBlockWidget .user-prompt {
         width: 2;
         height: 1;
-        color: #c5d0dc;
+        color: $text-muted;
         padding: 0;
         content-align: left middle;
     }
@@ -192,13 +193,13 @@ class UserBlockWidget(TimelineBlockWidget):
         width: 1fr;
         height: auto;
         padding: 0;
-        color: #ffffff !important;
+        color: $text !important;
         content-align: left middle;
     }
     UserBlockWidget .block-time {
         width: auto;
         height: 1;
-        color: #6e7782 !important;
+        color: $text-muted;
         text-align: right;
         padding: 0 0 0 1;
         content-align: right middle;
@@ -214,8 +215,20 @@ class UserBlockWidget(TimelineBlockWidget):
 
     def apply_block(self, block: TimelineBlock) -> None:
         self.block = block
-        self._time.update(format_block_clock(block.created_at))
+        self._time.update(format_block_clock(block_occurred_at(block)))
+        self._sync_prompt_glyph()
         self._render_body()
+
+    def on_mount(self) -> None:
+        super().on_mount()
+        self._sync_prompt_glyph()
+
+    def _sync_prompt_glyph(self) -> None:
+        unicode = True
+        app = self.app
+        if hasattr(app, "_unicode"):
+            unicode = bool(app._unicode())
+        self._title.update(select_composer_prompt(unicode=unicode))
 
 
 def _assistant_markdown(body: str, *, width: int = 80) -> Text:

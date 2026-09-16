@@ -172,6 +172,7 @@ def test_user_prompt_becomes_visible_user_block() -> None:
     assert block.title == "用户"
     assert block.body == "你好vera"
     assert block.expanded is True
+    assert block.occurred_at == prompt.timestamp
     assert block.created_at == prompt.timestamp
     assert "session.user_prompt" not in block.title
     assert project_user_prompt("run_1", "你好vera").kind is BlockKind.USER
@@ -213,6 +214,22 @@ def test_list_directory_summary_has_target_and_body() -> None:
     assert "list_directory" not in block.title
     assert "tool.completed" not in block.title
     assert "tool.completed" not in block.body
+    assert "列出目录  ." in started.title
+    assert " · 进行中" in started.title
+
+
+def test_empty_user_prompt_is_omitted() -> None:
+    projector = TimelineProjector()
+    assert projector.apply(event("session.user_prompt", payload={"text": "   "})) == ()
+
+
+def test_duplicate_status_is_omitted() -> None:
+    projector = TimelineProjector()
+    payload = {"checkpoint_id": "c1"}
+    first = projector.apply(event("checkpoint.created", payload=payload))
+    second = projector.apply(event("checkpoint.created", sequence=2, payload=payload))
+    assert first
+    assert second == ()
 
 
 def test_tool_failure_expands_existing_block() -> None:

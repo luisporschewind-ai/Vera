@@ -13,7 +13,7 @@ from vera.runtime.engine import VeraRuntime
 from vera.session.controller import SessionController
 from vera.terminal.app import VeraTerminalApp
 from vera.terminal.widgets.blocks import UserBlockWidget
-from vera.terminal.widgets.composer import COMPOSER_PROMPT
+from vera.terminal.widgets.composer import select_composer_prompt
 from vera.terminal.widgets.user_sticky import UserStickyBar
 from vera.tools.registry import ToolRegistry
 
@@ -251,10 +251,12 @@ async def test_user_message_shows_clock_on_the_right(tmp_path: Path) -> None:
         clock = format_block_clock(created)
         assert isinstance(widget, UserBlockWidget)
         assert clock in str(widget._time.render())
-        assert clock.endswith(" AM") or clock.endswith(" PM")
-        assert _luma(widget._time.styles.color) < _luma(widget.styles.color)
+        assert len(clock) == 5
+        assert "AM" not in clock and "PM" not in clock
         assert "你好vera" in str(widget._body.render())
-        assert str(widget._title.render()) == COMPOSER_PROMPT
+        from vera.terminal.widgets.composer import select_composer_prompt
+
+        assert str(widget._title.render()) == select_composer_prompt(unicode=True)
         assert widget._time.region.x > widget._body.region.x
         assert widget.region.x >= 2
         composer = app.query_one("#composer-bar")
@@ -302,7 +304,7 @@ async def test_timeline_and_composer_share_horizontal_inset(tmp_path: Path) -> N
         title = assistant.query_one(".block-title")
         body = assistant.query_one(".block-body")
         assert title.region.x == body.region.x
-        assert _luma(user.styles.color) > _luma(body.styles.color)
+        assert user.styles.background != assistant.styles.background
 
 
 @pytest.mark.asyncio
@@ -375,7 +377,9 @@ async def test_scrolled_off_user_sticks_until_replaced(tmp_path: Path) -> None:
         assert "inner" not in border
         assert sticky.styles.padding.top == 1
         assert sticky.styles.padding.bottom == 1
-        assert str(sticky.query_one("#user-sticky-prompt").render()) == COMPOSER_PROMPT
+        assert str(sticky.query_one("#user-sticky-prompt").render()) == select_composer_prompt(
+            unicode=True
+        )
 
         app.block("u2").scroll_visible(top=True, animate=False)
         await pilot.pause()

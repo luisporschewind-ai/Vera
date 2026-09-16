@@ -13,7 +13,7 @@ from vera.presentation.projector import (
 from vera.presentation.timeline import BlockKind, TimelineBlock
 from vera.terminal.streaming import bounded_scheduler
 from vera.terminal.widgets.blocks import EventGroupWidget, TimelineBlockWidget
-from vera.terminal.widgets.user_sticky import UserStickyBar
+from vera.terminal.widgets.user_prompt_anchor import UserPromptAnchor
 
 _GROUPED_KINDS = {BlockKind.TOOL, BlockKind.LOG, BlockKind.STATUS}
 
@@ -188,7 +188,7 @@ class ConversationTimeline(VerticalScroll):
         if not self.is_attached:
             return
         try:
-            bar = self.app.query_one("#user-sticky", UserStickyBar)
+            bar = self.app.query_one("#user-sticky", UserPromptAnchor)
         except Exception:
             return
         widget = self.scrolled_off_user()

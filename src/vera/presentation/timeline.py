@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 from enum import StrEnum
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class BlockKind(StrEnum):
@@ -42,16 +43,28 @@ class TimelineBlock(BaseModel):
     incomplete: bool = False
     truncated: bool = False
     ref_id: str | None = None
+    occurred_at: datetime | None = None
     created_at: datetime | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _alias_occurrence(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        stamp = data.get("occurred_at")
+        if stamp is None:
+            stamp = data.get("created_at")
+        if stamp is None:
+            return data
+        aliased = dict(data)
+        aliased["occurred_at"] = stamp
+        aliased["created_at"] = stamp
+        return aliased
 
 
 def format_block_clock(value: datetime | None) -> str:
-    """Local 12-hour wall-clock time with AM/PM. Empty when unknown."""
+    """Local 24-hour `HH:mm`. Empty when unknown."""
 
-    if value is None:
-        return ""
-    instant = value if value.tzinfo is not None else value.replace(tzinfo=UTC)
-    local = instant.astimezone()
-    hour = local.hour % 12 or 12
-    suffix = "AM" if local.hour < 12 else "PM"
-    return f"{hour}:{local:%M} {suffix}"
+    from vera.presentation.timeline_time import format_timeline_clock
+
+    return format_timeline_clock(value)

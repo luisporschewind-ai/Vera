@@ -217,3 +217,27 @@ async def test_approval_card_shows_full_body_and_actions(tmp_path: Path) -> None
             assert button.region.bottom <= widget.region.bottom + 1
             assert button.region.x >= widget.region.x
             assert button.region.right <= widget.region.right + 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("size", [(60, 16), (80, 24), (120, 40)])
+async def test_approval_stays_continuous_across_sizes(
+    tmp_path: Path, size: tuple[int, int]
+) -> None:
+    app, _controller = make_app(tmp_path)
+    body = "动作 changeset\n目标 notes.md\n风险 low\n效果 写入文件"
+    async with app.run_test(size=size) as pilot:
+        app.query_one("#timeline").apply(
+            (AppendBlock(block=_approval_block().model_copy(update={"body": body})),)
+        )
+        await pilot.pause()
+        widget = app.block("approval_1")
+        assert isinstance(widget, ApprovalBlockWidget)
+        rendered = str(widget._body.render())
+        assert "风险 low" in rendered
+        assert widget.styles.margin.top == 0
+        assert widget.styles.margin.bottom == 0
+        assert widget._cancel.size.height <= 1
+        for button in (widget._cancel, widget._reject, widget._approve):
+            assert button.display is True
+            assert button.region.y >= widget.region.y

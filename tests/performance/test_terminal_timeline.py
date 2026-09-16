@@ -1,3 +1,7 @@
+from datetime import UTC, datetime
+from time import perf_counter
+
+from vera.contracts.events import EventEnvelope
 from vera.presentation.projector import TimelineProjector
 from vera.presentation.timeline import BlockKind, BlockStatus, TimelineBlock
 from vera.terminal.performance import MAX_MOUNTED_BLOCKS, evictable_ids, is_pinned
@@ -62,3 +66,22 @@ def test_pinned_blocks_survive_budget_and_collapsed_body_is_one_widget() -> None
     assert widget.collapsed is True
     projector = TimelineProjector(max_blocks=200)
     assert projector._max_blocks == 200
+
+
+def test_appending_large_history_stays_within_phase6_budget() -> None:
+    projector = TimelineProjector(max_blocks=MAX_MOUNTED_BLOCKS)
+    started = perf_counter()
+    for index in range(400):
+        projector.apply(
+            EventEnvelope(
+                event_id=f"e{index}",
+                run_id="run_1",
+                sequence=index + 1,
+                timestamp=datetime.now(UTC),
+                type="tool.started",
+                payload={"name": "read_file", "call_id": f"c{index}", "target": "a.py"},
+            )
+        )
+    elapsed_ms = (perf_counter() - started) * 1000
+    assert len(projector._blocks) <= MAX_MOUNTED_BLOCKS
+    assert elapsed_ms < 2500

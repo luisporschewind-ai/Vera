@@ -3,7 +3,7 @@
 > 供主实现 Agent 执行：按 `superpowers:verification-before-completion` 收口；真实 Terminal.app 和真实工程结论只能由用户确认。
 
 **状态：** Planned
-**执行就绪：** 否；等待任务 0040 完成
+**执行就绪：** 是；任务 0040 已完成
 **分支：** `phase-7/0041-product-acceptance`
 **依赖：** 任务 0034–0040、0043
 **规格：** [阶段七 CLI 体验收口](../specs/2026-09-13-cli-experience-and-personal-dogfood.md)、[持久化对话会话](../specs/2026-09-13-persistent-conversation-sessions.md)、[项目指令与 `VERA.md` 初始化](../specs/2026-09-14-project-instructions-and-vera-init.md)

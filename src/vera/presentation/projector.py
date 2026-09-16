@@ -24,6 +24,7 @@ from vera.presentation.event_copy import (
 from vera.presentation.sanitize import sanitize_terminal_text
 from vera.presentation.status_panel import format_status_panel
 from vera.presentation.timeline import BlockKind, BlockStatus, TimelineBlock
+from vera.presentation.timeline_time import should_omit_timeline_block
 from vera.project_instructions import format_instruction_status
 from vera.redaction import Redactor
 from vera.session.models import SessionStatus
@@ -207,15 +208,17 @@ class TimelineProjector:
         if is_silent(event.type):
             return ()
         handler = handlers.get(event.type, self._unknown_event)
-        return self._with_created_at(handler(event), event.timestamp)
+        return self._with_occurred_at(handler(event), event.timestamp)
 
-    def _with_created_at(
-        self, mutations: tuple[TimelineMutation, ...], created_at: datetime
+    def _with_occurred_at(
+        self, mutations: tuple[TimelineMutation, ...], occurred_at: datetime
     ) -> tuple[TimelineMutation, ...]:
         stamped: list[TimelineMutation] = []
         for item in mutations:
-            if isinstance(item, (AppendBlock, UpdateBlock)) and item.block.created_at is None:
-                block = item.block.model_copy(update={"created_at": created_at})
+            if isinstance(item, (AppendBlock, UpdateBlock)) and item.block.occurred_at is None:
+                block = item.block.model_copy(
+                    update={"occurred_at": occurred_at, "created_at": occurred_at}
+                )
                 self._blocks[block.block_id] = block
                 item = item.model_copy(update={"block": block})
             stamped.append(item)
@@ -290,9 +293,13 @@ class TimelineProjector:
         status: BlockStatus,
         focus: bool = False,
         ref_id: str | None = None,
+        occurred_at: datetime | None = None,
     ) -> tuple[TimelineMutation, ...]:
         expanded = self.disclosure.initial_state(kind, status)
         clipped, truncated = self._truncate_body(sanitize_terminal_text(body))
+        previous = next(reversed(self._blocks.values()), None) if self._blocks else None
+        if should_omit_timeline_block(kind, title, clipped, previous=previous):
+            return ()
         block = TimelineBlock(
             block_id=block_id,
             run_id=run_id,
@@ -303,6 +310,8 @@ class TimelineProjector:
             expanded=expanded,
             truncated=truncated,
             ref_id=ref_id,
+            occurred_at=occurred_at,
+            created_at=occurred_at,
         )
         self._blocks[block_id] = block
         self._evict_if_needed()
@@ -417,7 +426,9 @@ class TimelineProjector:
 
     def _user_prompt(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
         text = str(event.payload.get("text", ""))
-        block = project_user_prompt(event.run_id, text, event.sequence, created_at=event.timestamp)
+        if not text.strip():
+            return ()
+        block = project_user_prompt(event.run_id, text, event.sequence, occurred_at=event.timestamp)
         self._blocks[block.block_id] = block
         self._evict_if_needed()
         return (AppendBlock(block=block),)
@@ -745,6 +756,8 @@ class TimelineProjector:
                 continue
             kind = BlockKind.USER if role == "user" else BlockKind.ASSISTANT
             title = "你" if role == "user" else "Vera" if role == "assistant" else "摘要"
+            stamp = item.get("timestamp")
+            occurred_at = stamp if isinstance(stamp, datetime) else None
             mutations.extend(
                 self._append(
                     block_id=f"{event.run_id}:{event.sequence}:hist:{index}",
@@ -753,6 +766,7 @@ class TimelineProjector:
                     title=title,
                     body=sanitize_terminal_text(content),
                     status=BlockStatus.SUCCEEDED,
+                    occurred_at=occurred_at,
                 )
             )
         return tuple(mutations)
@@ -777,8 +791,10 @@ def project_user_prompt(
     sequence: int = 0,
     *,
     created_at: datetime | None = None,
+    occurred_at: datetime | None = None,
 ) -> TimelineBlock:
     policy = DisclosurePolicy()
+    stamp = occurred_at if occurred_at is not None else created_at
     return TimelineBlock(
         block_id=f"{run_id}:{sequence}:user",
         run_id=run_id,
@@ -787,5 +803,6 @@ def project_user_prompt(
         body=sanitize_terminal_text(text),
         status=BlockStatus.SUCCEEDED,
         expanded=policy.initial_state(BlockKind.USER, BlockStatus.SUCCEEDED),
-        created_at=created_at,
+        occurred_at=stamp,
+        created_at=stamp,
     )

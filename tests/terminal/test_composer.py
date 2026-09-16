@@ -15,6 +15,7 @@ from vera.terminal.widgets.composer import (
     COMPOSER_PROMPT,
     PromptComposer,
     sanitize_composer_text,
+    select_composer_prompt,
 )
 from vera.tools.registry import ToolRegistry
 
@@ -275,9 +276,11 @@ async def test_composer_shows_prompt_glyph_left_of_input(tmp_path: Path) -> None
         bar = app.query_one("#composer-bar")
         composer.restore_draft("hello")
         await pilot.pause()
-        assert str(prompt.render()) == COMPOSER_PROMPT
+        glyph = select_composer_prompt(unicode=True)
+        assert str(prompt.render()) == glyph
         assert composer.text == "hello"
-        assert COMPOSER_PROMPT not in composer.text
+        assert glyph not in composer.text
+        assert COMPOSER_PROMPT not in composer.text or glyph == COMPOSER_PROMPT
         assert prompt.region.x < composer.region.x
         assert prompt.region.y == composer.region.y
         assert bar.region.x >= 2
@@ -292,4 +295,25 @@ async def test_composer_shows_prompt_glyph_left_of_input(tmp_path: Path) -> None
         composer.submit()
         await pilot.pause()
         assert app.submitted == ["hello"]
-        assert str(prompt.render()) == COMPOSER_PROMPT
+        assert str(prompt.render()) == glyph
+
+
+@pytest.mark.asyncio
+async def test_ascii_prompt_glyph_when_unicode_unavailable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from vera.terminal.capabilities import detect_display_capabilities
+
+    monkeypatch.setattr(
+        "vera.terminal.app.detect_display_capabilities",
+        lambda **kwargs: detect_display_capabilities(
+            environ={"TERM": "dumb"},
+            stdout_tty=True,
+            animations_config=kwargs.get("animations_config", True),
+        ),
+    )
+    app = make_app(tmp_path)
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        assert str(app.query_one("#composer-prompt").render()) == COMPOSER_PROMPT
+        assert COMPOSER_PROMPT not in app.query_one("#composer", PromptComposer).text

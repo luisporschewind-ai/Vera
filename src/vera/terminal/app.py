@@ -38,7 +38,12 @@ from vera.terminal.capabilities import detect_display_capabilities
 from vera.terminal.widgets.approval import ApprovalBlockWidget, ApprovalSelected
 from vera.terminal.widgets.blocks import TimelineBlockWidget
 from vera.terminal.widgets.completions import CompletionList
-from vera.terminal.widgets.composer import ComposerBar, PromptComposer, PromptSubmitted
+from vera.terminal.widgets.composer import (
+    ComposerBar,
+    PromptComposer,
+    PromptSubmitted,
+    select_composer_prompt,
+)
 from vera.terminal.widgets.header import VeraHeader
 from vera.terminal.widgets.status_line import VeraStatusLine
 from vera.terminal.widgets.timeline import ConversationTimeline
@@ -513,14 +518,21 @@ class VeraTerminalApp(App[int]):
         try:
             welcome = self.query_one(VeraWelcome)
             sticky = self.query_one(UserStickyBar)
+            bar = self.query_one(ComposerBar)
         except NoMatches:
             return
         columns = self.size.width
         rows = self.size.height
+        unicode = self._unicode()
         top = 2 if columns >= 80 and rows >= 24 else 1
         if welcome.display and columns >= 80:
             top += 2
         sticky.styles.margin = (top, 2, 0, 2)
+        sticky.apply_geometry(columns=columns, rows=rows, unicode=unicode)
+        try:
+            bar.set_prompt_glyph(select_composer_prompt(unicode=unicode))
+        except NoMatches:
+            return
 
     def _refresh_chrome(self) -> None:
         status = self._session_status

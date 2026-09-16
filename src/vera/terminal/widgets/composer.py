@@ -14,7 +14,14 @@ from textual.widgets import Static, TextArea
 from vera.session.history import PromptHistory
 from vera.terminal.widgets.completions import CompletionAccept, CompletionList
 
-COMPOSER_PROMPT = ">"
+COMPOSER_PROMPT_ASCII = ">"
+COMPOSER_PROMPT_UNICODE = "›"
+COMPOSER_PROMPT = COMPOSER_PROMPT_ASCII
+
+
+def select_composer_prompt(*, unicode: bool) -> str:
+    return COMPOSER_PROMPT_UNICODE if unicode else COMPOSER_PROMPT_ASCII
+
 
 _CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 _OSC = re.compile(r"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)")
@@ -76,6 +83,9 @@ class ComposerBar(Horizontal):
     def compose(self) -> ComposeResult:
         yield Static(COMPOSER_PROMPT, id="composer-prompt")
         yield PromptComposer(id="composer")
+
+    def set_prompt_glyph(self, glyph: str) -> None:
+        self.query_one("#composer-prompt", Static).update(glyph)
 
 
 class PromptComposer(TextArea):

@@ -219,3 +219,51 @@ def test_diff_text_keeps_unified_plain_characters() -> None:
     text = capture.get()
     assert "a.py" in text
     assert "+print(1)" in text
+
+
+@pytest.mark.asyncio
+async def test_block_hierarchy_keeps_conversation_axis(tmp_path: Path) -> None:
+    from datetime import UTC, datetime
+
+    app = make_app(tmp_path)
+    stamp = datetime(2026, 9, 15, 10, 24, tzinfo=UTC)
+    async with app.run_test(size=(80, 24)) as pilot:
+        timeline = app.query_one("#timeline")
+        timeline.apply(
+            (
+                AppendBlock(
+                    block=TimelineBlock(
+                        block_id="u1",
+                        run_id="run_1",
+                        kind=BlockKind.USER,
+                        title="用户",
+                        body="目标",
+                        status=BlockStatus.SUCCEEDED,
+                        expanded=True,
+                        occurred_at=stamp,
+                    )
+                ),
+                AppendBlock(
+                    block=TimelineBlock(
+                        block_id="a1",
+                        run_id="run_1",
+                        kind=BlockKind.ASSISTANT,
+                        title="助手",
+                        body="回答",
+                        status=BlockStatus.SUCCEEDED,
+                        expanded=True,
+                    )
+                ),
+                AppendBlock(block=tool_block()),
+                AppendBlock(block=diff_block()),
+            )
+        )
+        await pilot.pause()
+        user = app.block("u1")
+        clock = str(user._time.render())
+        assert len(clock) == 5
+        assert user.collapsed is False
+        assert app.block("a1").collapsed is False
+        assert app.block("tool_1").collapsed is True
+        assert app.block("diff_1").collapsed is False
+        assert user._time.region.x > user._body.region.x

@@ -43,9 +43,11 @@ async def test_layout_matrix_keeps_composer_and_cjk_visible(
     app = make_app(tmp_path)
     async with app.run_test(size=size) as pilot:
         composer = app.query_one("#composer")
-        composer.load_text("你好 Vera")
+        composer.load_text("你好 Vera café 👩‍💻 e\u0301")
         await pilot.pause()
         assert "你好" in composer.text
+        assert "café" in composer.text
+        assert "👩" in composer.text or "👩‍💻" in composer.text
         assert app.query_one("#timeline")
         assert app.query_one("#header")
         assert app.query_one("#welcome")

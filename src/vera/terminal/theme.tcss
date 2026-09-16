@@ -111,15 +111,15 @@ UserBlockWidget {
     border: none;
     margin: 1 2;
     padding: 1 1;
-    color: #ffffff !important;
+    color: $text !important;
 }
 
 UserBlockWidget .block-body {
-    color: #ffffff !important;
+    color: $text !important;
 }
 
 UserBlockWidget .block-time {
-    color: #6e7782 !important;
+    color: $text-muted !important;
 }
 
 DiffBlockWidget .diff-add {
