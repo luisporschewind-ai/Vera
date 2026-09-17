@@ -3,7 +3,7 @@
 **规格：** [阶段七 CLI 体验收口](../specs/2026-09-13-cli-experience-and-personal-dogfood.md)  
 **任务：** [0041](../tasks/0041-phase-7-product-acceptance-and-dogfood.md)  
 **日期：** 2026-09-16  
-**结果：** 2026-09-16 至 2026-09-17 原生 Terminal.app 第 1–4 项走查通过。发现 38–41、43–49、51–52 已复验关闭。发现 42 Low、发现 50 High 未关。20 次 dogfood 未完成。未收到封存原文。
+**结果：** 2026-09-16 至 2026-09-17 原生 Terminal.app 第 1–4 项走查通过。发现 38–41、43–49、51–52 已复验关闭。发现 42 Low、50 High、53 Medium、54 Medium 未关。20 次 dogfood 已记 11/20。未收到封存原文。主实现已交给 Codex。
 
 严重度：Critical（权限/数据/错误应用）、High（主流程不可用/输入丢失/状态误导）、Medium（高频摩擦）、Low（视觉细节）。
 
@@ -119,6 +119,7 @@
 | 50 | Python 工程 | 只读调查后模型空响应，任务失败 `empty_model_response` | High | 0052 修复中；待 Terminal.app 复验 |
 | 51 | Python 工程 | 文本声称已形成 Change Set / 等待审批，任务 `responded`，没有审批卡 | High | 0054 修复；用户 2026-09-17 Terminal.app 复验通过 |
 | 52 | Python 工程 | 两次 Approve 后验证 `ruff` 报 `[Errno 2]` | High | 0054 修复；用户 2026-09-17 Terminal.app 复验通过 |
+| 53 | 对话渲染 | Markdown 表格未排成表；Diff 从标识符中间折行；进场波动一度不可见 | Medium | 0057 修复中。波动 2.5 秒一巡用户 2026-09-17 口头 ok；表格/Diff 待 Terminal.app |
 | 54 | 缩放 | 放大缩小后右侧输入框边框残留；底栏模型名被切成 `deepseek-flas` | Medium | 0058 修复中；待 Terminal.app 复验 |
 
 发现 38–41、43–49、51–52 已关闭。第 1–4 项走查已过。发现 42 Low、发现 50 High 未关。发现 53 Medium 见任务 0057。发现 54 Medium 见任务 0058。20 次 dogfood 未完成，阶段七仍不 Complete。

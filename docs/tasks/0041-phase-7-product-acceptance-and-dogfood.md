@@ -96,5 +96,6 @@ git commit -m "docs: record phase seven CLI acceptance"
 
 ## 未决
 
-- [docs/evals/phase-7-manual-dogfood.md](../evals/phase-7-manual-dogfood.md) 第 1–4 项走查已过。发现 38–41、43–49、51–52 已关闭。发现 42 Low、发现 50 High 未关。任务 0055、0056 白块通过；表格/Diff/波动见任务 0057。缩放残留与底栏裁切见任务 0058。20 次 dogfood 未完成（已记 11/20，VeraTestDemo + Python 示例、2 个自然日、3 次跨进程）。
+- 2026-09-17 主实现从 Cursor 交给 Codex，见 [阶段七交接](phase-7-codex-handoff.md)。产品代码 `ce2d9f2`。
+- [docs/evals/phase-7-manual-dogfood.md](../evals/phase-7-manual-dogfood.md) 第 1–4 项走查已过。发现 38–41、43–49、51–52 已关闭。发现 42 Low（0051）、50 High（0052）、53 Medium（0057 表格/Diff）、54 Medium（0058 缩放/底栏）未关。0056 白块通过；0057 波动 2.5 秒一巡用户口头 ok。20 次 dogfood 未完成（已记 11/20，VeraTestDemo + Python 示例、2 个自然日、3 次跨进程）。
 - 未收到「CLI 版本达到预期，可以封存」。不得开始阶段八，不得引入 Electron。

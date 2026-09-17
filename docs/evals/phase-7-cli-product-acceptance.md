@@ -3,7 +3,7 @@
 **规格：** [阶段七 CLI 体验收口](../specs/2026-09-13-cli-experience-and-personal-dogfood.md)、[持久化对话会话](../specs/2026-09-13-persistent-conversation-sessions.md)、[项目指令与 `VERA.md` 初始化](../specs/2026-09-14-project-instructions-and-vera-init.md)  
 **任务：** [0041](../tasks/0041-phase-7-product-acceptance-and-dogfood.md)  
 **日期：** 2026-09-16  
-**结果：** 自动门禁通过。Terminal.app 第 1–4 项走查已过；发现 38–41、43–49 已复验关闭。发现 42 Low、发现 50 High 未关。20 次 dogfood 与封存原文未完成。阶段七保持 **Ready for manual acceptance**。未收到「CLI 版本达到预期，可以封存」。
+**结果：** 自动门禁通过。Terminal.app 第 1–4 项走查已过；发现 38–41、43–49、51–52 已复验关闭。发现 42 Low、50 High、53 Medium、54 Medium 未关。20 次 dogfood 已记 11/20。阶段七保持 **Ready for manual acceptance**。未收到「CLI 版本达到预期，可以封存」。2026-09-17 主实现交给 Codex。
 
 严重度：Critical（权限/数据/错误应用）、High（主流程不可用/输入丢失/状态误导）、Medium（高频摩擦）、Low（视觉细节）。
 
@@ -86,7 +86,7 @@ git diff --check
 
 ## 已接受限制
 
-- 真实 Terminal.app、20 次跨日 dogfood、封存原文均未完成，不把阶段七标为 Complete。
+- 真实 Terminal.app 复验（发现 42/50/53/54）、20 次跨日 dogfood（已记 11/20）、封存原文均未完成，不把阶段七标为 Complete。
 - iTerm2 / Warp / Linux / Windows Terminal 仍为阶段六遗留 `Not run`，不阻塞本任务自动栏。
 - `VeraTestDemo` Git 索引残留 `AD build/`，未取消暂存、未改 `.gitignore`。
 

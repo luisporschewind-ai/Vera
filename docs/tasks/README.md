@@ -60,6 +60,7 @@
 - [任务 0039：Vera 标识、主题与启动状态实现](0039-cli-brand-theme-and-startup-chrome.md)
 - [任务 0040：时间线、Composer 与导航收口](0040-timeline-composer-and-navigation-polish.md)
 - [任务 0041：阶段七产品验收与个人 dogfood](0041-phase-7-product-acceptance-and-dogfood.md)
+- [阶段七交接：交给 Codex 继续](phase-7-codex-handoff.md)
 - [任务 0044：走查发现 38–41（propose 回写与 sticky）](0044-cli-dogfood-propose-and-sticky.md)
 - [任务 0054：走查发现 51–52（虚构审批卡与验证命令找不到）](0054-cli-dogfood-claimed-changeset-and-ruff.md)
 - [任务 0055：工作轨、状态组收起与顶栏字标](0055-cli-work-rail-and-header-mark.md)

@@ -2,7 +2,7 @@
 
 > **供主实现 Agent 执行：** 必须按任务逐项使用 `superpowers:subagent-driven-development`（推荐）或 `superpowers:executing-plans`；每个实施步骤使用 `- [ ]` 跟踪。未经用户接受本计划、阶段六关闭及对应视觉审批门通过，不得开始实现。
 
-**状态：** Ready for manual acceptance；0041 自动栏已完成，真实 Terminal.app 与封存原文未完成
+**状态：** Ready for manual acceptance；0041 自动栏已完成，真实 Terminal.app 与封存原文未完成。2026-09-17 主实现交给 Codex，见 [阶段七交接](phase-7-codex-handoff.md)。
 **目标：** 在不改变 Core 权威与安全边界的前提下，把 Vera CLI 收口为用户愿意长期使用的个人主力 Coding Agent，并为阶段八桌面端冻结可复用的会话与视觉语义。
 **架构：** 持久化会话由 UI 无关的 `ConversationSessionStore` 统一提供，项目说明由 UI 无关的 `ProjectInstructionService` 以 Run 快照加载，`SessionController` 负责事务编排，TUI、Plain、JSON 只消费结构化 Session Event；视觉层只投影既有 Core 事实。阶段按“存储契约 → 安全存储 → Controller 接入 → 启动恢复 → 项目指令与初始化 → 可见原型审批 → TUI 状态收敛 → 时间线/Composer 收口 → 真实 dogfood”推进。
 **技术栈：** Python 3.12、Pydantic 2、Typer、Textual 8、pytest、PTY 测试、Ruff、Mypy、uv/hatchling。

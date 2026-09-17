@@ -2,7 +2,7 @@
 
 **更新日期：** 2026-09-17
 **当前阶段：** 阶段 7——CLI 体验收口与个人主力化（Ready for manual acceptance）
-**仓库状态：** 阶段五停在 Ready for manual acceptance。阶段六已 Complete。阶段七任务 0034–0037、0043、0038–0040、0044–0050、0054 Done。任务 0051–0053、0055–0058 In progress。任务 0041 自动门禁完成，停在 Ready for manual acceptance；第 1–4 项走查已过。发现 42 Low、发现 50 High 未关。20 次 dogfood 未完成。未收到封存原文。不引入 Electron 代码。暂无远程时可不推送。
+**仓库状态：** `phase-7/0041-product-acceptance`；产品代码冻结于 `ce2d9f2`。阶段五停在 Ready for manual acceptance。阶段六已 Complete。阶段七任务 0034–0037、0043、0038–0040、0044–0050、0054 Done。任务 0051–0053、0055–0058 In progress（自动栏已过，待 Terminal.app）。任务 0041 自动门禁完成，停在 Ready for manual acceptance；第 1–4 项走查已过。发现 42 Low、50 High、53 Medium、54 Medium 未关。20 次 dogfood 已记 11/20。未收到封存原文。2026-09-17 主实现从 Cursor 交给 Codex，见 [阶段七交接](tasks/phase-7-codex-handoff.md)。不引入 Electron 代码。暂无远程时可不推送。
 
 ## 已完成
 
@@ -36,6 +36,7 @@
 
 ## 活动任务
 
+- [阶段七交接：交给 Codex 继续](tasks/phase-7-codex-handoff.md)：2026-09-17 Cursor 主实现结束；下一任主实现为 Codex。产品代码冻结于 `ce2d9f2`。
 - [阶段七执行顺序](tasks/phase-7-execution-order.md)：用户已授权开始；任务 0034–0037、0043、0038–0040、0044–0050、0054 Done。任务 0051–0053、0055–0058 In progress。任务 0041 自动栏完成，阶段七 Ready for manual acceptance。不得在阶段七封存确认前引入 Electron。
 - [阶段五执行顺序](tasks/phase-5-execution-order.md)：0024 自动门禁已完成；人工 dogfood 不足，阶段五保持 Ready for manual acceptance。
 - [ADR-0017：插入 CLI 体验阶段并顺延桌面路线](decisions/ADR-0017-insert-cli-experience-stage.md)：Accepted；阶段七用于 CLI 体验与个人主力化，原桌面阶段顺延为阶段八。
@@ -50,9 +51,10 @@
 
 ## 最近验证
 
+- 2026-09-17 交接：产品代码无未提交改动。进场白块用户通过；波动单条、左下→右上、一巡 2.5 秒用户口头 ok。表格/Diff（发现 53）与缩放/底栏裁切（发现 54）自动栏已过，Terminal.app 未复验。
 - 2026-09-17 任务 0058：缩放后强制重绘、底栏按内宽铺满以免模型名被裁。聚焦 `37 passed`；`ruff`/`mypy`/`git diff --check` 通过。待 Terminal.app。
-- 2026-09-17 任务 0057：对话表格按内容宽度排表、Diff 词界折行；进场单条亮带约 2.5 秒一巡。待 Terminal.app。
-- 2026-09-17 任务 0056：进场三行点阵欢迎卡、缩行全路径、底栏分支/审批/模型、用户时间 AM/PM。Terminal.app：白块通过；波动因去掉 `dim` 不可见；表格/Diff 渲染另见 0057。
+- 2026-09-17 任务 0057：对话表格按内容宽度排表、Diff 词界折行；进场单条亮带约 2.5 秒一巡（用户口头 ok）。表格/Diff 待 Terminal.app。
+- 2026-09-17 任务 0056：进场三行点阵欢迎卡、缩行全路径、底栏分支/审批/模型、用户时间 AM/PM。Terminal.app：白块通过。
 - 2026-09-17 任务 0055：工作轨上移、状态组默认收起、顶栏强化 `VERA` 字标。聚焦测试 `102 passed`；`ruff`/`mypy`/`git diff --check` 通过。待 Terminal.app。
 - 2026-09-17 任务 0054：发现 51、52 Terminal.app 复验通过。`bd3f308` 让虚构「等待审批」去真正提出 Change Set，缺失的 `ruff`/`pytest`/`mypy` 在规划期拒绝。
 - 2026-09-17 任务 0053：状态带 K 单位、运行状态左置、审批卡上下 margin 自动栏通过，待 Terminal.app 确认。
@@ -98,7 +100,7 @@
 
 ## 下一检查点
 
-1. 阶段七任务 0041 停在 Ready for manual acceptance。发现 38–41、43–49、51–52 已复验关闭。发现 42 见 [任务 0051](tasks/0051-cli-dogfood-path-wrap.md)。发现 50 见 [任务 0052](tasks/0052-cli-dogfood-empty-after-tools.md)。继续 20 次跨日 dogfood。不开始阶段八，不引入 Electron。
+1. Codex 接主实现：先读 [阶段七交接](tasks/phase-7-codex-handoff.md)。优先 Terminal.app 复验发现 50 High（0052），再复验 0058/0057（发现 54/53），然后 0051/0053/0055/0056 其余项。继续 20 次跨日 dogfood（已记 11/20）。不开始阶段八，不引入 Electron。
 2. 不自动删除、取消暂存或忽略 `VeraTestDemo` 索引里残留的 `AD build/`；未改 `.gitignore`。
 3. 阶段五仍缺 20 次真实 dogfood 与三类真实工程走查，不得把阶段五标为 Complete。
 4. 未经确认「CLI 版本达到预期，可以封存」，不得将阶段七标为 Complete、不得开始阶段八、不得引入 Electron 或其他桌面端代码。
