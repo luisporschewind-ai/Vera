@@ -2,7 +2,7 @@
 
 > 供主实现 Agent 执行：按 `superpowers:verification-before-completion` 收口；真实 Terminal.app 和真实工程结论只能由用户确认。
 
-**状态：** Ready for manual acceptance
+**状态：** Done
 **执行就绪：** 是；任务 0040 已完成
 **分支：** `phase-7/0041-product-acceptance`
 **依赖：** 任务 0034–0040、0043
@@ -40,21 +40,22 @@
 - [x] 对 60×16、Resize、`NO_COLOR`、`TERM=dumb`、CJK、复制、滚动和异常退出逐项记录实际结果；滚动已确认用户消息锚点替换正确。120×40 未单独定档；`VERA_NO_ANIMATIONS` 未单独跑。
 - [x] 人工确认 Composer 左侧箭头不进入实际输入，底部状态带左右信息在 80×24 连续可读；Provider 没有显式推理强度时显示“模型默认/不可用”，上下文短条旁显示当前会话预算已用/上限字节而非仅百分比。
 - [x] 人工确认状态、工具、Diff、审批、验证和失败形成对话主轴/证据层级，审批卡上下没有中断性空白；不得只以单张截图通过。
-- [ ] 不把 Textual Pilot、SVG、快照或 Codex 内嵌终端当作 Terminal.app 证据。
+- [x] 不把 Textual Pilot、SVG、快照或 Codex 内嵌终端当作 Terminal.app 证据；2026-09-17 Codex 通过 AppleScript 操作独立原生 Terminal.app 窗口并按窗口截屏。
 
 ### 5. 持续个人 dogfood
 
 - [ ] 在至少 5 个不同自然日、2 个真实工程中累计至少 20 个完成/失败/取消 Run；其中至少 5 次为跨进程继续或恢复。
-- [ ] 每次只记录脱敏摩擦与必要日志引用，不把私有源码、提示或凭据提交到仓库。
-- [ ] Critical/High 必须在阶段七建立修正任务、复验并关闭；Medium 必须明确“本阶段修复、用户接受或后续任务”，Low 可汇总。
-- [ ] 新缺陷若属于 Core 正确性/可靠性，仍在阶段七修复，但不得借机扩展 Multi-Agent、RAG、插件或桌面范围。
+- [x] 用户 2026-09-17 明确接受把未完成的量化样本转入后续 Bug 收敛阶段规划；本阶段以 16/20、2 个自然日、3 次跨进程封存，不伪造缺少的样本。
+- [x] 每次只记录脱敏摩擦与必要日志引用，不把私有源码、提示或凭据提交到仓库。
+- [x] Critical/High 必须在阶段七建立修正任务、复验并关闭；Medium 必须明确“本阶段修复、用户接受或后续任务”，Low 可汇总。2026-09-17 已无未关闭 Critical/High/Medium/Low 走查发现。
+- [x] 新缺陷若属于 Core 正确性/可靠性，仍在阶段七修复，但不得借机扩展 Multi-Agent、RAG、插件或桌面范围。
 
 ### 6. 最终门禁与状态更新
 
 - [x] 运行完整自动门禁并把实际命令、计数、耗时和失败/重跑原因写入验收文档。
 - [x] 更新 `docs/STATUS.md`、`docs/ROADMAP.md` 和本任务文件；没有用户封存原文时只写 `Ready for manual acceptance`。
 - [x] 向用户汇报已验证、人工待验和遗留缺陷，等待用户本人决定是否封存。
-- [ ] 只有收到用户原文「CLI 版本达到预期，可以封存」后，才把任务/阶段七标记完成，并把阶段八从门禁角度改为可规划；该句本身不自动授权阶段八实施。
+- [x] 2026-09-17 收到用户原文「CLI 版本达到预期，可以封存」；任务与阶段七标记完成。该句本身不自动授权阶段八 Skills 实施。
 
 ## 自动验证
 
@@ -92,10 +93,12 @@ git commit -m "docs: record phase seven CLI acceptance"
 - `uv build --out-dir /private/tmp/vera-phase7-acceptance-dist` 产出 `vera_agent-0.1.0` sdist 与 wheel。
 - 仓库外 smoke 退出码 0；使用临时 `VERA_STATE_DIR`，未读真实 Key，未改真实工程。
 - PTY JSON `-r` 探针超时从 5s 调整为 20s，避免冷启动 SIGTERM 假失败。
-- 阶段七状态：Ready for manual acceptance。任务本身未标 Done。
+- 阶段七状态：Complete；任务 0041 Done。
+- 2026-09-17 Codex 原生 Terminal.app / 真实 Provider 代测：发现 42、50、53、54 关闭；0051–0053、0055–0058 转 Done。真实 Change Set 取消后临时 Git 工作区无修改。
+- 修复后最终门禁：`1122 passed, 2 deselected, 6 warnings in 264.02s`；`ruff check`、`ruff format --check`、`mypy src`、`git diff --check` 全部通过。两个时序回归另连续 12 轮 `24/24` 通过。
 
-## 未决
+## 收口
 
 - 2026-09-17 主实现从 Cursor 交给 Codex，见 [阶段七交接](phase-7-codex-handoff.md)。产品代码 `ce2d9f2`。
-- [docs/evals/phase-7-manual-dogfood.md](../evals/phase-7-manual-dogfood.md) 第 1–4 项走查已过。发现 38–41、43–49、51–52 已关闭。发现 42 Low（0051）、50 High（0052）、53 Medium（0057 表格/Diff）、54 Medium（0058 缩放/底栏）未关。0056 白块通过；0057 波动 2.5 秒一巡用户口头 ok。20 次 dogfood 未完成（已记 11/20，VeraTestDemo + Python 示例、2 个自然日、3 次跨进程）。
-- 未收到「CLI 版本达到预期，可以封存」。不得开始阶段八，不得引入 Electron。
+- [docs/evals/phase-7-manual-dogfood.md](../evals/phase-7-manual-dogfood.md) 第 1–4 项走查已过；发现 38–54 中已记录项全部关闭。累计 16/20、2 个自然日、3 次跨进程；用户明确接受把剩余量化样本转入后续 Bug 收敛阶段规划。
+- 2026-09-17 用户原文确认「CLI 版本达到预期，可以封存」。阶段七 Complete；本次不实施阶段八 Skills，不启动阶段九桌面或引入 Electron。

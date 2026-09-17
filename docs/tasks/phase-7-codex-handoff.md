@@ -3,9 +3,9 @@
 > 2026-09-17 Cursor 主实现会话结束。下一任主实现 Agent 为 Codex。只读本文件后先读 `docs/STATUS.md`、活动任务与视觉 Token，再改代码。
 
 **分支：** `phase-7/0041-product-acceptance`  
-**产品代码：** `ce2d9f2`（无未提交产品改动）。其后仅文档对齐与本交接页。  
+**产品代码：** 原交接基线为 `ce2d9f2`；Codex 后续完成收口修正、真实验证与封存提交。
 **工作区：** 仅 `/Users/admin/Vera`。`/Users/admin/Coding-harness` 只读。  
-**阶段：** 7 Ready for manual acceptance，**不是 Complete**。阶段八 Not started。
+**阶段：** 7 Complete。用户 2026-09-17 原文确认「CLI 版本达到预期，可以封存」；阶段八 Core-native Skills 与阶段九桌面均 Not started，该确认不自动授权下一阶段实施。
 
 ## 硬约束
 
@@ -16,39 +16,32 @@
 
 ## 当前进度
 
-阶段七主链 0034–0037、0043、0038–0040 已 Done。0041 自动栏（非 live 测试、PTY、wheel smoke）已通过，停在人工 dogfood。
+阶段七主链 0034–0041、0043–0058 已 Done。0041 自动栏、真实 Provider、原生 Terminal.app 代测与用户封存确认已完成。
 
-走查修正 **0044–0050、0054 Done 且 Terminal.app 复验关闭**（发现 38–41、43–49、51–52）。
+走查修正 **0044–0058 Done**。2026-09-17 Codex 按用户授权用独立原生 Terminal.app 窗口、真实 Provider 和脱敏临时工程代测，发现 38–54 中已记录项全部关闭。
 
-仍 **In progress、自动栏已过、待 Terminal.app**（后写的规格覆盖先写的顶栏/底栏描述）：
+原交接时待 Terminal.app 的项目现状：
 
 | 任务 | 内容 | 用户口头 |
 |---|---|---|
-| 0051 | 发现 42：路径/CJK 折行；回答署名 Vera | 未复验 |
-| 0052 | 发现 50 High：工具后空响应催促一次 | 未复验 |
-| 0053 | 占用 K、审批卡 margin | 未复验；运行状态已改到工作轨，勿把活动写回底栏 |
-| 0055 | 工作轨在 Composer 上；状态组默认收起 | 未复验 |
-| 0056 | 三行点阵欢迎卡；任务后 `VERA  ~/path`；底栏分支/审批/占用 \| 模型+推理 | 白块通过 |
-| 0057 | Markdown 表格按列；Diff 词界折行；进场单条亮带 | 波动一巡 2.5 秒用户 2026-09-17 确认 ok；表格/Diff 未确认 |
-| 0058 | 缩放重绘；底栏按内宽，模型名不被裁 | 未复验 |
+| 0051 | 发现 42：路径/CJK 折行；回答署名 Vera | Codex 原生 Terminal.app 代测通过 |
+| 0052 | 发现 50 High：工具后空响应催促一次 | 真实 Provider 工具后完整回答，关闭 |
+| 0053 | 占用 K、审批卡 margin | Codex 原生 Terminal.app 代测通过 |
+| 0055 | 工作轨在 Composer 上；状态组默认收起 | Codex 原生 Terminal.app 代测通过 |
+| 0056 | 三行点阵欢迎卡；任务后 `VERA  ~/path`；底栏分支/审批/占用 \| 模型+推理 | Codex 原生 Terminal.app 代测通过 |
+| 0057 | Markdown 表格按列；Diff 词界折行；进场单条亮带 | 用户确认波动；Codex 原生 Terminal.app 表格/Diff 代测通过 |
+| 0058 | 缩放重绘；底栏按内宽，模型名不被裁 | Codex 复现残影、补修并在原生 Terminal.app 复验关闭 |
 
-dogfood 20 次记 **11/20**（VeraTestDemo + Python 示例、2 个自然日、3 次跨进程）。
+真实 Run 记 **16/20**（VeraTestDemo + Python 示例/脱敏临时工程、2 个自然日、3 次跨进程）。用户明确接受把剩余量化样本转入后续 Bug 收敛阶段规划。
 
 ## 打开的发现
 
-- **50 High**（0052）：必须优先在 Terminal.app 复验；未关则阶段七不能封存。
-- **42 Low**（0051）：折行。
-- **53 Medium**（0057）：表格/Diff 渲染。
-- **54 Medium**（0058）：缩放残留与底栏裁切。
-
-白块已关。进场波动方向、单条、2.5 秒一巡已按用户最后一次口头确认落地（`AnimationClock.wave_phase` 系数为 `0.4`）。
+当前无未关闭 Critical/High/Medium/Low 走查发现。白块已关；进场波动方向、单条、2.5 秒一巡已按用户最后一次口头确认落地（`AnimationClock.wave_phase` 系数为 `0.4`）。
 
 ## 建议下一刀
 
-1. 真实 Terminal.app 复验 0058（缩放+底栏模型全称）与 0057（表格/Diff）。不过则只改点名项。
-2. 复验发现 **50**（High）与 42。
-3. 复验 0053、0055、0056 其余进场/底栏（白块和波动除外）。
-4. 继续记 20 次 dogfood。用户给出封存原文前不要动桌面。
+1. 阶段七已封存；后续 Bug 收敛、阶段八 Skills 与阶段九桌面均另行规划。
+2. 本交接记录不授权自动实施阶段八 Skills、开始阶段九桌面或引入桌面框架。
 
 视觉与进场的现行规格以 [视觉 Token](../specs/2026-09-13-vera-cli-visual-tokens.md) 和任务 0056–0058 为准，不要倒回 0039 的两行品牌或 0053 把运行状态放回底栏。
 

@@ -3,6 +3,8 @@
 **状态：** Accepted
 **日期：** 2026-09-12
 
+> 后续关系：[ADR-0020](ADR-0020-stage-core-native-skills.md) 将 Core-native Skills 插入为阶段八，并把 Electron 桌面实施顺延为阶段九。本 ADR 的标题及下文“阶段八”保留接受时的历史编号；Electron、Python Core、结构化 Command/Event 和 CLI 封存门禁不变。
+
 ## 背景
 
 Vera 已使用 Python 3.12 实现 UI 无关的 Core，并以版本化 `Command -> VeraRuntime -> Event` 作为 CLI、评测工具和未来桌面客户端的共享边界。桌面端需要承载长对话时间线、工具过程、Diff、审批、验证证据和本地进程状态，但不能复制 Runtime 逻辑、解析 CLI 文本或扩大权限。

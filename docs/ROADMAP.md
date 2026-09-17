@@ -85,7 +85,7 @@
 
 ## 阶段 7——CLI 体验收口与个人主力化
 
-**状态：** Ready for manual acceptance
+**状态：** Complete
 **入口条件：** 阶段六 Complete，且[阶段七规格](specs/2026-09-13-cli-experience-and-personal-dogfood.md)与任务顺序已经接受。
 
 - 实现持久化对话会话、退出后继续和安全的历史选择，使 CLI 具备长期任务连续性。
@@ -96,41 +96,44 @@
 - 进场无框欢迎卡（三行点阵 `VERA`）；任务后一行 `VERA  ~/path`；工作状态在 Composer 上方；底栏为分支、审批、会话上下文占用，右侧模型与推理。
 - 在小终端、CJK、无色、低速、Resize 和长时间线中保持清晰、稳定、可操作。
 - 使用真实 Terminal.app 与真实工程持续 dogfood，修复影响个人主力使用的高频摩擦。
-- 用户接受[阶段七实施计划](tasks/phase-7-execution-order.md)后，严格按 0034 → 0035 → 0036 → 0037 → 0043 → 0038 → 0039 → 0040 → 0041 实施。视觉方向已冻结为字标 A 与深海 Token；进场现行规格以欢迎卡三行点阵、任务后一行 `VERA  ~/path`、工作轨在 Composer 上为准。0041 自动矩阵与仓库外 wheel smoke 已通过；走查修正 0044–0050、0054 已复验关闭。0051–0053、0055–0058 自动栏已过、待 Terminal.app。20 次 dogfood 已记 11/20。封存原文仍待用户。下一任主实现见 [阶段七交接](tasks/phase-7-codex-handoff.md)。
+- 用户接受[阶段七实施计划](tasks/phase-7-execution-order.md)后，按 0034 → 0035 → 0036 → 0037 → 0043 → 0038 → 0039 → 0040 → 0041 完成实施。0041 自动矩阵、仓库外 wheel smoke、真实 Provider 与原生 Terminal.app 代测通过；走查修正 0044–0058 已关闭，无未关闭 Critical/High。用户接受把 16/20 后的剩余量化样本转入后续 Bug 收敛阶段规划，并于 2026-09-17 原文确认「CLI 版本达到预期，可以封存」。
 
 **退出条件：** 默认 TUI 和兼容模式达到个人主力 CLI 标准，没有未关闭的 Critical/High 使用缺陷；用户明确确认「CLI 版本达到预期，可以封存」。自动测试、Textual Pilot、SVG 和快照不能代替该确认。
 
-## 阶段 8——桌面集成
+## 阶段 8——Core-native Skills
 
 **状态：** Not started
-**入口条件：** 阶段五、阶段六和阶段七均 Complete，且用户已确认「CLI 版本达到预期，可以封存」。未满足前不得引入 Wails、Tauri、Electron 或任何桌面端代码。
+**入口条件：** 阶段七 Complete，用户已确认「CLI 版本达到预期，可以封存」，且 [Core 原生 Skills 系统](specs/2026-09-15-core-native-skills-system.md)与 [ADR-0020](decisions/ADR-0020-stage-core-native-skills.md)均为 Accepted。未满足前只允许规划，不建立实施任务、不修改产品代码。
 
-**预先校准：** [阶段八：桌面 Agent 工作台与 UI](specs/2026-09-12-desktop-agent-workbench-ui.md) 当前为 Draft，只收束产品体验、信息架构与后续增量，不代表阶段八已经启动。“Agent 工作台”四区布局仍待用户确认。
+- 建立 UI 无关的 `SkillManifest`、`SkillSummary`、`SkillSelection`、`SkillSnapshot`、稳定错误码和 Core 私有 `SkillSnapshotStore`。
+- 采用“Core 控制面 + 外部 Skill 包”；v1 只支持内置、用户本地和 workspace 本地三种来源。
+- 用户目录为 Vera 的 `platformdirs` 配置目录下 `skills/`；workspace 目录为 `.vera/skills/`；`skill.toml` 是唯一权威 Manifest。
+- v1 只支持显式选择一个主 Skill；workspace Skill 始终是 `untrusted`，不能自动进入 Context。
+- Run 开始前冻结内容寻址 Snapshot；原始包后续修改或删除不影响活动 Run 与恢复。
+- Skill 只接入 Run 启动和 Context 装配，不改变 Tool、Workspace、Policy、Approval、Verification、Checkpoint 或 Recovery 权威。
+- CLI 提供 `/skills`、`/skills show`、`/skills use`、`/skills clear` 与 `/status`，并验证完整 `NoSkill` 兼容路径。
+- 通过离线安全矩阵、真实 Terminal.app、一个 Python 工程和一个 Swift/Xcode 工程副本完成 dogfood。
+- 远程安装、市场、评分、支付、自动更新、多 Skill、Multi-Agent、Plugin、Hook 和脚本执行不属于 v1。
 
-- 基于已加固的 Core 契约制作桌面壳原型。
+**退出条件：** 单 Skill 在 CLI 中可发现、可审阅、可显式选择、可固定、可恢复且不能扩大权限；`NoSkill`、离线安全矩阵和两个真实工程 dogfood 没有未关闭的 Critical/High 问题。
+
+## 阶段 9——桌面集成
+
+**状态：** Not started
+**入口条件：** 阶段八 Complete。阶段七封存和阶段八 Skills 门禁均满足前，不得引入 Wails、Tauri、Electron 或任何桌面端代码。
+
+**预先校准：** [阶段九：桌面 Agent 工作台与 UI](specs/2026-09-12-desktop-agent-workbench-ui.md) 当前为 Draft，只收束产品体验、信息架构与后续增量，不代表阶段九已经启动。“Agent 工作台”四区布局仍待用户确认。
+
+- 基于已加固且包含 Skills 的 Core 契约制作桌面壳原型。
 - 按 [ADR-0013](decisions/ADR-0013-electron-desktop-baseline.md) 使用 Electron 建立首个桌面底版，保持 Python Core 独立并通过结构化 Command/Event 接入。
-- 复用 Core 的来源、风险、审批与策略事实，并在真实 Mac 上验证安全提示和操作确认。
+- 复用 Core 的来源、风险、审批、策略与 Skill Snapshot 事实，不在 Renderer 复制控制面。
 - 测量安全边界、打包、进程控制、性能、体积和维护成本；Electron 未达到接受门禁时再以 Tauri 进行同契约对照。
 - 通过独立决策确定前端框架、进程传输和发布打包细节后实现桌面工作流。
-- 阶段八按“安全桌面壳 → 工作台骨架 → 证据闭环 → 产品体验 → 私有交付”拆分为五个可独立验收的增量。
+- 阶段九按“安全桌面壳 → 工作台骨架 → 证据闭环 → 产品体验 → 私有交付”拆分为五个可独立验收的增量。
 
-**退出条件：** 桌面客户端完成 Core 工作流，不复制 Runtime 逻辑，也不解析 CLI 输出。
+**退出条件：** 桌面客户端完成 Core 工作流，不复制 Runtime 或 Skills 控制面，也不解析 CLI 输出。
 
-## 阶段八后候选——Core 原生 Skills 与能力扩展
-
-**状态：** Draft candidate；具体编号与是否插入公开准备之前由 [ADR-0020](decisions/ADR-0020-stage-core-native-skills.md)接受后确定
-**入口条件：** 阶段八 Complete，且 [Core 原生 Skills 系统](specs/2026-09-15-core-native-skills-system.md)与 ADR-0020 均转为 Accepted；阶段八基础桌面闭环不依赖本候选阶段。
-
-- 建立 UI 无关的 Skill Manifest、来源、发现、冲突解析、显式选择与不可变 Run Snapshot 契约。
-- 第一版只支持 Vera 内置、用户本地和 workspace 本地来源；先完成单 Skill 主路径，不做多 Skill 依赖编排。
-- Skill 只提供工作方法、模板和受限资源，不能注册权限、绕过 Workspace/Policy/Approval 或直接执行任意脚本。
-- CLI 提供 `/skills`、查看、选择和清除入口；桌面端只消费同一 Core 结构化事实，不自行扫描或解析 Skill 包。
-- 通过路径逃逸、冲突、损坏、版本不兼容、执行中变更和不可信 workspace Skill 的安全/确定性矩阵。
-- 插件市场、远程安装、评分、支付与自动更新继续留在后续独立规划，不与 Core Skills 混为一体。
-
-**退出条件：** 单 Skill 在 CLI 与桌面端可发现、可解释、可固定、可复现，且不能扩大权限；离线矩阵与真实工程 dogfood 没有未关闭的 Critical/High 问题。
-
-## 阶段 9——私有预览与公开准备
+## 阶段 10——私有预览与公开准备
 
 **状态：** Not started
 

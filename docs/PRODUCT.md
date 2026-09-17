@@ -1,7 +1,7 @@
 # Vera Product Definition
 
 **Status:** Accepted baseline
-**Updated:** 2026-09-15
+**Updated:** 2026-09-17
 
 ## Purpose
 
@@ -56,10 +56,14 @@ Vera is also a long-term learning and portfolio product. It should become mainta
 - The formal product and repository name is Vera.
 - The final product is a desktop Agent; the early CLI is internal.
 - Delivery order is Core-first, CLI-first, desktop-later.
-- Desktop integration starts only after Core hardening, CLI product-readiness gates, and the user's explicit confirmation that the CLI version meets expectations and may be sealed.
+- Desktop integration starts only after Core hardening, CLI product-readiness gates, the user's explicit confirmation that the CLI version meets expectations and may be sealed, and completion of Phase 8 Core-native Skills.
 - Until that confirmation, Wails, Tauri, Electron, and any other desktop-shell code stay out of the repository.
-- After that confirmation, the first desktop baseline uses Electron while preserving the Python Core and structured Command/Event boundary; Tauri remains the fallback if measured gates fail.
+- Phase 8 Skills may be planned before the CLI seal but may not be implemented; the seal satisfies an entry gate and does not replace separate implementation authorization.
+- After the seal and separate implementation authorization, Phase 8 first delivers Core-native Skills through the CLI; Phase 9 then uses Electron as the first desktop baseline while preserving the Python Core and structured Command/Event boundary. Tauri remains the fallback if measured gates fail.
 - Core clients communicate through structured contracts, not parsed CLI text.
+- Core-native Skills use a Core control plane with external packages. v1 supports only built-in, user-local, and workspace-local read-only packages, explicit single-Skill selection, and immutable Run snapshots.
+- A Skill describes how to work but cannot register permissions, expand Workspace, modify Policy/Approval, read Provider Keys, declare network access, bypass Change Sets, or execute package scripts in v1.
+- Workspace Skills are always untrusted project content. The Core owns discovery, conflict handling, trust classification, selection, snapshots, recovery, Context assembly, and structured events.
 - Development is private until reliability and release-readiness checks are met.
 - SDD, small verified changes, and synchronized documentation are required.
 - The accepted Phase 4 design fixes 14 bundled offline Fake Model cases and scores only Core facts and file hashes.
@@ -71,9 +75,8 @@ Vera is also a long-term learning and portfolio product. It should become mainta
 - 阶段五结束时公共 Command/Event、错误、审批与恢复契约的兼容承诺
 - 阶段六声明支持的终端：macOS Terminal.app 已走查；iTerm2/Warp/Linux/Windows Terminal 保持 `Not run`
 - 阶段七 CLI 的最终 Logo、首屏、信息密度与深海主题细节
-- 阶段八桌面端是否接受“Agent 工作台”产品形态与四区信息架构
-- 桌面基线后的 Core 原生 Skills 是否插入公开准备之前，以及本地来源、Manifest 格式、自动选择边界与 workspace Skill 信任策略；它与远程插件市场分开决策
-- Vera Logo 从阶段七 CLI 到阶段八桌面图标、菜单栏和小尺寸形态的统一识别系统
+- 阶段九桌面端是否接受“Agent 工作台”产品形态与四区信息架构
+- Vera Logo 从阶段七 CLI 到阶段九桌面图标、菜单栏和小尺寸形态的统一识别系统
 - Electron baseline packaging, resource budgets, updater, signing, and distribution details
 - License, contribution model, telemetry policy, and public-release criteria
-- Public content-safety policy, moderation deployment, privacy boundary, and appeal behavior
+- 阶段十公开内容安全政策、审核部署、隐私边界和申诉机制

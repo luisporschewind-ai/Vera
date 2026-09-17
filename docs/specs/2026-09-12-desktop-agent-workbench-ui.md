@@ -1,25 +1,26 @@
-# 阶段八：桌面 Agent 工作台与 UI
+# 阶段九：桌面 Agent 工作台与 UI
 
 **状态：** Draft
 
 **日期：** 2026-09-12
 
-**所属阶段：** 阶段 8——桌面集成（尚未开始）
+**所属阶段：** 阶段 9——桌面集成（尚未开始）
 
 ## 目的
 
-把前期桌面 UI 讨论收束为一份可审阅、可拆分、可验证的阶段八输入，避免在 Logo、视觉风格、前端框架和桌面架构之间相互锁死。
+把前期桌面 UI 讨论收束为一份可审阅、可拆分、可验证的阶段九输入，避免在 Logo、视觉风格、前端框架和桌面架构之间相互锁死。
 
-本规格只描述桌面端应呈现的产品体验、信息架构和 Core 事实映射。它不启动阶段八，不授权添加 Electron 依赖或桌面代码。
+本规格只描述桌面端应呈现的产品体验、信息架构和 Core 事实映射。它不启动阶段九，不授权添加 Electron 依赖或桌面代码。
 
 ## 本次校准结论
 
 ### 已确认
 
 - Vera 的最终形态是桌面 Coding Agent；CLI 是内部 Core 开发、验收和产品化载体。
-- 阶段八首个桌面底版采用 Electron，继续使用独立 Python Core 和版本化 `Command -> VeraRuntime -> Event` 契约，见 [ADR-0013](../decisions/ADR-0013-electron-desktop-baseline.md)。
+- 阶段九首个桌面底版采用 Electron，继续使用独立 Python Core 和版本化 `Command -> VeraRuntime -> Event` 契约，见 [ADR-0013](../decisions/ADR-0013-electron-desktop-baseline.md)与 [ADR-0020](../decisions/ADR-0020-stage-core-native-skills.md)。
 - 桌面端不得解析 CLI/TUI 文本，不得复制 Runtime、Policy、Approval、Checkpoint、Verification 或 Recovery 逻辑。
-- 阶段八入口门禁：阶段五、阶段六和阶段七均 Complete，且用户明确确认「CLI 版本达到预期，可以封存」。
+- 阶段九入口门禁：阶段七与阶段八均 Complete，用户已经明确确认「CLI 版本达到预期，可以封存」，且阶段八 Core-native Skills 已通过 CLI 完整验收。
+- 桌面端只消费阶段八冻结的 Skills Core 契约，不自行发现包、判断信任、创建 Snapshot 或装配 Skill Context。
 
 ### 推荐基线，待用户确认
 
@@ -122,7 +123,7 @@ Vera 桌面端是“可对话、可监督、可验证、可恢复的本地 Agent
 
 ## 视觉与品牌约束
 
-阶段七先确认 CLI 标识、品牌母形和颜色语义；阶段八在该基础上扩展桌面资产，不另起一套不一致的品牌语言。完整 Logo 系统至少需要覆盖：
+阶段七先确认 CLI 标识、品牌母形和颜色语义；阶段九在该基础上扩展桌面资产，不另起一套不一致的品牌语言。完整 Logo 系统至少需要覆盖：
 
 - 桌面完整标识与应用图标；
 - 小尺寸、单色和菜单栏形态；
@@ -130,23 +131,23 @@ Vera 桌面端是“可对话、可监督、可验证、可恢复的本地 Agent
 - Unicode 微标识与纯 ASCII 回退形态；
 - 深色、浅色、低色彩和无色环境。
 
-当前可继续探索的语义方向是：以 `V` 的上扬笔画接近或触碰星点，表达科技、人文与星空般的深度。整体应克制、优雅、有辨识度，避免廉价霓虹和只依赖渐变的识别方式。桌面应用图标、菜单栏和窗口资产仍需在阶段八单独评审，但不得推翻已经通过阶段七 CLI dogfood 的核心识别方向。
+当前可继续探索的语义方向是：以 `V` 的上扬笔画接近或触碰星点，表达科技、人文与星空般的深度。整体应克制、优雅、有辨识度，避免廉价霓虹和只依赖渐变的识别方式。桌面应用图标、菜单栏和窗口资产仍需在阶段九单独评审，但不得推翻已经通过阶段七 CLI dogfood 的核心识别方向。
 
-## 阶段八后续增量
+## 阶段九后续增量
 
 以下仅用于重新校准路线，不代表任务已建立或阶段已启动：
 
-1. **8.1 安全桌面壳：** Electron 窗口、受限 Preload、Core 生命周期和结构化传输。
-2. **8.2 工作台骨架：** 工作区/任务导航、中央对话与运行时间线、基础状态恢复。
-3. **8.3 证据闭环：** Diff、批准、验证、风险、Checkpoint 与 Recovery 检查器。
-4. **8.4 产品体验：** 键盘、可访问性、主题、长内容、窗口适配、性能和崩溃路径。
-5. **8.5 私有交付：** Python Core 打包、签名、公证、更新、安装与真实 Mac 验收。
+1. **9.1 安全桌面壳：** Electron 窗口、受限 Preload、Core 生命周期和结构化传输。
+2. **9.2 工作台骨架：** 工作区/任务导航、中央对话与运行时间线、基础状态恢复。
+3. **9.3 证据闭环：** Diff、批准、验证、风险、Checkpoint 与 Recovery 检查器。
+4. **9.4 产品体验：** 键盘、可访问性、主题、长内容、窗口适配、性能和崩溃路径。
+5. **9.5 私有交付：** Python Core 打包、签名、公证、更新、安装与真实 Mac 验收。
 
 每个增量都必须建立独立 Accepted 规格或任务，且复用同一 Core 契约。
 
 ## 非目标
 
-- 当前开始 Electron Spike、安装依赖或编写桌面代码；
+- 当前开始阶段九 Electron Spike、安装依赖或编写桌面代码；
 - 把 Vera 做成完整 IDE、代码编辑器或 LSP 替代品；
 - 在桌面 Renderer 中复制 Core 业务、安全或恢复逻辑；
 - 引入 Multi-Agent、复杂 RAG、插件市场或云端编辑；
@@ -170,14 +171,14 @@ Vera 桌面端是“可对话、可监督、可验证、可恢复的本地 Agent
 3. Core 的关键事实均有唯一、可追溯的 UI 表面，且没有在桌面层复制权威逻辑；
 4. 已确认、推荐待定和独立决策三类内容没有混写；
 5. 桌面品牌资产继承阶段七确认的 CLI 核心识别方向，并保留独立评审；
-6. 阶段八入口门禁和当前阶段状态保持不变。
+6. 阶段九入口门禁和当前阶段状态保持不变。
 
-## 阶段八最终验收方向
+## 阶段九最终验收方向
 
 - 用户能在桌面端完成选择工作区、提出目标、监督执行、批准动作、审阅 Diff、查看验证和恢复任务的完整闭环；
 - 同一场景的桌面与 CLI 使用相同 Command/Event 语义，桌面不解析 CLI 文本；
 - 安全、失败、重连、取消和恢复路径均有真实设备证据；
-- Electron 的启动时间、空闲内存、安装体积、进程残留和发布维护成本达到阶段八另行接受的预算；
+- Electron 的启动时间、空闲内存、安装体积、进程残留和发布维护成本达到阶段九另行接受的预算；
 - Renderer 权限边界与 IPC 允许列表通过独立安全验证。
 
 ## 待定问题
@@ -197,7 +198,9 @@ Vera 桌面端是“可对话、可监督、可验证、可恢复的本地 Agent
 - [ADR-0012：桌面集成延后](../decisions/ADR-0012-delay-desktop-until-cli-hardening.md)
 - [ADR-0013：Electron 桌面底版](../decisions/ADR-0013-electron-desktop-baseline.md)
 - [ADR-0017：插入 CLI 体验阶段并顺延桌面路线](../decisions/ADR-0017-insert-cli-experience-stage.md)
+- [ADR-0020：在 CLI 封存后、桌面之前插入 Core-native Skills 阶段](../decisions/ADR-0020-stage-core-native-skills.md)
 - [ADR-0002：Command/Event 公共契约](../decisions/ADR-0002-command-event-contract.md)
 - [阶段三：富交互 Terminal UI](2026-09-11-rich-terminal-ui.md)
 - [阶段六：CLI 功能与可靠性收口](2026-09-12-cli-productization-and-polish.md)
 - [阶段七：CLI 体验收口与个人主力化](2026-09-13-cli-experience-and-personal-dogfood.md)
+- [阶段八：Core 原生 Skills 系统](2026-09-15-core-native-skills-system.md)

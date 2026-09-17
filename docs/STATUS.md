@@ -1,13 +1,14 @@
 # Vera 状态
 
 **更新日期：** 2026-09-17
-**当前阶段：** 阶段 7——CLI 体验收口与个人主力化（Ready for manual acceptance）
-**仓库状态：** `phase-7/0041-product-acceptance`；产品代码冻结于 `ce2d9f2`。阶段五停在 Ready for manual acceptance。阶段六已 Complete。阶段七任务 0034–0037、0043、0038–0040、0044–0050、0054 Done。任务 0051–0053、0055–0058 In progress（自动栏已过，待 Terminal.app）。任务 0041 自动门禁完成，停在 Ready for manual acceptance；第 1–4 项走查已过。发现 42 Low、50 High、53 Medium、54 Medium 未关。20 次 dogfood 已记 11/20。未收到封存原文。2026-09-17 主实现从 Cursor 交给 Codex，见 [阶段七交接](tasks/phase-7-codex-handoff.md)。不引入 Electron 代码。暂无远程时可不推送。
+**当前阶段：** 阶段 7——CLI 体验收口与个人主力化（Complete）
+**仓库状态：** `phase-7/0041-product-acceptance`；阶段五停在 Ready for manual acceptance，阶段六与阶段七已 Complete。阶段七任务 0034–0041、0043–0058 Done；自动门禁、真实 Provider 与原生 Terminal.app 代测通过，发现 38–54 中已记录项全部关闭，无未关闭 Critical/High。用户接受把剩余量化 dogfood 样本转入后续 Bug 收敛阶段规划，并于 2026-09-17 原文确认「CLI 版本达到预期，可以封存」。阶段八 Skills 规格与 ADR 已接受，但阶段仍为 Not started、无产品实现；本次不启动下一阶段，不引入 Electron 代码。
 
 ## 已完成
 
 - 阶段一、阶段二、阶段三、阶段四全部任务
 - 阶段六：任务 0025–0029、0031–0033、0042
+- 阶段七：任务 0034–0041、0043–0058；用户已确认封存
 - [任务 0029：阶段六产品验收](tasks/0029-phase-6-product-acceptance.md)
 - [任务 0042：验证产物隔离与工作区无污染](tasks/0042-verification-artifact-isolation.md)
 - [任务 0033：用户消息、工具块与 tool_call_id](tasks/0033-cli-dogfood-bugs.md)
@@ -36,21 +37,24 @@
 
 ## 活动任务
 
-- [阶段七交接：交给 Codex 继续](tasks/phase-7-codex-handoff.md)：2026-09-17 Cursor 主实现结束；下一任主实现为 Codex。产品代码冻结于 `ce2d9f2`。
-- [阶段七执行顺序](tasks/phase-7-execution-order.md)：用户已授权开始；任务 0034–0037、0043、0038–0040、0044–0050、0054 Done。任务 0051–0053、0055–0058 In progress。任务 0041 自动栏完成，阶段七 Ready for manual acceptance。不得在阶段七封存确认前引入 Electron。
+- [阶段七执行顺序](tasks/phase-7-execution-order.md)：任务 0034–0041、0043–0058 Done；阶段七 Complete。剩余量化 dogfood 样本转入后续 Bug 收敛阶段规划；封存确认不自动授权下一阶段实施。
 - [阶段五执行顺序](tasks/phase-5-execution-order.md)：0024 自动门禁已完成；人工 dogfood 不足，阶段五保持 Ready for manual acceptance。
-- [ADR-0017：插入 CLI 体验阶段并顺延桌面路线](decisions/ADR-0017-insert-cli-experience-stage.md)：Accepted；阶段七用于 CLI 体验与个人主力化，原桌面阶段顺延为阶段八。
+- [ADR-0017：插入 CLI 体验阶段并顺延桌面路线](decisions/ADR-0017-insert-cli-experience-stage.md)：Accepted；阶段七用于 CLI 体验与个人主力化。其接受时的后续编号已由 ADR-0020 再次校准。
 - [验证产物隔离与工作区无污染](specs/2026-09-14-verification-artifact-isolation.md)与 [ADR-0018](decisions/ADR-0018-isolate-verification-artifacts.md)：Accepted；最终验证计划必须在审批前形成，构建/缓存产物写到 workspace 外。
-- [阶段七：CLI 体验收口与个人主力化](specs/2026-09-13-cli-experience-and-personal-dogfood.md)：Accepted；[任务级实施计划](tasks/phase-7-execution-order.md)执行中。
+- [阶段七：CLI 体验收口与个人主力化](specs/2026-09-13-cli-experience-and-personal-dogfood.md)：Accepted；[任务级实施计划](tasks/phase-7-execution-order.md)已完成。
 - [持久化对话会话与个人主力 CLI](specs/2026-09-13-persistent-conversation-sessions.md)：Accepted；实施归入阶段七。
 - [项目指令发现与 `VERA.md` 初始化](specs/2026-09-14-project-instructions-and-vera-init.md)与 [ADR-0019](decisions/ADR-0019-native-vera-project-instructions.md)：Accepted；任务 0043 计划在会话恢复后、视觉原型前实施，普通启动不得静默写工程。
-- [ADR-0013：阶段八首个桌面底版采用 Electron](decisions/ADR-0013-electron-desktop-baseline.md)：Accepted；只固定未来实施方向，不改变 CLI 封存门禁，当前不引入 Electron 代码或依赖。
-- [阶段八：桌面 Agent 工作台与 UI](specs/2026-09-12-desktop-agent-workbench-ui.md)：Draft；不启动阶段八。
-- [阶段八后候选：Core 原生 Skills 与能力扩展](specs/2026-09-15-core-native-skills-system.md)：Draft；当前无实现。[ADR-0020](decisions/ADR-0020-stage-core-native-skills.md)为 Proposed，先与插件市场分离规划，阶段八完成且规格/ADR Accepted 后才建立实施任务。
+- [阶段八：Core-native Skills](specs/2026-09-15-core-native-skills-system.md)与 [ADR-0020](decisions/ADR-0020-stage-core-native-skills.md)：Accepted；采用 Core 控制面、外部 Skill 包、显式单 Skill 与不可变 Snapshot。当前无实现，本次不建立实施任务。
+- [ADR-0013：首个桌面底版采用 Electron](decisions/ADR-0013-electron-desktop-baseline.md)：Accepted；实施编号由 ADR-0020 调整为阶段九，只固定未来方向，当前不引入 Electron 代码或依赖。
+- [阶段九：桌面 Agent 工作台与 UI](specs/2026-09-12-desktop-agent-workbench-ui.md)：Draft；不启动阶段九。
 - [不可信内容、提示词投毒与内容安全](specs/2026-09-12-untrusted-content-and-prompt-injection-defense.md)：Accepted；由任务 0030 与 ADR-0015 实施。
 
 ## 最近验证
 
+- 2026-09-17 阶段七封存：用户接受把剩余量化 dogfood 样本转入后续 Bug 收敛阶段规划，并原文确认「CLI 版本达到预期，可以封存」。任务 0041 与阶段七转 Complete。
+- 2026-09-17 Codex 收口代测：真实 Provider 工具后回答关闭发现 50；原生 Terminal.app 的路径/CJK、表格、Diff/审批/取消、欢迎/底栏与缩放关闭发现 42、53、54。临时 Git 工作区取消后无修改。0051–0053、0055–0058 Done。
+- 2026-09-17 收口修正：普通 `session.message` 不再永久占用 footer；缩放前清屏并回 Home，消除真实 Terminal 右侧残影；footer 宽度不超过最新终端列数；滚动测试先解除 tail-follow。时序回归连续 12 轮 `24/24` 通过。
+- 2026-09-17 最终门禁：`1122 passed, 2 deselected, 6 warnings in 264.02s`；`ruff check`、`ruff format --check`、`mypy src`、`git diff --check` 全部通过。
 - 2026-09-17 交接：产品代码无未提交改动。进场白块用户通过；波动单条、左下→右上、一巡 2.5 秒用户口头 ok。表格/Diff（发现 53）与缩放/底栏裁切（发现 54）自动栏已过，Terminal.app 未复验。
 - 2026-09-17 任务 0058：缩放后强制重绘、底栏按内宽铺满以免模型名被裁。聚焦 `37 passed`；`ruff`/`mypy`/`git diff --check` 通过。待 Terminal.app。
 - 2026-09-17 任务 0057：对话表格按内容宽度排表、Diff 词界折行；进场单条亮带约 2.5 秒一巡（用户口头 ok）。表格/Diff 待 Terminal.app。
@@ -100,8 +104,8 @@
 
 ## 下一检查点
 
-1. Codex 接主实现：先读 [阶段七交接](tasks/phase-7-codex-handoff.md)。优先 Terminal.app 复验发现 50 High（0052），再复验 0058/0057（发现 54/53），然后 0051/0053/0055/0056 其余项。继续 20 次跨日 dogfood（已记 11/20）。不开始阶段八，不引入 Electron。
+1. 阶段七已封存。阶段八 Skills 规格与 ADR 已接受；本次只完成规划，不建立实施任务，不启动 Skills、桌面或 Bug 收敛实施。
 2. 不自动删除、取消暂存或忽略 `VeraTestDemo` 索引里残留的 `AD build/`；未改 `.gitignore`。
 3. 阶段五仍缺 20 次真实 dogfood 与三类真实工程走查，不得把阶段五标为 Complete。
-4. 未经确认「CLI 版本达到预期，可以封存」，不得将阶段七标为 Complete、不得开始阶段八、不得引入 Electron 或其他桌面端代码。
-5. Skills 当前只有 Draft 规划，无实现；不得在规格接受和前置阶段完成前建立市场、远程安装或可执行 Skill 旁路。
+4. 用户已确认「CLI 版本达到预期，可以封存」；该确认不自动授权下一阶段或 Electron 实施。
+5. Skills 当前只有 Accepted 规划、无实现；市场、远程安装、自动更新、Plugin、Hook 与可执行能力继续保持独立且不进入 v1。
