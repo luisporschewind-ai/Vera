@@ -8,8 +8,10 @@ from vera.models.base import FakeModelAdapter
 from vera.runtime.engine import VeraRuntime
 from vera.session.controller import SessionController
 from vera.terminal.app import VeraTerminalApp
-from vera.terminal.widgets.composer import PromptComposer
+from vera.terminal.display import display_width
+from vera.terminal.widgets.composer import ComposerBar, PromptComposer
 from vera.terminal.widgets.header import VeraHeader
+from vera.terminal.widgets.status_line import VeraStatusLine
 from vera.tools.registry import ToolRegistry
 
 
@@ -82,3 +84,24 @@ async def test_first_task_collapses_welcome_next_to_path(tmp_path: Path) -> None
         text = header.visible_text()
         assert text.startswith("VERA  ")
         assert "\n" not in text
+
+
+@pytest.mark.asyncio
+async def test_resize_keeps_footer_model_and_chrome_inside_screen(tmp_path: Path) -> None:
+    controller = make_controller(tmp_path)
+    app = VeraTerminalApp(controller, controller.workspace, "fake", animations=False)
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        await pilot.resize_terminal(80, 24)
+        await pilot.pause()
+        footer = app.query_one("#status-line", VeraStatusLine)
+        text = str(footer.render())
+        assert "fake-model" in text
+        assert "推理" in text
+        assert display_width(text) <= max(int(footer.size.width), 4)
+        assert footer.region.right <= app.size.width
+        bar = app.query_one("#composer-bar", ComposerBar)
+        assert bar.region.right <= app.size.width
+        assert bar.region.x >= 0
+        header = app.query_one("#header")
+        assert header.region.right <= app.size.width

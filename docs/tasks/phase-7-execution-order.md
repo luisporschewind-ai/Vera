@@ -48,6 +48,7 @@
 | — | [0055 工作轨与顶栏字标](0055-cli-work-rail-and-header-mark.md) | 工作状态在输入框上方；状态组收起；顶栏 VERA | In progress |
 | — | [0056 欢迎卡与底栏事实](0056-cli-welcome-card-and-footer-facts.md) | 进场三行点阵卡；任务后一行路径；底栏分支/审批/模型 | In progress |
 | — | [0057 表格/Diff 与波动可见](0057-cli-markdown-table-diff-and-wave.md) | 对话表格按列排；Diff 词界折行；进场波动用色差 | In progress |
+| — | [0058 缩放残留与底栏裁切](0058-cli-resize-remnant-and-footer-clip.md) | 缩放重绘；底栏按内宽，模型不被裁 | In progress |
 
 任务必须严格按 0034 → 0035 → 0036 → 0037 → 0043 → 0038 → 0039 → 0040 → 0041 执行。0043 完成项目上下文基线后再进入视觉任务；0038 是产品视觉审批任务，不得与 0039 并行实施；0039–0040 不得为了视觉便利回改持久化或项目指令语义。
 

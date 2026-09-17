@@ -174,10 +174,42 @@ class VeraTerminalApp(App[int]):
             self._sync_sticky_offset()
         if not too_small:
             try:
-                self.query_one(PromptComposer).focus()
+                composer = self.query_one(PromptComposer)
             except NoMatches:
-                return
-        self.refresh()
+                composer = None
+            if composer is not None:
+                composer.focus()
+        self.refresh(repaint=True, layout=True)
+        self.call_after_refresh(self._repaint_after_resize)
+
+    def _repaint_after_resize(self) -> None:
+        if not self.is_running:
+            return
+        status = self._status_line()
+        if status is not None:
+            status.set_geometry(columns=self.size.width, unicode=self._unicode())
+        try:
+            composer = self.query_one(PromptComposer)
+            composer.sync_multiline_layout()
+            composer.refresh(repaint=True, layout=True)
+            self.query_one(ComposerBar).refresh(repaint=True, layout=True)
+        except NoMatches:
+            pass
+        try:
+            header = self.query_one(VeraHeader)
+            header.refresh(repaint=True, layout=True)
+        except NoMatches:
+            pass
+        try:
+            timeline = self.query_one(ConversationTimeline)
+            timeline.refresh(repaint=True, layout=True)
+            for widget in timeline.query(TimelineBlockWidget):
+                if widget.block.kind in {BlockKind.ASSISTANT, BlockKind.DIFF}:
+                    widget._render_body()
+                    widget.refresh(repaint=True)
+        except NoMatches:
+            pass
+        self.screen.refresh(repaint=True)
 
     def _collapse_welcome(self) -> None:
         if not self._welcome_expanded:

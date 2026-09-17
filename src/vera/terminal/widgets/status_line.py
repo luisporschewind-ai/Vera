@@ -7,6 +7,7 @@ from textual.widgets import Static
 from vera.presentation.activity import ActivityState
 from vera.presentation.footer_status import FooterStatus, render_footer_status
 from vera.session.models import SessionStatus
+from vera.terminal.display import display_width, pad_display
 
 
 class VeraStatusLine(Static):
@@ -62,11 +63,23 @@ class VeraStatusLine(Static):
         unread = self._pending or footer.unread
         if unread != footer.unread:
             footer = footer.model_copy(update={"unread": unread})
-        text = render_footer_status(
-            footer,
-            columns=max(4, self._columns - 4),
-            unicode=self._unicode,
-        )
+        columns = self._content_columns()
         if self._notice:
-            text = f"{self._notice}  {text}"
-        self.update(text)
+            reserved = display_width(self._notice) + 2
+            inner = max(4, columns - reserved)
+            body = render_footer_status(footer, columns=inner, unicode=self._unicode)
+            text = f"{self._notice}  {body}"
+        else:
+            text = render_footer_status(footer, columns=columns, unicode=self._unicode)
+        self.update(pad_display(text, columns))
+
+    def _content_columns(self) -> int:
+        if not self.size.width:
+            return max(4, self._columns - 4)
+        width = int(self.size.width)
+        try:
+            padding = self.styles.padding
+            inner = width - int(padding.left) - int(padding.right)
+        except Exception:
+            inner = width - 4
+        return max(4, inner)

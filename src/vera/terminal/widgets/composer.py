@@ -53,9 +53,10 @@ class ComposerBar(Horizontal):
         width: 100%;
         min-height: 3;
         margin: 0 2 1 2;
-        background: transparent;
+        background: $background;
         border: round $accent;
         padding: 0 1;
+        overflow: hidden;
     }
     ComposerBar #composer-prompt {
         width: 2;
