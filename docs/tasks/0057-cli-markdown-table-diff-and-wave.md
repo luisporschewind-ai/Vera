@@ -41,6 +41,7 @@ git diff --check
 
 - 2026-09-17 聚焦测试 `52 passed in 26.03s`（blocks/brand/animation/welcome/timeline/app/layout）。
 - 2026-09-17 跟进：单条慢亮带 `17 passed`；`ruff`/`mypy`/`git diff --check` 通过。
+- 2026-09-17 跟进：单条慢亮带 `17 passed`；`ruff`/`mypy`/`git diff --check` 通过。
 - `ruff check` / `ruff format --check` / `mypy src` / `git diff --check` 通过。
 - 未改审批默认值、未读真实 Key、未引入桌面框架。
 
