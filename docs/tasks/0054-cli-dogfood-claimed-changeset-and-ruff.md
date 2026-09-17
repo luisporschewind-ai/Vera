@@ -2,8 +2,8 @@
 
 > 供主实现 Agent 执行：阶段七 Python 工程 dogfood。不开始阶段八。
 
-**状态：** In progress
-**执行就绪：** 是
+**状态：** Done
+**执行就绪：** 否；本任务已 Done
 **分支：** `phase-7/0041-product-acceptance`
 **依赖：** 任务 0041 自动门禁
 **规格：** [阶段七 CLI 体验收口](../specs/2026-09-13-cli-experience-and-personal-dogfood.md)、[验证产物隔离](../specs/2026-09-14-verification-artifact-isolation.md)
@@ -38,10 +38,10 @@ git diff --check
 ## 验证证据
 
 - 2026-09-17：`test_conversation_response`、`test_untrusted_context`、`test_safe_editing_flow`、`test_artifacts`、`test_runner` 共 `77 passed`；`ruff`/`mypy` 对改动模块通过。
-- 发现 51、52 待用户 Terminal.app 复验。
+- 用户 2026-09-17 在原生 Terminal.app 复验 Python 示例「添加网址分析」：会出审批卡；缺失 `ruff` 不再两次同意后才失败。发现 51、52 关闭。
 
 ## 未决
 
-- 发现 51、52 待 Terminal.app 复验。
 - 发现 42、50 仍待复验。
+- 20 次 dogfood 仍归 0041。
 - 未收到「CLI 版本达到预期，可以封存」。
