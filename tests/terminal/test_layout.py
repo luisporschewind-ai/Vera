@@ -9,6 +9,7 @@ from vera.runtime.engine import VeraRuntime
 from vera.session.controller import SessionController
 from vera.terminal.app import VeraTerminalApp
 from vera.terminal.widgets.composer import PromptComposer
+from vera.terminal.widgets.header import VeraHeader
 from vera.tools.registry import ToolRegistry
 
 
@@ -41,15 +42,12 @@ async def test_narrow_width_hides_secondary_header_fields(tmp_path: Path) -> Non
     app = VeraTerminalApp(controller, controller.workspace, "fake")
     async with app.run_test(size=(80, 24)) as pilot:
         header = app.query_one("#header")
-        assert "VERA" in header.visible_text()
-        assert (
-            str(controller.workspace.name) in header.visible_text()
-            or str(controller.workspace) in header.visible_text()
-        )
+        assert "Vera" in header.visible_text()
+        assert "推理" in header.visible_text()
         await pilot.resize_terminal(70, 24)
         await pilot.pause()
         assert header.has_class("-narrow")
-        assert "VERA" in header.visible_text()
+        assert "Vera" in header.visible_text()
 
 
 @pytest.mark.asyncio
@@ -69,3 +67,18 @@ async def test_resize_preserves_composer_text(tmp_path: Path) -> None:
         await pilot.pause()
         assert composer.text == "keep me"
         assert composer.has_focus
+
+
+@pytest.mark.asyncio
+async def test_first_task_collapses_welcome_next_to_path(tmp_path: Path) -> None:
+    controller = make_controller(tmp_path)
+    app = VeraTerminalApp(controller, controller.workspace, "fake", animations=False)
+    async with app.run_test(size=(80, 24)) as pilot:
+        header = app.query_one(VeraHeader)
+        assert "Vera  0.1.0" in header.visible_text()
+        assert "\n" in header.visible_text()
+        app._collapse_welcome()
+        await pilot.pause()
+        text = header.visible_text()
+        assert text.startswith("VERA  ")
+        assert "\n" not in text

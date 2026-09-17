@@ -46,6 +46,8 @@
 | — | [0053 状态带 K 与审批边距](0053-cli-dogfood-footer-k-and-approval-margin.md) | 占用改 K、状态左置、审批卡上下 margin 1 | In progress |
 | — | [0054 走查发现 51–52](0054-cli-dogfood-claimed-changeset-and-ruff.md) | 禁止虚构审批卡；缺失 ruff 在规划期拒绝 | Done；用户 Terminal.app 复验通过 |
 | — | [0055 工作轨与顶栏字标](0055-cli-work-rail-and-header-mark.md) | 工作状态在输入框上方；状态组收起；顶栏 VERA | In progress |
+| — | [0056 欢迎卡与底栏事实](0056-cli-welcome-card-and-footer-facts.md) | 进场三行点阵卡；任务后一行路径；底栏分支/审批/模型 | In progress |
+| — | [0056 欢迎卡与底栏事实](0056-cli-welcome-card-and-footer-facts.md) | 进场点阵卡、缩行全路径、底栏分支/审批/模型 | In progress |
 
 任务必须严格按 0034 → 0035 → 0036 → 0037 → 0043 → 0038 → 0039 → 0040 → 0041 执行。0043 完成项目上下文基线后再进入视觉任务；0038 是产品视觉审批任务，不得与 0039 并行实施；0039–0040 不得为了视觉便利回改持久化或项目指令语义。
 

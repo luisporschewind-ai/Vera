@@ -1,4 +1,3 @@
-from datetime import datetime
 from pathlib import Path
 
 from vera.session.models import (
@@ -9,7 +8,11 @@ from vera.session.models import (
     SessionStatus,
 )
 from vera.terminal.brand import select_brand_mark
-from vera.terminal.widgets.welcome import VeraWelcome, brand_header_text
+from vera.terminal.widgets.welcome import (
+    VeraWelcome,
+    brand_header_text,
+    format_workspace_path,
+)
 
 
 def sample_status(
@@ -18,12 +21,13 @@ def sample_status(
     dirty: bool = False,
     available: bool = True,
     persist: str = "saved",
+    workspace: Path | None = None,
 ) -> SessionStatus:
     return SessionStatus(
         version="0.1.0",
         model_profile="fake",
         model_name="fake-model",
-        workspace=Path("/tmp/demo"),
+        workspace=workspace or Path("/tmp/demo"),
         git=GitStatus(
             available=available,
             branch="main" if available else None,
@@ -51,45 +55,41 @@ def sample_status(
     )
 
 
-def test_full_header_is_two_lines() -> None:
+def test_welcome_card_is_three_lines() -> None:
     mark = select_brand_mark(columns=80, rows=24, unicode=True, no_color=False)
-    text = brand_header_text(
-        mark,
-        sample_status(dirty=True),
-        columns=80,
-        rows=24,
-        now=datetime(2026, 9, 16, 10, 24),
-    )
+    text = brand_header_text(mark, sample_status(dirty=True), columns=80, rows=24)
     lines = text.splitlines()
-    assert lines[0] == "VERA"
-    assert len(lines) == 2
+    assert len(lines) == 3
+    assert "Vera  0.1.0" in lines[0]
     assert "demo" in lines[1]
-    assert "main*" in lines[1]
-    assert "审批 manual" in lines[1]
-    assert "10:24" in lines[1]
+    assert "fake-model" in lines[2]
+    assert "推理 不可用" in lines[2]
+    assert "新会话" not in text
+    assert "审批" not in text
+    assert "10:24" not in text
 
 
-def test_ascii_full_size_keeps_two_header_lines() -> None:
+def test_ascii_welcome_is_three_ascii_lines() -> None:
     mark = select_brand_mark(columns=80, rows=24, unicode=False, no_color=False)
     assert mark.mode == "ascii"
-    text = brand_header_text(
-        mark,
-        sample_status(),
-        columns=80,
-        rows=24,
-        now=datetime(2026, 9, 16, 10, 24),
-    )
-    assert text.splitlines()[0] == "VERA"
-    assert len(text.splitlines()) == 2
+    text = brand_header_text(mark, sample_status(), columns=80, rows=24)
+    assert len(text.splitlines()) == 3
     assert mark.lines[0].isascii()
     assert "\x1b" not in text
 
 
-def test_compact_header_is_one_line() -> None:
-    mark = select_brand_mark(columns=60, rows=16, unicode=True, no_color=False)
-    text = brand_header_text(mark, sample_status(), columns=60, rows=16)
+def test_shrunk_header_keeps_vera_next_to_path() -> None:
+    mark = select_brand_mark(columns=80, rows=24, unicode=True, no_color=False, expanded=False)
+    text = brand_header_text(
+        mark, sample_status(workspace=Path("/tmp/demo")), columns=80, expanded=False
+    )
+    assert text == "VERA  /tmp/demo"
     assert "\n" not in text
-    assert text.startswith("VERA")
+
+
+def test_home_workspace_uses_tilde() -> None:
+    path = Path.home() / "Desktop" / "VeraTestDemo"
+    assert format_workspace_path(path) == "~/Desktop/VeraTestDemo"
 
 
 def test_welcome_stays_hidden() -> None:
@@ -101,17 +101,16 @@ def test_welcome_stays_hidden() -> None:
     assert widget.display is False
 
 
-def test_header_carries_session_facts() -> None:
+def test_welcome_card_omits_session_and_git_labels() -> None:
     mark = select_brand_mark(columns=80, rows=24, unicode=True, no_color=False)
     text = brand_header_text(
         mark,
         sample_status(source="resumed", persist="unsaved", available=False),
         columns=80,
         rows=24,
-        now=datetime(2026, 9, 16, 10, 24),
     )
-    assert "VERA" in text.splitlines()[0]
-    assert "已恢复" in text
-    assert "未保存" in text
-    assert "非 Git" in text
-    assert "审批 manual" in text
+    assert "Vera  0.1.0" in text
+    assert "已恢复" not in text
+    assert "未保存" not in text
+    assert "非 Git" not in text
+    assert "审批" not in text

@@ -110,7 +110,7 @@ async def test_anchor_appears_after_user_scrolls_off_and_keeps_original_time(
         assert sticky.body_text == "第二问"
         assert sticky.clock_text == format_block_clock(second_at)
         assert sticky.clock_text != ""
-        assert "AM" not in sticky.clock_text
+        assert sticky.clock_text.endswith("AM") or sticky.clock_text.endswith("PM")
         assert sticky.query_one("#user-sticky-prompt").region.x >= 0
 
 

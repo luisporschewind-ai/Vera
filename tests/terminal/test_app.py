@@ -371,8 +371,8 @@ async def test_new_and_clear_wipe_timeline(tmp_path: Path) -> None:
         assert timeline.widget_count() == 0
         assert timeline.follow_tail is False
         header = app.query_one("#header")
-        assert "新会话" in header.visible_text()
-        assert "恢复会话" not in header.visible_text()
+        assert "新会话" not in header.visible_text()
+        assert "Vera  0.1.0" in header.visible_text()
         footer = str(app.query_one("#status-line").render())
         assert "条新消息" not in footer
         app.append_output(

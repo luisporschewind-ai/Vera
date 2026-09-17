@@ -15,7 +15,7 @@ def test_unknown_time_is_omitted() -> None:
 def test_naive_datetime_is_treated_as_utc() -> None:
     aware = format_timeline_clock(datetime(2026, 9, 15, 8, 4, tzinfo=UTC), tz=UTC)
     naive = format_timeline_clock(datetime(2026, 9, 15, 8, 4), tz=UTC)
-    assert aware == "08:04"
+    assert aware == "8:04 AM"
     assert naive == aware
 
 
@@ -24,7 +24,7 @@ def test_utc_crossing_local_day() -> None:
         datetime(2026, 9, 15, 23, 30, tzinfo=UTC),
         tz=ZoneInfo("Asia/Shanghai"),
     )
-    assert clock == "07:30"
+    assert clock == "7:30 AM"
 
 
 def test_dst_spring_forward_keeps_original_instant() -> None:
@@ -36,8 +36,16 @@ def test_dst_spring_forward_keeps_original_instant() -> None:
         datetime(2026, 3, 8, 7, 0, tzinfo=UTC),
         tz=ZoneInfo("America/New_York"),
     )
-    assert before == "01:59"
-    assert after == "03:00"
+    assert before == "1:59 AM"
+    assert after == "3:00 AM"
+
+
+def test_afternoon_is_pm_without_leading_zero() -> None:
+    clock = format_timeline_clock(
+        datetime(2026, 9, 15, 13, 21, tzinfo=UTC),
+        tz=UTC,
+    )
+    assert clock == "1:21 PM"
 
 
 def test_empty_and_decorative_blocks_are_omitted() -> None:

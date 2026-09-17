@@ -17,13 +17,15 @@ def format_timeline_clock(
     *,
     tz: tzinfo | None = None,
 ) -> str:
-    """Local 24-hour `HH:mm`. Empty when the instant is unknown."""
+    """Local 12-hour `h:mm AM` / `h:mm PM`. Empty when the instant is unknown."""
 
     if value is None:
         return ""
     instant = value if value.tzinfo is not None else value.replace(tzinfo=UTC)
     local = instant.astimezone(tz) if tz is not None else instant.astimezone()
-    return local.strftime("%H:%M")
+    hour = local.hour % 12 or 12
+    suffix = "AM" if local.hour < 12 else "PM"
+    return f"{hour}:{local.minute:02d} {suffix}"
 
 
 def block_occurred_at(block: TimelineBlock) -> datetime | None:

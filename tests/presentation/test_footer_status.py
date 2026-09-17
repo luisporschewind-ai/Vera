@@ -116,15 +116,28 @@ def test_wide_footer_has_both_sides() -> None:
     assert "就绪" not in text
     assert "deepseek-chat" in text
     assert "推理 不可用" in text
+    assert "main" in text
+    assert "审批 manual" in text
+    assert "非 Git" not in text
 
 
-def test_narrow_footer_keeps_occupancy_drops_model() -> None:
+def test_narrow_footer_keeps_model_name() -> None:
     idle = ActivityState("就绪", "idle", False)
     footer = project_footer_status(_status(used=24, maximum=100), idle)
     text = render_footer_status(footer, columns=60, unicode=True, frame="·")
-    assert "24/100" in text
-    assert "deepseek-chat" not in text
-    assert "推理" in text
+    assert "24/100" in text or "审批" in text
+    assert "deepseek-chat" in text
+
+
+def test_footer_omits_branch_when_missing() -> None:
+    idle = ActivityState("就绪", "idle", False)
+    status = _status()
+    status = status.model_copy(update={"git": GitStatus(available=False, branch=None, dirty=None)})
+    text = render_footer_status(
+        project_footer_status(status, idle), columns=80, unicode=True, frame="·"
+    )
+    assert "非 Git" not in text
+    assert "审批 manual" in text
 
 
 def test_unsaved_persist_label() -> None:

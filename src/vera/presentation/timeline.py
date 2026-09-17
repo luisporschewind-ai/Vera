@@ -63,7 +63,7 @@ class TimelineBlock(BaseModel):
 
 
 def format_block_clock(value: datetime | None) -> str:
-    """Local 24-hour `HH:mm`. Empty when unknown."""
+    """Local 12-hour `h:mm AM` / `h:mm PM`. Empty when unknown."""
 
     from vera.presentation.timeline_time import format_timeline_clock
 

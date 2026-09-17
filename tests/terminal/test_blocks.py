@@ -299,7 +299,7 @@ async def test_block_hierarchy_keeps_conversation_axis(tmp_path: Path) -> None:
         await pilot.pause()
         user = app.block("u1")
         clock = str(user._time.render())
-        assert len(clock) == 5
+        assert clock.endswith("AM") or clock.endswith("PM")
         assert user.collapsed is False
         assert app.block("a1").collapsed is False
         assert app.block("tool_1").collapsed is True

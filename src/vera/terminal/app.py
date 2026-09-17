@@ -104,6 +104,7 @@ class VeraTerminalApp(App[int]):
         self.received_sequences: list[int] = []
         self.submitted: list[str] = []
         self._editor_preview_pending = False
+        self._welcome_expanded = True
         self._session_status: SessionStatus | None = None
         self._too_small = Static(
             "终端太小：请调整到至少 60×16",
@@ -158,6 +159,7 @@ class VeraTerminalApp(App[int]):
         except NoMatches:
             return
         banner.display = too_small
+        header.set_expanded(self._welcome_expanded)
         header.apply_geometry(columns=size.width, rows=size.height, unicode=self._unicode())
         status = self._status_line()
         if status is not None:
@@ -175,6 +177,19 @@ class VeraTerminalApp(App[int]):
             except NoMatches:
                 return
         self.refresh()
+
+    def _collapse_welcome(self) -> None:
+        if not self._welcome_expanded:
+            return
+        self._welcome_expanded = False
+        try:
+            header = self.query_one(VeraHeader)
+        except NoMatches:
+            return
+        header.set_wave_phase(None)
+        header.set_expanded(False)
+        if self._session_status is not None:
+            header.set_session_status(self._session_status)
 
     def submit_composer(self) -> None:
         self.query_one(PromptComposer).submit()
@@ -228,8 +243,10 @@ class VeraTerminalApp(App[int]):
                 composer.restore_draft(text)
                 self.query_one(VeraStatusLine).set_status("已有一条排队输入，请先撤销再替换")
                 return
+            self._collapse_welcome()
             self.bridge.submit(QueuePrompt(text=text))
             return
+        self._collapse_welcome()
         self.bridge.submit(SubmitPrompt(text=text))
 
     def on_approval_selected(self, message: ApprovalSelected) -> None:
@@ -582,7 +599,12 @@ class VeraTerminalApp(App[int]):
             welcome = self.query_one(VeraWelcome)
         except NoMatches:
             return
+        header.set_expanded(self._welcome_expanded)
         header.set_session_status(status)
+        if self._welcome_expanded and self.animations:
+            header.set_wave_phase(self.animation.wave_phase())
+        else:
+            header.set_wave_phase(None)
         mark = header.current_mark()
         welcome.set_content(mark, status, columns=self.size.width)
         self._sync_sticky_offset()

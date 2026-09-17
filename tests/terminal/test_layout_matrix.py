@@ -54,12 +54,10 @@ async def test_layout_matrix_keeps_composer_and_cjk_visible(
         assert app.query_one("#welcome")
         assert app.query_one("#work-rail")
         assert app.query_one("#status-line")
-        assert "VERA" in app.query_one(VeraHeader).visible_text()
+        assert "Vera  0.1.0" in app.query_one(VeraHeader).visible_text()
         assert app.query_one("#terminal-too-small").display is False
         assert app.query_one("#welcome").display is False
         assert app.query_one("#work-rail").display is False
-        if size[0] < 80:
-            assert "\n" not in app.query_one(VeraHeader).visible_text()
-        else:
-            assert "\n" in app.query_one(VeraHeader).visible_text()
-            assert "审批" in app.query_one(VeraHeader).visible_text()
+        assert "\n" in app.query_one(VeraHeader).visible_text()
+        footer = str(app.query_one("#status-line").render())
+        assert "审批" in footer

@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
+from math import pi, sin
+
+from rich.text import Text
 from textual.app import ComposeResult
-from textual.containers import Vertical
+from textual.containers import Horizontal
 from textual.widgets import Static
 
 from vera.session.models import SessionStatus
 from vera.terminal.brand import BrandMark, select_brand_mark
-from vera.terminal.widgets.welcome import brand_header_text
+from vera.terminal.widgets.welcome import brand_header_text, header_fact_lines
 
 
-class VeraHeader(Vertical):
+class VeraHeader(Horizontal):
     """Top brand strip. Activity lives on the work rail, not here."""
 
     DEFAULT_CSS = """
@@ -22,16 +25,20 @@ class VeraHeader(Vertical):
         background: $boost;
         padding: 0 2;
     }
+    VeraHeader.-welcome {
+        padding: 1 2;
+    }
     VeraHeader #header-wordmark {
-        width: 100%;
+        width: auto;
         height: auto;
         color: $accent;
         text-style: bold;
         padding: 0;
+        margin-right: 2;
         background: transparent;
     }
     VeraHeader #header-meta {
-        width: 100%;
+        width: auto;
         height: auto;
         color: $text-muted;
         padding: 0;
@@ -51,11 +58,16 @@ class VeraHeader(Vertical):
         self._status: SessionStatus | None = None
         self._columns = 80
         self._rows = 24
-        self._mark = select_brand_mark(columns=80, rows=24, unicode=True, no_color=False)
+        self._unicode = True
+        self._expanded = True
+        self._wave_phase: float | None = None
+        self._mark = select_brand_mark(
+            columns=80, rows=24, unicode=True, no_color=False, expanded=True
+        )
         super().__init__(id=id)
 
     def compose(self) -> ComposeResult:
-        yield Static("VERA", id="header-wordmark")
+        yield Static("", id="header-wordmark")
         yield Static("", id="header-meta")
 
     def set_narrow(self, narrow: bool) -> None:
@@ -68,12 +80,18 @@ class VeraHeader(Vertical):
         self.set_class(columns < 80, "-narrow")
         self._columns = columns
         self._rows = rows
-        self._mark = select_brand_mark(
-            columns=columns,
-            rows=rows,
-            unicode=unicode,
-            no_color=False,
-        )
+        self._unicode = unicode
+        self._sync_mark()
+        self._render_brand()
+
+    def set_expanded(self, expanded: bool) -> None:
+        self._expanded = expanded
+        self.set_class(expanded, "-welcome")
+        self._sync_mark()
+        self._render_brand()
+
+    def set_wave_phase(self, phase: float | None) -> None:
+        self._wave_phase = phase
         self._render_brand()
 
     def set_session_status(self, status: SessionStatus) -> None:
@@ -85,17 +103,24 @@ class VeraHeader(Vertical):
         return self._mark
 
     def visible_text(self) -> str:
-        try:
-            word = str(self.query_one("#header-wordmark", Static).render())
-            meta = self.query_one("#header-meta", Static)
-        except Exception:
-            return "VERA"
-        if meta.display is False:
-            return word
-        second = str(meta.render())
-        if not second:
-            return word
-        return f"{word}\n{second}"
+        if self._status is None:
+            return "\n".join(self._mark.lines) or "VERA"
+        return brand_header_text(
+            self._mark,
+            self._status,
+            columns=max(self._columns, 4),
+            rows=max(self._rows, 1),
+            expanded=self._expanded,
+        )
+
+    def _sync_mark(self) -> None:
+        self._mark = select_brand_mark(
+            columns=self._columns,
+            rows=self._rows,
+            unicode=self._unicode,
+            no_color=False,
+            expanded=self._expanded,
+        )
 
     def _render_brand(self) -> None:
         try:
@@ -103,21 +128,38 @@ class VeraHeader(Vertical):
             meta = self.query_one("#header-meta", Static)
         except Exception:
             return
+        self.set_class(self._expanded, "-welcome")
         if self._status is None:
-            wordmark.update(self._mark.lines[0] if self._mark.lines else "VERA")
+            wordmark.update(self._logo_visual(self._mark.lines))
             meta.display = False
             return
-        text = brand_header_text(
-            self._mark,
-            self._status,
-            columns=max(self._columns, 4),
-            rows=max(self._rows, 1),
-        )
-        lines = text.splitlines()
-        wordmark.update(lines[0] if lines else "VERA")
-        if len(lines) > 1:
-            meta.update(lines[1])
-            meta.display = True
-        else:
+        if not self._expanded:
+            text = brand_header_text(
+                self._mark,
+                self._status,
+                columns=max(self._columns, 4),
+                expanded=False,
+            )
+            wordmark.update(text)
             meta.update("")
             meta.display = False
+            return
+        facts = header_fact_lines(self._status)
+        wordmark.update(self._logo_visual(self._mark.lines))
+        meta.update("\n".join(facts))
+        meta.display = True
+
+    def _logo_visual(self, lines: tuple[str, ...]) -> str | Text:
+        if self._wave_phase is None:
+            return "\n".join(lines)
+        out = Text()
+        for row, line in enumerate(lines):
+            if row:
+                out.append("\n")
+            for index, char in enumerate(line):
+                if char == " ":
+                    out.append(" ")
+                    continue
+                wave = sin(index * 0.45 - self._wave_phase * 2 * pi)
+                out.append(char, style="bold" if wave > 0 else "dim")
+        return out

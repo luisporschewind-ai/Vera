@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from pathlib import Path
 
 from textual.widgets import Static
 
+from vera import __version__
 from vera.session.models import SessionStatus
 from vera.terminal.brand import BrandMark
-from vera.terminal.display import clip_display
+from vera.terminal.display import clip_display, display_width, pad_display
 
 
 class VeraWelcome(Static):
@@ -27,14 +28,24 @@ class VeraWelcome(Static):
         self.update("")
 
 
-def _git_label(status: SessionStatus) -> str:
-    git = status.git
-    if not git.available:
-        return "非 Git"
-    branch = git.branch or "unknown"
-    if git.dirty:
-        return f"{branch}*"
-    return branch
+def format_workspace_path(path: Path) -> str:
+    try:
+        home = Path.home().resolve()
+        resolved = path.expanduser().resolve()
+        relative = resolved.relative_to(home)
+        as_posix = relative.as_posix()
+        return "~" if as_posix in {"", "."} else f"~/{as_posix}"
+    except Exception:
+        return str(path)
+
+
+def header_fact_lines(status: SessionStatus) -> tuple[str, str, str]:
+    path = format_workspace_path(status.workspace)
+    return (
+        f"Vera  {__version__}",
+        path,
+        f"{status.model_name}  推理 {status.reasoning.display_label()}",
+    )
 
 
 def brand_header_text(
@@ -43,20 +54,20 @@ def brand_header_text(
     *,
     columns: int,
     rows: int = 24,
-    now: datetime | None = None,
+    expanded: bool = True,
 ) -> str:
-    workspace = status.workspace.name or str(status.workspace)
-    git = _git_label(status)
-    session = "已恢复" if status.context.source in {"continued", "resumed"} else "新会话"
-    permission = f"审批 {status.permissions.approval_mode}"
-    clock = (now or datetime.now().astimezone()).strftime("%H:%M")
-    session_bits = [session]
-    if status.context.persistent_state == "unsaved":
-        session_bits.append("未保存")
-    session_text = " · ".join(session_bits)
-    word = mark.lines[0] if mark.lines else "VERA"
-    if columns >= 80 and rows >= 24:
-        second = f"{workspace}  {git}  {session_text}  {permission}  {clock}"
-        return f"{word}\n{clip_display(second, columns)}"
-    summary = f"{word}  {workspace}  {git}  {session_text}"
-    return clip_display(summary, columns)
+    del rows
+    path = format_workspace_path(status.workspace)
+    if not expanded:
+        word = mark.lines[0] if mark.lines else "VERA"
+        return clip_display(f"{word}  {path}", columns)
+    facts = header_fact_lines(status)
+    logo = mark.lines
+    if len(logo) < 3:
+        logo = (*logo, *("", "", ""))[:3]
+    width = max((display_width(line) for line in logo), default=0)
+    lines = [
+        clip_display(f"{pad_display(logo[index], width)}  {facts[index]}", columns)
+        for index in range(3)
+    ]
+    return "\n".join(lines)

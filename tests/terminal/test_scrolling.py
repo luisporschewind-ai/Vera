@@ -251,8 +251,7 @@ async def test_user_message_shows_clock_on_the_right(tmp_path: Path) -> None:
         clock = format_block_clock(created)
         assert isinstance(widget, UserBlockWidget)
         assert clock in str(widget._time.render())
-        assert len(clock) == 5
-        assert "AM" not in clock and "PM" not in clock
+        assert clock.endswith("AM") or clock.endswith("PM")
         assert "你好vera" in str(widget._body.render())
         from vera.terminal.widgets.composer import select_composer_prompt
 

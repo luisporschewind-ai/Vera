@@ -11,13 +11,23 @@ from vera.terminal.display import clip_display
 BrandMode = Literal["full", "compact", "ascii"]
 _WORDMARK = "VERA"
 _ACCESSIBLE = "Vera"
+_DENSE_UNICODE = (
+    "⢿⡀ ⢀⡿ ⣿⠛⠛⠛ ⣿⠛⠛⢳ ⢀⡞⢳⡀",
+    "⠈⢷⣀⡾⠁ ⣿⠛⠛  ⣿⠛⢿⡁ ⣸⠗⠺⣇",
+    " ⠈⣿⠁  ⠿⠶⠶⠶ ⠿  ⠿ ⠿  ⠿",
+)
+_DENSE_ASCII = (
+    ".. .. .... .... ....",
+    "..... ...  .... ....",
+    " ...  .... .  . .  .",
+)
 
 
 class BrandMark(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     mode: BrandMode
-    lines: tuple[str, ...] = Field(min_length=1, max_length=2)
+    lines: tuple[str, ...] = Field(min_length=1, max_length=3)
     accessible_label: str = _ACCESSIBLE
 
 
@@ -27,14 +37,21 @@ def select_brand_mark(
     rows: int,
     unicode: bool,
     no_color: bool,
+    expanded: bool = True,
 ) -> BrandMark:
-    del no_color
+    del no_color, rows
     budget = max(0, columns)
-    word = clip_display(_WORDMARK, budget)
-    if not unicode:
-        mode: BrandMode = "ascii"
-    elif columns >= 80 and rows >= 24:
-        mode = "full"
-    else:
-        mode = "compact"
-    return BrandMark(mode=mode, lines=(word,), accessible_label=_ACCESSIBLE)
+    if not expanded:
+        mode: BrandMode = "ascii" if not unicode else "compact"
+        return BrandMark(
+            mode=mode,
+            lines=(clip_display(_WORDMARK, budget),),
+            accessible_label=_ACCESSIBLE,
+        )
+    source = _DENSE_UNICODE if unicode else _DENSE_ASCII
+    mode = "full" if unicode else "ascii"
+    return BrandMark(
+        mode=mode,
+        lines=tuple(clip_display(line, budget) for line in source),
+        accessible_label=_ACCESSIBLE,
+    )

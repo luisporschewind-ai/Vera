@@ -17,6 +17,10 @@ Screen {
     padding: 0 2;
 }
 
+#header.-welcome {
+    padding: 1 2;
+}
+
 #header-wordmark {
     color: $accent;
     text-style: bold;

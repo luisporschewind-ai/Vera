@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from vera.presentation.activity import ActivityState
 from vera.session.models import SessionStatus
-from vera.terminal.display import clip_display, display_width, fit_left_right
+from vera.terminal.display import display_width, fit_left_right
 
 
 class FooterStatus(BaseModel):
@@ -25,6 +25,8 @@ class FooterStatus(BaseModel):
     reasoning_label: str
     unread: int = Field(ge=0)
     persist_label: str | None = None
+    git_branch: str | None = None
+    approval_label: str = ""
 
 
 def project_footer_status(
@@ -41,6 +43,11 @@ def project_footer_status(
     persist = None
     if session.context.persistent_state == "unsaved":
         persist = "未保存"
+    branch = None
+    if session.git.available and session.git.branch:
+        branch = session.git.branch
+        if session.git.dirty:
+            branch = f"{branch}*"
     return FooterStatus(
         context_used=used,
         context_max=maximum,
@@ -53,6 +60,8 @@ def project_footer_status(
         reasoning_label=session.reasoning.display_label(),
         unread=max(0, unread),
         persist_label=persist,
+        git_branch=branch,
+        approval_label=f"审批 {session.permissions.approval_mode}",
     )
 
 
@@ -84,6 +93,10 @@ def _left_candidates(
         prefixes.append(footer.persist_label)
     if footer.unread:
         prefixes.append(f"{footer.unread} 条新消息")
+    if footer.git_branch:
+        prefixes.append(footer.git_branch)
+    if footer.approval_label:
+        prefixes.append(footer.approval_label)
     extras = [" · ".join(prefixes[:keep]) for keep in range(len(prefixes), 0, -1)]
     bases = (context_full, context_short, occupancy)
     ordered: list[str] = []
@@ -115,14 +128,8 @@ def render_footer_status(
     context_full = f"会话上下文 {bar} {occupancy}"
     context_short = f"上下文 {bar} {occupancy}"
     lefts = _left_candidates(footer, context_full, context_short, occupancy)
-    if columns < 80:
-        right = f"推理 {footer.reasoning_label}"
-        for left in lefts:
-            if _fits_footer(left, right, columns):
-                return fit_left_right(left, right, columns)
-        return clip_display(lefts[-1], columns)
     right = f"{footer.model_name}  推理 {footer.reasoning_label}"
     for left in lefts:
         if _fits_footer(left, right, columns):
             return fit_left_right(left, right, columns)
-    return clip_display(lefts[-1], columns)
+    return fit_left_right(lefts[-1], right, columns)

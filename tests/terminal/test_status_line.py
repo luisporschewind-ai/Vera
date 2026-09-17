@@ -67,8 +67,7 @@ def test_footer_shows_context_and_model_on_wide_line() -> None:
     line.set_geometry(columns=60, unicode=True)
     line.apply_session(status, ActivityState("就绪", "idle", False))
     narrow = rendered(line)
-    assert "24/100" in narrow
-    assert "fake-model" not in narrow
+    assert "fake-model" in narrow
 
 
 def test_pending_count_survives_activity_update() -> None:

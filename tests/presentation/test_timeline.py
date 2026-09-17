@@ -21,11 +21,10 @@ def test_timeline_block_is_frozen() -> None:
     raise AssertionError("expected frozen model")
 
 
-def test_format_block_clock_is_local_hh_mm() -> None:
+def test_format_block_clock_is_local_ampm() -> None:
     assert format_block_clock(None) == ""
     clock = format_block_clock(datetime(2026, 9, 15, 8, 4, tzinfo=UTC))
-    assert len(clock) == 5
-    hour, minute = clock.split(":")
-    assert hour.isdigit() and minute.isdigit()
+    assert clock.endswith("AM") or clock.endswith("PM")
+    assert ":" in clock
     naive = format_block_clock(datetime(2026, 9, 15, 8, 4))
     assert naive == clock

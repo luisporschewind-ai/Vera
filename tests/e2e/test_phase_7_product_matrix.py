@@ -465,7 +465,7 @@ async def test_visual_anchor_clock_and_approval_density(tmp_path: Path) -> None:
         sticky = app.query_one("#user-sticky", UserPromptAnchor)
         assert sticky.display is True
         assert sticky.clock_text == format_block_clock(stamp)
-        assert "AM" not in sticky.clock_text
+        assert sticky.clock_text.endswith("AM") or sticky.clock_text.endswith("PM")
         body = "动作 changeset\n目标 notes.md\n风险 low\n效果 写入文件"
         timeline.apply(
             (
