@@ -3,7 +3,7 @@
 **状态：** Accepted
 **日期：** 2026-09-12
 
-> 后续关系：[ADR-0017](ADR-0017-insert-cli-experience-stage.md) 在阶段六与桌面之间新增阶段七 CLI 体验收口，将桌面集成顺延为阶段八，并把最终 CLI 封存门禁移到阶段七。本 ADR 的 Core-first、CLI-first 和桌面延后原则继续有效；下文中的旧阶段编号保留当时决策背景。
+> 后续关系：[ADR-0017](ADR-0017-insert-cli-experience-stage.md) 在阶段六与桌面之间新增阶段七 CLI 体验收口，将最终 CLI 封存门禁移到阶段七；[ADR-0020](ADR-0020-stage-core-native-skills.md) 又在 CLI 封存后、桌面之前插入阶段八 Core-native Skills，将桌面顺延为阶段九。本 ADR 的 Core-first、CLI-first 和桌面延后原则继续有效；下文中的旧阶段编号保留当时决策背景。
 
 ## 背景
 

@@ -7,7 +7,7 @@
 
 Vera 已有进程内 `ConversationContext`，能够在同一次 CLI 进程中保留用户消息、助手回复、run 结果摘要和压缩摘要；现有 `RunStore`、Event Journal 与 RecoverySnapshot 则负责保存工具、Diff、审批、Checkpoint、验证和中断恢复事实。
 
-当前进程退出后会丢弃活动对话。用户已确认：桌面开发顺延到阶段八，阶段七先把 CLI 提升为本人愿意长期使用的主力 Coding Agent；Codex、Claude Code 和 Grok Build 只作为核心交互质量参考，不要求复制它们的云端、多 Agent、插件市场或全部扩展能力。退出后恢复完整对话是这一目标的必需能力。
+当前进程退出后会丢弃活动对话。用户已确认：阶段七先把 CLI 提升为本人愿意长期使用的主力 Coding Agent，阶段八完成 Core-native Skills，桌面开发顺延到阶段九；Codex、Claude Code 和 Grok Build 只作为核心交互质量参考，不要求复制它们的云端、多 Agent、插件市场或全部扩展能力。退出后恢复完整对话是这一目标的必需能力。
 
 本规格取代“退出后不恢复自然语言对话”的旧范围限制，但不把对话恢复与未完成 run 恢复混为一套机制。
 
@@ -27,7 +27,7 @@ Vera 已有进程内 `ConversationContext`，能够在同一次 CLI 进程中保
 - 不把完整工具输出、Diff、stdout、stderr、Checkpoint、Provider 请求或环境变量复制进会话日志。
 - 不自动跨 workspace 注入历史上下文，不自动把移动后的目录重新绑定为旧 workspace。
 - 不新增 Multi-Agent、MCP/插件市场、后台任务、云同步或账号系统。
-- 不启动阶段八，不添加 Electron、Tauri、Wails 或其他桌面端代码与依赖。
+- 不实施阶段八 Skills，不启动阶段九桌面，不添加 Electron、Tauri、Wails 或其他桌面端代码与依赖。
 - 不以功能数量追平竞品；阶段七只验证日常编码主链路的质量和可控性。
 
 ## 产品行为

@@ -55,7 +55,7 @@
 - [x] 运行完整自动门禁并把实际命令、计数、耗时和失败/重跑原因写入验收文档。
 - [x] 更新 `docs/STATUS.md`、`docs/ROADMAP.md` 和本任务文件；没有用户封存原文时只写 `Ready for manual acceptance`。
 - [x] 向用户汇报已验证、人工待验和遗留缺陷，等待用户本人决定是否封存。
-- [x] 2026-09-17 收到用户原文「CLI 版本达到预期，可以封存」；任务与阶段七标记完成。该句本身不自动授权下一阶段实施。
+- [x] 2026-09-17 收到用户原文「CLI 版本达到预期，可以封存」；任务与阶段七标记完成。该句本身不自动授权阶段八 Skills 实施。
 
 ## 自动验证
 
@@ -101,4 +101,4 @@ git commit -m "docs: record phase seven CLI acceptance"
 
 - 2026-09-17 主实现从 Cursor 交给 Codex，见 [阶段七交接](phase-7-codex-handoff.md)。产品代码 `ce2d9f2`。
 - [docs/evals/phase-7-manual-dogfood.md](../evals/phase-7-manual-dogfood.md) 第 1–4 项走查已过；发现 38–54 中已记录项全部关闭。累计 16/20、2 个自然日、3 次跨进程；用户明确接受把剩余量化样本转入后续 Bug 收敛阶段规划。
-- 2026-09-17 用户原文确认「CLI 版本达到预期，可以封存」。阶段七 Complete；本次不启动下一阶段，不引入 Electron。
+- 2026-09-17 用户原文确认「CLI 版本达到预期，可以封存」。阶段七 Complete；本次不实施阶段八 Skills，不启动阶段九桌面或引入 Electron。

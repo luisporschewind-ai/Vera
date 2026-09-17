@@ -3,7 +3,7 @@
 > **供主实现 Agent 执行：** 必须按任务逐项使用 `superpowers:subagent-driven-development`（推荐）或 `superpowers:executing-plans`；每个实施步骤使用 `- [ ]` 跟踪。未经用户接受本计划、阶段六关闭及对应视觉审批门通过，不得开始实现。
 
 **状态：** Complete；0041 自动栏、真实 Provider、原生 Terminal.app 代测和用户封存确认已完成。剩余量化 dogfood 样本转入后续 Bug 收敛阶段规划。
-**目标：** 在不改变 Core 权威与安全边界的前提下，把 Vera CLI 收口为用户愿意长期使用的个人主力 Coding Agent，并为阶段八桌面端冻结可复用的会话与视觉语义。
+**目标：** 在不改变 Core 权威与安全边界的前提下，把 Vera CLI 收口为用户愿意长期使用的个人主力 Coding Agent，并为阶段八 Core-native Skills 与阶段九桌面端冻结可复用的 Core、会话和视觉语义。
 **架构：** 持久化会话由 UI 无关的 `ConversationSessionStore` 统一提供，项目说明由 UI 无关的 `ProjectInstructionService` 以 Run 快照加载，`SessionController` 负责事务编排，TUI、Plain、JSON 只消费结构化 Session Event；视觉层只投影既有 Core 事实。阶段按“存储契约 → 安全存储 → Controller 接入 → 启动恢复 → 项目指令与初始化 → 可见原型审批 → TUI 状态收敛 → 时间线/Composer 收口 → 真实 dogfood”推进。
 **技术栈：** Python 3.12、Pydantic 2、Typer、Textual 8、pytest、PTY 测试、Ruff、Mypy、uv/hatchling。
 **规格：** [阶段七 CLI 体验收口](../specs/2026-09-13-cli-experience-and-personal-dogfood.md)、[持久化对话会话](../specs/2026-09-13-persistent-conversation-sessions.md)、[项目指令与 `VERA.md` 初始化](../specs/2026-09-14-project-instructions-and-vera-init.md)、[ADR-0016](../decisions/ADR-0016-persistent-conversation-sessions.md)、[ADR-0019](../decisions/ADR-0019-native-vera-project-instructions.md)。
@@ -115,4 +115,4 @@ git diff --check
 - Vera TUI 在真实 Terminal.app 中具有明确标识、收敛状态带、用户消息滚动锚点与原始时间、独立输入箭头、连续审批布局和可靠输入导航；Plain/JSON 语义未被破坏。
 - 真实个人 dogfood 中没有未关闭的 Critical/High，Medium 均有明确修复、接受或后续处置。
 - 用户明确原文确认「CLI 版本达到预期，可以封存」。缺少该句时，阶段七最多保持 `Ready for manual acceptance`，阶段八保持 `Not started`。
-- 2026-09-17 用户已给出上述原文；阶段七 Complete。本计划不自动授权下一阶段实施。
+- 2026-09-17 用户已给出上述原文；阶段七 Complete。本计划不自动授权阶段八 Skills 实施或阶段九桌面启动。

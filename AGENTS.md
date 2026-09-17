@@ -28,8 +28,9 @@ When these disagree, stop and resolve the conflict in the relevant document befo
 - The first stage covers the Agent loop, model adaptation, context, tools, approvals, workspace boundaries, Diff, verification, checkpoints and rollback, logs, recovery, and evals.
 - Multi-Agent orchestration, complex RAG, vector databases, and a plugin marketplace are outside the first-stage scope.
 - Phase 6 is the CLI functionality and reliability baseline. It cannot be marked Complete while an active Phase 6 correction, a required regression check, or a Critical/High correctness or reliability issue remains.
-- Phase 7 is CLI experience convergence and personal dogfood. It cannot be marked Complete from automated tests, Textual Pilot, SVG, or snapshots. Without the user's written confirmation `CLI 版本达到预期，可以封存`, do not start Phase 8 or add desktop-shell code.
-- Electron is the accepted first desktop baseline for Phase 8. This choice does not waive the Phase 5, Phase 6, Phase 7, or explicit CLI seal gates; do not add Electron code or dependencies before those gates pass. Tauri is the fallback if the Electron baseline later fails accepted measurements.
+- Phase 7 is CLI experience convergence and personal dogfood. It cannot be marked Complete from automated tests, Textual Pilot, SVG, or snapshots. Without the user's written confirmation `CLI 版本达到预期，可以封存`, Phase 8 Core-native Skills may be planned but not implemented, and no desktop-shell code may be added.
+- Phase 8 is Core-native Skills. It is Core-first and CLI-first, does not depend on the desktop, and cannot begin implementation before the Phase 7 seal. Skills describe how to work and cannot register permissions, expand Workspace, modify Policy/Approval, read Provider Keys, declare network access, bypass Change Sets, or execute package scripts in v1.
+- Electron is the accepted first desktop baseline for Phase 9. Phase 9 cannot begin before Phase 8 is Complete. This choice does not waive the Phase 5, Phase 6, Phase 7, Phase 8, or explicit CLI seal gates; do not add Electron code or dependencies before those gates pass. Tauri is the fallback if the Electron baseline later fails accepted measurements.
 
 ## Required workflow
 
@@ -57,4 +58,4 @@ Before declaring completion:
 
 ## Approval boundaries
 
-Get explicit user approval before destructive or difficult-to-recover actions, external publication, remote changes, or expanding task scope. Do not create commits, push, or change Git remotes unless the current request authorizes that action. Do not mark Phase 7 complete, start Phase 8, or introduce desktop frameworks without the user's explicit CLI seal confirmation.
+Get explicit user approval before destructive or difficult-to-recover actions, external publication, remote changes, or expanding task scope. Do not create commits, push, or change Git remotes unless the current request authorizes that action. Do not mark Phase 7 complete or implement Phase 8 without the user's explicit CLI seal confirmation. Do not start Phase 9 or introduce desktop frameworks before Phase 8 is Complete.
