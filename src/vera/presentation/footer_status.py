@@ -70,7 +70,18 @@ def context_bar(percent: int, cells: int, *, unicode: bool, used: int = 0) -> st
     return ("#" * filled) + ("." * (cells - filled))
 
 
-def _middle_candidates(footer: FooterStatus, *, marker: str) -> tuple[str, ...]:
+def format_context_k(n: int) -> str:
+    """Render a byte count as K once it reaches 1000."""
+
+    if n < 1000:
+        return str(n)
+    kilos = n / 1000
+    if kilos == int(kilos):
+        return f"{int(kilos)}K"
+    return f"{kilos:.1f}K"
+
+
+def _status_candidates(footer: FooterStatus, *, marker: str) -> tuple[str, ...]:
     activity = f"{marker} {footer.activity_label}"
     optionals: list[str] = []
     if footer.persist_label:
@@ -81,8 +92,8 @@ def _middle_candidates(footer: FooterStatus, *, marker: str) -> tuple[str, ...]:
         optionals.append("/help")
     if footer.unread:
         optionals.append(f"{footer.unread} 条新消息")
-    middles = [" · ".join((activity, *optionals[:keep])) for keep in range(len(optionals), -1, -1)]
-    return tuple(middles)
+    statuses = [" · ".join((activity, *optionals[:keep])) for keep in range(len(optionals), -1, -1)]
+    return tuple(statuses)
 
 
 def _fits_footer(left: str, middle: str, right: str, columns: int) -> bool:
@@ -100,29 +111,29 @@ def render_footer_status(
     unicode: bool,
     frame: str,
 ) -> str:
-    occupancy = f"{footer.context_used}/{footer.context_max}"
+    occupancy = f"{format_context_k(footer.context_used)}/{format_context_k(footer.context_max)}"
     bar_cells = 8 if columns >= 80 else 6
     bar = context_bar(footer.context_percent, bar_cells, unicode=unicode, used=footer.context_used)
-    left = f"会话上下文 {bar} {occupancy}"
-    if columns < 80:
-        left = f"上下文 {bar} {occupancy}"
+    context_full = f"会话上下文 {bar} {occupancy}"
+    context_short = f"上下文 {bar} {occupancy}"
     idle_mark = "✓" if footer.activity_severity == "info" else "!"
     if not unicode:
         idle_mark = "+" if footer.activity_severity == "info" else "!"
     marker = frame if footer.activity_active else idle_mark
+    statuses = _status_candidates(footer, marker=marker)
+    contexts = (context_full, context_short, occupancy)
     if columns < 80:
-        # Keep context occupancy bytes; drop model name. Keep reasoning if it still fits.
         right = f"推理 {footer.reasoning_label}"
-        core = fit_left_right(left, right, columns)
-        if display_width(core) > columns:
-            return clip_display(left, columns)
-        return core
+        for status in statuses:
+            for context in (context_short, occupancy):
+                if _fits_footer(status, context, right, columns):
+                    return fit_left_right(f"{status}  {context}", right, columns)
+        return clip_display(f"{statuses[-1]}  {occupancy}", columns)
     right = f"{footer.model_name}  推理 {footer.reasoning_label}"
-    chosen = ""
-    for middle in _middle_candidates(footer, marker=marker):
-        if _fits_footer(left, middle, right, columns):
-            chosen = middle
-            break
-    if not chosen and not _fits_footer(left, "", right, columns):
-        return clip_display(left, columns)
-    return fit_left_right(f"{left}  {chosen}" if chosen else left, right, columns)
+    for status in statuses:
+        for context in contexts:
+            if _fits_footer(status, context, right, columns):
+                return fit_left_right(f"{status}  {context}", right, columns)
+    if not _fits_footer(statuses[-1], occupancy, right, columns):
+        return clip_display(f"{statuses[-1]}  {occupancy}", columns)
+    return fit_left_right(f"{statuses[-1]}  {occupancy}", right, columns)

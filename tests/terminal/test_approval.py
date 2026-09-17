@@ -176,11 +176,11 @@ async def test_approval_does_not_leave_interrupting_gap(tmp_path: Path) -> None:
         widget = app.block("approval_1")
         following = app.block("assistant_1")
         assert isinstance(widget, ApprovalBlockWidget)
-        assert widget.styles.margin.bottom == 0
-        assert widget.styles.margin.top == 0
+        assert widget.styles.margin.bottom == 1
+        assert widget.styles.margin.top == 1
         assert widget._cancel.size.height <= 1
-        assert widget.region.y - previous.region.bottom <= 1
-        assert following.region.y - widget.region.bottom <= 1
+        assert widget.region.y - previous.region.bottom <= 2
+        assert following.region.y - widget.region.bottom <= 2
 
 
 @pytest.mark.asyncio
@@ -235,8 +235,8 @@ async def test_approval_stays_continuous_across_sizes(
         assert isinstance(widget, ApprovalBlockWidget)
         rendered = str(widget._body.render())
         assert "风险 low" in rendered
-        assert widget.styles.margin.top == 0
-        assert widget.styles.margin.bottom == 0
+        assert widget.styles.margin.top == 1
+        assert widget.styles.margin.bottom == 1
         assert widget._cancel.size.height <= 1
         for button in (widget._cancel, widget._reject, widget._approve):
             assert button.display is True

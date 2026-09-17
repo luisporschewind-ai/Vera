@@ -71,6 +71,7 @@ def test_footer_shows_context_and_model_on_wide_line() -> None:
     text = rendered(line)
     assert "会话上下文" in text
     assert "24/100" in text
+    assert text.index("就绪") < text.index("会话上下文")
     assert "fake-model" in text
     assert "模型默认" in text
     line.set_geometry(columns=60, unicode=True)

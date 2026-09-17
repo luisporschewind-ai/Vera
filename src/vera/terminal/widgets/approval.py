@@ -31,7 +31,7 @@ class ApprovalBlockWidget(TimelineBlockWidget):
     DEFAULT_CSS = """
     ApprovalBlockWidget {
         height: auto;
-        margin: 0 2;
+        margin: 1 2;
         padding: 0;
     }
     ApprovalBlockWidget .block-title {

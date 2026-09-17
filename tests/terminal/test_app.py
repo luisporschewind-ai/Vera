@@ -336,7 +336,11 @@ async def test_footer_shows_live_context_bytes(tmp_path: Path) -> None:
         stats = controller.conversation.stats()
         footer = str(app.query_one("#status-line").render())
         assert stats.context_bytes > 0
-        assert f"{stats.context_bytes}/{stats.max_bytes}" in footer
+        from vera.presentation.footer_status import format_context_k
+
+        assert (
+            f"{format_context_k(stats.context_bytes)}/{format_context_k(stats.max_bytes)}" in footer
+        )
 
 
 @pytest.mark.asyncio

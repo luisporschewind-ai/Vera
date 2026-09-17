@@ -486,6 +486,6 @@ async def test_visual_anchor_clock_and_approval_density(tmp_path: Path) -> None:
         await pilot.pause()
         widget = app.query_one("#block-approval_1", ApprovalBlockWidget)
         assert "风险 low" in str(widget._body.render())
-        assert widget.styles.margin.top == 0
-        assert widget.styles.margin.bottom == 0
+        assert widget.styles.margin.top == 1
+        assert widget.styles.margin.bottom == 1
         assert widget._cancel.display is True

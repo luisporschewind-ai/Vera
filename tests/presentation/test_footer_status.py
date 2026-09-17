@@ -4,7 +4,11 @@ import pytest
 from pydantic import ValidationError
 
 from vera.presentation.activity import ActivityState
-from vera.presentation.footer_status import project_footer_status, render_footer_status
+from vera.presentation.footer_status import (
+    format_context_k,
+    project_footer_status,
+    render_footer_status,
+)
 from vera.session.models import (
     ConversationStats,
     GitStatus,
@@ -49,6 +53,15 @@ def _status(
     )
 
 
+def test_format_context_k() -> None:
+    assert format_context_k(0) == "0"
+    assert format_context_k(50) == "50"
+    assert format_context_k(999) == "999"
+    assert format_context_k(1000) == "1K"
+    assert format_context_k(5368) == "5.4K"
+    assert format_context_k(200_000) == "200K"
+
+
 def test_context_percent_bounds() -> None:
     idle = ActivityState("就绪", "idle", False)
     empty = project_footer_status(_status(used=0), idle)
@@ -67,7 +80,8 @@ def test_small_session_budget_is_not_shown_as_zero() -> None:
     tiny = project_footer_status(_status(used=50, maximum=200_000), idle)
     assert tiny.context_percent == 0
     text = render_footer_status(tiny, columns=80, unicode=True, frame="·")
-    assert "50/200000" in text
+    assert "50/200K" in text
+    assert "200000" not in text
     assert " 0%" not in text
     assert "█" in text
 
@@ -99,6 +113,7 @@ def test_wide_footer_has_both_sides() -> None:
     text = render_footer_status(footer, columns=80, unicode=True, frame="·")
     assert "会话上下文" in text
     assert "24/100" in text
+    assert text.index("就绪") < text.index("会话上下文")
     assert "deepseek-chat" in text
     assert "推理 不可用" in text
     assert "就绪" in text
@@ -143,8 +158,10 @@ def test_footer_keeps_occupancy_while_thinking() -> None:
     idle = ActivityState("正在思考", "thinking", True, "info")
     footer = project_footer_status(_status(used=50, maximum=200_000), idle)
     text = render_footer_status(footer, columns=80, unicode=True, frame="·")
-    assert "50/200000" in text
+    assert "50/200K" in text
     assert "正在思考" in text
+    assert "上下文" in text
+    assert text.index("正在思考") < text.index("上下文")
     assert " 0%" not in text
     wide = render_footer_status(footer, columns=120, unicode=True, frame="·")
     assert "Esc/Ctrl-C 取消" in wide
