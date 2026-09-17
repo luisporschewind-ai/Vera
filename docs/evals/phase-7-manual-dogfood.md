@@ -3,7 +3,7 @@
 **规格：** [阶段七 CLI 体验收口](../specs/2026-09-13-cli-experience-and-personal-dogfood.md)  
 **任务：** [0041](../tasks/0041-phase-7-product-acceptance-and-dogfood.md)  
 **日期：** 2026-09-16  
-**结果：** 2026-09-16 至 2026-09-17 原生 Terminal.app 第 1–4 项走查通过。发现 38–41、43–48 已复验关闭。发现 42 Low、发现 49 High 未关。20 次 dogfood 未完成。未收到封存原文。
+**结果：** 2026-09-16 至 2026-09-17 原生 Terminal.app 第 1–4 项走查通过。发现 38–41、43–49 已复验关闭。发现 42 Low 未关。20 次 dogfood 未完成。未收到封存原文。
 
 严重度：Critical（权限/数据/错误应用）、High（主流程不可用/输入丢失/状态误导）、Medium（高频摩擦）、Low（视觉细节）。
 
@@ -42,8 +42,8 @@
 | 工程 | VeraTestDemo |
 | 步骤 | `-r` 选择历史、明确 ID 恢复、`/compact` 后重启、`/new`、`/clear`、取消、失败、恢复、无 Git、dirty workspace |
 | 预期 | 选择器可用；compact 后旧对话仍可查看；`/new`/`/clear` 不丢 Run 证据；无 Git/dirty 有克制提示 |
-| 实际 | `193d35b` 后 `vera -r` 可打开选择器并恢复会话。`fb4c256` 后 `/new`/`/clear` 回到干净首屏。2026-09-17：明确 ID、`/compact` 后重启、失败/恢复、无 Git、dirty 通过。C 首次 Esc 无效（发现 48）；`cfeb240` 后运行中 Esc 取消复验通过。 |
-| 严重度 | 发现 44–45、48 已复验关闭 |
+| 实际 | `193d35b` 后 `vera -r` 可打开选择器并恢复会话。`fb4c256` 后 `/new`/`/clear` 回到干净首屏。2026-09-17：明确 ID、`/compact` 后重启、失败/恢复、无 Git、dirty 通过。C 首次 Esc 无效（发现 48）；`cfeb240` 后运行中 Esc 取消复验通过。取消后曾 Error / Worker 失败（发现 49）；`661a894` 后复验通过。 |
+| 严重度 | 发现 44–45、48–49 已复验关闭 |
 | 证据 | 用户确认选择器、明确 ID、`/new`/`/clear`、`/compact`、Esc 取消、失败/恢复、无 Git、dirty 通过 |
 
 ## 3. 尺寸、兼容与导航
@@ -83,8 +83,8 @@
 | 3 | 2026-09-16 | VeraTestDemo | `vera -c` 后输入「继续」 | 完成（只读，未改文件） | 是 | Low | 发现 42 折行 |
 | 4 | 2026-09-16 | VeraTestDemo | `vera -c` 后「新建第五页并从第四页接入跳转」 | 失败 `model_error` | 是 | High | 发现 43，已修 |
 | 5 | 2026-09-16 | VeraTestDemo | 同路径复验 `6c1ba9d` | 通过 | 是 | 无 | 发现 43 关闭 |
-| 6 | | | | Not run | | | |
-| 7 | | | | Not run | | | |
+| 6 | 2026-09-17 | VeraTestDemo | 运行中 Esc 取消「解释第四个 VC」 | 失败 Worker | 否 | High | 发现 49，已修 |
+| 7 | 2026-09-17 | VeraTestDemo | 同路径复验 `661a894` | 通过（已取消） | 否 | 无 | 发现 49 关闭 |
 | 8 | | | | Not run | | | |
 | 9 | | | | Not run | | | |
 | 10 | | | | Not run | | | |
@@ -115,6 +115,6 @@
 | 46 | 主题 | `/theme high-contrast` 残影、右侧异常 | Medium | 0046 修复；用户 2026-09-16 Terminal.app 复验通过 |
 | 47 | 信息层级 | 状态带短条旁只显示百分比/`<1%`，看不到当前会话预算已用/上限字节 | Medium | 0048 修复；用户 2026-09-17 Terminal.app 复验通过 |
 | 48 | 会话维护 | 运行中按 Esc 取消无效；状态带写了 Esc 但未绑定 | High | 0049 修复；用户 2026-09-17 Terminal.app 复验通过 |
-| 49 | 会话维护 | Esc 取消后出现 Error「当前有运行中的任务」和 Worker 失败 | High | 0050 修复中；待 Terminal.app 复验 |
+| 49 | 会话维护 | Esc 取消后出现 Error「当前有运行中的任务」和 Worker 失败 | High | 0050 修复；用户 2026-09-17 Terminal.app 复验通过 |
 
-发现 38–41、43–48 已关闭。第 1–4 项走查已过。发现 42 Low、发现 49 High 未关。20 次 dogfood 未完成，阶段七仍不 Complete。
+发现 38–41、43–49 已关闭。第 1–4 项走查已过。发现 42 Low 未关。20 次 dogfood 未完成，阶段七仍不 Complete。

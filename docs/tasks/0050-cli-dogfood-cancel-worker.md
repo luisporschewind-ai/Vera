@@ -2,8 +2,8 @@
 
 > 供主实现 Agent 执行：阶段七取消路径。不开始阶段八。
 
-**状态：** In progress
-**执行就绪：** 是
+**状态：** Done
+**执行就绪：** 否；本任务已 Done
 **分支：** `phase-7/0041-product-acceptance`
 **依赖：** 任务 0049
 **规格：** [CLI 产品化](../specs/2026-09-12-cli-productization-and-polish.md)
@@ -35,9 +35,10 @@ git diff --check
 ## 验证证据
 
 - 2026-09-17：`tests/runtime/test_cancel_in_flight.py`、`tests/session/test_controller.py`、`tests/runtime/test_safe_editing_flow.py` 等 `49 passed`；`ruff`/`mypy`/`git diff --check` 通过。
-- 未把 Pilot 当作 Terminal.app 证据。发现 49 待用户复验：Esc 取消后只见「已取消」，底栏不再显示 Worker 失败。
+- 用户 2026-09-17 在原生 Terminal.app 复验：Esc 取消后不再出现 Error / Worker 失败。发现 49 关闭。
 
 ## 未决
 
-- 发现 49 待 Terminal.app 复验。
+- 发现 42 Low：Markdown 路径折行。
+- 20 次 dogfood 仍归 0041。
 - 未收到「CLI 版本达到预期，可以封存」。
