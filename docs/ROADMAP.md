@@ -100,10 +100,26 @@
 
 **退出条件：** 默认 TUI 和兼容模式达到个人主力 CLI 标准，没有未关闭的 Critical/High 使用缺陷；用户明确确认「CLI 版本达到预期，可以封存」。自动测试、Textual Pilot、SVG 和快照不能代替该确认。
 
-## 阶段 8——Core-native Skills
+## 阶段 8——Core 工具集、Policy v2 与原生 Git
+
+**状态：** In progress
+**入口条件：** 阶段七 Complete，用户已确认「CLI 版本达到预期，可以封存」，[ADR-0021](decisions/ADR-0021-core-tools-before-desktop.md)为 Accepted，且 [Core 工具集与风险分级 Policy v2](specs/2026-09-17-core-tooling-and-risk-tiered-policy.md)与 [Vera 原生 Git 能力](specs/2026-09-17-native-git-capability.md)均转为 Accepted。规格接受和独立实施授权前不建立实施任务、不修改产品代码。
+
+**实施计划：** [阶段八执行顺序](tasks/phase-8-execution-order.md)拆分任务 0059–0066；用户于 2026-09-18 选择 Inline Execution，当前从任务 0059 串行实施。
+
+- 默认模型工具对齐 `read/write/edit/bash`，保留 `grep/find/ls` 辅助只读能力；所有动作统一经过 Core ToolExecutor。
+- `bash` v1 只接受结构化 argv、受限 cwd、超时和输出预算，不解释原生 Shell 字符串。
+- Policy v2 以 `balanced` 为默认，在可信 workspace 内自动执行目标授权的普通编辑、只读 Git 和已知验证，只在敏感、高影响、外部或不可恢复边界审批。
+- 建立多动作 Run、动作级 Receipt、累计 Diff、幂等恢复和旧 Change Set/Journal 兼容迁移。
+- 原生 Git v1 提供 status/diff/log/show/branch-list/commit，并在阶段退出前补齐 branch create/switch；远程 Git 另立规格。
+- 通过 Python、Node/TypeScript、Swift/Xcode 三类真实工程与 Terminal.app dogfood，证明低风险日常工作不中断且高风险边界失败关闭。
+
+**退出条件：** Pi 对齐工具、Policy v2、多动作 Run 与原生本地 Git 通过统一 Core 契约和离线安全矩阵；精确 Commit 不夹带用户既有 index 内容，恢复不重复副作用，三类真实工程无未关闭 Critical/High。
+
+## 阶段 9——Core-native Skills
 
 **状态：** Not started
-**入口条件：** 阶段七 Complete，用户已确认「CLI 版本达到预期，可以封存」，且 [Core 原生 Skills 系统](specs/2026-09-15-core-native-skills-system.md)与 [ADR-0020](decisions/ADR-0020-stage-core-native-skills.md)均为 Accepted。未满足前只允许规划，不建立实施任务、不修改产品代码。
+**入口条件：** 阶段八 Complete，且 [Core 原生 Skills 系统](specs/2026-09-15-core-native-skills-system.md)与 [ADR-0020](decisions/ADR-0020-stage-core-native-skills.md)均为 Accepted。
 
 - 建立 UI 无关的 `SkillManifest`、`SkillSummary`、`SkillSelection`、`SkillSnapshot`、稳定错误码和 Core 私有 `SkillSnapshotStore`。
 - 采用“Core 控制面 + 外部 Skill 包”；v1 只支持内置、用户本地和 workspace 本地三种来源。
@@ -117,23 +133,23 @@
 
 **退出条件：** 单 Skill 在 CLI 中可发现、可审阅、可显式选择、可固定、可恢复且不能扩大权限；`NoSkill`、离线安全矩阵和两个真实工程 dogfood 没有未关闭的 Critical/High 问题。
 
-## 阶段 9——桌面集成
+## 阶段 10——桌面集成
 
 **状态：** Not started
-**入口条件：** 阶段八 Complete。阶段七封存和阶段八 Skills 门禁均满足前，不得引入 Wails、Tauri、Electron 或任何桌面端代码。
+**入口条件：** 阶段八与阶段九 Complete。工具/Policy/Git 与 Skills 门禁均满足前，不得引入 Wails、Tauri、Electron 或任何桌面端代码。
 
-**预先校准：** [阶段九：桌面 Agent 工作台与 UI](specs/2026-09-12-desktop-agent-workbench-ui.md) 当前为 Draft，只收束产品体验、信息架构与后续增量，不代表阶段九已经启动。“Agent 工作台”四区布局仍待用户确认。
+**预先校准：** [阶段十：桌面 Agent 工作台与 UI](specs/2026-09-12-desktop-agent-workbench-ui.md) 当前为 Draft，只收束产品体验、信息架构与后续增量，不代表阶段十已经启动。“Agent 工作台”四区布局仍待用户确认。
 
-- 基于已加固且包含 Skills 的 Core 契约制作桌面壳原型。
+- 基于已加固且包含 Tools、Policy v2、Git 与 Skills 的 Core 契约制作桌面壳原型。
 - 按 [ADR-0013](decisions/ADR-0013-electron-desktop-baseline.md) 使用 Electron 建立首个桌面底版，保持 Python Core 独立并通过结构化 Command/Event 接入。
-- 复用 Core 的来源、风险、审批、策略与 Skill Snapshot 事实，不在 Renderer 复制控制面。
+- 复用 Core 的来源、风险、审批、策略、Git 与 Skill Snapshot 事实，不在 Renderer 复制控制面。
 - 测量安全边界、打包、进程控制、性能、体积和维护成本；Electron 未达到接受门禁时再以 Tauri 进行同契约对照。
 - 通过独立决策确定前端框架、进程传输和发布打包细节后实现桌面工作流。
-- 阶段九按“安全桌面壳 → 工作台骨架 → 证据闭环 → 产品体验 → 私有交付”拆分为五个可独立验收的增量。
+- 阶段十按“安全桌面壳 → 工作台骨架 → 证据闭环 → 产品体验 → 私有交付”拆分为五个可独立验收的增量。
 
-**退出条件：** 桌面客户端完成 Core 工作流，不复制 Runtime 或 Skills 控制面，也不解析 CLI 输出。
+**退出条件：** 桌面客户端完成 Core 工作流，不复制 Runtime、Tool/Policy、Git 或 Skills 控制面，也不解析 CLI 输出。
 
-## 阶段 10——私有预览与公开准备
+## 阶段 11——私有预览与公开准备
 
 **状态：** Not started
 

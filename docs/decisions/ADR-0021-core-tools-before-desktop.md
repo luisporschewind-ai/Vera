@@ -1,7 +1,8 @@
 # ADR-0021：桌面前插入 Core 工具集与 Git 能力阶段
 
-**状态：** Proposed
+**状态：** Accepted
 **日期：** 2026-09-17
+**接受：** 2026-09-18 用户要求按“先扩展工具集，再与 Skills、桌面校准”的方向继续完善
 
 ## 背景
 
@@ -9,13 +10,13 @@
 
 用户明确希望先扩展工具集、在工具能力上对齐 Pi，并加入 Git 状态、Diff、历史、提交和后续分支能力。同时，当前“一律审批 Change Set、未知命令默认审批或拒绝”的早期策略会在日常使用中产生过多卡点，需要升级为按用户目标、工作区信任和实际副作用分级的 Policy v2。
 
-若按现有路线直接启动阶段八桌面，Renderer 和桌面交互将被迫围绕一个尚未成熟的工具、权限和 Git Core 建立，之后再升级会同时改动 CLI、桌面和协议，增加返工与安全分叉风险。
+ADR-0020 已在本决策前接受“Skills 先于桌面”的路线。若按当时顺序直接实施阶段八 Skills，Skills 会先绑定早期 ToolRegistry、单 Change Set 与审批语义，随后工具契约升级又要迁移 Skills、CLI 和恢复测试。因此本决策需要同时确定工具集与 Skills 的先后关系，而不仅是继续推迟桌面。
 
 ## 候选方案
 
-### A. 桌面前插入独立 Core 工具集与 Git 能力阶段（推荐）
+### A. 在 Skills 与桌面前插入独立 Core 工具集与 Git 能力阶段（采用）
 
-先以 CLI 和 Core 契约完成 ToolExecutor、Policy v2、Pi 对齐工具和原生 Git 本地能力，再启动桌面。桌面直接消费稳定的 ToolAction、PolicyDecision、Git 事实与审批契约。
+先以 CLI 和 Core 契约完成 ToolExecutor、Policy v2、Pi 对齐工具和原生 Git 本地能力，再实施 Skills，最后启动桌面。Skills 与桌面都直接消费稳定的 ToolAction、PolicyDecision、Git 事实与审批契约。
 
 优点是 Core-first 边界清楚，能以现有 CLI 做真实 dogfood，也避免桌面复制临时逻辑。代价是桌面开始时间顺延，现行阶段编号需要在决策接受后统一校准。
 
@@ -35,12 +36,12 @@
 
 接受方案 A，并固定以下方向：
 
-1. 在当前阶段七与桌面阶段之间插入独立的 Core 工具集与 Git 能力阶段；正式阶段编号和后续顺延只在本 ADR 转为 Accepted 后更新。
+1. 正式阶段顺序调整为：阶段八 Core 工具集、Policy v2 与原生 Git；阶段九 Core-native Skills；阶段十桌面集成；阶段十一私有预览与公开准备。
 2. 默认模型工具在名称与能力上对齐 Pi 的 `read/write/edit/bash`，但所有副作用仍经过 Vera Core 的 Workspace、PolicyEngine、ApprovalGate、Checkpoint、Recovery 与 Event/Journal。
 3. `bash` 第一版是结构化 argv 命令能力，不解释原生 Shell 字符串；原生 Shell 语言等待 OS 沙箱与独立规格。
 4. Policy v2 以 `balanced` 为推荐默认：可信工作区内明确目标授权的普通编辑、只读 Git 和已知验证自动执行，敏感、外部或高影响动作审批，越权和不可接受动作拒绝。
 5. Git 作为一等 Core 能力包实现，不允许通用命令工具绕过。底层使用系统 Git CLI 与稳定机器格式，不引入 GitPython/libgit2。
-6. 第一版 Git 范围为 `status/diff/log/show/branch-list/commit`；branch create/switch 在本地 Commit 稳定后进入同阶段增量；远程 fetch/pull/push 另立规格。
+6. 第一版 Git 范围为 `status/diff/log/show/branch-list/commit`，同阶段退出前补齐 branch create/switch；远程 fetch/pull/push 另立规格。
 7. Skills 继续只描述工作方法和资源，不能注册 Tool、授予权限或执行任意包脚本。
 8. 阶段七封存事实保持有效；新阶段是新增能力，不重写已完成验收历史。
 
@@ -56,20 +57,20 @@
 
 ## 后果
 
-- 桌面阶段与现行阶段九、Skills 候选阶段的编号需要在本 ADR 接受后统一顺延和校准；
+- ADR-0020 接受的“Skills 先于桌面”边界保持有效，但其阶段编号由八顺延为九；
 - ADR-0017 中“桌面为阶段八”的编号将由本 ADR 的新顺序取代，但其 CLI-first、显式封存门禁和桌面复用 Core 原则继续有效；
 - ADR-0013 的 Electron 技术选择不变，只调整实施阶段编号；
-- ADR-0020 必须按新的桌面阶段编号重新校准，Skills 仍位于桌面基础闭环之后；
+- Skills 位于工具集之后、桌面之前；其范围、安全边界和验收要求不变；
 - ToolDefinition、Policy、Approval、Run 恢复和 CompatibilityManifest 会产生受控演进，需要明确 additive/deprecated/breaking 分类；
 - Git Commit 不取代 Vera Checkpoint；Git 远程能力不会随本决策自动获批。
 
-## 接受前必须确认
+## 接受时确认
 
-1. 用户接受桌面再次顺延，先完成 Core 工具集与 Git 能力；
-2. 用户接受 `bash` 首版只提供结构化 argv，不支持原生 Shell 语法；
-3. 用户接受 `balanced` 为推荐默认、`review` 与 `autonomous` 为可选档位；
-4. 用户接受第一版 Git 不包含 fetch/pull/push、force、reset --hard、clean 和自动历史改写；
-5. 两份关联规格中的开放决策已经收束，不含影响实施路线的 TBD。
+1. 先完成 Core 工具集、Policy v2 与原生 Git，再实施 Skills，桌面继续顺延；
+2. `bash` 首版只提供结构化 argv，不支持原生 Shell 语法；
+3. `balanced` 为默认档位，`review` 与 `autonomous` 为可选档位；
+4. 第一版 Git 不包含 fetch/pull/push、force、reset --hard、clean 和自动历史改写；
+5. 两份关联规格已于 2026-09-18 经用户书面确认转为 Accepted；实施仍需计划审阅和独立授权。
 
 ## 重新评审触发器
 
@@ -89,4 +90,4 @@
 - [ADR-0013：阶段八首个桌面底版采用 Electron](ADR-0013-electron-desktop-baseline.md)
 - [ADR-0014：Core 客户端兼容契约](ADR-0014-core-client-compatibility-contract.md)
 - [ADR-0017：插入 CLI 体验阶段并顺延桌面路线](ADR-0017-insert-cli-experience-stage.md)
-- [ADR-0020：在桌面基线后规划 Core 原生 Skills 阶段](ADR-0020-stage-core-native-skills.md)
+- [ADR-0020：在 CLI 封存后、桌面之前插入 Core-native Skills 阶段](ADR-0020-stage-core-native-skills.md)

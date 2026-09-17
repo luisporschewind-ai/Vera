@@ -23,7 +23,7 @@
 - [ADR-0010：以瞬时 Stream Frame 承载模型流式输出](ADR-0010-transient-stream-frames.md)
 - [ADR-0011：评测工具作为隔离的 Core 客户端](ADR-0011-eval-harness-as-core-client.md)
 - [ADR-0012：桌面集成延后至 Core 加固与 CLI 产品化之后](ADR-0012-delay-desktop-until-cli-hardening.md)
-- [ADR-0013：首个桌面底版采用 Electron（历史标题为阶段八；现由 ADR-0020 调整至阶段九）](ADR-0013-electron-desktop-baseline.md)
+- [ADR-0013：首个桌面底版采用 Electron（历史标题为阶段八；当前由 ADR-0021 调整至阶段十）](ADR-0013-electron-desktop-baseline.md)
 - [ADR-0014：Core 客户端兼容契约](ADR-0014-core-client-compatibility-contract.md)
 - [ADR-0015：不可信内容信任边界与提示词投毒分层防御](ADR-0015-untrusted-content-trust-boundary.md)
 - [ADR-0016：持久化对话会话与 Run 恢复分离](ADR-0016-persistent-conversation-sessions.md)
@@ -31,6 +31,6 @@
 - [ADR-0018：验证产物必须在审批前规划并隔离](ADR-0018-isolate-verification-artifacts.md)
 - [ADR-0019：以 `VERA.md` 作为原生项目指令并兼容 `AGENTS.md`](ADR-0019-native-vera-project-instructions.md)
 - [ADR-0020：在 CLI 封存后、桌面之前插入 Core-native Skills 阶段](ADR-0020-stage-core-native-skills.md)
-- [ADR-0021：桌面前插入 Core 工具集与 Git 能力阶段（Proposed）](ADR-0021-core-tools-before-desktop.md)
+- [ADR-0021：桌面前插入 Core 工具集与 Git 能力阶段（Accepted）](ADR-0021-core-tools-before-desktop.md)
 
 Core Runtime、协议、持久化模型、关键依赖、安全边界或桌面框架等长期选择应建立决策记录；常规实现细节写入任务记录。

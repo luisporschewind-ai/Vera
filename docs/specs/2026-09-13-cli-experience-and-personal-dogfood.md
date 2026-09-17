@@ -24,7 +24,7 @@ Codex CLI、Claude Code 与 Grok Build 作为成熟使用体验的参照，但 V
 - 真实 Terminal.app 与真实工程的持续 dogfood 没有未关闭的 Critical/High 使用缺陷；
 - 用户明确原文确认「CLI 版本达到预期，可以封存」。
 
-缺少上述确认时，阶段七保持 `In progress` 或 `Ready for manual acceptance`，阶段八 Core-native Skills 实施与阶段九桌面集成都保持 `Not started`。Skills 架构与文档规划不等于开始阶段八。
+缺少上述确认时，阶段七保持 `In progress` 或 `Ready for manual acceptance`，所有后续 Core 与桌面阶段都保持 `Not started`。后续架构与文档规划不等于开始实施。
 
 ## 范围
 
@@ -42,7 +42,7 @@ Codex CLI、Claude Code 与 Grok Build 作为成熟使用体验的参照，但 V
 - Logo 系统提供进场三行点阵、任务后一行拉丁字标，以及 ASCII `.` 回退；不能依赖特定 Nerd Font。
 - 延续已确认的克制、优雅、低饱和深海方向，避免廉价霓虹、过强渐变和大面积高亮。
 - 窄屏不换另一套紧凑布局，同一结构能显示多少显示多少。
-- CLI 先确认可复用的品牌母形与色彩语义；阶段九再扩展桌面应用图标、菜单栏和窗口资产。
+- CLI 先确认可复用的品牌母形与色彩语义；阶段十再扩展桌面应用图标、菜单栏和窗口资产。
 
 ### 4. 启动首屏与工作状态
 
@@ -160,5 +160,7 @@ Codex CLI、Claude Code 与 Grok Build 作为成熟使用体验的参照，但 V
 - [持久化对话会话与个人主力 CLI](2026-09-13-persistent-conversation-sessions.md)
 - [项目指令发现与 `VERA.md` 初始化](2026-09-14-project-instructions-and-vera-init.md)
 - [阶段三：富交互 Terminal UI](2026-09-11-rich-terminal-ui.md)
-- [阶段八：Core 原生 Skills 系统](2026-09-15-core-native-skills-system.md)
-- [阶段九：桌面 Agent 工作台与 UI](2026-09-12-desktop-agent-workbench-ui.md)
+- [阶段八：Core 工具集与风险分级 Policy v2](2026-09-17-core-tooling-and-risk-tiered-policy.md)
+- [阶段八：Vera 原生 Git 能力](2026-09-17-native-git-capability.md)
+- [阶段九：Core 原生 Skills 系统](2026-09-15-core-native-skills-system.md)
+- [阶段十：桌面 Agent 工作台与 UI](2026-09-12-desktop-agent-workbench-ui.md)

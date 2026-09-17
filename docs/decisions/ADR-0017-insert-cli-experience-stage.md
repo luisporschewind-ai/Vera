@@ -3,7 +3,7 @@
 **状态：** Accepted
 **日期：** 2026-09-13
 
-> 后续关系：[ADR-0020](ADR-0020-stage-core-native-skills.md) 在 CLI 封存后、桌面之前插入阶段八 Core-native Skills，将桌面顺延为阶段九、私有预览与公开准备顺延为阶段十。本 ADR 下文中的“阶段八桌面、阶段九公开准备”保留为 2026-09-13 接受时的历史事实；阶段七边界与精确封存门禁继续有效。
+> 后续关系：[ADR-0020](ADR-0020-stage-core-native-skills.md) 与 [ADR-0021](ADR-0021-core-tools-before-desktop.md) 依次在桌面前插入 Skills 及工具/Policy/Git 阶段。当前桌面为阶段十、私有预览与公开准备为阶段十一。本 ADR 下文中的“阶段八桌面、阶段九公开准备”保留为 2026-09-13 接受时的历史事实；阶段七边界与精确封存门禁继续有效。
 
 ## 背景
 

@@ -32,7 +32,7 @@ Vera 采用“`VERA.md` 原生 + `AGENTS.md` 兼容”的首版方案：`VERA.md
 `VERA.md` 与 `AGENTS.md` 都标记为 `source_kind=project_guidance`、`trust_level=advisory`。它们可以提供代码风格、文档语言、工程结构、验证命令和工作方式建议，但不能：
 
 - 扩大 workspace、网络、秘密、命令或持久化权限；
-- 将命令声明为已批准或绕过 Change Set、PolicyEngine、ApprovalGate；
+- 将命令声明为已批准或绕过 Core 文件变更计划、PolicyEngine、ApprovalGate；
 - 覆盖当前用户目标、Vera 内置策略或失败关闭行为；
 - 把文件中的命令式文本自动执行。
 

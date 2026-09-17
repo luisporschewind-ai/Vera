@@ -1,8 +1,9 @@
 # Core 工具集与风险分级 Policy v2
 
-**状态：** Draft
+**状态：** Accepted
 **日期：** 2026-09-17
-**所属阶段：** 桌面前候选能力；阶段编号与实施顺序由 ADR-0021 接受后确定
+**接受：** 2026-09-18 用户确认规格并授权继续编写实施计划
+**所属阶段：** 阶段八——Core 工具集、Policy v2 与原生 Git（尚未开始）
 
 ## 目的
 
@@ -120,6 +121,8 @@ ToolRegistry 只负责名称、版本和执行器发现；Runtime 不再直接�
 - `trusted`：普通工作区编辑、已知本地验证和低风险命令可自动执行；
 - 信任绑定规范化 workspace identity，工作区身份变化后失效。
 
+首次需要执行普通写入或命令时，未建立信任的 workspace 按 `untrusted` 处理，并由用户明确选择是否信任。信任记录保存在 Vera 私有 `0600` 配置中，不写入仓库；用户可以通过 `/permissions` 查看和撤销。workspace identity、Policy 主版本或受保护根发生变化时，旧信任失效并重新确认。
+
 ### 使用档位
 
 | 档位 | 默认行为 |
@@ -150,6 +153,8 @@ ToolRegistry 只负责名称、版本和执行器发现；Runtime 不再直接�
 - 当前 workspace 内满足同一结构化规则的动作。
 
 不提供仅按 `python`、`node`、`bash` 等宽泛可执行文件名永久授权。持久规则必须包含工具、effect、参数约束、workspace identity、有效策略版本和到期/撤销信息；Policy 版本变化时重新评估。
+
+一次性和本 Run 授权随 Run 结束失效。workspace 授权保存在 Vera 私有权限存储中，默认持续到用户撤销、workspace identity 变化、规则到期或 Policy 主版本变化；不允许仓库文件自行创建或延长授权。
 
 ## 自动写入条件
 
@@ -205,6 +210,7 @@ ToolRegistry 只负责名称、版本和执行器发现；Runtime 不再直接�
 - `/status` 展示 workspace trust、使用档位、Policy 版本和 OS 沙箱状态；
 - `/permissions` 展示自动允许、审批和硬拒绝的有效规则摘要；
 - 审批卡提供“仅一次”“本 Run”“此工作区”三个可用作用域，具体选项由 Core 决定；
+- 每个文件动作立即发出结构化 Diff 增量；客户端默认在同一模型轮次内合并展示累计 Diff，但审批、恢复与审计仍绑定各自 `action_id`；
 - TUI、Plain、JSON 与未来桌面端消费相同的 ToolAction、PolicyDecision、Approval 与结果事实；
 - 客户端不得自行判断命令安全、持久化授权或执行工具。
 
@@ -243,13 +249,13 @@ ToolRegistry 只负责名称、版本和执行器发现；Runtime 不再直接�
 9. 完整非 live、Ruff、格式、Mypy、构建、wheel smoke、安装态 smoke 与 `git diff --check` 通过。
 10. 至少在 Python、Node/TypeScript 与 Swift/Xcode 三类可信真实工程完成 Terminal.app dogfood，没有未关闭 Critical/High 正确性或安全问题。
 
-## 转为 Accepted 前的决策
+## 已收束的迁移决策
 
-1. `bash` 首版是否确认只提供结构化 argv，而不解释 Shell 字符串。
-2. `balanced` 是否作为默认档位，以及首次打开工作区时如何取得明确 trust。
-3. workspace 级授权的存储位置、有效期和撤销入口。
-4. `write/edit` 的累计 Diff 在每次动作后展示，还是在一个模型轮次结束后合并展示。
-5. 默认工具迁移期是否向模型同时暴露旧名称，还是只保留 decoder/Journal 兼容。
+1. `bash` 首版只提供结构化 argv，不解释 Shell 字符串。
+2. `balanced` 是默认档位；workspace trust 必须由用户明确建立并保存在 Vera 私有配置中。
+3. workspace 级授权默认持续到撤销、到期、workspace identity 或 Policy 主版本变化，并通过 `/permissions` 管理。
+4. Core 每次动作都发出 Diff 事实；客户端默认按模型轮次合并展示累计 Diff，不合并动作身份。
+5. 模型切换到新工具契约后只暴露 `read/write/edit/bash/grep/find/ls`，避免新旧工具重复选择；旧名称只保留 decoder、Journal、恢复和兼容测试，不继续作为默认模型工具。
 
 ## 关联
 

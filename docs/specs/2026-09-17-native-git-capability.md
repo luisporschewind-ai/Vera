@@ -1,8 +1,9 @@
 # Vera 原生 Git 能力
 
-**状态：** Draft
+**状态：** Accepted
 **日期：** 2026-09-17
-**所属阶段：** 桌面前 Core 工具集候选能力；阶段编号与实施顺序由 ADR-0021 接受后确定
+**接受：** 2026-09-18 用户确认规格并授权继续编写实施计划
+**所属阶段：** 阶段八——Core 工具集、Policy v2 与原生 Git（尚未开始）
 
 ## 目的
 
@@ -94,6 +95,8 @@ entries[]
 
 `amend`、`rebase`、`reset`、`clean`、`stash` 与强制历史改写不属于第一版。
 
+阶段八退出前必须实现并验证 `git_branch_create` 与 `git_branch_switch`；`git_branch_delete` 和 `git_revert` 保持后续同阶段增量，不阻塞第一版退出。
+
 ## GitCommitPlan
 
 Commit Plan 至少包含：
@@ -172,7 +175,7 @@ collect repository facts
 
 - 使用仓库、工作树或用户现有 Git 身份；缺失时返回 `git_identity_missing`；
 - 检测 `core.hooksPath` 与相关 Commit Hooks；不静默使用 `--no-verify`；
-- `untrusted` workspace 的 Hook 不自动执行；`trusted` workspace 中按 Policy v2 与用户目标决定自动或审批；
+- `untrusted` workspace 的 Hook 不执行；`trusted` workspace 第一次运行某组 Commit Hooks 时请求 workspace 级授权，授权绑定 Hook 路径、内容哈希、Git 配置事实与 Policy 主版本；任一事实变化后重新审批；
 - Hook 产生额外工作区/index 变化时必须可见，并在超出 Plan 时使 Commit 失败或进入人工处理；
 - 检测 GPG/SSH 签名配置；首版不能完成非交互签名时返回稳定错误，不修改用户配置，也不静默降级为未签名提交。
 
@@ -313,13 +316,13 @@ use_native_git_tool
 7. 第一版无 fetch/pull/push、force、reset --hard、clean 或自动历史改写入口。
 8. 临时仓库离线矩阵、完整产品门禁与至少两个真实 Git 工程 Terminal.app dogfood 通过。
 
-## 转为 Accepted 前的决策
+## 已收束的第一版决策
 
-1. 第一版是否支持 unborn branch 的首个 Commit，还是先稳定普通 HEAD 仓库。
-2. trusted workspace 中检测到 Commit Hooks 时默认运行还是仍请求一次 workspace 级授权。
-3. 用户原有目标路径已 staged 时，首版一律拒绝还是允许精确 Plan 审批后提交。
-4. Commit 完成后是否自动建议但不执行 branch/push 下一步。
-5. branch create/switch 是否进入首版退出条件，还是作为首版后的同阶段增量。
+1. 第一版不支持 unborn branch 的首个 Commit；先稳定已有 HEAD 的普通仓库，并返回 `git_unborn_head`。
+2. trusted workspace 中检测到 Commit Hooks 时仍请求一次 workspace 级授权，且授权绑定 Hook 内容与配置事实。
+3. 用户原有目标路径已 staged 时第一版拒绝自动 Commit，不提供“审批后混合提交”的旁路。
+4. Commit 完成后可以在普通回答中建议下一步，但不得自动创建分支、访问远程或发起 push。
+5. `git_branch_create` 与 `git_branch_switch` 进入阶段八退出条件；branch delete/revert 后置，远程操作另立规格。
 
 ## 关联
 

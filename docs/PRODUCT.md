@@ -1,7 +1,7 @@
 # Vera Product Definition
 
 **Status:** Accepted baseline
-**Updated:** 2026-09-17
+**Updated:** 2026-09-18
 
 ## Purpose
 
@@ -24,7 +24,7 @@ Vera is also a long-term learning and portfolio product. It should become mainta
 - **Transparent:** tool calls, changes, approvals, and verification are inspectable.
 - **Recoverable:** checkpoints and rollback are product capabilities, not emergency scripts.
 - **Evidence-based:** success means verified outcomes, not plausible model text.
-- **No hidden workspace pollution:** verification may read project sources, but build/cache artifacts stay outside the workspace unless an explicit Change Set authorizes a persistent file.
+- **No hidden workspace pollution:** verification may read project sources, but build/cache artifacts stay outside the workspace unless an explicit Core file-mutation plan authorizes a persistent file.
 - **Untrusted by default:** repository content, tool results, model output, and future external data cannot grant authority; deterministic policy and parameter-bound approval govern actions.
 - **Core-first:** product behavior lives outside any specific CLI or desktop shell.
 - **Incremental:** specifications, code, tests, and documentation evolve in small accepted slices.
@@ -56,13 +56,13 @@ Vera is also a long-term learning and portfolio product. It should become mainta
 - The formal product and repository name is Vera.
 - The final product is a desktop Agent; the early CLI is internal.
 - Delivery order is Core-first, CLI-first, desktop-later.
-- Desktop integration starts only after Core hardening, CLI product-readiness gates, the user's explicit confirmation that the CLI version meets expectations and may be sealed, and completion of Phase 8 Core-native Skills.
+- Desktop integration starts only after Core hardening, CLI product-readiness gates, the user's explicit confirmation that the CLI version meets expectations and may be sealed, Phase 8 Core tooling/Policy/Git, and Phase 9 Core-native Skills.
 - Until that confirmation, Wails, Tauri, Electron, and any other desktop-shell code stay out of the repository.
-- Phase 8 Skills may be planned before the CLI seal but may not be implemented; the seal satisfies an entry gate and does not replace separate implementation authorization.
-- After the seal and separate implementation authorization, Phase 8 first delivers Core-native Skills through the CLI; Phase 9 then uses Electron as the first desktop baseline while preserving the Python Core and structured Command/Event boundary. Tauri remains the fallback if measured gates fail.
+- After the seal and separate implementation authorization, Phase 8 first delivers Pi-aligned Core tools, risk-tiered Policy v2, and native local Git through the CLI.
+- Phase 9 then delivers Core-native Skills through the CLI on top of the stable Phase 8 Tool/Policy contracts. Phase 10 uses Electron as the first desktop baseline while preserving the Python Core and structured Command/Event boundary. Tauri remains the fallback if measured gates fail.
 - Core clients communicate through structured contracts, not parsed CLI text.
 - Core-native Skills use a Core control plane with external packages. v1 supports only built-in, user-local, and workspace-local read-only packages, explicit single-Skill selection, and immutable Run snapshots.
-- A Skill describes how to work but cannot register permissions, expand Workspace, modify Policy/Approval, read Provider Keys, declare network access, bypass Change Sets, or execute package scripts in v1.
+- A Skill describes how to work but cannot register permissions, expand Workspace, modify Policy/Approval, read Provider Keys, declare network access, bypass Core file-mutation planning, or execute package scripts in v1.
 - Workspace Skills are always untrusted project content. The Core owns discovery, conflict handling, trust classification, selection, snapshots, recovery, Context assembly, and structured events.
 - Development is private until reliability and release-readiness checks are met.
 - SDD, small verified changes, and synchronized documentation are required.
@@ -75,8 +75,8 @@ Vera is also a long-term learning and portfolio product. It should become mainta
 - 阶段五结束时公共 Command/Event、错误、审批与恢复契约的兼容承诺
 - 阶段六声明支持的终端：macOS Terminal.app 已走查；iTerm2/Warp/Linux/Windows Terminal 保持 `Not run`
 - 阶段七 CLI 的最终 Logo、首屏、信息密度与深海主题细节
-- 阶段九桌面端是否接受“Agent 工作台”产品形态与四区信息架构
-- Vera Logo 从阶段七 CLI 到阶段九桌面图标、菜单栏和小尺寸形态的统一识别系统
+- 阶段十桌面端是否接受“Agent 工作台”产品形态与四区信息架构
+- Vera Logo 从阶段七 CLI 到阶段十桌面图标、菜单栏和小尺寸形态的统一识别系统
 - Electron baseline packaging, resource budgets, updater, signing, and distribution details
 - License, contribution model, telemetry policy, and public-release criteria
-- 阶段十公开内容安全政策、审核部署、隐私边界和申诉机制
+- 阶段十一公开内容安全政策、审核部署、隐私边界和申诉机制

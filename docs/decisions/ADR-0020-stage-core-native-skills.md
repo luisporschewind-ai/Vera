@@ -4,6 +4,8 @@
 **日期：** 2026-09-15
 **接受：** 2026-09-17 用户确认阶段顺序与完整 Skills 设计
 
+> 后续关系：2026-09-18 [ADR-0021](ADR-0021-core-tools-before-desktop.md) 在 Skills 前插入阶段八 Core 工具集、Policy v2 与原生 Git，将本 ADR 接受的 Skills 阶段顺延为阶段九、桌面顺延为阶段十、私有预览顺延为阶段十一。本 ADR 下文阶段编号保留接受时的历史事实；“Skills 先于桌面”的边界继续有效。
+
 ## 背景
 
 Vera 当前没有 Skills 实现。本决策启动规划时，阶段七仍在收口 CLI 体验与个人 dogfood，原路线把阶段八定义为桌面集成，并把 Core-native Skills 暂列为桌面之后的候选能力；2026-09-17 阶段七随后按用户原文确认完成封存。
@@ -41,7 +43,7 @@ Vera 当前没有 Skills 实现。本决策启动规划时，阶段七仍在收�
 - 采用“Core 控制面 + 外部 Skill 包”；Skill 包可外插分发，但不能扩大 Vera 权限。
 - v1 只支持内置、用户本地和 workspace 本地来源、显式单 Skill、只读文本资源和不可变 Snapshot。
 - workspace Skill 始终是不可信工程内容，只能显式选择。
-- Skill 不能注册 Tool、扩大 Workspace、修改 Policy/Approval、读取 Provider Key、声明网络权限、绕过 Change Set 或执行包内脚本。
+- Skill 不能注册 Tool、扩大 Workspace、修改 Policy/Approval、读取 Provider Key、声明网络权限、绕过 Core 文件变更计划或执行包内脚本。
 - 远程安装、市场、评分、支付、自动更新、多 Skill、Multi-Agent、Plugin、Hook 和可执行能力不随本决策进入 v1。
 
 ## 阶段边界
@@ -74,10 +76,11 @@ Vera 当前没有 Skills 实现。本决策启动规划时，阶段七仍在收�
 - 后续调整 [ADR-0017](ADR-0017-insert-cli-experience-stage.md) 的当前阶段编号：其 CLI 体验阶段和封存门禁继续有效，桌面由阶段八顺延为阶段九，公开准备由阶段九顺延为阶段十。
 - 后续调整 [ADR-0013](ADR-0013-electron-desktop-baseline.md) 的实施阶段编号：Electron 选择与 Python Core/结构化 Command/Event 边界不变，当前实施阶段为阶段九。
 - 补充 [ADR-0015](ADR-0015-untrusted-content-trust-boundary.md)：workspace Skill 使用 `untrusted`，其他 Skill 也不具有安全策略权限。
+- 后续 [ADR-0021](ADR-0021-core-tools-before-desktop.md) 保留本 ADR 的 Skills 范围和安全边界，只把其当前实施编号由阶段八顺延为阶段九，并增加“阶段八工具/Policy/Git Complete”入口门禁。
 
 ## 关联
 
 - [产品定义](../PRODUCT.md)
 - [路线图](../ROADMAP.md)
 - [Core 原生 Skills 系统](../specs/2026-09-15-core-native-skills-system.md)
-- [阶段九：桌面 Agent 工作台与 UI](../specs/2026-09-12-desktop-agent-workbench-ui.md)
+- [阶段十：桌面 Agent 工作台与 UI](../specs/2026-09-12-desktop-agent-workbench-ui.md)

@@ -3,15 +3,15 @@
 **状态：** Accepted
 **日期：** 2026-09-15
 **接受：** 2026-09-17 用户确认总体架构、公共契约、Snapshot、CLI 与验收设计
-**所属阶段：** 阶段八——Core-native Skills（尚未开始）
+**所属阶段：** 阶段九——Core-native Skills（尚未开始；由 ADR-0021 从阶段八顺延）
 
 ## 目的
 
 让 Vera 通过可发现、可审阅、可复现的本地 Skill 包复用一类任务的工作方法、检查清单、模板和参考资料，同时保持 Vera Core 对发现、选择、信任、运行快照、恢复、Context 与结构化事实的唯一控制权。
 
-Skill 只描述“如何工作”。Tool 描述“能够执行什么动作”；`Workspace`、`PolicyEngine`、`ApprovalGate`、`Verification`、`Checkpoint` 与 `Recovery` 决定动作是否允许、如何执行以及如何恢复。Skill 不能把文本说明转换为权限，也不能成为绕过 Change Set 的执行后门。
+Skill 只描述“如何工作”。Tool 描述“能够执行什么动作”；`Workspace`、`PolicyEngine`、`ApprovalGate`、`Verification`、`Checkpoint` 与 `Recovery` 决定动作是否允许、如何执行以及如何恢复。Skill 不能把文本说明转换为权限，也不能成为绕过旧 `ChangeSet` 或新版 `FileMutationPlan` 的执行后门。
 
-阶段八只交付 UI 无关的 Core 能力与完整 CLI 验收。未来阶段九桌面端只消费相同结构化契约，不自行发现、解析或信任 Skill 包。
+阶段九只交付 UI 无关的 Core 能力与完整 CLI 验收。未来阶段十桌面端只消费相同结构化契约，不自行发现、解析或信任 Skill 包。
 
 ## 已确认决策
 
@@ -259,7 +259,7 @@ v1 提供：
 - 选择失败或冻结失败不丢弃用户消息，不回退选择同名其他来源；
 - 活动 Snapshot 损坏时阻止继续和恢复，不使用原始包“修复”历史事实；
 - Skill 内容经过现有 `ContentEnvelope` provenance 与投毒防御；风险信号只能保持或收紧策略；
-- Skill 不能绕过 Change Set、参数绑定审批或验证产物隔离。
+- Skill 不能绕过 Core 文件变更计划、参数绑定审批或验证产物隔离。
 
 ## 离线验证与安全矩阵
 
@@ -268,7 +268,7 @@ v1 提供：
 1. 内置、用户、workspace 三来源的发现、选择、冲突与兼容性；
 2. 未知字段、非法版本、编码错误、大小/文件数超限和规范化路径冲突；
 3. 绝对路径、`..`、符号链接、特殊文件、权限失败、inode/内容竞态；
-4. workspace Skill 诱导注册工具、读取 Key、扩大 Workspace、声明网络、跳过审批或绕过 Change Set；
+4. workspace Skill 诱导注册工具、读取 Key、扩大 Workspace、声明网络、跳过审批或绕过 Core 文件变更计划；
 5. 原始包在 Run 后修改、移动和删除，恢复仍使用冻结副本；
 6. Snapshot 缺失、损坏、未知版本以及安全清理的引用、宽限和拒绝路径；
 7. TUI、Plain、JSON 对相同 `SkillSummary`、`SkillSelection`、`SkillSnapshot` 与错误的语义一致性；
@@ -276,7 +276,7 @@ v1 提供：
 
 真实验收必须在 Terminal.app 完成 `/skills`、查看、选择、清除、状态、失败与恢复，并在一个 Python 工程和一个 Swift/Xcode 工程的安全副本中完成 dogfood。不得把自动测试、Textual Pilot、快照或桌面原型当作真实 Terminal.app 证据。
 
-未关闭的权限扩大、Snapshot 身份混淆、恢复读取可变源、正文泄漏或审批绕过属于 `Critical/High`，阻止阶段八完成。
+未关闭的权限扩大、Snapshot 身份混淆、恢复读取可变源、正文泄漏或审批绕过属于 `Critical/High`，阻止阶段九完成。
 
 ## 演进分层
 
@@ -306,7 +306,7 @@ Plugin、Observer Hook、Action Hook 与任何可执行能力始终是独立体�
 - 让 Skill 注册权限、网络、环境变量、Tool 或审批豁免；
 - 把整个 Skill 库永久注入每次模型请求；
 - 让 CLI 或桌面 Renderer 成为文件解析、信任或选择权威；
-- 在阶段七封存前建立阶段八实施任务或产品代码。
+- 在阶段八工具/Policy/Git 完成前建立阶段九实施任务或产品代码。
 
 ## 验收标准
 
@@ -319,25 +319,26 @@ Plugin、Observer Hook、Action Hook 与任何可执行能力始终是独立体�
 7. `NoSkill` 路径与阶段七封存的现有 Runtime、CLI、Plain、JSON 行为兼容；
 8. Snapshot 引用、30 天宽限和安全清理矩阵通过；
 9. 离线矩阵、真实 Terminal.app 和两个真实工程副本 dogfood 没有未关闭的 Critical/High；
-10. 阶段九桌面端能够只通过公共契约消费同一事实，不需要复制 Skills 控制面。
+10. 阶段十桌面端能够只通过公共契约消费同一事实，不需要复制 Skills 控制面。
 
 ## 阶段门禁
 
-本规格被接受只完成阶段八架构规划，不表示阶段八已经开始。2026-09-17 用户已原文确认「CLI 版本达到预期，可以封存」，阶段七前置门禁已经满足；该确认不自动授权阶段八实施。本次仍然：
+本规格被接受只完成 Skills 架构规划，不表示阶段九已经开始。2026-09-17 用户已原文确认「CLI 版本达到预期，可以封存」；ADR-0021 随后把工具集、Policy v2 与原生 Git 插入为阶段八。Skills 实施还必须等待阶段八 Complete 与独立实施授权。本次仍然：
 
-- 不建立阶段八实施任务；
+- 不建立阶段九实施任务；
 - 不修改 `src/` 或 `tests/` 实现 Skills；
 - 不引入桌面代码或依赖；
-- 保持阶段八 `Not started`，等待独立实施授权。
+- 保持阶段九 `Not started`，等待阶段八完成与独立实施授权。
 
-阶段八完成后才能进入阶段九桌面集成。桌面不是 Skills 的实现前置条件。
+阶段八完成后才能进入阶段九 Skills；阶段九完成后才能进入阶段十桌面集成。桌面不是 Skills 的实现前置条件。
 
 ## 关联
 
 - [产品定义](../PRODUCT.md)
 - [路线图](../ROADMAP.md)
 - [阶段七：CLI 体验收口与个人主力化](2026-09-13-cli-experience-and-personal-dogfood.md)
-- [阶段九：桌面 Agent 工作台与 UI](2026-09-12-desktop-agent-workbench-ui.md)
+- [阶段十：桌面 Agent 工作台与 UI](2026-09-12-desktop-agent-workbench-ui.md)
 - [不可信内容与提示词投毒防御](2026-09-12-untrusted-content-and-prompt-injection-defense.md)
 - [ADR-0015：不可信内容信任边界](../decisions/ADR-0015-untrusted-content-trust-boundary.md)
 - [ADR-0020：在 CLI 封存后、桌面之前插入 Core-native Skills 阶段](../decisions/ADR-0020-stage-core-native-skills.md)
+- [ADR-0021：桌面前插入 Core 工具集与 Git 能力阶段](../decisions/ADR-0021-core-tools-before-desktop.md)

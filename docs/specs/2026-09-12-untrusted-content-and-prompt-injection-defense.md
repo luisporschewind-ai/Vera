@@ -4,7 +4,7 @@
 **日期：** 2026-09-12
 **接受：** 2026-09-12 用户确认本规格
 
-> 路线校准：2026-09-17 接受的 [ADR-0020](../decisions/ADR-0020-stage-core-native-skills.md) 将 Core-native Skills 插入为阶段八、桌面顺延为阶段九、私有预览与公开准备顺延为阶段十。以下分阶段实施已按当前顺序同步，既有信任与安全结论不变。
+> 路线校准：2026-09-17 接受的 [ADR-0020](../decisions/ADR-0020-stage-core-native-skills.md) 与 2026-09-18 接受的 [ADR-0021](../decisions/ADR-0021-core-tools-before-desktop.md) 依次把 Skills 和工具/Policy/Git 放在桌面之前。当前顺序为阶段八工具/Policy/Git、阶段九 Skills、阶段十桌面、阶段十一私有预览。以下分阶段实施已同步，既有信任与安全结论不变。
 
 ## 背景
 
@@ -120,7 +120,7 @@ PolicyEngine（唯一动作策略权威）
 - 审查恶意软件、漏洞利用或敏感内容相关代码的防御性问题；
 - 对用户已提供的敏感文本做分类、摘要或必要转换。
 
-公开产品的具体拒绝类别、年龄边界、地区差异、供应商审核能力和申诉方式留到阶段十决定。默认不得为内容审核把完整私有源码发送给额外第三方；若未来启用远程审核，必须显式告知并取得用户选择。
+公开产品的具体拒绝类别、年龄边界、地区差异、供应商审核能力和申诉方式留到阶段十一决定。默认不得为内容审核把完整私有源码发送给额外第三方；若未来启用远程审核，必须显式告知并取得用户选择。
 
 ## 日志、隐私与展示
 
@@ -190,19 +190,26 @@ PolicyEngine（唯一动作策略权威）
 - 视觉层级不得弱化高风险动作、把检测结果伪装为策略拒绝，或用品牌色替代明确文字。
 - 真实 Terminal.app dogfood 覆盖不可信内容、审批、Diff、错误和恢复的完整呈现。
 
-### 安全增量 S4：阶段八 Core-native Skills
+### 安全增量 S4：阶段八 Core 工具集、Policy v2 与原生 Git
+
+- 每个 Tool Action 都携带来源、effect、规范化目标、workspace trust、用户目标授权摘要和安全上下文 hash，再进入统一 PolicyEngine。
+- `balanced` 只能自动允许可信 workspace 中可恢复、范围明确的低风险动作；不可信内容只能保持或收紧决策。
+- 通用 `bash` 不能绕过原生 Git、秘密、网络、提权或工作区边界；Git Commit Plan 绑定 HEAD、index、路径、验证与 Policy 事实。
+- ToolResult、Diff、Git 输出、Event、Journal 与 Approval 共用脱敏和内容来源边界。
+
+### 安全增量 S5：阶段九 Core-native Skills
 
 - Skill 内容通过 `ContentEnvelope` 记录来源与 hash；内置和用户 Skill 仍是 advisory，workspace Skill 始终是 untrusted。
-- Skill 不能注册 Tool、读取 Provider Key、扩大 Workspace、声明网络、修改 Policy/Approval 或绕过 Change Set。
+- Skill 不能注册 Tool、读取 Provider Key、扩大 Workspace、声明网络、修改 Policy/Approval 或绕过 Core 文件变更计划。
 - Run 开始前冻结私有不可变 Snapshot；公共 Event/Journal 只记录身份、来源、版本、hash 和 `snapshot_id`，不记录正文。
 - CLI 完成恶意 Skill、路径逃逸、竞态、Snapshot 损坏、恢复和 `NoSkill` 对抗矩阵，不依赖桌面。
 
-### 安全增量 S5：阶段九桌面集成
+### 安全增量 S6：阶段十桌面集成
 
 - 桌面端复用相同 Command/Event 和安全决策，不解析 CLI 文本，不复制策略实现。
 - 将来源、风险、Skill Snapshot、审批和操作影响做成可审阅交互，并在真实 Mac 上验证；Renderer 不自行解析或信任 Skill 包。
 
-### 安全增量 S6：阶段十私有预览与公开准备
+### 安全增量 S7：阶段十一私有预览与公开准备
 
 - 接受公开内容政策、隐私与遥测策略、远程审核开关和供应商能力矩阵。
 - 扩展网页、MCP、外部文件、持久记忆和网络出站场景的威胁模型。
