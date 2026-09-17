@@ -51,6 +51,10 @@ async def test_keyboard_only_covers_submit_cancel_and_approval(tmp_path: Path) -
         app.controller.mark_active("run_1")
         captured: list[object] = []
         app.bridge.submit = captured.append  # type: ignore[method-assign]
+        await pilot.press("escape")
+        await pilot.pause()
+        assert captured == [CancelActiveRun(run_id="run_1")]
+        captured.clear()
         await pilot.press("ctrl+c")
         await pilot.pause()
         assert captured == [CancelActiveRun(run_id="run_1")]

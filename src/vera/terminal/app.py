@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from textual.app import App, ComposeResult
+from textual.binding import Binding
 from textual.css.query import NoMatches
 from textual.events import Resize
 from textual.geometry import Size
@@ -60,6 +61,7 @@ class VeraTerminalApp(App[int]):
     MINIMUM_SIZE = Size(60, 16)
     TITLE = "Vera"
     BINDINGS = [
+        Binding("escape", "escape", "Cancel", show=False, priority=True),
         ("ctrl+c", "cancel_or_clear", "Cancel"),
         ("ctrl+d", "exit_if_idle", "Exit"),
         ("ctrl+g", "open_editor", "Editor"),
@@ -321,6 +323,17 @@ class VeraTerminalApp(App[int]):
         elif self.activity.current.active:
             status.set_activity(self.activity.current, self.animation.frame())
         self._focus_composer_unless_approval()
+
+    def action_escape(self) -> None:
+        if self.controller.active_run_id is not None:
+            self.action_cancel_or_clear()
+            return
+        try:
+            completions = self.query_one(CompletionList)
+        except NoMatches:
+            return
+        if completions.display:
+            completions.hide()
 
     def action_cancel_or_clear(self) -> None:
         composer = self.query_one(PromptComposer)

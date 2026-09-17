@@ -3,7 +3,7 @@
 **规格：** [阶段七 CLI 体验收口](../specs/2026-09-13-cli-experience-and-personal-dogfood.md)、[持久化对话会话](../specs/2026-09-13-persistent-conversation-sessions.md)、[项目指令与 `VERA.md` 初始化](../specs/2026-09-14-project-instructions-and-vera-init.md)  
 **任务：** [0041](../tasks/0041-phase-7-product-acceptance-and-dogfood.md)  
 **日期：** 2026-09-16  
-**结果：** 自动门禁通过。Terminal.app 主路径与第 3、第 4 项已过；发现 38–41、43–47 已复验关闭。20 次 dogfood 与封存原文未完成。阶段七保持 **Ready for manual acceptance**。未收到「CLI 版本达到预期，可以封存」。
+**结果：** 自动门禁通过。Terminal.app 主路径与第 3、第 4 项已过；第 2 项 A/B/D/E/F 已过，C 为发现 48。发现 38–41、43–47 已复验关闭。20 次 dogfood 与封存原文未完成。阶段七保持 **Ready for manual acceptance**。未收到「CLI 版本达到预期，可以封存」。
 
 严重度：Critical（权限/数据/错误应用）、High（主流程不可用/输入丢失/状态误导）、Medium（高频摩擦）、Low（视觉细节）。
 
@@ -54,9 +54,9 @@ git diff --check
 |---|---|---|---|
 | 1 | `vera` 即使有历史也新建 | 自动验证且通过 | 任务 0037 |
 | 2 | `-c` 只恢复本 workspace 最近可恢复会话 | 自动验证且通过 | 产品矩阵 + wheel |
-| 3 | `-r` TTY 选择；明确 ID 三模式可恢复 | 自动验证且通过 | 任务 0037；TTY 选择人工通过。明确 ID 三模式人工 `Not run` |
+| 3 | `-r` TTY 选择；明确 ID 三模式可恢复 | 自动验证且通过 | 任务 0037；TTY 选择与明确 ID（TUI）人工通过。Plain/JSON 明确 ID 人工 `Not run` |
 | 4 | 恢复后第二轮含必要上下文 | 自动验证且通过 | 产品矩阵 continue 含第一轮用户文本 |
-| 5 | `/compact` 后重启只注入摘要 | 自动验证且通过 | 任务 0036 store 测试。真实重启人工 `Not run` |
+| 5 | `/compact` 后重启只注入摘要 | 自动验证且通过 | 任务 0036 store 测试。真实重启人工通过 |
 | 6 | Journal 不复制工具/Diff/审批正文 | 自动验证且通过 | 任务 0034–0036 |
 | 7 | 完成/失败/取消/已应用 turn 可恢复 | 自动验证且通过 | 任务 0036 |
 | 8 | 权限、符号链接、sequence、版本、损坏分类 | 自动验证且通过 | 任务 0035 |
@@ -65,7 +65,7 @@ git diff --check
 | 11 | 保存失败保留 Run，显示 `unsaved` | 自动验证且通过 | 产品矩阵 |
 | 12 | TUI 恢复不铺开旧工具噪音 | 自动验证且通过 | 任务 0040 有界时间线。观感人工 `Not run` |
 | 13 | Plain/JSON 无 ANSI/提示符 | 自动验证且通过 | 产品矩阵与 wheel |
-| 14 | 恢复后 `/status` `/context` `/new` `/clear` `/compact` `/sessions` | 自动验证且通过 | 任务 0037。人工 `/new`/`/clear` 通过；`/status` `/context` `/compact` `/sessions` 组合 `Not run` |
+| 14 | 恢复后 `/status` `/context` `/new` `/clear` `/compact` `/sessions` | 自动验证且通过 | 任务 0037。人工 `/new`/`/clear`/`/compact`/`/sessions` 通过 |
 | 15 | 自动测试不读真实 Key、不改真实工程 | 自动验证且通过 | 门禁清除 Provider 环境 |
 | 16 | 静态门禁与 wheel smoke | 自动验证且通过 | 见质量门禁 |
 | 17 | Terminal.app 主路径走查 | 自动验证且通过 | [dogfood](phase-7-manual-dogfood.md) 第 1 项已过 |
