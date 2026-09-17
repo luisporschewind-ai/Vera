@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from math import pi, sin
 
+from rich.style import Style
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import Horizontal
@@ -13,12 +14,21 @@ from vera.session.models import SessionStatus
 from vera.terminal.brand import BrandMark, select_brand_mark
 from vera.terminal.widgets.welcome import brand_header_text, header_fact_lines
 
+_WAVE_CREST = Style(bold=True, color="#7EB8C8")
+_WAVE_TROUGH = Style(bold=False, color="#3D7A8C")
+
 
 def logo_wave_value(*, row: int, column: int, phase: float) -> float:
     """Bright crest travels bottom-left → top-right as phase increases."""
 
     along = column + (2 - row) * 3.2
     return sin(2 * pi * (phase - along / 28.0))
+
+
+def wave_glyph_style(value: float) -> Style:
+    """Visible crest/trough without terminal `dim`, which paints braille as pale blocks."""
+
+    return _WAVE_CREST if value > 0.25 else _WAVE_TROUGH
 
 
 class VeraHeader(Horizontal):
@@ -169,8 +179,5 @@ class VeraHeader(Horizontal):
                     out.append(" ")
                     continue
                 value = logo_wave_value(row=row, column=index, phase=self._wave_phase)
-                if value > 0.25:
-                    out.append(char, style="bold")
-                else:
-                    out.append(char)
+                out.append(char, style=wave_glyph_style(value))
         return out

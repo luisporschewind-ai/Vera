@@ -119,5 +119,6 @@
 | 50 | Python 工程 | 只读调查后模型空响应，任务失败 `empty_model_response` | High | 0052 修复中；待 Terminal.app 复验 |
 | 51 | Python 工程 | 文本声称已形成 Change Set / 等待审批，任务 `responded`，没有审批卡 | High | 0054 修复；用户 2026-09-17 Terminal.app 复验通过 |
 | 52 | Python 工程 | 两次 Approve 后验证 `ruff` 报 `[Errno 2]` | High | 0054 修复；用户 2026-09-17 Terminal.app 复验通过 |
+| 53 | Python 工程 | 对话 Markdown 表格被摊平、Diff 从标识符中间折行；进场波动因去掉 `dim` 不可见 | Medium | 0057 修复中；白块已通过；待 Terminal.app 复验 |
 
-发现 38–41、43–49、51–52 已关闭。第 1–4 项走查已过。发现 42 Low、发现 50 High 未关。20 次 dogfood 未完成，阶段七仍不 Complete。
+发现 38–41、43–49、51–52 已关闭。第 1–4 项走查已过。发现 42 Low、发现 50 High 未关。发现 53 Medium 见任务 0057。20 次 dogfood 未完成，阶段七仍不 Complete。

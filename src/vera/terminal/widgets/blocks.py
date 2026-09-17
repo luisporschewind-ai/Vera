@@ -8,7 +8,7 @@ from rich.cells import cell_len, chop_cells
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.markup import escape
-from rich.syntax import Syntax
+from rich.style import Style
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
@@ -246,6 +246,12 @@ class UserBlockWidget(TimelineBlockWidget):
 
 
 _ASSISTANT_WRAP_TOKEN = re.compile(r"\s+|[A-Za-z0-9_.-]+/?|.", flags=re.DOTALL)
+_FENCE_OPEN = re.compile(r"^(\s*)(`{3,}|~{3,})")
+_TABLE_SEP_CELL = re.compile(r"^:?-{3,}:?$")
+_DIFF_ADD = Style(color="#7EB89A")
+_DIFF_REMOVE = Style(color="#D98989")
+_DIFF_META = Style(color="#7E96A8", bold=True)
+_DIFF_HUNK = Style(color="#5B9BB0")
 
 
 def _assistant_wrap_offsets(plain: str, width: int) -> list[int]:
@@ -313,52 +319,166 @@ def _assistant_markdown(body: str, *, width: int = 80) -> Text:
 
     `Static.update(Markdown)` becomes a RichVisual. Widget.get_selection() only
     extracts Text/Content, so the answer would paint but never highlight or copy.
+    Tables and fences layout at the content width; prose still uses path/CJK wrap.
     """
     if not body:
         return Text("")
     wrap_width = max(width, 8)
+    rendered = Text()
     try:
-        markdown = Markdown(body, code_theme="ansi_dark", hyperlinks=False)
-        console = Console(
-            width=max(wrap_width * 4, 256),
-            force_terminal=True,
-            color_system="standard",
-            highlight=False,
-        )
-        rendered = Text()
-        options = console.options.update(no_wrap=True, overflow="ignore")
-        for segment in console.render(markdown, options):
-            if segment.text:
-                rendered.append(segment.text, style=segment.style)
+        for kind, chunk in _iter_markdown_chunks(body):
+            if not chunk:
+                continue
+            if kind in {"table", "fence"}:
+                rendered.append_text(_render_markdown_text(chunk, width=wrap_width, no_wrap=False))
+            else:
+                prose = _render_markdown_text(chunk, width=max(wrap_width * 4, 256), no_wrap=True)
+                rendered.append_text(_wrap_assistant_text(prose, wrap_width))
+        if not rendered.plain:
+            return _wrap_assistant_text(Text(body), wrap_width)
         rendered.stylize_before("#c8cdd3")
-        return _wrap_assistant_text(rendered, wrap_width)
+        return rendered
     except Exception:
         return _wrap_assistant_text(Text(body), wrap_width)
 
 
-def _diff_text(body: str, *, width: int = 80) -> Text:
-    """Render a unified diff to Rich Text so Textual can drag-select it.
+def _render_markdown_text(body: str, *, width: int, no_wrap: bool) -> Text:
+    markdown = Markdown(body, code_theme="ansi_dark", hyperlinks=False)
+    console = Console(
+        width=max(width, 8),
+        force_terminal=True,
+        color_system="standard",
+        highlight=False,
+    )
+    rendered = Text()
+    options = console.options.update(no_wrap=no_wrap, overflow="ignore")
+    for segment in console.render(markdown, options):
+        if segment.text:
+            rendered.append(segment.text, style=segment.style)
+    return rendered
 
-    `Static.update(Syntax)` becomes a RichVisual; get_selection() only extracts
-    Text/Content, so the Diff would paint but never highlight or copy.
-    """
+
+def _iter_markdown_chunks(body: str) -> list[tuple[str, str]]:
+    lines = body.splitlines(keepends=True)
+    chunks: list[tuple[str, str]] = []
+    buffer: list[str] = []
+    index = 0
+
+    def flush() -> None:
+        if buffer:
+            chunks.append(("copy", "".join(buffer)))
+            buffer.clear()
+
+    while index < len(lines):
+        fence = _consume_fence(lines, index)
+        if fence is not None:
+            flush()
+            chunk, index = fence
+            chunks.append(("fence", chunk))
+            continue
+        table = _consume_table(lines, index)
+        if table is not None:
+            flush()
+            chunk, index = table
+            chunks.append(("table", chunk))
+            continue
+        buffer.append(lines[index])
+        index += 1
+    flush()
+    return chunks
+
+
+def _consume_fence(lines: list[str], start: int) -> tuple[str, int] | None:
+    match = _FENCE_OPEN.match(lines[start])
+    if match is None:
+        return None
+    marker = match.group(2)
+    collected = [lines[start]]
+    index = start + 1
+    closing = re.compile(rf"^\s*{re.escape(marker[0] * len(marker))}\s*$")
+    while index < len(lines):
+        collected.append(lines[index])
+        if closing.match(lines[index].rstrip("\n")):
+            index += 1
+            break
+        index += 1
+    return "".join(collected), index
+
+
+def _consume_table(lines: list[str], start: int) -> tuple[str, int] | None:
+    if start + 1 >= len(lines):
+        return None
+    if not _table_row(lines[start]) or not _table_separator(lines[start + 1]):
+        return None
+    collected = [lines[start], lines[start + 1]]
+    index = start + 2
+    while index < len(lines) and _table_row(lines[index]):
+        collected.append(lines[index])
+        index += 1
+    return "".join(collected), index
+
+
+def _table_row(line: str) -> bool:
+    stripped = line.strip()
+    return "|" in stripped and not _table_separator(line)
+
+
+def _table_separator(line: str) -> bool:
+    stripped = line.strip()
+    if "|" not in stripped:
+        return False
+    cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+    return bool(cells) and all(_TABLE_SEP_CELL.fullmatch(cell) is not None for cell in cells)
+
+
+def _diff_text(body: str, *, width: int = 80) -> Text:
+    """Render a unified diff to Rich Text so Textual can drag-select it."""
     if not body:
         return Text("")
-    try:
-        syntax = Syntax(body, "diff", theme="ansi_dark", word_wrap=True)
-        console = Console(
-            width=max(width, 8),
-            force_terminal=True,
-            color_system="standard",
-            highlight=False,
-        )
-        rendered = Text()
-        for segment in console.render(syntax, console.options):
-            if segment.text:
-                rendered.append(segment.text, style=segment.style)
-        return rendered
-    except Exception:
-        return Text(body)
+    wrap_width = max(width, 8)
+    rendered = Text()
+    for index, line in enumerate(body.splitlines()):
+        if index:
+            rendered.append("\n")
+        style = _diff_line_style(line)
+        parts = _wrap_diff_line(line, wrap_width)
+        for part_index, part in enumerate(parts):
+            if part_index:
+                rendered.append("\n")
+            rendered.append(part, style=style)
+    return rendered
+
+
+def _diff_line_style(line: str) -> Style | None:
+    if line.startswith(("---", "+++")):
+        return _DIFF_META
+    if line.startswith("@@"):
+        return _DIFF_HUNK
+    if line.startswith("+"):
+        return _DIFF_ADD
+    if line.startswith("-"):
+        return _DIFF_REMOVE
+    return None
+
+
+def _wrap_diff_line(line: str, width: int) -> list[str]:
+    if cell_len(line) <= width:
+        return [line]
+    marker = ""
+    rest = line
+    if line.startswith(("+++", "---", "@@")):
+        rest = line
+    elif line[:1] in "+- ":
+        marker = line[:1]
+        rest = line[1:]
+    budget = max(width - cell_len(marker), 8)
+    wrapped = Text(rest)
+    parts = wrapped.divide(_assistant_wrap_offsets(rest, budget))
+    result: list[str] = []
+    for part in parts:
+        part.rstrip()
+        result.append(marker + part.plain)
+    return result or [line]
 
 
 class DiffBlockWidget(TimelineBlockWidget):
@@ -367,7 +487,7 @@ class DiffBlockWidget(TimelineBlockWidget):
         if not body:
             self._body.update("")
             return
-        self._body.update(_diff_text(body, width=self.size.width or 80))
+        self._body.update(_diff_text(body, width=self._assistant_content_width()))
 
 
 class EventGroupWidget(Vertical):

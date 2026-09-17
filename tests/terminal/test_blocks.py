@@ -202,6 +202,39 @@ def test_assistant_markdown_keeps_cjk_phrase_intact() -> None:
     assert all("安全边界" in line or "安全" not in line for line in lines)
 
 
+def test_assistant_markdown_keeps_table_columns_aligned() -> None:
+    body = (
+        "| 层次 | 函数/常量 | 说明 |\n"
+        "|---|---|---|\n"
+        "| 配置 | `DEFAULT_TIMEOUT=10.0`、`DEFAULT_MAX_BYTES=1_000_000` | 集中常量 |\n"
+        "| 错误 | `UrlAnalysisError` | 把预期错误与意外 |\n"
+    )
+    lines = [line for line in _assistant_lines(body, width=80) if line.strip()]
+    header = next(line for line in lines if "层次" in line)
+    assert "函数/常量" in header
+    assert "说明" in header
+    row = next(line for line in lines if "UrlAnalysisError" in line)
+    assert "错误" in row
+    assert "预期错误" in "\n".join(lines)
+    dash_lines = [line for line in lines if line.strip() and set(line.strip()) <= set("─-━ ")]
+    assert len(dash_lines) == 1
+
+
+def test_diff_text_wraps_on_tokens_not_mid_identifier() -> None:
+    body = (
+        "--- a/src/foo.py\n"
+        "+++ b/src/foo.py\n"
+        "@@ -1,3 +1,4 @@\n"
+        " def fetch_url(url, max_bytes=1_000_000):\n"
+        "-    data = urlopen(url).read(max_bytes)\n"
+        "+    data = urlopen(url).read(max_bytes + 1)\n"
+    )
+    lines = _diff_text(body, width=40).plain.splitlines()
+    assert all("max_bytes" in line or "max_byt" not in line for line in lines)
+    assert any(line.startswith("+") and "urlopen" in line for line in lines)
+    assert "--- a/src/foo.py" in lines
+
+
 @pytest.mark.asyncio
 async def test_assistant_body_is_drag_selectable(tmp_path: Path) -> None:
     app = make_app(tmp_path)

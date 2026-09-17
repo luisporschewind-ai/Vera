@@ -64,5 +64,6 @@
 - [任务 0054：走查发现 51–52（虚构审批卡与验证命令找不到）](0054-cli-dogfood-claimed-changeset-and-ruff.md)
 - [任务 0055：工作轨、状态组收起与顶栏字标](0055-cli-work-rail-and-header-mark.md)
 - [任务 0056：进场欢迎卡、缩行路径与底栏事实](0056-cli-welcome-card-and-footer-facts.md)
+- [任务 0057：对话表格/Diff 渲染与进场波动可见](0057-cli-markdown-table-diff-and-wave.md)
 - [任务 0042：验证产物隔离与工作区无污染](0042-verification-artifact-isolation.md)
 - [任务 0043：项目指令发现与 `VERA.md` 初始化](0043-project-instructions-and-init.md)
