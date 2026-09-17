@@ -26,7 +26,7 @@ class AnimationClock:
     def wave_phase(self) -> float:
         if not self.enabled:
             return 0.0
-        return (self._clock() * 2.4) % 1.0
+        return (self._clock() * 0.22) % 1.0
 
     def frame(self) -> str:
         if not self.enabled:

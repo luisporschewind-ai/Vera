@@ -19,13 +19,13 @@
 - 管道表格按内容宽度排成表，表头同一行可见各列。
 - 发现 42 的路径/CJK 折行仍保持。
 - Diff 按行着色（视觉 Token 的增减色），长行在词界折行，不从 `max_bytes` 中间切断。
-- 进场波动用亮/暗青色对比，不用 `dim`，避免白块回潮。
+- 进场波动为一条慢而克制的亮带，不用 `dim`，避免白块回潮。
 - 不改 Composer、审批、工作轨、主题色板；不读真实 Key；不引入桌面框架。
 
 ## 实施步骤
 
 - [x] 失败测试：80 列表头同列、Diff 不切标识符、波峰/波谷样式不同且无 `dim`。
-- [x] 表格/围栏按内容宽度渲染；散文仍走路径感知折行；Diff 按行着色与折行；波动用色差。
+- [x] 表格/围栏按内容宽度渲染；散文仍走路径感知折行；Diff 按行着色与折行；波动改为单条慢亮带。
 
 ## 验证
 
@@ -40,11 +40,12 @@ git diff --check
 ## 验证证据
 
 - 2026-09-17 聚焦测试 `52 passed in 26.03s`（blocks/brand/animation/welcome/timeline/app/layout）。
+- 2026-09-17 跟进：单条慢亮带 `17 passed`；`ruff`/`mypy`/`git diff --check` 通过。
 - `ruff check` / `ruff format --check` / `mypy src` / `git diff --check` 通过。
 - 未改审批默认值、未读真实 Key、未引入桌面框架。
 
 ## 未决
 
-- 待用户 Terminal.app 看表格、Diff 与进场波动。
+- 待用户 Terminal.app 看表格、Diff，以及进场单条慢波动是否仍偏快或偏淡。
 - 发现 42、50 仍待复验。
 - 未收到「CLI 版本达到预期，可以封存」。

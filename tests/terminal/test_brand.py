@@ -60,9 +60,7 @@ def test_logo_wave_travels_bottom_left_to_top_right() -> None:
 
 def test_logo_wave_crest_differs_from_trough_without_dim() -> None:
     crest = wave_glyph_style(0.8)
-    trough = wave_glyph_style(-0.8)
+    trough = wave_glyph_style(0.1)
     assert crest != trough
-    assert crest.bold is True
-    assert trough.bold is False
     assert "dim" not in str(crest).lower()
     assert "dim" not in str(trough).lower()
