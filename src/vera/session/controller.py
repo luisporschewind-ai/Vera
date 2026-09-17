@@ -107,6 +107,7 @@ class SessionController:
         self.status_service = status_service or SessionStatusService()
         self.runtime_builder = runtime_builder or build_runtime
         self._active_run_id: str | None = None
+        self._drive_epoch = 0
         self._pending_approval: EventEnvelope | None = None
         self._closed = False
         self._session_sequence = 0
@@ -488,10 +489,15 @@ class SessionController:
         record_conversation: bool = True,
     ) -> Iterator[RuntimeOutput]:
         produced_terminal = False
+        epoch = self._drive_epoch
         for output in self.dependencies.runtime.stream(command):
+            if self._drive_epoch != epoch:
+                return
             if isinstance(output, EventEnvelope):
                 self._events_for_active.append(output)
-                if output.type == "run.started" or self._active_run_id is None:
+                if output.type == "run.started" or (
+                    self._active_run_id is None and output.type not in _TERMINAL_TYPES
+                ):
                     self._active_run_id = output.run_id
                 if output.type == "project.instructions.loaded":
                     digest = output.payload.get("guidance_hash")
@@ -504,6 +510,8 @@ class SessionController:
                 if output.type in _TERMINAL_TYPES:
                     produced_terminal = True
             yield output
+        if self._drive_epoch != epoch:
+            return
         if produced_terminal or self._pending_approval is None:
             yield from self._finish_active_run(record_conversation=record_conversation)
             queued = self.queued_prompt
@@ -513,6 +521,7 @@ class SessionController:
                 yield from self._submit(queued)
 
     def _finish_active_run(self, *, record_conversation: bool = True) -> Iterator[RuntimeOutput]:
+        self._drive_epoch += 1
         goal = self._goal_for_active
         events = tuple(self._events_for_active)
         self._active_run_id = None

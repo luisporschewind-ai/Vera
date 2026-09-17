@@ -1282,7 +1282,15 @@ class VeraRuntime:
         yield None
 
     def _drive(self, context: RunContext) -> Iterator[RuntimeOutput]:
-        while context.machine.state not in {RunState.AWAITING_APPROVAL, RunState.FAILED}:
+        halt = {
+            RunState.AWAITING_APPROVAL,
+            RunState.FAILED,
+            RunState.CANCELLED,
+            RunState.COMPLETED,
+            RunState.VERIFICATION_FAILED,
+            RunState.STALE,
+        }
+        while context.machine.state not in halt:
             if context.model_turns >= self.limits.max_model_turns:
                 yield from self._fail(context, "max_model_turns")
                 return
@@ -1305,6 +1313,8 @@ class VeraRuntime:
                     yield item
                 else:
                     turn = item
+            if context.machine.state == RunState.CANCELLED:
+                return
             if turn is None:
                 yield from self._fail(context, "model_error")
                 return
@@ -1376,7 +1386,11 @@ class VeraRuntime:
                 )
                 yield from flagged
                 yield from self._execute_tool(context, call)
-                if context.machine.state in {RunState.AWAITING_APPROVAL, RunState.FAILED}:
+                if context.machine.state in {
+                    RunState.AWAITING_APPROVAL,
+                    RunState.FAILED,
+                    RunState.CANCELLED,
+                }:
                     return
             context.messages = compact_run_messages(
                 context.messages,

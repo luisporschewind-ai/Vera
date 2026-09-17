@@ -1,4 +1,5 @@
 import errno
+import threading
 from pathlib import Path
 
 from vera.bootstrap import RuntimeDependencies
@@ -28,6 +29,7 @@ def make_controller(
     turns: list[ModelTurn],
     *,
     editor_argv: tuple[str, ...] = (),
+    adapter: FakeModelAdapter | None = None,
 ) -> SessionController:
     state_dir = workspace.parent / "state"
     config = VeraConfig(
@@ -42,7 +44,7 @@ def make_controller(
         },
         editor_argv=editor_argv,
     )
-    runtime = VeraRuntime(FakeModelAdapter(turns), ToolRegistry(), state_dir)
+    runtime = VeraRuntime(adapter or FakeModelAdapter(turns), ToolRegistry(), state_dir)
     deps = RuntimeDependencies(runtime=runtime, config=config)
     return SessionController(deps, workspace, "fake")
 
@@ -134,6 +136,57 @@ def test_cancel_is_idempotent_when_idle(tmp_path: Path) -> None:
 
     assert outputs[-1].type == "session.action_rejected"
     assert outputs[-1].payload["reason_code"] == "no_active_run"
+
+
+def test_cancel_does_not_resurrect_run_or_reject_flushed_queue(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+
+    class GatedAdapter(FakeModelAdapter):
+        def __init__(self) -> None:
+            super().__init__(
+                [
+                    ModelTurn(assistant_text="first", finish_reason="stop"),
+                    ModelTurn(assistant_text="second", finish_reason="stop"),
+                ]
+            )
+            self.started = threading.Event()
+            self.release = threading.Event()
+
+        def stream(self, request):  # type: ignore[no-untyped-def]
+            if not self.started.is_set():
+                self.started.set()
+                assert self.release.wait(timeout=2.0)
+            yield from super().stream(request)
+
+    adapter = GatedAdapter()
+    controller = make_controller(workspace, [], adapter=adapter)
+    errors: list[Exception] = []
+
+    def submit() -> None:
+        try:
+            tuple(controller.dispatch(SubmitPrompt(text="one")))
+        except Exception as exc:
+            errors.append(exc)
+
+    worker = threading.Thread(target=submit)
+    worker.start()
+    assert adapter.started.wait(timeout=2.0)
+    assert controller.active_run_id is not None
+    tuple(controller.dispatch(QueuePrompt(text="two")))
+    cancel = tuple(controller.dispatch(CancelActiveRun(run_id=controller.active_run_id)))
+    adapter.release.set()
+    worker.join(timeout=2.0)
+    types = [item.type for item in cancel if isinstance(item, EventEnvelope)]
+    assert "run.cancelled" in types
+    assert not any(
+        isinstance(item, EventEnvelope)
+        and item.type == "session.action_rejected"
+        and item.payload.get("reason_code") == "run_active"
+        for item in cancel
+    )
+    assert errors == []
+    assert worker.is_alive() is False
 
 
 def test_close_cancels_pending_approval(tmp_path: Path) -> None:

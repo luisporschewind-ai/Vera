@@ -40,6 +40,7 @@
 | — | [0047 走查发现 44–45](0047-cli-dogfood-resume-picker-and-clear.md) | 裸 `-r` 打开选择器；`/new`/`/clear` 干净首屏 | Done；用户 Terminal.app 复验通过 |
 | — | [0048 走查发现 47](0048-cli-dogfood-context-occupancy.md) | 状态带显示真实上下文已用/上限 | Done；用户 Terminal.app 复验通过 |
 | — | [0049 走查发现 48](0049-cli-dogfood-escape-cancel.md) | 运行中 Esc 发送一次取消 | Done；用户 Terminal.app 复验通过 |
+| — | [0050 走查发现 49](0050-cli-dogfood-cancel-worker.md) | 取消后不复活旧 run、不报 Worker 失败 | In progress |
 
 任务必须严格按 0034 → 0035 → 0036 → 0037 → 0043 → 0038 → 0039 → 0040 → 0041 执行。0043 完成项目上下文基线后再进入视觉任务；0038 是产品视觉审批任务，不得与 0039 并行实施；0039–0040 不得为了视觉便利回改持久化或项目指令语义。
 
