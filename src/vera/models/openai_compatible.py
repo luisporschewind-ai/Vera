@@ -70,6 +70,34 @@ def _provider_attr(value: object, *names: str) -> Any:
     return None
 
 
+def coerce_assistant_text(value: object) -> str | None:
+    """Normalize provider content that may be a string, list of parts, or object."""
+
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value or None
+    if isinstance(value, list):
+        parts: list[str] = []
+        for item in value:
+            part = coerce_assistant_text(item)
+            if part:
+                parts.append(part)
+        return "".join(parts) or None
+    if isinstance(value, dict):
+        for key in ("text", "content"):
+            found = value.get(key)
+            if isinstance(found, str) and found:
+                return found
+        return None
+    nested = _get(value, "text")
+    if nested is None:
+        nested = _get(value, "content")
+    if nested is not None and nested is not value:
+        return coerce_assistant_text(nested)
+    return None
+
+
 class OpenAICompatibleAdapter:
     def __init__(self, provider: ProviderConfig, client: Any | None = None) -> None:
         self.provider = provider
@@ -257,8 +285,8 @@ class OpenAICompatibleAdapter:
                 if choice is None:
                     continue
                 delta = _get(choice, "delta") or {}
-                text = _get(delta, "content")
-                if isinstance(text, str) and text:
+                text = coerce_assistant_text(_get(delta, "content"))
+                if text:
                     accumulator.push_text(text)
                     yield ModelTextDelta(text=text)
                 reasoning = (
@@ -340,7 +368,7 @@ class OpenAICompatibleAdapter:
         if not isinstance(reasoning, str) or not reasoning.strip():
             reasoning = None
         return ModelTurn(
-            assistant_text=_get(message, "content"),
+            assistant_text=coerce_assistant_text(_get(message, "content")),
             reasoning_content=reasoning,
             tool_calls=tuple(calls),
             finish_reason=finish_reason,

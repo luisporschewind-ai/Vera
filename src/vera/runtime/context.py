@@ -252,3 +252,4 @@ class RunContext:
     security_context_hash: str | None = None
     findings_truncated: bool = False
     project_instructions: ProjectInstructionSet | None = None
+    empty_after_tools_nudge: bool = False

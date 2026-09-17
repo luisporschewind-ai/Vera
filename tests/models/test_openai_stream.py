@@ -137,3 +137,47 @@ def test_stream_collects_reasoning_content_without_leaking_to_text_deltas() -> N
     assert isinstance(items[-1], ModelStreamCompleted)
     assert items[-1].turn.assistant_text == "完成"
     assert items[-1].turn.reasoning_content == "先列目录"
+
+
+def test_stream_joins_list_content_parts() -> None:
+    lines = [
+        {
+            "choices": [
+                {
+                    "delta": {"content": [{"type": "text", "text": "入口在 "}]},
+                    "finish_reason": None,
+                }
+            ],
+            "id": "s1",
+        },
+        {
+            "choices": [
+                {
+                    "delta": {"content": [{"type": "text", "text": "main.py。"}]},
+                    "finish_reason": "stop",
+                }
+            ],
+            "id": "s1",
+        },
+    ]
+    provider = ProviderConfig(
+        base_url="https://example.test/v1",  # type: ignore[arg-type]
+        model="deepseek",
+        api_key_env="DEEPSEEK_API_KEY",
+        capabilities=ModelCapabilities(streaming=True),
+    )
+    adapter = OpenAICompatibleAdapter(provider, client=_StreamClient(lines))
+    items = tuple(
+        adapter.stream(
+            ModelRequest(
+                messages=(ModelMessage(role="user", content="hi"),),
+                max_output_tokens=16,
+            )
+        )
+    )
+    assert [item.text for item in items if isinstance(item, ModelTextDelta)] == [
+        "入口在 ",
+        "main.py。",
+    ]
+    assert isinstance(items[-1], ModelStreamCompleted)
+    assert items[-1].turn.assistant_text == "入口在 main.py。"

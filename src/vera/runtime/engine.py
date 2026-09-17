@@ -100,6 +100,10 @@ _TOOL_LIMIT_WRAP_UP = (
 _TOOL_LIMIT_SKIPPED = (
     '{"content_hash":"","notice":"skipped: tool call budget exhausted","vera_content":1}'
 )
+_EMPTY_AFTER_TOOLS_NUDGE = (
+    "上一次回复没有文本也没有工具调用。请根据已经收集到的证据给出最终中文回答，"
+    "或调用 propose_changeset；不要返回空响应。"
+)
 
 
 def tool_call_target(call: ModelToolCall) -> str:
@@ -1337,6 +1341,12 @@ class VeraRuntime:
             if not turn.tool_calls:
                 text = (turn.assistant_text or "").strip()
                 if not text:
+                    if context.tool_calls > 0 and not context.empty_after_tools_nudge:
+                        context.empty_after_tools_nudge = True
+                        context.messages.append(
+                            ModelMessage(role="user", content=_EMPTY_AFTER_TOOLS_NUDGE)
+                        )
+                        continue
                     yield from self._fail(context, "empty_model_response")
                     return
                 context.machine.transition(RunState.COMPLETED)

@@ -3,7 +3,7 @@
 **规格：** [阶段七 CLI 体验收口](../specs/2026-09-13-cli-experience-and-personal-dogfood.md)  
 **任务：** [0041](../tasks/0041-phase-7-product-acceptance-and-dogfood.md)  
 **日期：** 2026-09-16  
-**结果：** 2026-09-16 至 2026-09-17 原生 Terminal.app 第 1–4 项走查通过。发现 38–41、43–49 已复验关闭。发现 42 Low 未关。20 次 dogfood 未完成。未收到封存原文。
+**结果：** 2026-09-16 至 2026-09-17 原生 Terminal.app 第 1–4 项走查通过。发现 38–41、43–49 已复验关闭。发现 42 Low、发现 50 High 未关。20 次 dogfood 未完成。未收到封存原文。
 
 严重度：Critical（权限/数据/错误应用）、High（主流程不可用/输入丢失/状态误导）、Medium（高频摩擦）、Low（视觉细节）。
 
@@ -85,7 +85,7 @@
 | 5 | 2026-09-16 | VeraTestDemo | 同路径复验 `6c1ba9d` | 通过 | 是 | 无 | 发现 43 关闭 |
 | 6 | 2026-09-17 | VeraTestDemo | 运行中 Esc 取消「解释第四个 VC」 | 失败 Worker | 否 | High | 发现 49，已修 |
 | 7 | 2026-09-17 | VeraTestDemo | 同路径复验 `661a894` | 通过（已取消） | 否 | 无 | 发现 49 关闭 |
-| 8 | | | | Not run | | | |
+| 8 | 2026-09-17 | Python示例 | 添加网址数据分析功能 | 失败 `empty_model_response` | 否 | High | 发现 50，修复中 |
 | 9 | | | | Not run | | | |
 | 10 | | | | Not run | | | |
 | 11 | | | | Not run | | | |
@@ -116,5 +116,6 @@
 | 47 | 信息层级 | 状态带短条旁只显示百分比/`<1%`，看不到当前会话预算已用/上限字节 | Medium | 0048 修复；用户 2026-09-17 Terminal.app 复验通过 |
 | 48 | 会话维护 | 运行中按 Esc 取消无效；状态带写了 Esc 但未绑定 | High | 0049 修复；用户 2026-09-17 Terminal.app 复验通过 |
 | 49 | 会话维护 | Esc 取消后出现 Error「当前有运行中的任务」和 Worker 失败 | High | 0050 修复；用户 2026-09-17 Terminal.app 复验通过 |
+| 50 | Python 工程 | 只读调查后模型空响应，任务失败 `empty_model_response` | High | 0052 修复中；待 Terminal.app 复验 |
 
-发现 38–41、43–49 已关闭。第 1–4 项走查已过。发现 42 Low 未关。20 次 dogfood 未完成，阶段七仍不 Complete。
+发现 38–41、43–49 已关闭。第 1–4 项走查已过。发现 42 Low、发现 50 High 未关。20 次 dogfood 未完成，阶段七仍不 Complete。

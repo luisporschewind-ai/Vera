@@ -61,6 +61,66 @@ def test_empty_model_response_fails_explicitly(tmp_path: Path) -> None:
     assert events[-1].payload["reason"] == "empty_model_response"
 
 
+def test_empty_after_tools_nudges_then_completes(tmp_path: Path) -> None:
+    (tmp_path / "hello.txt").write_text("entry\n", encoding="utf-8")
+    adapter = FakeModelAdapter(
+        [
+            ModelTurn(
+                finish_reason="tool_calls",
+                reasoning_content="先读文件",
+                tool_calls=(
+                    ModelToolCall(call_id="1", name="read_file", arguments={"path": "hello.txt"}),
+                ),
+            ),
+            ModelTurn(assistant_text="", finish_reason="stop", reasoning_content="整理调查结果"),
+            ModelTurn(assistant_text="入口在 hello.txt。", finish_reason="stop"),
+        ]
+    )
+    registry = ToolRegistry()
+    registry.register(ReadTool(tmp_path))
+    runtime = VeraRuntime(adapter, registry, tmp_path / "state")
+
+    events = list(
+        runtime.handle(StartRun(goal="入口在哪？", workspace_root=tmp_path, model_profile="fake"))
+    )
+
+    assert events[-2].type == "assistant.message"
+    assert events[-2].payload["content"] == "入口在 hello.txt。"
+    assert events[-1].payload == {"state": "completed", "outcome": "responded"}
+    assert any(
+        "不要返回空响应" in message.content
+        for request in adapter.requests
+        for message in request.messages
+        if message.role == "user"
+    )
+
+
+def test_empty_after_tools_still_fails_if_nudge_returns_empty(tmp_path: Path) -> None:
+    (tmp_path / "hello.txt").write_text("entry\n", encoding="utf-8")
+    adapter = FakeModelAdapter(
+        [
+            ModelTurn(
+                finish_reason="tool_calls",
+                tool_calls=(
+                    ModelToolCall(call_id="1", name="read_file", arguments={"path": "hello.txt"}),
+                ),
+            ),
+            ModelTurn(assistant_text="", finish_reason="stop"),
+            ModelTurn(assistant_text="", finish_reason="stop"),
+        ]
+    )
+    registry = ToolRegistry()
+    registry.register(ReadTool(tmp_path))
+    runtime = VeraRuntime(adapter, registry, tmp_path / "state")
+
+    events = list(
+        runtime.handle(StartRun(goal="入口在哪？", workspace_root=tmp_path, model_profile="fake"))
+    )
+
+    assert events[-1].type == "run.failed"
+    assert events[-1].payload["reason"] == "empty_model_response"
+
+
 def test_readonly_tool_then_text_completes_without_changes(tmp_path: Path) -> None:
     (tmp_path / "hello.txt").write_text("entry\n", encoding="utf-8")
     adapter = FakeModelAdapter(
