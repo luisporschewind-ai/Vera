@@ -143,7 +143,7 @@ class TimelineProjector:
                 block_id=block_id,
                 run_id=frame.run_id,
                 kind=BlockKind.ASSISTANT,
-                title="助手",
+                title="Vera",
                 body=body,
                 status=BlockStatus.RUNNING,
                 expanded=self.disclosure.initial_state(BlockKind.ASSISTANT, BlockStatus.RUNNING),
@@ -340,7 +340,7 @@ class TimelineProjector:
             block_id=f"{event.run_id}:{event.sequence}:assistant",
             run_id=event.run_id,
             kind=BlockKind.ASSISTANT,
-            title="助手",
+            title="Vera",
             body=content,
             status=BlockStatus.SUCCEEDED,
         )

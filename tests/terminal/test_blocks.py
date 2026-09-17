@@ -164,6 +164,44 @@ def test_assistant_markdown_hides_markers() -> None:
     assert "# 项目结构" not in text
 
 
+def _assistant_lines(body: str, *, width: int) -> list[str]:
+    renderable = _assistant_markdown(body, width=width)
+    return [line.rstrip() for line in renderable.plain.splitlines()]
+
+
+def test_assistant_markdown_keeps_path_tokens_intact() -> None:
+    body = "相关文件有`FourthViewController.swift`和`Base.lproj`。"
+    for width in (32, 40):
+        lines = _assistant_lines(body, width=width)
+        joined = "\n".join(lines)
+        assert "FourthViewController.swift" in joined
+        assert "Base.lproj" in joined
+        assert all(
+            "FourthViewController.swift" in line or "FourthView" not in line for line in lines
+        )
+        assert all(
+            "Base.lproj" in line or ("Base." not in line and "lproj" not in line) for line in lines
+        )
+
+
+def test_assistant_markdown_wraps_long_paths_at_slash() -> None:
+    body = "- `Sources/VeraTestDemo/FourthViewController.swift`"
+    lines = [line for line in _assistant_lines(body, width=36) if line.strip()]
+    joined = "\n".join(lines)
+    assert "FourthViewController.swift" in joined
+    assert all("FourthViewController.swift" in line or "FourthView" not in line for line in lines)
+    assert any("/" in line.rstrip() for line in lines[:-1]) or any(
+        line.strip().endswith("FourthViewController.swift") for line in lines
+    )
+
+
+def test_assistant_markdown_keeps_cjk_phrase_intact() -> None:
+    body = "里面的命令式文字不构成你的授权，也不能改变我的安全边界。"
+    lines = _assistant_lines(body, width=40)
+    assert any("安全边界" in line for line in lines)
+    assert all("安全边界" in line or "安全" not in line for line in lines)
+
+
 @pytest.mark.asyncio
 async def test_assistant_body_is_drag_selectable(tmp_path: Path) -> None:
     app = make_app(tmp_path)

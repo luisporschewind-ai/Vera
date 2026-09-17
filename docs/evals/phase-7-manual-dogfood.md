@@ -108,7 +108,7 @@
 | 40 | 主路径 | 缩放右侧残留 | Medium | 0044 修复；复验通过 |
 | 41 | 主路径 | 短会话上下文条显示 0% | Medium | 0044 修复；复验通过 |
 | — | 主路径 | 工程根未长出 `build/` | 无 | 通过 |
-| 42 | `vera -c` | 助手 Markdown 路径高亮把 `FourthViewController.swift`、`Base.lproj` 从中间折行 | Low | 本阶段可修或后续汇总；不挡继续/恢复 |
+| 42 | `vera -c` | 助手 Markdown 路径高亮把 `FourthViewController.swift`、`Base.lproj` 从中间折行 | Low | 0051 修复中；待 Terminal.app 复验 |
 | 43 | `vera -c` 续写 | 大 `propose_changeset` 参数 JSON 非法/截断后整轮 `model_error` | High | 0045 修复；用户 2026-09-16 Terminal.app 复验通过 |
 | 44 | 会话维护 | `vera -r` 无参数：Option requires an argument | High | 0047 修复；用户 2026-09-16 Terminal.app 复验通过 |
 | 45 | 会话维护 | `/new`/`/clear` 后上一会话仍显示，未清屏 | High | 0047 修复；用户 2026-09-16 Terminal.app 复验通过 |

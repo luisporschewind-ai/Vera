@@ -2,7 +2,7 @@
 
 **更新日期：** 2026-09-17
 **当前阶段：** 阶段 7——CLI 体验收口与个人主力化（Ready for manual acceptance）
-**仓库状态：** 阶段五停在 Ready for manual acceptance。阶段六已 Complete。阶段七任务 0034–0037、0043、0038–0040、0044–0050 Done。任务 0041 自动门禁完成，停在 Ready for manual acceptance；第 1–4 项走查已过。发现 42 Low 未关。20 次 dogfood 未完成。未收到封存原文。不引入 Electron 代码。暂无远程时可不推送。
+**仓库状态：** 阶段五停在 Ready for manual acceptance。阶段六已 Complete。阶段七任务 0034–0037、0043、0038–0040、0044–0050 Done。任务 0051 In progress。任务 0041 自动门禁完成，停在 Ready for manual acceptance；第 1–4 项走查已过。发现 42 Low 未关。20 次 dogfood 未完成。未收到封存原文。不引入 Electron 代码。暂无远程时可不推送。
 
 ## 已完成
 
@@ -36,7 +36,7 @@
 
 ## 活动任务
 
-- [阶段七执行顺序](tasks/phase-7-execution-order.md)：用户已授权开始；任务 0034–0037、0043、0038–0040、0044–0050 Done。任务 0041 自动栏完成，阶段七 Ready for manual acceptance。不得在阶段七封存确认前引入 Electron。
+- [阶段七执行顺序](tasks/phase-7-execution-order.md)：用户已授权开始；任务 0034–0037、0043、0038–0040、0044–0050 Done。任务 0051 In progress。任务 0041 自动栏完成，阶段七 Ready for manual acceptance。不得在阶段七封存确认前引入 Electron。
 - [阶段五执行顺序](tasks/phase-5-execution-order.md)：0024 自动门禁已完成；人工 dogfood 不足，阶段五保持 Ready for manual acceptance。
 - [ADR-0017：插入 CLI 体验阶段并顺延桌面路线](decisions/ADR-0017-insert-cli-experience-stage.md)：Accepted；阶段七用于 CLI 体验与个人主力化，原桌面阶段顺延为阶段八。
 - [验证产物隔离与工作区无污染](specs/2026-09-14-verification-artifact-isolation.md)与 [ADR-0018](decisions/ADR-0018-isolate-verification-artifacts.md)：Accepted；最终验证计划必须在审批前形成，构建/缓存产物写到 workspace 外。
@@ -50,6 +50,7 @@
 
 ## 最近验证
 
+- 2026-09-17 任务 0051：发现 42 折行与回答署名 Vera 自动栏通过，待 Terminal.app 复验。
 - 2026-09-17 任务 0050：发现 49 Terminal.app 复验通过。`661a894` 让取消后旧循环停住，不再复活 run、不再 Worker 失败。
 - 2026-09-17 任务 0049：发现 48 Terminal.app 复验通过。`cfeb240` 让运行中 Esc 发送一次取消。
 - 2026-09-17 任务 0041 第 2 项：明确 ID、`/compact` 重启、Esc 取消、失败/恢复、无 Git、dirty 通过。
@@ -90,7 +91,7 @@
 
 ## 下一检查点
 
-1. 阶段七任务 0041 停在 Ready for manual acceptance。发现 38–41、43–49 已复验关闭。继续 20 次跨日 dogfood（至少 2 个工程、5 个自然日、5 次跨进程）。发现 42 Low 可本阶段修或后续汇总。不开始阶段八，不引入 Electron。
+1. 阶段七任务 0041 停在 Ready for manual acceptance。发现 38–41、43–49 已复验关闭。发现 42 见 [任务 0051](tasks/0051-cli-dogfood-path-wrap.md)。继续 20 次跨日 dogfood（至少 2 个工程、5 个自然日、5 次跨进程）。不开始阶段八，不引入 Electron。
 2. 不自动删除、取消暂存或忽略 `VeraTestDemo` 索引里残留的 `AD build/`；未改 `.gitignore`。
 3. 阶段五仍缺 20 次真实 dogfood 与三类真实工程走查，不得把阶段五标为 Complete。
 4. 未经确认「CLI 版本达到预期，可以封存」，不得将阶段七标为 Complete、不得开始阶段八、不得引入 Electron 或其他桌面端代码。

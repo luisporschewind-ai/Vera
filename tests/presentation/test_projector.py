@@ -263,6 +263,7 @@ def test_assistant_message_replaces_stream_body() -> None:
     assert isinstance(mutations[0], UpdateBlock)
     assert mutations[0].block.body == "final text"
     assert mutations[0].block.incomplete is False
+    assert mutations[0].block.title == "Vera"
 
 
 def test_projector_bounds_large_output_and_keeps_diff_approval() -> None:

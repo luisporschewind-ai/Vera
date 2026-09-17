@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import re
+
+from rich.cells import cell_len, chop_cells
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.markup import escape
@@ -42,6 +45,9 @@ class TimelineBlockWidget(Vertical):
         height: auto;
         color: $text !important;
     }
+    TimelineBlockWidget.assistant .block-body {
+        text-wrap: nowrap;
+    }
     TimelineBlockWidget .user-heading {
         height: 1;
         width: 100%;
@@ -62,6 +68,8 @@ class TimelineBlockWidget(Vertical):
     def __init__(self, block: TimelineBlock) -> None:
         super().__init__(id=self._dom_id(block.block_id))
         self.block = block
+        if block.kind is BlockKind.ASSISTANT:
+            self.add_class("assistant")
         self._body = Static("", classes="block-body")
         self._title = Static(self._title_text(block), classes="block-title")
         self._time = Static(format_block_clock(block_occurred_at(block)), classes="block-time")
@@ -145,13 +153,19 @@ class TimelineBlockWidget(Vertical):
             self._body.update(escape(preview) if preview else "")
             return
         if self.block.kind is BlockKind.ASSISTANT:
-            width = self.size.width or 80
+            width = self._assistant_content_width()
             key = (body, width)
             if self._markdown_render_key != key:
                 self._markdown_render_key = key
                 self._body.update(_assistant_markdown(body, width=width))
             return
         self._body.update(escape(body) if body else "")
+
+    def _assistant_content_width(self) -> int:
+        width = self._body.size.width or self.size.width or 80
+        padding = self._body.styles.padding
+        inner = int(width) - int(padding.left) - int(padding.right)
+        return max(inner, 8)
 
     @staticmethod
     def _title_text(block: TimelineBlock) -> str:
@@ -231,6 +245,69 @@ class UserBlockWidget(TimelineBlockWidget):
         self._title.update(select_composer_prompt(unicode=unicode))
 
 
+_ASSISTANT_WRAP_TOKEN = re.compile(r"\s+|[A-Za-z0-9_.-]+/?|.", flags=re.DOTALL)
+
+
+def _assistant_wrap_offsets(plain: str, width: int) -> list[int]:
+    """Break after spaces, `/`, and CJK glyphs; keep dotted filenames intact."""
+    if width < 1 or not plain:
+        return []
+    breaks: list[int] = []
+    column = 0
+    for match in _ASSISTANT_WRAP_TOKEN.finditer(plain):
+        token = match.group(0)
+        start = match.start()
+        if token.isspace():
+            space_width = cell_len(token)
+            if column == 0:
+                column += space_width
+                continue
+            if column + space_width > width:
+                breaks.append(start)
+                column = 0
+                continue
+            column += space_width
+            continue
+        token_width = cell_len(token)
+        if column + token_width <= width:
+            column += token_width
+            continue
+        if token_width > width:
+            if column and start:
+                breaks.append(start)
+            pieces = chop_cells(token, width=width)
+            offset = start
+            for index, piece in enumerate(pieces):
+                if index:
+                    breaks.append(offset)
+                if index == len(pieces) - 1:
+                    column = cell_len(piece)
+                else:
+                    offset += len(piece)
+            continue
+        if start:
+            breaks.append(start)
+        column = token_width
+    return breaks
+
+
+def _wrap_assistant_text(text: Text, width: int) -> Text:
+    wrapped = Text()
+    lines = text.split(allow_blank=True)
+    last_index = len(lines) - 1
+    for index, line in enumerate(lines):
+        line.rstrip()
+        parts = line.divide(_assistant_wrap_offsets(line.plain, width))
+        for part_index, part in enumerate(parts):
+            part.rstrip()
+            if part_index:
+                wrapped.append("\n")
+            wrapped.append_text(part)
+        if index != last_index:
+            wrapped.append("\n")
+    return wrapped
+
+
 def _assistant_markdown(body: str, *, width: int = 80) -> Text:
     """Render Markdown to Rich Text so Textual can drag-select it.
 
@@ -239,22 +316,24 @@ def _assistant_markdown(body: str, *, width: int = 80) -> Text:
     """
     if not body:
         return Text("")
+    wrap_width = max(width, 8)
     try:
         markdown = Markdown(body, code_theme="ansi_dark", hyperlinks=False)
         console = Console(
-            width=max(width, 8),
+            width=max(wrap_width * 4, 256),
             force_terminal=True,
             color_system="standard",
             highlight=False,
         )
         rendered = Text()
-        for segment in console.render(markdown, console.options):
+        options = console.options.update(no_wrap=True, overflow="ignore")
+        for segment in console.render(markdown, options):
             if segment.text:
                 rendered.append(segment.text, style=segment.style)
         rendered.stylize_before("#c8cdd3")
-        return rendered
+        return _wrap_assistant_text(rendered, wrap_width)
     except Exception:
-        return Text(body)
+        return _wrap_assistant_text(Text(body), wrap_width)
 
 
 def _diff_text(body: str, *, width: int = 80) -> Text:
