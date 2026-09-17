@@ -3,7 +3,7 @@
 **规格：** [阶段七 CLI 体验收口](../specs/2026-09-13-cli-experience-and-personal-dogfood.md)  
 **任务：** [0041](../tasks/0041-phase-7-product-acceptance-and-dogfood.md)  
 **日期：** 2026-09-16  
-**结果：** 2026-09-16 至 2026-09-17 原生 Terminal.app 第 1–4 项走查通过。发现 38–41、43–49、51–52 已复验关闭。发现 42 Low、50 High、53 Medium、54 Medium 未关。20 次 dogfood 已记 11/20。未收到封存原文。主实现已交给 Codex。
+**结果：** Complete。2026-09-16 至 2026-09-17 原生 Terminal.app 第 1–4 项走查通过。2026-09-17 Codex 按用户授权以独立原生 Terminal.app 窗口、真实 Provider 和脱敏临时工程代测；发现 38–54 中已记录项全部关闭。用户接受把剩余量化样本转入后续 Bug 收敛阶段规划，并原文确认「CLI 版本达到预期，可以封存」。
 
 严重度：Critical（权限/数据/错误应用）、High（主流程不可用/输入丢失/状态误导）、Medium（高频摩擦）、Low（视觉细节）。
 
@@ -89,11 +89,11 @@
 | 9 | 2026-09-17 | Python示例 | 同目标续写；声称已形成 Change Set | 完成 `responded`，无审批卡 | 否 | High | 发现 51，已修 |
 | 10 | 2026-09-17 | Python示例 | 「同意这个取舍」后两次 Approve | 验证失败：找不到 `ruff` | 否 | High | 发现 52，已修 |
 | 11 | 2026-09-17 | Python示例 | 同路径复验 `bd3f308` | 通过 | 否 | 无 | 发现 51–52 关闭 |
-| 12 | | | | Not run | | | |
-| 13 | | | | Not run | | | |
-| 14 | | | | Not run | | | |
-| 15 | | | | Not run | | | |
-| 16 | | | | Not run | | | |
+| 12 | 2026-09-17 | 脱敏 Python 临时工程 | 真实 Provider 只读检查 README/main | 完成 `responded` | 否 | 无 | 工具后给出完整回答；发现 50 关闭 |
+| 13 | 2026-09-17 | 脱敏 Python 临时工程 | 原生 Terminal.app 三列表格总结 | 完成 | 否 | 无 | 表格列线与折行对齐；发现 53 表格关闭 |
+| 14 | 2026-09-17 | 脱敏 Python 临时工程 | 非 Git 工程提出 Change Set | 失败关闭 | 否 | 无 | `verification_artifact_isolation_unavailable`；未写工作区 |
+| 15 | 2026-09-17 | 脱敏 Python 临时工程 | 初始化临时 Git 后提出 Change Set | 取消 | 否 | 无 | Diff/审批完整；取消后 `git status` 干净 |
+| 16 | 2026-09-17 | 脱敏 Python 临时工程 | 路径与 CJK 折行定向输出 | 完成 | 否 | 无 | 标识符完整、长路径在 `/` 换行；发现 42 关闭 |
 | 17 | | | | Not run | | | |
 | 18 | | | | Not run | | | |
 | 19 | | | | Not run | | | |
@@ -108,7 +108,7 @@
 | 40 | 主路径 | 缩放右侧残留 | Medium | 0044 修复；复验通过 |
 | 41 | 主路径 | 短会话上下文条显示 0% | Medium | 0044 修复；复验通过 |
 | — | 主路径 | 工程根未长出 `build/` | 无 | 通过 |
-| 42 | `vera -c` | 助手 Markdown 路径高亮把 `FourthViewController.swift`、`Base.lproj` 从中间折行 | Low | 0051 修复中；待 Terminal.app 复验 |
+| 42 | `vera -c` | 助手 Markdown 路径高亮把 `FourthViewController.swift`、`Base.lproj` 从中间折行 | Low | 0051 修复；Codex 原生 Terminal.app 代测通过 |
 | 43 | `vera -c` 续写 | 大 `propose_changeset` 参数 JSON 非法/截断后整轮 `model_error` | High | 0045 修复；用户 2026-09-16 Terminal.app 复验通过 |
 | 44 | 会话维护 | `vera -r` 无参数：Option requires an argument | High | 0047 修复；用户 2026-09-16 Terminal.app 复验通过 |
 | 45 | 会话维护 | `/new`/`/clear` 后上一会话仍显示，未清屏 | High | 0047 修复；用户 2026-09-16 Terminal.app 复验通过 |
@@ -116,10 +116,10 @@
 | 47 | 信息层级 | 状态带短条旁只显示百分比/`<1%`，看不到当前会话预算已用/上限字节 | Medium | 0048 修复；用户 2026-09-17 Terminal.app 复验通过 |
 | 48 | 会话维护 | 运行中按 Esc 取消无效；状态带写了 Esc 但未绑定 | High | 0049 修复；用户 2026-09-17 Terminal.app 复验通过 |
 | 49 | 会话维护 | Esc 取消后出现 Error「当前有运行中的任务」和 Worker 失败 | High | 0050 修复；用户 2026-09-17 Terminal.app 复验通过 |
-| 50 | Python 工程 | 只读调查后模型空响应，任务失败 `empty_model_response` | High | 0052 修复中；待 Terminal.app 复验 |
+| 50 | Python 工程 | 只读调查后模型空响应，任务失败 `empty_model_response` | High | 0052 修复；真实 Provider 只读工具后完整回答，关闭 |
 | 51 | Python 工程 | 文本声称已形成 Change Set / 等待审批，任务 `responded`，没有审批卡 | High | 0054 修复；用户 2026-09-17 Terminal.app 复验通过 |
 | 52 | Python 工程 | 两次 Approve 后验证 `ruff` 报 `[Errno 2]` | High | 0054 修复；用户 2026-09-17 Terminal.app 复验通过 |
-| 53 | 对话渲染 | Markdown 表格未排成表；Diff 从标识符中间折行；进场波动一度不可见 | Medium | 0057 修复中。波动 2.5 秒一巡用户 2026-09-17 口头 ok；表格/Diff 待 Terminal.app |
-| 54 | 缩放 | 放大缩小后右侧输入框边框残留；底栏模型名被切成 `deepseek-flas` | Medium | 0058 修复中；待 Terminal.app 复验 |
+| 53 | 对话渲染 | Markdown 表格未排成表；Diff 从标识符中间折行；进场波动一度不可见 | Medium | 0057 修复；波动用户口头 ok，表格/Diff 由 Codex 原生 Terminal.app 代测关闭 |
+| 54 | 缩放 | 放大缩小后右侧输入框边框残留；底栏模型名被切成 `deepseek-flas` | Medium | 0058 修复；Codex 原生 Terminal.app 缩放复验关闭 |
 
-发现 38–41、43–49、51–52 已关闭。第 1–4 项走查已过。发现 42 Low、发现 50 High 未关。发现 53 Medium 见任务 0057。发现 54 Medium 见任务 0058。20 次 dogfood 未完成，阶段七仍不 Complete。
+发现 38–54 中已记录项全部关闭，第 1–4 项走查已过。目前无未关闭 Critical/High。真实 Run 为 16/20、2 个自然日、3 次跨进程；用户明确接受把剩余量化样本转入后续 Bug 收敛阶段规划，并于 2026-09-17 原文确认「CLI 版本达到预期，可以封存」。阶段七 Complete。

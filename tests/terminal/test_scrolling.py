@@ -380,6 +380,10 @@ async def test_scrolled_off_user_sticks_until_replaced(tmp_path: Path) -> None:
             unicode=True
         )
 
+        # Model a real user scroll by disabling tail-follow before moving the
+        # viewport; otherwise an already-scheduled tail refresh may race this
+        # programmatic scroll.
+        timeline.mark_user_scrolled()
         app.block("u2").scroll_visible(top=True, animate=False)
         for _ in range(8):
             timeline.refresh_user_sticky()

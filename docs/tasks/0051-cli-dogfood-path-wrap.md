@@ -2,7 +2,7 @@
 
 > 供主实现 Agent 执行：阶段七 Low 视觉与自称修正。不开始阶段八。
 
-**状态：** In progress
+**状态：** Done
 **执行就绪：** 是
 **分支：** `phase-7/0041-product-acceptance`
 **依赖：** 任务 0041 自动门禁
@@ -36,10 +36,9 @@ git diff --check
 ## 验证证据
 
 - 2026-09-17：上列测试与 `test_project_instructions` 共 `62 passed`；`ruff`/`mypy` 对改动模块通过。
-- 发现 42 与自称改动待用户 Terminal.app 复验。
+- 2026-09-17 Codex 按用户授权在原生 Terminal.app / 脱敏 Python 临时工程代测：`FourthViewController.swift`、`Base.lproj` 保持完整，长路径在 `/` 边界换行，「安全边界」未被切开；回答标题为 `Vera`。发现 42 关闭。
 
 ## 未决
 
-- 发现 42 待 Terminal.app 复验。
 - 20 次 dogfood 仍归 0041。
-- 未收到「CLI 版本达到预期，可以封存」。
+- 2026-09-17 用户原文确认「CLI 版本达到预期，可以封存」。

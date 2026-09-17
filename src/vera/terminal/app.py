@@ -7,6 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from rich.control import Control
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.css.query import NoMatches
@@ -53,6 +54,8 @@ from vera.terminal.widgets.welcome import VeraWelcome
 from vera.terminal.widgets.work_rail import VeraWorkRail
 
 install_alt_enter_mapping()
+
+_RESIZE_CLEAR = Control.clear().segment.text + Control.home().segment.text
 
 
 class VeraTerminalApp(App[int]):
@@ -209,6 +212,9 @@ class VeraTerminalApp(App[int]):
                     widget.refresh(repaint=True)
         except NoMatches:
             pass
+        if self._driver is not None:
+            self._driver.write(_RESIZE_CLEAR)
+            self._driver.flush()
         self.screen.refresh(repaint=True)
 
     def _collapse_welcome(self) -> None:
@@ -359,9 +365,6 @@ class VeraTerminalApp(App[int]):
         if isinstance(output, EventEnvelope) and output.type == "session.message":
             message_text = output.payload.get("text")
             if isinstance(message_text, str) and message_text.strip():
-                status = self._status_line()
-                if status is not None:
-                    status.set_status(message_text)
                 timeline = self.query_one(ConversationTimeline)
                 if timeline.follow_tail:
                     timeline.return_to_tail()

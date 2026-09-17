@@ -2,7 +2,7 @@
 
 > 供主实现 Agent 执行：阶段七 dogfood 视觉微调。不开始阶段八。
 
-**状态：** In progress
+**状态：** Done
 **执行就绪：** 是
 **分支：** `phase-7/0041-product-acceptance`
 **依赖：** 任务 0041 自动门禁
@@ -35,10 +35,9 @@ git diff --check
 ## 验证证据
 
 - 2026-09-17：`test_footer_status`、`test_status_line`、`test_app`、`test_approval`、`test_phase_7_product_matrix` 共 `50 passed`；`ruff` 通过。
-- 待用户 Terminal.app 确认底栏与审批卡间距。
+- 2026-09-17 Codex 按用户授权在原生 Terminal.app 代测：底栏显示 `1.6K/200K`、完整 `deepseek-flash` 与推理事实；真实 Change Set 的 Diff、风险、效果和 Cancel/Reject/Approve 连续可读，卡片间距未造成截断。
 
 ## 未决
 
-- 待用户 Terminal.app 确认占用 K 与审批卡间距。运行状态已改到工作轨（0055），勿把活动写回底栏。
-- 发现 42、50 仍待复验。
-- 未收到「CLI 版本达到预期，可以封存」。
+- 运行状态已改到工作轨（0055），勿把活动写回底栏。
+- 2026-09-17 用户原文确认「CLI 版本达到预期，可以封存」。

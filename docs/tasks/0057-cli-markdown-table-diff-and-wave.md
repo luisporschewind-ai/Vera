@@ -2,7 +2,7 @@
 
 > 供主实现 Agent 执行：阶段七 CLI dogfood 修正。不开始阶段八。白块已通过，不再改顶栏铺色。
 
-**状态：** In progress
+**状态：** Done
 **执行就绪：** 是
 **分支：** `phase-7/0041-product-acceptance`
 **依赖：** 任务 0056
@@ -43,9 +43,9 @@ git diff --check
 - 2026-09-17 跟进：单条慢亮带；一巡改为 2.5 秒。
 - `ruff check` / `ruff format --check` / `mypy src` / `git diff --check` 通过。
 - 未改审批默认值、未读真实 Key、未引入桌面框架。
+- 2026-09-17 Codex 按用户授权在原生 Terminal.app 代测：三列表格列线、表头与折行对齐；真实 Change Set Diff 在词界换行，增删色、风险与审批动作完整。发现 53 关闭。
 
 ## 未决
 
-- 进场单条亮带、一巡 2.5 秒：用户 2026-09-17 口头 ok。表格/Diff 仍待 Terminal.app。
-- 发现 42、50 仍待复验。
-- 未收到「CLI 版本达到预期，可以封存」。
+- 进场单条亮带、一巡 2.5 秒：用户 2026-09-17 口头 ok；表格/Diff 已由 Codex 原生 Terminal.app 代测关闭。
+- 2026-09-17 用户原文确认「CLI 版本达到预期，可以封存」。

@@ -76,7 +76,10 @@ class VeraStatusLine(Static):
     def _content_columns(self) -> int:
         if not self.size.width:
             return max(4, self._columns - 4)
-        width = int(self.size.width)
+        # A resize may update the app geometry one refresh before Textual
+        # publishes the widget's new size. Never render wider than the latest
+        # terminal columns while that layout catches up.
+        width = min(int(self.size.width), self._columns)
         try:
             padding = self.styles.padding
             inner = width - int(padding.left) - int(padding.right)

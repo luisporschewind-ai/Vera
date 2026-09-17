@@ -420,7 +420,11 @@ async def test_visual_matrix_sizes_and_cjk(tmp_path: Path, size: tuple[int, int]
         assert "你好" in composer.text
         assert app.query_one("#terminal-too-small").display is False
         status = str(app.query_one("#status-line").render())
-        assert "会话上下文" in status or size[0] < 80
+        if size[0] >= 120:
+            assert "会话上下文" in status
+        elif size[0] >= 80:
+            assert "0/200K" in status
+            assert "fake-model" in status
         glyph = select_composer_prompt(unicode=True)
         assert str(app.query_one("#composer-prompt").render()) == glyph
         assert glyph not in composer.text

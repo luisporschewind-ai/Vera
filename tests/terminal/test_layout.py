@@ -105,3 +105,21 @@ async def test_resize_keeps_footer_model_and_chrome_inside_screen(tmp_path: Path
         assert bar.region.x >= 0
         header = app.query_one("#header")
         assert header.region.right <= app.size.width
+
+
+@pytest.mark.asyncio
+async def test_resize_clears_terminal_before_full_repaint(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    controller = make_controller(tmp_path)
+    app = VeraTerminalApp(controller, controller.workspace, "fake", animations=False)
+    async with app.run_test(size=(120, 40)) as pilot:
+        driver = app._driver
+        assert driver is not None
+        writes: list[str] = []
+        monkeypatch.setattr(driver, "write", writes.append)
+
+        await pilot.resize_terminal(80, 24)
+        await pilot.pause()
+
+        assert "\x1b[2J\x1b[H" in "".join(writes)

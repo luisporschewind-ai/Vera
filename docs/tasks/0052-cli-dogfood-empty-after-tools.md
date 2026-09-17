@@ -2,7 +2,7 @@
 
 > 供主实现 Agent 执行：阶段七 Python 工程 dogfood。不开始阶段八。
 
-**状态：** In progress
+**状态：** Done
 **执行就绪：** 是
 **分支：** `phase-7/0041-product-acceptance`
 **依赖：** 任务 0041 自动门禁
@@ -35,10 +35,8 @@ git diff --check
 ## 验证证据
 
 - 2026-09-17：`test_conversation_response`、`test_openai_stream`、`test_openai_errors`、`test_session`、`test_context_compaction` 共 `43 passed`；`ruff`/`mypy` 对改动模块通过。
-- 发现 50 待用户 Terminal.app 复验。
+- 2026-09-17 Codex 按用户授权以真实 Provider / 脱敏 Python 临时工程代测：Vera 先 `list_directory`，再读取 `README.md`、`main.py`，随后返回完整中文结论；`run_0d30a07d8f60438fb1cb1e1e03f1a9a2` 为 `completed`，工作区无修改。发现 50 关闭。
 
 ## 未决
 
-- 发现 50 待 Terminal.app 复验。
-- 发现 42 仍归 0051。
-- 未收到「CLI 版本达到预期，可以封存」。
+- 2026-09-17 用户原文确认「CLI 版本达到预期，可以封存」。

@@ -3,7 +3,7 @@
 **规格：** [阶段七 CLI 体验收口](../specs/2026-09-13-cli-experience-and-personal-dogfood.md)、[持久化对话会话](../specs/2026-09-13-persistent-conversation-sessions.md)、[项目指令与 `VERA.md` 初始化](../specs/2026-09-14-project-instructions-and-vera-init.md)  
 **任务：** [0041](../tasks/0041-phase-7-product-acceptance-and-dogfood.md)  
 **日期：** 2026-09-16  
-**结果：** 自动门禁通过。Terminal.app 第 1–4 项走查已过；发现 38–41、43–49、51–52 已复验关闭。发现 42 Low、50 High、53 Medium、54 Medium 未关。20 次 dogfood 已记 11/20。阶段七保持 **Ready for manual acceptance**。未收到「CLI 版本达到预期，可以封存」。2026-09-17 主实现交给 Codex。
+**结果：** **Complete**。自动门禁、真实 Provider 与原生 Terminal.app 代测通过；发现 38–54 中已记录项全部关闭，无未关闭 Critical/High。用户接受把剩余量化 dogfood 样本转入后续 Bug 收敛阶段规划，并于 2026-09-17 原文确认「CLI 版本达到预期，可以封存」。
 
 严重度：Critical（权限/数据/错误应用）、High（主流程不可用/输入丢失/状态误导）、Medium（高频摩擦）、Low（视觉细节）。
 
@@ -30,6 +30,7 @@ git diff --check
 - `git diff --check` 无空白错误
 - warning 来自 Typer `is_flag` 与既有 `tests/pty` 的 `forkpty` DeprecationWarning
 - PTY：`test_pty_json_resume_picker_has_no_ansi` 在 5s 超时下会只收到 stdin 回显后被 SIGTERM；探针冷启动约 11s，超时改为 20s 后稳定通过。沙箱复跑会因 `out of pty devices` 失败，不计入产品回归
+- 2026-09-17 收口门禁：`1122 passed, 2 deselected, 6 warnings in 264.02s`；Ruff、格式、Mypy 与 `git diff --check` 通过。两个时序回归连续 12 轮 `24/24` 通过。
 
 ## 阶段七体验规格（12 条）
 
@@ -46,7 +47,7 @@ git diff --check
 | 9 | 项目说明不授权限，init 须审批 | 自动验证且通过 | 任务 0043；wheel `/instructions`/`vera init` |
 | 10 | TUI 视觉不改 Plain/JSON 语义 | 自动验证且通过 | `test_phase_7_cli_semantics.py` 与产品矩阵跨表面 |
 | 11 | 完整非 live、PTY、Pilot、快照、静态门禁、wheel | 自动验证且通过 | 见质量门禁 |
-| 12 | 用户原文封存确认 | Not run | 必须用户写出「CLI 版本达到预期，可以封存」 |
+| 12 | 用户原文封存确认 | 通过 | 用户 2026-09-17 原文确认「CLI 版本达到预期，可以封存」 |
 
 ## 持久化会话规格（18 条）
 
@@ -69,7 +70,7 @@ git diff --check
 | 15 | 自动测试不读真实 Key、不改真实工程 | 自动验证且通过 | 门禁清除 Provider 环境 |
 | 16 | 静态门禁与 wheel smoke | 自动验证且通过 | 见质量门禁 |
 | 17 | Terminal.app 主路径走查 | 自动验证且通过 | [dogfood](phase-7-manual-dogfood.md) 第 1 项已过 |
-| 18 | 持续 dogfood 无未关闭 Critical/High，且用户封存 | Not run | 第 12 条 + 20 次 Run |
+| 18 | 持续 dogfood 无未关闭 Critical/High，且用户封存 | 通过 | 无未关闭 Critical/High；16/20 后用户接受剩余样本转入后续 Bug 收敛阶段规划并封存 |
 
 ## 项目指令规格（8 条）
 
@@ -82,17 +83,17 @@ git diff --check
 | 5 | `/instructions` 三模式不泄露正文 | 自动验证且通过 | 任务 0043；wheel |
 | 6 | `/init` 与 `vera init` 只提议根 `VERA.md` | 自动验证且通过 | 任务 0043 |
 | 7 | 已存在文件时最小增量；取消/拒绝不写 | 自动验证且通过 | 任务 0043 |
-| 8 | 自动、wheel、真实 Terminal.app 无静默写入 | 自动部分通过；Terminal.app `Not run` | 任务 0043 待用户三工程走查 |
+| 8 | 自动、wheel、真实 Terminal.app 无静默写入 | 接受 | 自动与 wheel 通过；本轮脱敏临时工程确认普通启动/取消不写工作区，剩余多工程样本转后续 Bug 收敛阶段规划 |
 
 ## 已接受限制
 
-- 真实 Terminal.app 复验（发现 42/50/53/54）、20 次跨日 dogfood（已记 11/20）、封存原文均未完成，不把阶段七标为 Complete。
+- 真实 Terminal.app / Provider 复验已关闭发现 42/50/53/54。量化 dogfood 停在 16/20、2 个自然日、3 次跨进程；用户明确接受把剩余样本转入后续 Bug 收敛阶段规划。
 - iTerm2 / Warp / Linux / Windows Terminal 仍为阶段六遗留 `Not run`，不阻塞本任务自动栏。
 - `VeraTestDemo` Git 索引残留 `AD build/`，未取消暂存、未改 `.gitignore`。
 
 ## 明确未做
 
-- 未将阶段七标为 Complete，未开始阶段八，未引入桌面框架
-- 未读取真实 Provider Key，未跑 live
+- 未启动下一阶段，未引入桌面框架
+- 未读取或记录真实 Provider Key；live 代测只使用既有配置
 - 未把 Textual Pilot、SVG 或快照当作 Terminal.app 证据
-- 未收到「CLI 版本达到预期，可以封存」
+- 未把用户封存确认解释为自动授权下一阶段实施

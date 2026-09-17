@@ -2,7 +2,7 @@
 
 > 供主实现 Agent 执行：阶段七 CLI dogfood 修正。不开始阶段八。不改波动节奏、表格与白块铺色。
 
-**状态：** In progress
+**状态：** Done
 **执行就绪：** 是
 **分支：** `phase-7/0041-product-acceptance`
 **依赖：** 任务 0057
@@ -38,9 +38,10 @@ git diff --check
 - 2026-09-17 聚焦测试 `37 passed in 15.30s`（layout/status_line/app/footer_status）。
 - `ruff check` / `ruff format --check` / `mypy src` / `git diff --check` 通过。
 - 未改审批默认值、未读真实 Key、未引入桌面框架。
+- 2026-09-17 Codex 原生 Terminal.app 复现 1000×700 → 800×550 后右侧旧边框与白块；补充失败测试后，在 resize 全量重绘前显式清屏并回到 Home，复验不再残留，Composer 边框闭合，`deepseek-flash` 与推理事实完整。
+- 同轮发现 footer 在布局追赶 resize 时可能短暂用旧 widget 宽度；内容宽度改为不超过最新终端列数。resize/footer 回归与滚动时序测试连续 12 轮 `24/24` 通过。
 
 ## 未决
 
-- 待用户 Terminal.app 放大缩小窗口，看右侧残段与底栏模型是否完整。
-- 发现 42、50 仍待复验。
-- 未收到「CLI 版本达到预期，可以封存」。
+- 发现 54 已由 Codex 按用户授权在原生 Terminal.app 代测关闭。
+- 2026-09-17 用户原文确认「CLI 版本达到预期，可以封存」。
