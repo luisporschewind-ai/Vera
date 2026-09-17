@@ -23,19 +23,17 @@ class FooterStatus(BaseModel):
     model_name: str
     reasoning_mode: Literal["explicit", "provider_default", "unavailable"]
     reasoning_label: str
-    activity_label: str
-    activity_active: bool
-    activity_severity: str
     unread: int = Field(ge=0)
     persist_label: str | None = None
 
 
 def project_footer_status(
     session: SessionStatus,
-    activity: ActivityState,
+    activity: ActivityState | None = None,
     *,
     unread: int = 0,
 ) -> FooterStatus:
+    del activity
     used = session.context.context_bytes
     maximum = session.context.max_bytes
     ratio = min(1.0, used / maximum) if maximum else 0.0
@@ -53,9 +51,6 @@ def project_footer_status(
         model_name=session.model_name,
         reasoning_mode=session.reasoning.mode,
         reasoning_label=session.reasoning.display_label(),
-        activity_label=activity.label,
-        activity_active=activity.active,
-        activity_severity=activity.severity,
         unread=max(0, unread),
         persist_label=persist,
     )
@@ -81,27 +76,29 @@ def format_context_k(n: int) -> str:
     return f"{kilos:.1f}K"
 
 
-def _status_candidates(footer: FooterStatus, *, marker: str) -> tuple[str, ...]:
-    activity = f"{marker} {footer.activity_label}"
-    optionals: list[str] = []
+def _left_candidates(
+    footer: FooterStatus, context_full: str, context_short: str, occupancy: str
+) -> tuple[str, ...]:
+    prefixes: list[str] = []
     if footer.persist_label:
-        optionals.append(footer.persist_label)
-    if footer.activity_active:
-        optionals.append("Esc/Ctrl-C 取消")
-    else:
-        optionals.append("/help")
+        prefixes.append(footer.persist_label)
     if footer.unread:
-        optionals.append(f"{footer.unread} 条新消息")
-    statuses = [" · ".join((activity, *optionals[:keep])) for keep in range(len(optionals), -1, -1)]
-    return tuple(statuses)
+        prefixes.append(f"{footer.unread} 条新消息")
+    extras = [" · ".join(prefixes[:keep]) for keep in range(len(prefixes), 0, -1)]
+    bases = (context_full, context_short, occupancy)
+    ordered: list[str] = []
+    for extra in extras:
+        for base in bases:
+            ordered.append(f"{extra}  {base}")
+    ordered.extend(bases)
+    return tuple(ordered)
 
 
-def _fits_footer(left: str, middle: str, right: str, columns: int) -> bool:
-    blob = f"{left}  {middle}" if middle else left
+def _fits_footer(left: str, right: str, columns: int) -> bool:
     right_width = display_width(right)
     if right_width >= columns:
         return False
-    return display_width(blob) <= columns - right_width - 1
+    return display_width(left) <= columns - right_width - 1
 
 
 def render_footer_status(
@@ -109,31 +106,23 @@ def render_footer_status(
     *,
     columns: int,
     unicode: bool,
-    frame: str,
+    frame: str = "·",
 ) -> str:
+    del frame
     occupancy = f"{format_context_k(footer.context_used)}/{format_context_k(footer.context_max)}"
     bar_cells = 8 if columns >= 80 else 6
     bar = context_bar(footer.context_percent, bar_cells, unicode=unicode, used=footer.context_used)
     context_full = f"会话上下文 {bar} {occupancy}"
     context_short = f"上下文 {bar} {occupancy}"
-    idle_mark = "✓" if footer.activity_severity == "info" else "!"
-    if not unicode:
-        idle_mark = "+" if footer.activity_severity == "info" else "!"
-    marker = frame if footer.activity_active else idle_mark
-    statuses = _status_candidates(footer, marker=marker)
-    contexts = (context_full, context_short, occupancy)
+    lefts = _left_candidates(footer, context_full, context_short, occupancy)
     if columns < 80:
         right = f"推理 {footer.reasoning_label}"
-        for status in statuses:
-            for context in (context_short, occupancy):
-                if _fits_footer(status, context, right, columns):
-                    return fit_left_right(f"{status}  {context}", right, columns)
-        return clip_display(f"{statuses[-1]}  {occupancy}", columns)
+        for left in lefts:
+            if _fits_footer(left, right, columns):
+                return fit_left_right(left, right, columns)
+        return clip_display(lefts[-1], columns)
     right = f"{footer.model_name}  推理 {footer.reasoning_label}"
-    for status in statuses:
-        for context in contexts:
-            if _fits_footer(status, context, right, columns):
-                return fit_left_right(f"{status}  {context}", right, columns)
-    if not _fits_footer(statuses[-1], occupancy, right, columns):
-        return clip_display(f"{statuses[-1]}  {occupancy}", columns)
-    return fit_left_right(f"{statuses[-1]}  {occupancy}", right, columns)
+    for left in lefts:
+        if _fits_footer(left, right, columns):
+            return fit_left_right(left, right, columns)
+    return clip_display(lefts[-1], columns)

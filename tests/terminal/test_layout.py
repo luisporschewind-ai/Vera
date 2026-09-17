@@ -41,14 +41,15 @@ async def test_narrow_width_hides_secondary_header_fields(tmp_path: Path) -> Non
     app = VeraTerminalApp(controller, controller.workspace, "fake")
     async with app.run_test(size=(80, 24)) as pilot:
         header = app.query_one("#header")
-        assert "VERA" in str(header.render())
-        assert str(controller.workspace.name) in str(header.render()) or str(
-            controller.workspace
-        ) in str(header.render())
+        assert "VERA" in header.visible_text()
+        assert (
+            str(controller.workspace.name) in header.visible_text()
+            or str(controller.workspace) in header.visible_text()
+        )
         await pilot.resize_terminal(70, 24)
         await pilot.pause()
         assert header.has_class("-narrow")
-        assert "VERA" in str(header.render())
+        assert "VERA" in header.visible_text()
 
 
 @pytest.mark.asyncio

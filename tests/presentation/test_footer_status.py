@@ -113,10 +113,9 @@ def test_wide_footer_has_both_sides() -> None:
     text = render_footer_status(footer, columns=80, unicode=True, frame="·")
     assert "会话上下文" in text
     assert "24/100" in text
-    assert text.index("就绪") < text.index("会话上下文")
+    assert "就绪" not in text
     assert "deepseek-chat" in text
     assert "推理 不可用" in text
-    assert "就绪" in text
 
 
 def test_narrow_footer_keeps_occupancy_drops_model() -> None:
@@ -135,23 +134,12 @@ def test_unsaved_persist_label() -> None:
     assert "未保存" in text
 
 
-def test_activity_states_keep_words() -> None:
-    for label, phase, active, severity in (
-        ("正在思考", "thinking", True, "info"),
-        ("等待审批", "approval", True, "warning"),
-        ("正在验证", "verify", True, "info"),
-        ("已完成", "done", False, "info"),
-        ("已取消", "cancelled", False, "warning"),
-        ("失败", "failed", False, "error"),
-        ("正在恢复", "recovery", True, "warning"),
-        ("未保存", "idle", False, "info"),
-    ):
-        footer = project_footer_status(_status(), ActivityState(label, phase, active, severity))
-        text = render_footer_status(footer, columns=80, unicode=False, frame="o")
-        assert label in text
-        assert "0/100" in text
-        if not active:
-            assert "Esc/Ctrl-C 取消" not in text
+def test_footer_does_not_show_activity() -> None:
+    footer = project_footer_status(_status(), ActivityState("正在思考", "thinking", True))
+    text = render_footer_status(footer, columns=80, unicode=True, frame="·")
+    assert "正在思考" not in text
+    assert "Esc/Ctrl-C 取消" not in text
+    assert "会话上下文" in text
 
 
 def test_footer_keeps_occupancy_while_thinking() -> None:
@@ -159,9 +147,6 @@ def test_footer_keeps_occupancy_while_thinking() -> None:
     footer = project_footer_status(_status(used=50, maximum=200_000), idle)
     text = render_footer_status(footer, columns=80, unicode=True, frame="·")
     assert "50/200K" in text
-    assert "正在思考" in text
+    assert "正在思考" not in text
     assert "上下文" in text
-    assert text.index("正在思考") < text.index("上下文")
     assert " 0%" not in text
-    wide = render_footer_status(footer, columns=120, unicode=True, frame="·")
-    assert "Esc/Ctrl-C 取消" in wide

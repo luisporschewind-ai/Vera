@@ -62,5 +62,6 @@
 - [任务 0041：阶段七产品验收与个人 dogfood](0041-phase-7-product-acceptance-and-dogfood.md)
 - [任务 0044：走查发现 38–41（propose 回写与 sticky）](0044-cli-dogfood-propose-and-sticky.md)
 - [任务 0054：走查发现 51–52（虚构审批卡与验证命令找不到）](0054-cli-dogfood-claimed-changeset-and-ruff.md)
+- [任务 0055：工作轨、状态组收起与顶栏字标](0055-cli-work-rail-and-header-mark.md)
 - [任务 0042：验证产物隔离与工作区无污染](0042-verification-artifact-isolation.md)
 - [任务 0043：项目指令发现与 `VERA.md` 初始化](0043-project-instructions-and-init.md)

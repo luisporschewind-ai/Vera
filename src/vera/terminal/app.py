@@ -50,6 +50,7 @@ from vera.terminal.widgets.status_line import VeraStatusLine
 from vera.terminal.widgets.timeline import ConversationTimeline
 from vera.terminal.widgets.user_sticky import UserStickyBar
 from vera.terminal.widgets.welcome import VeraWelcome
+from vera.terminal.widgets.work_rail import VeraWorkRail
 
 install_alt_enter_mapping()
 
@@ -119,6 +120,7 @@ class VeraTerminalApp(App[int]):
         yield UserStickyBar(id="user-sticky")
         yield ConversationTimeline(id="timeline")
         yield CompletionList(id="completions")
+        yield VeraWorkRail(id="work-rail")
         yield ComposerBar(id="composer-bar")
         yield VeraStatusLine(id="status-line")
         yield self._too_small
@@ -160,6 +162,9 @@ class VeraTerminalApp(App[int]):
         status = self._status_line()
         if status is not None:
             status.set_geometry(columns=size.width, unicode=self._unicode())
+        rail = self._work_rail()
+        if rail is not None:
+            rail.set_geometry(columns=size.width, unicode=self._unicode())
         if self._session_status is not None:
             self._refresh_chrome()
         else:
@@ -241,6 +246,17 @@ class VeraTerminalApp(App[int]):
         except NoMatches:
             return None
 
+    def _work_rail(self) -> VeraWorkRail | None:
+        try:
+            return self.query_one(VeraWorkRail)
+        except NoMatches:
+            return None
+
+    def _sync_activity(self) -> None:
+        rail = self._work_rail()
+        if rail is not None:
+            rail.set_activity(self.activity.current, self.animation.frame())
+
     def on_runtime_output_received(self, message: RuntimeOutputReceived) -> None:
         output = message.output
         sequence = getattr(output, "sequence", None)
@@ -251,10 +267,8 @@ class VeraTerminalApp(App[int]):
             if output.type == "session.status":
                 self._session_status = SessionStatus.model_validate(output.payload)
                 self._refresh_chrome()
-            state = self.activity.apply(output)
-            status = self._status_line()
-            if status is not None:
-                status.set_activity(state, self.animation.frame())
+            self.activity.apply(output)
+            self._sync_activity()
             if output.type == "session.closed":
                 self.exit(0)
                 return
@@ -311,17 +325,14 @@ class VeraTerminalApp(App[int]):
         self.query_one(ConversationTimeline).apply(mutations)
 
     def on_worker_stopped(self, message: WorkerStopped) -> None:
-        status = self._status_line()
-        if status is None:
-            return
         if message.reason_code.startswith("worker_failed"):
             label = "Worker 失败；可使用 /help 或 --plain"
             self.activity.set_failed(label)
-            status.set_status(label)
+            self._sync_activity()
             if self._session_status is not None:
                 self._refresh_chrome()
         elif self.activity.current.active:
-            status.set_activity(self.activity.current, self.animation.frame())
+            self._sync_activity()
         self._focus_composer_unless_approval()
 
     def action_escape(self) -> None:
@@ -516,6 +527,7 @@ class VeraTerminalApp(App[int]):
         line = self._status_line()
         if line is not None:
             line.set_pending(0)
+        self._sync_activity()
         self._refresh_chrome()
         timeline.pin_home()
 
@@ -576,7 +588,8 @@ class VeraTerminalApp(App[int]):
         self._sync_sticky_offset()
         line = self._status_line()
         if line is not None:
-            line.apply_session(status, self.activity.current, unread=line._pending)
+            line.apply_session(status, unread=line._pending)
+        self._sync_activity()
 
     def _tick_status(self) -> None:
         if not self.is_running:
@@ -586,15 +599,12 @@ class VeraTerminalApp(App[int]):
             if context != self._session_status.context:
                 self._session_status = self._session_status.model_copy(update={"context": context})
             self._refresh_chrome()
-            line = self._status_line()
-            if line is not None and self.activity.current.active:
-                line.set_activity(self.activity.current, self.animation.frame())
+            if self.activity.current.active:
+                self._sync_activity()
             return
         if not self.activity.current.active:
             return
-        line = self._status_line()
-        if line is not None:
-            line.set_activity(self.activity.current, self.animation.frame())
+        self._sync_activity()
 
 
 def _mention_prefix(text: str) -> str | None:

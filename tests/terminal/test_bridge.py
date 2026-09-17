@@ -111,11 +111,12 @@ async def test_worker_exception_does_not_crash_app(tmp_path: Path) -> None:
     async with app.run_test(size=(80, 24)) as pilot:
         app.bridge.submit(SubmitPrompt(text="x"))
         for _ in range(20):
-            status = str(app.query_one("#status-line").render())
+            status = str(app.query_one("#work-rail").render())
             if "Worker 失败" in status:
                 break
             await pilot.pause()
-        assert "Worker 失败" in str(app.query_one("#status-line").render())
+        assert "Worker 失败" in str(app.query_one("#work-rail").render())
+        assert "boom-secret" not in str(app.query_one("#work-rail").render())
         assert "boom-secret" not in str(app.query_one("#status-line").render())
 
 

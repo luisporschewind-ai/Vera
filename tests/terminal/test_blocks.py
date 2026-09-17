@@ -124,7 +124,7 @@ async def test_adjacent_same_kind_blocks_share_a_group(tmp_path: Path) -> None:
             "工具 · 1 次",
         ]
         assert groups[0].should_expand() is False
-        assert groups[1].should_expand() is True
+        assert groups[1].should_expand() is False
         assert app.block("tool_1").collapsed is True
         assert app.block("status_1").collapsed is False
         assert app.block("status_2").collapsed is False

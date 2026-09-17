@@ -65,6 +65,7 @@ def test_full_header_is_two_lines() -> None:
     assert len(lines) == 2
     assert "demo" in lines[1]
     assert "main*" in lines[1]
+    assert "审批 manual" in lines[1]
     assert "10:24" in lines[1]
 
 
@@ -91,34 +92,26 @@ def test_compact_header_is_one_line() -> None:
     assert text.startswith("VERA")
 
 
-def test_welcome_hides_on_narrow() -> None:
-    widget = VeraWelcome()
-    mark = select_brand_mark(columns=60, rows=16, unicode=True, no_color=False)
-    widget.set_content(mark, sample_status(), columns=60)
-    assert widget.display is False
-
-
-def test_welcome_shows_new_and_resumed() -> None:
+def test_welcome_stays_hidden() -> None:
     widget = VeraWelcome()
     mark = select_brand_mark(columns=80, rows=24, unicode=True, no_color=False)
     widget.set_content(mark, sample_status(source="new"), columns=80)
-    assert widget.display is True
-    assert "新会话" in str(widget.render())
-    assert "下一步" in str(widget.render())
-    assert "fake-model" in str(widget.render())
+    assert widget.display is False
     widget.set_content(mark, sample_status(source="resumed"), columns=80)
-    assert "恢复会话" in str(widget.render())
+    assert widget.display is False
 
 
-def test_welcome_unsaved() -> None:
-    widget = VeraWelcome()
+def test_header_carries_session_facts() -> None:
     mark = select_brand_mark(columns=80, rows=24, unicode=True, no_color=False)
-    widget.set_content(mark, sample_status(persist="unsaved"), columns=80)
-    assert "未保存" in str(widget.render())
-
-
-def test_welcome_non_git() -> None:
-    widget = VeraWelcome()
-    mark = select_brand_mark(columns=80, rows=24, unicode=True, no_color=False)
-    widget.set_content(mark, sample_status(available=False), columns=80)
-    assert "非 Git" in str(widget.render())
+    text = brand_header_text(
+        mark,
+        sample_status(source="resumed", persist="unsaved", available=False),
+        columns=80,
+        rows=24,
+        now=datetime(2026, 9, 16, 10, 24),
+    )
+    assert "VERA" in text.splitlines()[0]
+    assert "已恢复" in text
+    assert "未保存" in text
+    assert "非 Git" in text
+    assert "审批 manual" in text

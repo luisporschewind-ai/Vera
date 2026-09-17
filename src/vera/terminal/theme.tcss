@@ -13,8 +13,24 @@ Screen {
     height: auto;
     min-height: 1;
     background: $boost;
-    color: $text;
+    color: $text-muted;
     padding: 0 2;
+}
+
+#header-wordmark {
+    color: $accent;
+    text-style: bold;
+}
+
+#work-rail {
+    height: auto;
+    padding: 0 2;
+    color: $text-muted;
+    background: $background;
+}
+
+#work-rail.-active {
+    color: $text;
 }
 
 #welcome {
@@ -150,6 +166,7 @@ DiffBlockWidget {
 .theme-high-contrast #timeline,
 .theme-high-contrast #completions,
 .theme-high-contrast #composer-bar,
+.theme-high-contrast #work-rail,
 .theme-high-contrast #status-line,
 .theme-high-contrast #terminal-too-small,
 .-theme-high-contrast,
@@ -158,10 +175,16 @@ DiffBlockWidget {
 .-theme-high-contrast #timeline,
 .-theme-high-contrast #completions,
 .-theme-high-contrast #composer-bar,
+.-theme-high-contrast #work-rail,
 .-theme-high-contrast #status-line,
 .-theme-high-contrast #terminal-too-small {
     background: #000000;
     color: #ffffff;
+}
+
+.theme-high-contrast #header-wordmark,
+.-theme-high-contrast #header-wordmark {
+    color: #ffff00;
 }
 
 .theme-high-contrast #timeline,
@@ -214,10 +237,12 @@ DiffBlockWidget {
 .theme-no-color #header,
 .theme-no-color #welcome,
 .theme-no-color #completions,
+.theme-no-color #work-rail,
 .theme-no-color #status-line,
 .-theme-no-color,
 .-theme-no-color #header,
 .-theme-no-color #completions,
+.-theme-no-color #work-rail,
 .-theme-no-color #status-line {
     background: #222222;
     color: #e0e0e0;

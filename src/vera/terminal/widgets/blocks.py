@@ -435,8 +435,6 @@ class EventGroupWidget(Vertical):
         return title
 
     def should_expand(self) -> bool:
-        if self.kind is BlockKind.STATUS:
-            return True
         return any(item.block.status is BlockStatus.FAILED for item in self._items)
 
     def __contains__(self, block_id: object) -> bool:

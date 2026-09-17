@@ -370,9 +370,9 @@ async def test_new_and_clear_wipe_timeline(tmp_path: Path) -> None:
         assert list(app.projector.blocks()) == []
         assert timeline.widget_count() == 0
         assert timeline.follow_tail is False
-        welcome = app.query_one("#welcome")
-        assert "新会话" in str(welcome.render())
-        assert "恢复会话" not in str(welcome.render())
+        header = app.query_one("#header")
+        assert "新会话" in header.visible_text()
+        assert "恢复会话" not in header.visible_text()
         footer = str(app.query_one("#status-line").render())
         assert "条新消息" not in footer
         app.append_output(
@@ -392,7 +392,7 @@ async def test_new_and_clear_wipe_timeline(tmp_path: Path) -> None:
         await pilot.pause()
         assert controller.conversation.snapshot() == ()
         assert list(app.projector.blocks()) == []
-        assert "又一段旧对话" not in str(app.query_one("#welcome").render())
+        assert "又一段旧对话" not in header.visible_text()
         assert timeline.follow_tail is False
         assert timeline.widget_count() == 0
         footer = str(app.query_one("#status-line").render())
