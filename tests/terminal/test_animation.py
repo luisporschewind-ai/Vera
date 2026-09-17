@@ -31,4 +31,4 @@ def test_wave_phase_advances_slowly() -> None:
     start = anim.wave_phase()
     clock["t"] = 1.0
     delta = (anim.wave_phase() - start) % 1.0
-    assert 0.15 < delta < 0.35
+    assert 0.35 < delta < 0.45
