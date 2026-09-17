@@ -6,6 +6,8 @@ import shlex
 from collections.abc import Callable, Sequence
 
 from vera.contracts.events import EventEnvelope
+from vera.presentation.event_copy import event_title, is_silent
+from vera.project_instructions import format_instruction_status
 from vera.redaction import Redactor
 
 
@@ -31,15 +33,25 @@ class HumanPresenter:
         return "批准这个 Change Set？输入 approve、reject 或 cancel"
 
     def _write_event(self, event: EventEnvelope) -> None:
+        if is_silent(event.type):
+            return
         raw = self._redactor.redact(event.payload)
         payload = raw if isinstance(raw, dict) else {}
         if event.type == "run.started":
             self._write(f"任务开始：{event.run_id}")
         elif event.type == "tool.started":
-            self._write(f"{payload.get('name', 'tool')}：执行中")
+            target = payload.get("target")
+            suffix = f" · {target}" if target else ""
+            self._write(f"{payload.get('name', 'tool')}：执行中{suffix}")
         elif event.type == "tool.completed":
             status = "成功" if payload.get("ok") else "失败"
-            self._write(f"{payload.get('name', 'tool')}：{status}")
+            target = payload.get("target")
+            suffix = f" · {target}" if target else ""
+            self._write(f"{payload.get('name', 'tool')}：{status}{suffix}")
+        elif event.type == "session.user_prompt":
+            prompt = payload.get("text")
+            if isinstance(prompt, str) and prompt:
+                self._write(f"你：{prompt}")
         elif event.type == "changeset.proposed":
             self._write(f"Change Set：{payload.get('content_hash', '')}")
             files = payload.get("files", [])
@@ -59,6 +71,12 @@ class HumanPresenter:
                 )
                 self._write(f"待批准的验证命令：{command}")
                 self._write(f"工作目录：{payload.get('cwd', '.')}")
+                profile = payload.get("artifact_profile")
+                root = payload.get("artifact_root")
+                if profile:
+                    self._write(f"Profile：{profile}")
+                if root:
+                    self._write(f"产物根：{root}")
                 self._write(f"风险：{payload.get('risk', 'unknown')}")
                 self._write("该进程以当前系统用户权限运行，Vera 第一版不提供 OS 沙箱。")
             elif payload.get("kind") == "recovery":
@@ -84,13 +102,28 @@ class HumanPresenter:
             )
             self._write(f"开始验证：{command}")
         elif event.type == "verification.completed":
-            self._write(f"验证结果：{payload.get('status', 'unknown')}")
+            status = payload.get("status", "unknown")
+            reason = payload.get("reason_code")
+            if reason:
+                self._write(f"验证结果：{status}（{reason}）")
+            else:
+                self._write(f"验证结果：{status}")
             stdout = payload.get("stdout")
             stderr = payload.get("stderr")
             if isinstance(stdout, str) and stdout:
                 self._write(stdout.rstrip("\n"))
             if isinstance(stderr, str) and stderr:
                 self._write(stderr.rstrip("\n"))
+        elif event.type in {
+            "project.instructions.loaded",
+            "project.instructions.skipped",
+            "project.instructions.status",
+        }:
+            text = payload.get("text")
+            if isinstance(text, str) and text.strip():
+                self._write(text)
+            else:
+                self._write(format_instruction_status(payload))
         elif event.type == "run.completed":
             self._write(f"任务完成：{event.run_id}（{payload.get('state', 'completed')}）")
         elif event.type == "run.failed":
@@ -146,4 +179,4 @@ class HumanPresenter:
                 f"审批已过期：{payload.get('approval_id', event.run_id)}（{reason}），需要重新生成"
             )
         else:
-            self._write(event.type)
+            self._write(event_title(event.type))

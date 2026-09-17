@@ -2,13 +2,125 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from typing import Literal
+
 from vera.contracts.events import EventEnvelope
 
+type SideEffectFact = Literal["workspace_changed", "no_workspace_change", "unknown"]
 
-def explain_failure(event: EventEnvelope) -> dict[str, str]:
+_REASON_TEXT: dict[str, str] = {
+    "model_error": "模型调用失败",
+    "max_model_turns": "达到本次任务的模型往返上限",
+    "max_context_bytes": "上下文超出预算，压缩后仍然超限",
+    "max_tool_calls": "达到本次任务的工具调用上限",
+    "empty_model_response": "模型返回了空响应",
+    "permission_denied": "没有写入权限",
+    "invalid_compaction_response": "模型返回的压缩结果不可用",
+    "repeated_tool_call": "模型重复了同一次工具调用",
+    "missing_changeset": "模型没有给出可应用的 Change Set",
+    "no_changes_proposed": "模型没有提出任何改动",
+    "missing_recovery_plan": "缺少可用的恢复计划",
+    "checkpoint_failed": "创建检查点失败",
+    "awaiting_changeset_approval": "任务中断在变更审批",
+    "awaiting_verification": "任务中断在验证",
+    "identity_mismatch": "工作区身份与快照不一致",
+    "workspace_missing": "工作区不可用",
+    "verification_in_flight": "验证进行中被中断",
+    "rollback_in_flight": "回滚进行中被中断",
+    "evidence_conflict": "工作区证据与快照冲突",
+    "unknown_hash": "文件哈希无法核对",
+    "checkpoint_missing": "缺少检查点",
+    "unsupported_version": "状态版本不受支持",
+    "invalid_snapshot": "快照无效或损坏",
+    "missing_journal": "缺少事件日志",
+    "not_resumable": "当前分类不可续跑",
+    "legacy_not_resumable": "缺少可恢复快照",
+    "manual_required": "无法自动判断恢复方式",
+    "provider_timeout": "模型请求超时",
+    "provider_authentication_error": "模型供应商认证失败",
+    "provider_rate_limited": "模型供应商限流",
+    "provider_network_error": "无法连接模型供应商",
+    "provider_request_invalid": "发给模型供应商的请求不被接受",
+    "provider_service_error": "模型供应商返回服务错误",
+    "workspace_polluted": "验证意外写入了工作区",
+    "artifact_cleanup_failed": "外部验证产物清理失败",
+    "verification_not_planned": "验证命令尚未规划隔离",
+    "invalid_tool_arguments": "模型给出的工具参数不是合法 JSON",
+    "verification_artifact_isolation_unavailable": "该验证命令没有隔离 Profile",
+    "verification_output_inside_workspace": "验证输出路径位于工作区",
+    "verification_output_not_owned": "验证输出路径不受 Vera 管理",
+    "verification_artifact_root_unsafe": "验证产物根不安全",
+    "verification_binding_changed": "验证计划绑定已变化",
+}
+
+
+def describe_reason(reason: str) -> str:
+    """Render a stable reason code as human copy while keeping the code visible."""
+
+    text = _REASON_TEXT.get(reason) or _REASON_TEXT.get(reason.split(":", 1)[0])
+    return f"{text}（{reason}）" if text else reason
+
+
+def _failed_side_effects(side_effects: SideEffectFact) -> tuple[str, str]:
+    if side_effects == "no_workspace_change":
+        return (
+            "未产生工作区变化，不需要回滚。",
+            "可以修正目标或配置后重试。",
+        )
+    if side_effects == "workspace_changed":
+        return (
+            "已写入工作区变更。",
+            "使用 /diff 复核改动，必要时 /rollback 回滚。",
+        )
+    return (
+        "可能已产生部分工作区或状态变化。",
+        "查看 /runs 与 /recover，必要时回滚。",
+    )
+
+
+def format_diagnostics(diagnostics: Mapping[str, object] | None) -> str:
+    """Surface provider failure detail that would otherwise only exist in logs."""
+
+    if not diagnostics:
+        return ""
+    parts: list[str] = []
+    code = diagnostics.get("code")
+    if code:
+        parts.append(f"供应商 code {code}")
+    status_code = diagnostics.get("status_code")
+    if status_code is not None:
+        parts.append(f"HTTP {status_code}")
+    detail = diagnostics.get("detail") or diagnostics.get("message")
+    if isinstance(detail, str) and detail:
+        parts.append(detail)
+    retry_after = diagnostics.get("retry_after_seconds")
+    if retry_after is not None:
+        parts.append(f"建议 {retry_after}s 后重试")
+    return " · ".join(parts)
+
+
+def explain_failure(
+    event: EventEnvelope,
+    *,
+    side_effects: SideEffectFact = "unknown",
+) -> dict[str, str]:
     event_type = event.type
-    reason = str(event.payload.get("reason") or event.payload.get("message") or event_type)
+    # Falling back to the event type would leak an internal identifier into copy.
+    raw_reason = str(
+        event.payload.get("reason")
+        or event.payload.get("message")
+        or event.payload.get("reason_code")
+        or ""
+    )
+    reason = describe_reason(raw_reason) if raw_reason else "原因未记录"
     if event_type == "run.cancelled":
+        if side_effects == "no_workspace_change":
+            return {
+                "what": "用户取消了当前任务。",
+                "side_effects": "已取消后续动作，未产生工作区变化。",
+                "next": "可以继续对话或重新发起任务。",
+            }
         return {
             "what": "用户取消了当前任务。",
             "side_effects": "已取消后续动作；已写入的变更需要单独回滚。",
@@ -21,10 +133,18 @@ def explain_failure(event: EventEnvelope) -> dict[str, str]:
             "next": "请重新生成审批后再决定。",
         }
     if event_type == "run.failed":
+        effects, next_step = _failed_side_effects(side_effects)
         return {
             "what": f"任务失败：{reason}",
-            "side_effects": "可能已产生部分工作区或状态变化。",
-            "next": "查看 /runs 与 /recover，必要时回滚。",
+            "side_effects": effects,
+            "next": next_step,
+        }
+    if event_type == "recovery.manual_required":
+        run_id = str(event.payload.get("run_id") or event.run_id)
+        return {
+            "what": f"不能自动处理 {run_id}：{reason}",
+            "side_effects": "这次命令没有改写工作区。",
+            "next": "此分类不允许 /resume 或 /abandon。请核对证据文件后再决定如何处理现场。",
         }
     if event_type.startswith("recovery."):
         return {
@@ -39,10 +159,19 @@ def explain_failure(event: EventEnvelope) -> dict[str, str]:
     }
 
 
-def format_failure_body(event: EventEnvelope) -> str:
-    explained = explain_failure(event)
-    return (
-        f"发生了什么：{explained['what']}\n"
-        f"是否有副作用：{explained['side_effects']}\n"
-        f"下一步：{explained['next']}"
-    )
+def format_failure_body(
+    event: EventEnvelope,
+    *,
+    side_effects: SideEffectFact = "unknown",
+    diagnostics: Mapping[str, object] | None = None,
+) -> str:
+    explained = explain_failure(event, side_effects=side_effects)
+    lines = [
+        f"发生了什么：{explained['what']}",
+        f"是否有副作用：{explained['side_effects']}",
+    ]
+    detail = format_diagnostics(diagnostics)
+    if detail:
+        lines.append(f"诊断：{detail}")
+    lines.append(f"下一步：{explained['next']}")
+    return "\n".join(lines)

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import pytest
@@ -16,8 +15,6 @@ from vera.workspace.apply import AtomicFileWriter, SimulatedCrash
 
 
 def _proposal() -> ModelTurn:
-    first_cmd = (sys.executable, "-c", "print('one')")
-    second_cmd = (sys.executable, "-c", "print('two')")
     return ModelTurn(
         finish_reason="tool_calls",
         tool_calls=(
@@ -39,8 +36,8 @@ def _proposal() -> ModelTurn:
                         },
                     ],
                     "verification": [
-                        {"argv": list(first_cmd), "cwd": "."},
-                        {"argv": list(second_cmd), "cwd": "."},
+                        {"argv": ["ruff", "check", "."], "cwd": "."},
+                        {"argv": ["ruff", "format", "--check", "."], "cwd": "."},
                     ],
                 },
             ),
@@ -91,7 +88,7 @@ class CrashAfterFirstWrite(AtomicFileWriter):
 
 
 def _policy() -> CommandPolicy:
-    return CommandPolicy(user_allowed_prefixes=((sys.executable, "-c"),))
+    return CommandPolicy(user_allowed_prefixes=(("ruff",),))
 
 
 def _runtime(
@@ -113,6 +110,7 @@ def _runtime(
         snapshot_store=store,
         installation_id="install-1",
         file_writer=writer,
+        artifact_prefix=tmp_path / "vera-verification",
     )
 
 
@@ -169,6 +167,7 @@ def test_crash_recovery_classifies_across_new_runtime(tmp_path: Path, failpoint:
         command_policy=_policy(),
         snapshot_store=RecoverySnapshotStore(tmp_path / "state"),
         installation_id="install-1",
+        artifact_prefix=tmp_path / "vera-verification",
     )
     reports = second.coordinator.scan(run_id)
     assert len(reports) == 1

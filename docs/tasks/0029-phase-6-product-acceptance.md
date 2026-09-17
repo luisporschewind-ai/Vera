@@ -2,17 +2,19 @@
 
 > 供 Cursor 执行：按 `superpowers:verification-before-completion` 收口；真实 Terminal.app 走查必须由用户确认，不能用自动测试替代。
 
-**状态：** Ready for manual acceptance
+> 后续关系：[ADR-0017](../decisions/ADR-0017-insert-cli-experience-stage.md) 将最终 CLI 体验和用户封存门禁移至阶段七。本任务保留阶段六功能与可靠性基线证据；历史自动验收结果不被改写。
+
+**状态：** Done
 **执行就绪：** 任务 0025–0028 合并后
 **分支：** `phase-6/0029-product-acceptance`
-**依赖：** 任务 0025–0028 已合并
+**依赖：** 任务 0025–0028 已合并；任务 0031–0033、0042 已 Done
 **规格：** [阶段六 CLI 产品化](../specs/2026-09-12-cli-productization-and-polish.md)
 
 ## 目标
 
-对阶段六退出条件逐项形成证据，执行模式一致性、安装包和真实终端走查。自动部分完成后**必须停止在** `Ready for manual acceptance`，等待用户在真实 Terminal.app 和真实工程中体验 Vera CLI。
+对阶段六功能与可靠性条件逐项形成证据，执行模式一致性、安装包和真实终端走查。自动部分完成后通过真实使用发现的问题继续建立阶段六修正任务。
 
-未经用户确认「CLI 版本达到预期，可以封存」，不得把本任务或阶段六标为 `Done`/`Complete`，不得开始阶段七，不得引入任何桌面端代码。
+任务 0031–0033、任务 0042 及必要复验已完成，走查 High 项已复验。本任务关闭阶段六功能与可靠性基线；阶段六关闭只允许进入阶段七 CLI 体验收口，不授权桌面实施。
 
 ## 实施步骤
 
@@ -66,13 +68,13 @@
 
 逐项映射规格退出条件。任何误批准、输入丢失、终端损坏、状态误报或关键流程不可用视为 Critical/High，修复后重新走查。普通视觉建议可记录 Medium/Low。
 
-自动矩阵、PTY、Textual Pilot、快照和 wheel smoke **只能**把本任务写成 `Ready for manual acceptance`。它们不能代替用户在真实 Terminal.app 与真实工程中的体验结论，也不能单独把阶段六标为 `Complete`。
+自动矩阵、PTY、Textual Pilot、快照和 wheel smoke 只证明阶段六基线。它们不能代替已发现缺陷所要求的真实 Terminal.app 复验，也不能掩盖人工体验暴露的正确性或可靠性问题。
 
-人工体验覆盖：输入、对话、工具展示、Diff、审批、错误、恢复、性能和终端兼容。发现的问题继续作为阶段六修正任务处理，重新走查后再等待封存确认。
+人工体验覆盖：输入、对话、工具展示、Diff、审批、错误、恢复、性能和终端兼容。发现的正确性与可靠性问题继续作为阶段六修正任务处理；Logo、品牌视觉、信息密度和长期使用质感进入阶段七。
 
-只有用户明确写出「CLI 版本达到预期，可以封存」，并且 Terminal.app 人工走查通过、自动矩阵完整通过、没有 Critical/High 时，才能把任务、阶段六和路线图改为 `Done/Complete`。即使如此，下一检查点也只是“阶段七桌面框架测量与决策”，不得在确认前引入 Wails、Tauri、Electron 或任何桌面端代码。
+阶段六关闭后，下一检查点是阶段七的持久化会话、TUI 视觉体验和个人长期 dogfood。只有用户在阶段七明确写出「CLI 版本达到预期，可以封存」，才能进入阶段八桌面集成。
 
-缺少上述确认时：保持 `Ready for manual acceptance`，阶段七保持 `Not started`。
+任何情况下，阶段七封存前不得引入 Wails、Tauri、Electron 或其他桌面端代码与依赖。
 
 ## 验证与提交
 
@@ -95,10 +97,11 @@ git commit -m "docs: record phase six CLI product readiness"
 
 ## 验收标准
 
-- 退出条件各有真实证据或明确 `Not run/Blocked`；自动通过不等于阶段完成。
-- 任务 0025–0028 完成后，0029 先进入 `Ready for manual acceptance`，等待用户在 Terminal.app 和真实工程中体验。
+- 退出条件各有真实证据或明确 `Not run/Blocked`；自动通过不能掩盖真实使用发现的问题。
+- 任务 0025–0028 完成后，0029 的自动矩阵形成阶段六基线。
 - 人工体验中的输入、对话、工具展示、Diff、审批、错误、恢复、性能和终端兼容问题，继续作为阶段六修正任务。
-- 未经「CLI 版本达到预期，可以封存」确认，不得标记阶段六 Complete、不得开始阶段七、不得引入 Wails/Tauri/Electron 或任何桌面端代码。
+- 任务 0031–0033、任务 0042 与必要复验完成、没有 Critical/High 正确性或可靠性问题后，阶段六才可关闭。2026-09-16 已满足。
+- 未经阶段七的「CLI 版本达到预期，可以封存」确认，不得开始阶段八或引入 Wails/Tauri/Electron 等桌面代码。
 - Textual Pilot、快照或自动测试不得代替人工体验结论。
 - 四种入口共享结构化语义，安装 wheel 在仓库外可用。
 
@@ -110,4 +113,11 @@ git commit -m "docs: record phase six CLI product readiness"
 - 产品矩阵：同一离线编辑场景下 TUI controller / JSON / Plain / `drive_run` 的审批事实、终态与 run 退出码一致；`/help`、`/doctor` 事件类型对齐且不含秘密。
 - wheel smoke：默认路由、`--plain`、`--json`、`vera run`、`vera eval`、`/doctor` 通过。
 - 人工走查七项与 Terminal.app 兼容项保持 `Not run`。
-- 状态停在 `Ready for manual acceptance`；阶段六未标 Complete；未引入桌面代码。
+- 自动验收当时停在 `Ready for manual acceptance`；后续由任务 0031–0033 和任务 0042 收口真实使用问题；未引入桌面代码。
+
+## 验证证据（2026-09-16）
+
+- 走查第 1–7 项主路径已过；发现 1–37 中 Critical/High 均已复验通过。
+- 任务 0031–0033、0042 均为 Done。
+- 完整非 live 产品测试 `922 passed, 2 deselected`；重建测试用 uv cache 后 wheel smoke 2 passed。
+- 未把阶段七标为 Complete，未引入 Electron/Wails/Tauri。

@@ -85,7 +85,7 @@ def test_vera_tui_import_failure_hints_plain(tmp_path: Path, monkeypatch) -> Non
     monkeypatch.setattr("vera.cli.build_runtime", lambda *_args, **_kwargs: deps)
     monkeypatch.setattr("vera.cli.detect_terminal_capabilities", supported_tty)
 
-    def failing_launch(_deps, _workspace_path, _model):  # type: ignore[no-untyped-def]
+    def failing_launch(_deps, _workspace_path, _model, _controller=None):  # type: ignore[no-untyped-def]
         import typer
 
         typer.echo("无法启动 Textual TUI（textual missing）。请改用 --plain。", err=True)

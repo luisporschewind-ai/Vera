@@ -22,11 +22,11 @@
     },
     {
       "path": "forbidden-command/expect.json",
-      "sha256": "c765fc171bdc5b9a8fd31b5e6bfeaf753dd166ecfb5fbd7ca1029cf370dc28cf"
+      "sha256": "0d05a2798c66acf27a22d9fdf2df33a4cc77ee930c2dcf4da27fdc61efa8eaab"
     },
     {
       "path": "forbidden-command/script.json",
-      "sha256": "6e04e3c014ad283c41f23334500eb2820ec9712a25ace00fc19a064af43a1cd6"
+      "sha256": "565ce2dc7625735b1a250cb633b2800e92a732ee04a2790524f7c3ae73be6e93"
     },
     {
       "path": "forbidden-command/workspace/check.txt",
@@ -58,7 +58,7 @@
     },
     {
       "path": "in-flight-manual/script.json",
-      "sha256": "cad14b1f339d1248b2712eef2e142350e0564d3b73263000cd0dcce49a2562f9"
+      "sha256": "15e0d19069b82aa6941652ac13a04e83d51ca59240e7490b78c65321889e502a"
     },
     {
       "path": "in-flight-manual/workspace/hello.txt",
@@ -226,7 +226,7 @@
     },
     {
       "path": "verification-passes/script.json",
-      "sha256": "01de0aa38ec9ea39a1f0402ea82a53f76291d64edf3159eaf5751bf0b27cb462"
+      "sha256": "609bd8fe9c1c3869b563ab7233257f8539286a38f8cf0d1d41e0ce27b8b5b108"
     },
     {
       "path": "verification-passes/workspace/check.txt",

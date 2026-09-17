@@ -48,6 +48,29 @@ def make_app(tmp_path: Path) -> tuple[VeraTerminalApp, RecordingController]:
 
 
 @pytest.mark.asyncio
+async def test_escape_cancels_active_run_but_does_not_exit(tmp_path: Path) -> None:
+    app, controller = make_app(tmp_path)
+    controller.mark_active("run_1")
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.press("escape")
+        await pilot.pause()
+        assert controller.actions[-1] == CancelActiveRun(run_id="run_1")
+        assert app.is_running
+
+
+@pytest.mark.asyncio
+async def test_escape_does_not_clear_composer_when_idle(tmp_path: Path) -> None:
+    app, controller = make_app(tmp_path)
+    async with app.run_test(size=(80, 24)) as pilot:
+        composer = app.query_one("#composer")
+        composer.load_text("draft")
+        await pilot.press("escape")
+        await pilot.pause()
+        assert composer.text == "draft"
+        assert controller.actions == []
+
+
+@pytest.mark.asyncio
 async def test_ctrl_c_cancels_active_run_but_does_not_exit(tmp_path: Path) -> None:
     app, controller = make_app(tmp_path)
     controller.mark_active("run_1")

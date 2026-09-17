@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import subprocess
 from collections.abc import Callable
-from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from subprocess import CompletedProcess
 from typing import Protocol
@@ -13,8 +12,10 @@ from vera.session.models import (
     ConversationStats,
     GitStatus,
     PermissionStatus,
+    ReasoningStatus,
     SessionStatus,
 )
+from vera.version import current_display_version
 
 
 class GitRunner(Protocol):
@@ -62,23 +63,18 @@ class WorkspaceStatusProbe:
 
         branch: str | None = None
         if branch_result is not None and branch_result.returncode == 0:
-            text = branch_result.stdout.strip()
+            text = (branch_result.stdout or "").strip()
             branch = text or None
 
         dirty: bool | None = None
         if status_result is not None and status_result.returncode == 0:
-            dirty = bool(status_result.stdout.strip())
+            dirty = bool((status_result.stdout or "").strip())
 
         return GitStatus(available=True, branch=branch, dirty=dirty)
 
 
 def _package_version() -> str:
-    try:
-        return version("vera-agent")
-    except PackageNotFoundError:
-        return "unavailable"
-    except Exception:
-        return "unavailable"
+    return current_display_version()
 
 
 class SessionStatusService:
@@ -99,6 +95,7 @@ class SessionStatusService:
         model_name: str,
         conversation: ConversationStats,
         permissions: PermissionStatus,
+        reasoning: ReasoningStatus | None = None,
     ) -> SessionStatus:
         try:
             package_version = self._version_reader()
@@ -114,4 +111,5 @@ class SessionStatusService:
             git=self._probe.inspect(workspace),
             context=conversation,
             permissions=permissions,
+            reasoning=reasoning or ReasoningStatus(mode="unavailable"),
         )

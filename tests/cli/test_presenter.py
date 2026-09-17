@@ -79,6 +79,37 @@ def test_presenter_displays_command_boundary_without_shell_execution() -> None:
     assert presenter.approval_prompt(approval).startswith("批准这条验证命令")
 
 
+def test_presenter_shows_artifact_profile_and_root_on_command_approval() -> None:
+    output: list[str] = []
+    presenter = HumanPresenter(output.append)
+    presenter.write_events(
+        (
+            event(
+                "approval.required",
+                {
+                    "kind": "command",
+                    "argv": [
+                        "xcodebuild",
+                        "-scheme",
+                        "Demo",
+                        "build",
+                        "-derivedDataPath",
+                        "/private/tmp/vera-verification/root/DerivedData",
+                    ],
+                    "cwd": ".",
+                    "risk": "medium",
+                    "artifact_profile": "xcode",
+                    "artifact_root": "/private/tmp/vera-verification/root",
+                },
+            ),
+        )
+    )
+    text = "\n".join(output)
+    assert "Profile：xcode" in text
+    assert "产物根：/private/tmp/vera-verification/root" in text
+    assert "-derivedDataPath /private/tmp/vera-verification/root/DerivedData" in text
+
+
 def test_presenter_keeps_tool_output_compact_and_shows_terminal_state() -> None:
     output: list[str] = []
     presenter = HumanPresenter(output.append)
@@ -111,6 +142,21 @@ def test_presenter_displays_plain_assistant_message() -> None:
     presenter.write_events((event("assistant.message", {"content": "你好"}),))
 
     assert output == ["Vera：你好"]
+
+
+def test_presenter_hides_silent_model_round_trips() -> None:
+    output: list[str] = []
+    presenter = HumanPresenter(output.append)
+    presenter.write_events(
+        (
+            event("model.requested", {"model": "deepseek-flash"}),
+            event("model.completed", {"model": "deepseek-flash"}, sequence=2),
+            event("tool.started", {"name": "list_directory", "target": "."}, sequence=3),
+        )
+    )
+    assert output == ["list_directory：执行中 · ."]
+    assert "model.requested" not in "\n".join(output)
+    assert "model.completed" not in "\n".join(output)
 
 
 def test_presenter_reports_recovery_without_file_bodies() -> None:

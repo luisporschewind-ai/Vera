@@ -110,6 +110,7 @@ class ChangeSetBuilder:
             path_facts[proposal.path] = fact
         hash_payload = {
             "files": [item.model_dump(mode="json") for item in files],
+            # Planned argv, profile, and external root are part of the reviewable hash.
             "verification": [item.model_dump(mode="json") for item in verification],
         }
         content_hash = sha256_bytes(

@@ -16,7 +16,7 @@ class StartRun(ContractModel):
     model_profile: str
     verification_overrides: dict[str, JsonValue] = Field(default_factory=dict)
     conversation: tuple[ConversationMessage, ...] = ()
-    mode: Literal["agent", "compact"] = "agent"
+    mode: Literal["agent", "compact", "project_init"] = "agent"
 
 
 class ResolveApproval(ContractModel):

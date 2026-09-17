@@ -1,4 +1,3 @@
-import sys
 from pathlib import Path
 
 from vera.models.base import FakeModelAdapter, ModelToolCall, ModelTurn
@@ -26,7 +25,7 @@ def make_two_approval_runtime(workspace: Path, state_dir: Path) -> VeraRuntime:
                             ],
                             "verification": [
                                 {
-                                    "argv": [sys.executable, "-c", "print('verified')"],
+                                    "argv": ["ruff", "check", "."],
                                     "cwd": ".",
                                 }
                             ],
@@ -36,7 +35,12 @@ def make_two_approval_runtime(workspace: Path, state_dir: Path) -> VeraRuntime:
             )
         ]
     )
-    return VeraRuntime(adapter, ToolRegistry(), state_dir)
+    return VeraRuntime(
+        adapter,
+        ToolRegistry(),
+        state_dir,
+        artifact_prefix=state_dir.parent / "vera-verification",
+    )
 
 
 def make_changeset_runtime(workspace: Path, state_dir: Path) -> VeraRuntime:

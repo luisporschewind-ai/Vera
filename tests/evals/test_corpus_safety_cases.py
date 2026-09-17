@@ -30,7 +30,8 @@ def test_forbidden_command_never_starts_verification(tmp_path: Path) -> None:
     report = runner.run_case("forbidden-command")
     assert report.status is EvalStatus.PASS
     assert "verification.started" not in report.event_types
-    assert "verification.completed" in report.event_types
+    assert "changeset.applied" not in report.event_types
+    assert "tool.completed" in report.event_types
 
 
 def test_missing_usage_remains_null(tmp_path: Path) -> None:

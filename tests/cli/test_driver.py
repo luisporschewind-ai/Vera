@@ -81,6 +81,8 @@ def test_session_catalog_is_shared_across_driver_surface() -> None:
         "/usage",
         "/shortcuts",
         "/theme",
+        "/instructions",
+        "/init",
     } <= names
     snapshot = SessionSnapshot(
         session_id="s1",

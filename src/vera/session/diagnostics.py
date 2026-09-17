@@ -7,10 +7,10 @@ import sys
 from pathlib import Path
 from typing import Any, Literal
 
-from vera import __version__
 from vera.config import VeraConfig
 from vera.redaction import Redactor
 from vera.session.status import WorkspaceStatusProbe
+from vera.version import current_identity
 
 CheckStatus = Literal["pass", "warning", "fail", "unavailable"]
 
@@ -46,8 +46,14 @@ def doctor_report(
             state_detail = f"mode {oct(mode)}"
     git = WorkspaceStatusProbe().inspect(workspace)
     git_status: CheckStatus = "pass" if git.available else "warning"
+    try:
+        version_detail = current_identity().doctor_detail()
+        version_status: CheckStatus = "pass"
+    except Exception:
+        version_detail = "unavailable"
+        version_status = "unavailable"
     items = (
-        _item("version", "pass", __version__),
+        _item("version", version_status, version_detail),
         _item("python", python_status, f"{sys.version_info.major}.{sys.version_info.minor}"),
         _item("terminal", terminal_status, term_value or "unavailable"),
         _item(
@@ -84,8 +90,8 @@ def redacted_config_view(config: VeraConfig, sources: dict[str, str]) -> dict[st
 
 def shortcut_list() -> tuple[dict[str, str], ...]:
     return (
-        {"keys": "Enter", "action": "提交单行"},
-        {"keys": "Ctrl+J / Ctrl+Enter", "action": "插入换行"},
+        {"keys": "Enter", "action": "提交"},
+        {"keys": "Alt+Enter", "action": "插入换行"},
         {"keys": "Up / Down", "action": "浏览历史"},
         {"keys": "Ctrl+R", "action": "历史搜索"},
         {"keys": "Ctrl+G", "action": "外部编辑器"},
@@ -93,4 +99,5 @@ def shortcut_list() -> tuple[dict[str, str], ...]:
         {"keys": "Ctrl+C", "action": "取消任务或清空"},
         {"keys": "Ctrl+D", "action": "空闲时退出"},
         {"keys": "End", "action": "回到时间线底部"},
+        {"keys": "Cmd+C / Ctrl+Shift+C", "action": "复制选中或最近一块文本"},
     )

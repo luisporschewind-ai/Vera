@@ -58,7 +58,7 @@ class ListDirectoryTool:
 
 class SearchTextTool:
     name = "search_text"
-    description = "Search UTF-8 text files inside the workspace."
+    description = "Search UTF-8 text inside a workspace directory or a single file."
     input_model = SearchTextInput
 
     def __init__(self, paths: WorkspacePaths) -> None:

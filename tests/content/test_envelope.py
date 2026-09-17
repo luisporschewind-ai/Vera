@@ -1,10 +1,12 @@
 import json
 
 from vera.content.envelope import (
+    PROJECT_GUIDANCE_NOTICE,
     ContentEnvelope,
     build_content_envelope,
     decode_content_envelope,
     render_content_for_model,
+    render_project_guidance_for_model,
     sha256_text,
 )
 from vera.content.trust import ContentTrustLevel
@@ -99,3 +101,17 @@ def test_model_render_uses_stable_json_and_cannot_escape_roles() -> None:
     assert message.role == "tool"
     assert rendered.count('"vera_content":1') == 1
     assert json.loads(message.content)["data"] == body
+
+
+def test_project_guidance_render_keeps_advisory_boundary() -> None:
+    envelope = build_content_envelope(
+        "style: 4 spaces",
+        source_kind="project_guidance",
+        origin="VERA.md",
+    )
+    rendered = render_project_guidance_for_model(((envelope, "style: 4 spaces", 20),))
+    payload = json.loads(rendered)
+    assert payload["source_kind"] == "project_guidance"
+    assert payload["trust_level"] == "advisory"
+    assert payload["notice"] == PROJECT_GUIDANCE_NOTICE
+    assert payload["sources"][0]["name"] == "VERA.md"

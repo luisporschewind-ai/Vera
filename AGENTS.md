@@ -27,8 +27,9 @@ When these disagree, stop and resolve the conflict in the relevant document befo
 - Build the UI-independent Core first. CLI and desktop clients must consume the same Core contracts and structured events; the desktop must never parse human-oriented CLI output.
 - The first stage covers the Agent loop, model adaptation, context, tools, approvals, workspace boundaries, Diff, verification, checkpoints and rollback, logs, recovery, and evals.
 - Multi-Agent orchestration, complex RAG, vector databases, and a plugin marketplace are outside the first-stage scope.
-- Electron is the accepted first desktop baseline for Phase 7. This choice does not waive the Phase 5, Phase 6, or explicit CLI seal gates; do not add Electron code or dependencies before those gates pass. Tauri is the fallback if the Electron baseline later fails accepted measurements.
-- Phase 6 cannot be marked Complete from automated tests, Textual Pilot, or snapshots. Task 0029 stops at `Ready for manual acceptance` until the user confirms in writing: `CLI 版本达到预期，可以封存`. Without that confirmation, do not start Phase 7 or add any desktop-shell code.
+- Phase 6 is the CLI functionality and reliability baseline. It cannot be marked Complete while an active Phase 6 correction, a required regression check, or a Critical/High correctness or reliability issue remains.
+- Phase 7 is CLI experience convergence and personal dogfood. It cannot be marked Complete from automated tests, Textual Pilot, SVG, or snapshots. Without the user's written confirmation `CLI 版本达到预期，可以封存`, do not start Phase 8 or add desktop-shell code.
+- Electron is the accepted first desktop baseline for Phase 8. This choice does not waive the Phase 5, Phase 6, Phase 7, or explicit CLI seal gates; do not add Electron code or dependencies before those gates pass. Tauri is the fallback if the Electron baseline later fails accepted measurements.
 
 ## Required workflow
 
@@ -56,4 +57,4 @@ Before declaring completion:
 
 ## Approval boundaries
 
-Get explicit user approval before destructive or difficult-to-recover actions, external publication, remote changes, or expanding task scope. Do not create commits, push, or change Git remotes unless the current request authorizes that action. Do not mark Phase 6 complete, start Phase 7, or introduce desktop frameworks without the user's explicit CLI seal confirmation.
+Get explicit user approval before destructive or difficult-to-recover actions, external publication, remote changes, or expanding task scope. Do not create commits, push, or change Git remotes unless the current request authorizes that action. Do not mark Phase 7 complete, start Phase 8, or introduce desktop frameworks without the user's explicit CLI seal confirmation.

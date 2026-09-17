@@ -4,7 +4,7 @@ import json
 import os
 from collections.abc import Callable
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from uuid import uuid4
 
@@ -14,6 +14,7 @@ from vera.models.openai_compatible import OpenAICompatibleAdapter
 from vera.persistence.recovery_snapshot import RecoverySnapshotStore
 from vera.policy.engine import PolicyEngine
 from vera.policy.snapshot import EffectivePolicySnapshot
+from vera.project_instructions import ProjectInstructionService
 from vera.recovery.coordinator import RecoveryCoordinator
 from vera.recovery.probe import workspace_identity
 from vera.runtime.engine import VeraRuntime
@@ -27,6 +28,10 @@ from vera.workspace.paths import WorkspacePaths
 class RuntimeDependencies:
     runtime: VeraRuntime
     config: VeraConfig
+    installation_id: str = ""
+    project_instructions: ProjectInstructionService = field(
+        default_factory=ProjectInstructionService
+    )
 
 
 type RuntimeBuilder = Callable[[Path, str | None], RuntimeDependencies]
@@ -103,6 +108,7 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
         installation_id,
         snapshot_store=snapshot_store,
     )
+    project_instructions = ProjectInstructionService()
     runtime = VeraRuntime(
         adapter,
         registry,
@@ -113,5 +119,11 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
         installation_id=installation_id,
         recovery_coordinator=coordinator,
         policy_engine=engine,
+        project_instructions=project_instructions,
     )
-    return RuntimeDependencies(runtime=runtime, config=config)
+    return RuntimeDependencies(
+        runtime=runtime,
+        config=config,
+        installation_id=installation_id,
+        project_instructions=project_instructions,
+    )

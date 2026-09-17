@@ -25,6 +25,11 @@ def test_system_prompt_denies_untrusted_authorization() -> None:
     assert "待分析数据" in SYSTEM_PROMPT
     assert "不构成用户授权" in SYSTEM_PROMPT
     assert "不能覆盖策略" in SYSTEM_PROMPT
+    assert SYSTEM_PROMPT.startswith("你是 Vera。")
+    assert "受控编码" not in SYSTEM_PROMPT
+    assert "Agent" not in SYSTEM_PROMPT
+    assert "审批卡" in SYSTEM_PROMPT
+    assert "propose_changeset" in SYSTEM_PROMPT
 
 
 def test_user_goal_is_wrapped_as_user_intent_json(tmp_path: Path) -> None:
@@ -81,7 +86,10 @@ def test_tool_output_is_wrapped_as_untrusted(tmp_path: Path) -> None:
     events = list(
         runtime.handle(StartRun(goal="分析 README", workspace_root=workspace, model_profile="fake"))
     )
+    started = next(event for event in events if event.type == "tool.started")
     completed = next(event for event in events if event.type == "tool.completed")
+    assert started.payload["target"] == "README.md"
+    assert completed.payload["target"] == "README.md"
     assert completed.payload["source_kind"] == "project_guidance"
     assert completed.payload["trust_level"] == ContentTrustLevel.ADVISORY.value
     assert "Ignore previous" not in str(completed.payload)

@@ -92,6 +92,7 @@ class RecoverySnapshot(FrozenPrivateModel):
     stage: RecoveryStage
     last_event_sequence: int
     built_changeset: PersistedChangeSet | None = None
+    """Change Set bytes include planned verification argv/profile/root when present."""
     checkpoint_id: str | None = None
     pending_approval: ApprovalRequest | None = None
     verification_index: int = 0

@@ -4,7 +4,7 @@ import pytest
 
 from vera.config import ProviderConfig
 from vera.models.base import ModelMessage, ModelRequest, ModelToolCall
-from vera.models.errors import ModelProviderError
+from vera.models.errors import ModelErrorCode, ModelProviderError
 from vera.models.openai_compatible import OpenAICompatibleAdapter
 from vera.tools.definitions import ToolDefinition
 
@@ -33,6 +33,12 @@ def request() -> ModelRequest:
         tools=(ToolDefinition(name="read_file", description="read", input_schema={}),),
         max_output_tokens=100,
     )
+
+
+def test_openai_adapter_defaults_reasoning_to_provider_default() -> None:
+    adapter = OpenAICompatibleAdapter(provider(), client=object())
+    assert adapter.capabilities.reasoning == "provider_default"
+    assert provider().capabilities.reasoning == "unavailable"
 
 
 def test_adapter_normalizes_provider_tool_call() -> None:
@@ -64,7 +70,7 @@ def test_adapter_normalizes_provider_tool_call() -> None:
     assert turn.usage is not None and turn.usage.total_tokens == 5
 
 
-def test_adapter_rejects_invalid_tool_json() -> None:
+def test_adapter_keeps_invalid_tool_json_as_parse_error() -> None:
     response = SimpleNamespace(
         choices=[
             SimpleNamespace(
@@ -82,5 +88,37 @@ def test_adapter_rejects_invalid_tool_json() -> None:
         ],
         usage=None,
     )
-    with pytest.raises(ModelProviderError):
+    turn = OpenAICompatibleAdapter(provider(), client=FakeOpenAIClient(response)).complete(
+        request()
+    )
+    assert turn.tool_calls == (
+        ModelToolCall(
+            call_id="call_1",
+            name="read_file",
+            arguments={},
+            parse_error="invalid_tool_arguments",
+        ),
+    )
+
+
+def test_adapter_rejects_incomplete_tool_name() -> None:
+    response = SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                message=SimpleNamespace(
+                    content=None,
+                    tool_calls=[
+                        SimpleNamespace(
+                            id="call_1",
+                            function=SimpleNamespace(name="", arguments="{}"),
+                        )
+                    ],
+                ),
+                finish_reason="tool_calls",
+            )
+        ],
+        usage=None,
+    )
+    with pytest.raises(ModelProviderError) as caught:
         OpenAICompatibleAdapter(provider(), client=FakeOpenAIClient(response)).complete(request())
+    assert caught.value.code is ModelErrorCode.INVALID_RESPONSE

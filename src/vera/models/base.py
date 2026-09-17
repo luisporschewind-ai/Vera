@@ -18,6 +18,7 @@ class ModelToolCall(BaseModel):
     call_id: str
     name: str
     arguments: dict[str, JsonValue]
+    parse_error: str | None = None
 
 
 class ModelMessage(BaseModel):
@@ -27,6 +28,7 @@ class ModelMessage(BaseModel):
     content: str
     tool_call_id: str | None = None
     tool_calls: tuple[ModelToolCall, ...] = ()
+    reasoning_content: str | None = None
 
 
 class ModelRequest(BaseModel):
@@ -49,6 +51,7 @@ class ModelTurn(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     assistant_text: str | None = None
+    reasoning_content: str | None = None
     tool_calls: tuple[ModelToolCall, ...] = ()
     finish_reason: str
     usage: ModelUsage | None = None

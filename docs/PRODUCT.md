@@ -1,7 +1,7 @@
 # Vera Product Definition
 
 **Status:** Accepted baseline
-**Updated:** 2026-09-12
+**Updated:** 2026-09-15
 
 ## Purpose
 
@@ -24,6 +24,7 @@ Vera is also a long-term learning and portfolio product. It should become mainta
 - **Transparent:** tool calls, changes, approvals, and verification are inspectable.
 - **Recoverable:** checkpoints and rollback are product capabilities, not emergency scripts.
 - **Evidence-based:** success means verified outcomes, not plausible model text.
+- **No hidden workspace pollution:** verification may read project sources, but build/cache artifacts stay outside the workspace unless an explicit Change Set authorizes a persistent file.
 - **Untrusted by default:** repository content, tool results, model output, and future external data cannot grant authority; deterministic policy and parameter-bound approval govern actions.
 - **Core-first:** product behavior lives outside any specific CLI or desktop shell.
 - **Incremental:** specifications, code, tests, and documentation evolve in small accepted slices.
@@ -63,13 +64,16 @@ Vera is also a long-term learning and portfolio product. It should become mainta
 - SDD, small verified changes, and synchronized documentation are required.
 - The accepted Phase 4 design fixes 14 bundled offline Fake Model cases and scores only Core facts and file hashes.
 - The 14-case offline evaluation suite is an accepted first-stage capability, shipped with `vera eval` and the installable wheel.
+- Verification commands are planned before hashing and approval; supported build/cache outputs use Vera-owned external temporary roots, and unknown write-capable verification fails closed.
 
 ## Open decisions
 
 - 阶段五结束时公共 Command/Event、错误、审批与恢复契约的兼容承诺
-- 阶段六声明支持的终端兼容矩阵与性能基线
-- 阶段七桌面端是否接受“Agent 工作台”产品形态与四区信息架构
-- Vera Logo 在桌面图标、菜单栏、小尺寸、Unicode 与纯 ASCII CLI 中的统一识别系统
+- 阶段六声明支持的终端：macOS Terminal.app 已走查；iTerm2/Warp/Linux/Windows Terminal 保持 `Not run`
+- 阶段七 CLI 的最终 Logo、首屏、信息密度与深海主题细节
+- 阶段八桌面端是否接受“Agent 工作台”产品形态与四区信息架构
+- 桌面基线后的 Core 原生 Skills 是否插入公开准备之前，以及本地来源、Manifest 格式、自动选择边界与 workspace Skill 信任策略；它与远程插件市场分开决策
+- Vera Logo 从阶段七 CLI 到阶段八桌面图标、菜单栏和小尺寸形态的统一识别系统
 - Electron baseline packaging, resource budgets, updater, signing, and distribution details
 - License, contribution model, telemetry policy, and public-release criteria
 - Public content-safety policy, moderation deployment, privacy boundary, and appeal behavior

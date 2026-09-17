@@ -18,9 +18,10 @@ uv pip install --python /private/tmp/vera-phase5-venv/bin/python --offline /priv
 export PATH="/private/tmp/vera-phase5-venv/bin:$PATH"
 cd /path/to/your/project
 vera --help
+vera --version
 ```
 
-`--help`、`vera eval validate` 与 `vera eval list` 不需要 Provider。交互会话（默认 TUI、`--plain`、`--json`）需要本地配置至少一个模型供应商。
+`--help`、`vera --version`、`vera eval validate` 与 `vera eval list` 不需要 Provider。交互会话（默认 TUI、`--plain`、`--json`）需要本地配置至少一个模型供应商。
 
 重复对同一 venv 执行 `uv pip install --offline <wheel>` 是安全的，不会修改目标工程。
 

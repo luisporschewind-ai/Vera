@@ -30,6 +30,7 @@ _TRUST_RANK = {
 _GUIDANCE_NAMES = frozenset(
     {
         "agents.md",
+        "vera.md",
         "readme.md",
         "readme",
         "contributing.md",

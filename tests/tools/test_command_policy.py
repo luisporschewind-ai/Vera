@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from vera.cli_presenter import HumanPresenter
@@ -5,6 +7,7 @@ from vera.contracts.verification import VerificationCommand
 from vera.policy.engine import PolicyEngine
 from vera.policy.models import PolicyAction, PolicyActionKind
 from vera.tools.command_policy import CommandDecisionKind, CommandPolicy
+from vera.verification.artifacts import VerificationArtifactPlanner
 
 
 @pytest.mark.parametrize(
@@ -38,6 +41,27 @@ def test_safe_builtins_and_unknown_commands() -> None:
         policy.classify(VerificationCommand(argv=("ruff", "check", "."))).kind
         is CommandDecisionKind.APPROVAL_REQUIRED
     )
+
+
+def test_final_planned_command_is_what_policy_classifies(tmp_path: Path) -> None:
+    workspace = tmp_path / "project"
+    workspace.mkdir()
+    planner = VerificationArtifactPlanner(prefix=tmp_path / "vera-verification")
+    original = VerificationCommand(argv=("ruff", "check", "."), cwd=".")
+    planned = planner.plan(
+        original,
+        workspace_root=workspace,
+        installation_id="install-1",
+        run_id="run_1",
+        index=0,
+    )
+    policy = CommandPolicy()
+    original_kind = policy.classify(original).kind
+    planned_kind = policy.classify(planned).kind
+    assert original_kind is CommandDecisionKind.APPROVAL_REQUIRED
+    assert planned_kind is CommandDecisionKind.APPROVAL_REQUIRED
+    assert original.argv != planned.argv
+    assert "--no-cache" in planned.argv
 
 
 def test_command_policy_matches_engine_and_presenter_cannot_override() -> None:

@@ -46,13 +46,13 @@ class CommandCatalog:
         return self._by_name.get(key)
 
     def list(self, prefix: str, snapshot: SessionSnapshot) -> tuple[CommandDescriptor, ...]:
-        needle = prefix if prefix.startswith("/") else f"/{prefix}"
+        needle = (prefix if prefix.startswith("/") else f"/{prefix}").casefold()
         return tuple(
             item
             for item in self._commands
             if (
-                item.name.startswith(needle)
-                or any(alias.startswith(needle) for alias in item.aliases)
+                item.name.casefold().startswith(needle)
+                or any(alias.casefold().startswith(needle) for alias in item.aliases)
             )
             and item.enabled_when(snapshot)
         )
@@ -102,6 +102,13 @@ def _always(_snapshot: SessionSnapshot) -> bool:
 DEFAULT_COMMANDS: tuple[CommandDescriptor, ...] = (
     CommandDescriptor("/help", "/help", "显示帮助", "开始", "help", enabled_when=_always),
     CommandDescriptor("/status", "/status", "显示会话状态", "开始", "status"),
+    CommandDescriptor(
+        "/instructions",
+        "/instructions",
+        "显示当前项目指令状态",
+        "开始",
+        "instructions",
+    ),
     CommandDescriptor("/context", "/context", "显示上下文统计", "会话", "context"),
     CommandDescriptor(
         "/permissions",
@@ -110,7 +117,9 @@ DEFAULT_COMMANDS: tuple[CommandDescriptor, ...] = (
         "安全",
         "permissions",
     ),
-    CommandDescriptor("/new", "/new", "清空上下文并开始新会话", "会话", "new"),
+    CommandDescriptor("/init", "/init", "提议创建或更新 VERA.md", "开始", "init"),
+    CommandDescriptor("/new", "/new", "清屏并开始新会话", "会话", "new"),
+    CommandDescriptor("/sessions", "/sessions", "列出当前工作区会话", "会话", "sessions"),
     CommandDescriptor("/clear", "/clear", "清空显示与上下文", "会话", "clear"),
     CommandDescriptor(
         "/compact",
@@ -172,7 +181,7 @@ DEFAULT_COMMANDS: tuple[CommandDescriptor, ...] = (
     CommandDescriptor(
         "/resume",
         "/resume <run-id>",
-        "继续可恢复任务",
+        "继续可恢复 Run",
         "恢复",
         "resume",
         args="required",

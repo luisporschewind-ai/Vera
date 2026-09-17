@@ -1,14 +1,18 @@
 import errno
+import json
 import stat
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
+from vera.contracts.changes import ChangeSet, FileChange
 from vera.contracts.commands import StartRun
 from vera.contracts.recovery import RecoveryStage
+from vera.contracts.verification import VerificationCommand
 from vera.persistence.recovery_snapshot import RecoverySnapshotError, RecoverySnapshotStore
-from vera.recovery.models import RecoverySnapshot
+from vera.recovery.models import PersistedChangeSet, RecoverySnapshot
+from vera.verification.runner import VerificationRunner
 
 
 def make_snapshot(run_id: str = "run_1", workspace: Path | None = None) -> RecoverySnapshot:
@@ -101,3 +105,73 @@ def test_unsafe_run_id_is_rejected(tmp_path: Path) -> None:
         store.save(snapshot)
     with pytest.raises(RecoverySnapshotError, match="invalid_run_id"):
         store.load("../escape")
+
+
+def test_legacy_v1_changeset_without_artifact_plan_decodes(tmp_path: Path) -> None:
+    payload = {
+        "schema_version": 1,
+        "changeset_id": "changeset_1",
+        "run_id": "run_1",
+        "summary": "更新问候语",
+        "files": [
+            {
+                "schema_version": 1,
+                "operation": "update",
+                "path": "hello.txt",
+                "before_hash": "before",
+                "after_hash": "after",
+                "unified_diff": "@@ -1 +1 @@",
+            }
+        ],
+        "verification": [
+            {
+                "argv": ["pytest", "-q"],
+                "cwd": ".",
+                "timeout_seconds": 120,
+                "required": True,
+            }
+        ],
+        "content_hash": "content_hash",
+    }
+    restored = ChangeSet.model_validate(payload)
+    assert restored.verification[0].artifact_plan is None
+    assert FileChange.model_validate(payload["files"][0]).path == "hello.txt"
+
+
+def test_legacy_v1_recovery_snapshot_without_artifact_plan_is_unplanned(
+    tmp_path: Path,
+) -> None:
+    after = b"new\n"
+    snapshot = RecoverySnapshot(
+        run_id="run_1",
+        workspace_root=tmp_path,
+        workspace_identity="a" * 64,
+        command=StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake"),
+        stage=RecoveryStage.AWAITING_VERIFICATION_APPROVAL,
+        last_event_sequence=1,
+        built_changeset=PersistedChangeSet(
+            change_set=ChangeSet(
+                changeset_id="cs_1",
+                run_id="run_1",
+                summary="edit",
+                files=(),
+                verification=(VerificationCommand(argv=("pytest", "-q"), cwd="."),),
+                content_hash="hash",
+            ),
+            intended_content_b64={},
+        ),
+        created_at=datetime(2026, 9, 11, tzinfo=UTC),
+        updated_at=datetime(2026, 9, 11, tzinfo=UTC),
+        vera_version="0.1.0",
+    )
+    raw = json.loads(snapshot.model_dump_json())
+    raw["built_changeset"]["change_set"]["verification"] = [
+        {"argv": ["pytest", "-q"], "cwd": ".", "timeout_seconds": 120, "required": True}
+    ]
+    restored = RecoverySnapshot.model_validate(raw)
+    command = restored.built_changeset.change_set.verification[0]  # type: ignore[union-attr]
+    assert command.artifact_plan is None
+    result = VerificationRunner(tmp_path).run(command)
+    assert result.status == "rejected"
+    assert result.reason_code == "verification_not_planned"
+    del after

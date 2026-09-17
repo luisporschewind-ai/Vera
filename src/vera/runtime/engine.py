@@ -9,7 +9,7 @@ from time import sleep as default_sleep
 from typing import Any, Literal, cast
 from uuid import uuid4
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from vera import __version__
 from vera.config import Limits
@@ -23,6 +23,7 @@ from vera.content.envelope import (
     EMPTY_SECURITY_CONTEXT_HASH,
     build_content_envelope,
     render_content_for_model,
+    render_project_guidance_for_model,
 )
 from vera.content.trust import source_kind_for_path
 from vera.contracts.approvals import ApprovalRequest
@@ -43,7 +44,7 @@ from vera.contracts.conversation import ConversationMessage
 from vera.contracts.events import EventEnvelope
 from vera.contracts.recovery import RecoveryClassification, RecoveryReport, RecoveryStage
 from vera.contracts.streaming import RuntimeOutput, StreamFrame, StreamFrameType
-from vera.contracts.verification import VerificationCommand
+from vera.contracts.verification import VerificationCommand, VerificationResult
 from vera.models.base import ModelAdapter, ModelMessage, ModelRequest, ModelToolCall, ModelTurn
 from vera.models.errors import ModelErrorCode, ModelProviderError, safe_error_payload
 from vera.models.retry import RetryPolicy
@@ -59,6 +60,7 @@ from vera.persistence.recovery_snapshot import RecoverySnapshotError, RecoverySn
 from vera.persistence.run_store import RunStore
 from vera.policy.engine import PolicyEngine
 from vera.policy.snapshot import EffectivePolicySnapshot
+from vera.project_instructions import ProjectInstructionService
 from vera.recovery.coordinator import RecoveryCoordinator
 from vera.recovery.hydrator import RecoveryHydrationError, RecoveryHydrator
 from vera.recovery.models import PersistedChangeSet, RecoverySnapshot
@@ -79,12 +81,69 @@ from vera.runtime.security import (
 )
 from vera.runtime.state import RunState, RunStateMachine
 from vera.tools.command_policy import CommandDecisionKind, CommandPolicy
+from vera.tools.definitions import ToolResult
 from vera.tools.registry import ToolRegistry
+from vera.verification.artifacts import (
+    VerificationArtifactError,
+    VerificationArtifactPlanner,
+    artifact_root,
+)
 from vera.verification.runner import VerificationRunner
 from vera.workspace.apply import ApplyStatus, ChangeApplier, FileWriter, RollbackStatus
 from vera.workspace.changeset import ChangeProposal, ChangeSetBuilder, sha256_bytes
 from vera.workspace.checkpoint import CheckpointStore
 from vera.workspace.paths import WorkspaceBoundaryError, WorkspacePaths
+
+_TOOL_LIMIT_WRAP_UP = (
+    "工具调用次数已达本次任务上限。请只根据已经收集到的证据给出结论，不要再调用任何工具。"
+)
+_TOOL_LIMIT_SKIPPED = (
+    '{"content_hash":"","notice":"skipped: tool call budget exhausted","vera_content":1}'
+)
+_EMPTY_AFTER_TOOLS_NUDGE = (
+    "上一次回复没有文本也没有工具调用。请根据已经收集到的证据给出最终中文回答，"
+    "或调用 propose_changeset；不要返回空响应。"
+)
+_CLAIMED_CHANGESET_NUDGE = (
+    "你还没有调用 propose_changeset。只有该工具才会出现审批卡和 Diff；"
+    "不要声称已经形成 Change Set 或正在等待审批。"
+    "若要改文件，现在就调用 propose_changeset；否则只说明结论，不要假装变更已提交。"
+)
+_CLAIMED_CHANGESET_MARKERS = (
+    "已形成 change set",
+    "已形成 changeset",
+    "等待你审批",
+    "等待审批",
+)
+
+
+def claims_unissued_changeset(text: str) -> bool:
+    folded = text.casefold()
+    return any(marker in folded for marker in _CLAIMED_CHANGESET_MARKERS)
+
+
+def tool_call_target(call: ModelToolCall) -> str:
+    arguments = call.arguments if isinstance(call.arguments, dict) else {}
+    if call.name == "propose_changeset":
+        summary = arguments.get("summary")
+        if isinstance(summary, str) and summary.strip():
+            return summary.strip()
+        changes = arguments.get("changes")
+        if isinstance(changes, list) and changes:
+            first = changes[0]
+            if isinstance(first, dict) and first.get("path"):
+                extra = f" 等{len(changes)}个文件" if len(changes) > 1 else ""
+                return f"{first['path']}{extra}"
+        return ""
+    path = arguments.get("path")
+    query = arguments.get("query")
+    if call.name == "search_text" and isinstance(query, str) and query:
+        if isinstance(path, str) and path and path != ".":
+            return f"{query} @ {path}"
+        return query
+    if isinstance(path, str) and path:
+        return path
+    return ""
 
 
 class SnapshotPersistError(RuntimeError):
@@ -101,6 +160,23 @@ class ProposalInput(BaseModel):
     verification: tuple[VerificationCommand, ...] = ()
     risk: str = "medium"
 
+    @field_validator("verification", mode="before")
+    @classmethod
+    def ignore_model_artifact_plan(cls, value: object) -> object:
+        if not isinstance(value, list | tuple):
+            return value
+        cleaned: list[object] = []
+        for item in value:
+            if isinstance(item, dict):
+                payload = dict(item)
+                payload.pop("artifact_plan", None)
+                cleaned.append(payload)
+            elif isinstance(item, VerificationCommand):
+                cleaned.append(item.model_copy(update={"artifact_plan": None}))
+            else:
+                cleaned.append(item)
+        return cleaned
+
 
 class VeraRuntime:
     def __init__(
@@ -113,23 +189,27 @@ class VeraRuntime:
         *,
         snapshot_store: RecoverySnapshotStore | None = None,
         installation_id: str | None = None,
+        artifact_prefix: Path | None = None,
         recovery_coordinator: RecoveryCoordinator | None = None,
         file_writer: FileWriter | None = None,
         policy_engine: PolicyEngine | None = None,
         retry_policy: RetryPolicy | None = None,
         sleep: Callable[[float], None] = default_sleep,
         content_detector: ContentDetector | None = None,
+        project_instructions: ProjectInstructionService | None = None,
     ) -> None:
         self.adapter = adapter
         self.registry = registry
         self.state_dir = state_dir
         self.limits = limits or Limits()
         self.installation_id = installation_id or "local"
+        self.artifact_prefix = artifact_prefix
         self.retry_policy = retry_policy or RetryPolicy(max_attempts=self.limits.max_model_attempts)
         self.sleep = sleep
         self.content_detector = SafeContentDetector(
             content_detector or BaselinePromptInjectionDetector()
         )
+        self.project_instructions = project_instructions or ProjectInstructionService()
         if policy_engine is not None:
             self.policy_engine = policy_engine
         elif command_policy is not None:
@@ -211,6 +291,8 @@ class VeraRuntime:
         command = context.command
         system = COMPACTION_PROMPT if command.mode == "compact" else SYSTEM_PROMPT
         context.messages.append(ModelMessage(role="system", content=system))
+        if command.mode != "compact":
+            yield from self._seed_project_instructions(context)
         for message in command.conversation:
             yield from self._append_conversation_message(context, message)
         envelope, rendered, events = self._prepare_content(
@@ -223,6 +305,54 @@ class VeraRuntime:
         context.messages.append(ModelMessage(role="user", content=rendered))
         yield from events
         context.context_bytes = sum(len(item.content.encode("utf-8")) for item in context.messages)
+
+    def _seed_project_instructions(self, context: RunContext) -> Iterator[EventEnvelope]:
+        loaded = self.project_instructions.load(context.command.workspace_root)
+        context.project_instructions = loaded
+        yield self._event(
+            context,
+            "project.instructions.loaded",
+            {
+                "guidance_hash": loaded.guidance_hash,
+                "sources": [
+                    {
+                        "name": item.name,
+                        "priority": item.priority,
+                        "content_hash": item.content_hash,
+                        "byte_count": item.byte_count,
+                    }
+                    for item in loaded.sources
+                ],
+            },
+        )
+        if loaded.issues:
+            yield self._event(
+                context,
+                "project.instructions.skipped",
+                {
+                    "issues": [
+                        {"name": item.name, "reason_code": item.reason_code}
+                        for item in loaded.issues
+                    ],
+                },
+            )
+        rendered_items: list[tuple[Any, str, int]] = []
+        for source in loaded.sources:
+            envelope, _rendered, events = self._prepare_content(
+                context,
+                source.content,
+                source_kind="project_guidance",
+                origin=source.name,
+            )
+            yield from events
+            rendered_items.append((envelope, source.content, source.priority))
+        if rendered_items:
+            context.messages.append(
+                ModelMessage(
+                    role="user",
+                    content=render_project_guidance_for_model(rendered_items),
+                )
+            )
 
     def _append_conversation_message(
         self, context: RunContext, message: ConversationMessage
@@ -268,6 +398,10 @@ class VeraRuntime:
         ):
             payload["argv"] = list(context.pending_command.argv)
             payload["cwd"] = context.pending_command.cwd
+            plan = context.pending_command.artifact_plan
+            if plan is not None:
+                payload["artifact_profile"] = plan.profile
+                payload["artifact_root"] = plan.root
         return payload
 
     def _event(
@@ -463,25 +597,150 @@ class VeraRuntime:
             context.machine.transition(RunState.FAILED)
         yield self._stable_event(context, "run.failed", {"reason": reason}, RecoveryStage.TERMINAL)
 
+    def _planner(self) -> VerificationArtifactPlanner:
+        return VerificationArtifactPlanner(prefix=self.artifact_prefix)
+
+    def _verification_runner(self, context: RunContext) -> VerificationRunner:
+        return VerificationRunner(
+            context.command.workspace_root,
+            artifact_prefix=self.artifact_prefix,
+        )
+
+    def _plan_verification(
+        self,
+        context: RunContext,
+        commands: Sequence[VerificationCommand],
+    ) -> tuple[VerificationCommand, ...]:
+        planner = self._planner()
+        planned: list[VerificationCommand] = []
+        for index, command in enumerate(commands):
+            planned.append(
+                planner.plan(
+                    command,
+                    workspace_root=context.command.workspace_root,
+                    installation_id=self.installation_id,
+                    run_id=context.run_id,
+                    index=index,
+                )
+            )
+        return tuple(planned)
+
+    def _expected_artifact_root(self, context: RunContext, index: int) -> Path:
+        return artifact_root(
+            workspace_root=context.command.workspace_root,
+            installation_id=self.installation_id,
+            run_id=context.run_id,
+            index=index,
+            prefix=self.artifact_prefix,
+        )
+
+    def _verification_binding_matches(
+        self, context: RunContext, command: VerificationCommand, index: int
+    ) -> bool:
+        plan = command.artifact_plan
+        if plan is None or plan.root is None:
+            return False
+        return plan.root == str(self._expected_artifact_root(context, index))
+
+    def _verification_event_payload(
+        self,
+        index: int,
+        command: VerificationCommand,
+        result: VerificationResult | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        plan = command.artifact_plan
+        payload: dict[str, Any] = {
+            "index": index,
+            "argv": list(command.argv),
+            "cwd": command.cwd,
+            "artifact_profile": None if plan is None else plan.profile,
+            "artifact_root": None if plan is None else plan.root,
+        }
+        if result is not None:
+            payload.update(
+                {
+                    "status": result.status,
+                    "exit_code": result.exit_code,
+                    "stdout": result.stdout,
+                    "stderr": result.stderr,
+                    "stdout_truncated": result.stdout_truncated,
+                    "stderr_truncated": result.stderr_truncated,
+                    "artifact_cleanup_status": result.artifact_cleanup_status,
+                    "workspace_mutations": list(result.workspace_mutations),
+                    "reason_code": result.reason_code,
+                }
+            )
+        if extra:
+            payload.update(extra)
+        return payload
+
+    def _reject_tool(
+        self, context: RunContext, call: ModelToolCall, payload: dict[str, Any]
+    ) -> Iterator[EventEnvelope]:
+        failed = {"name": call.name, "call_id": call.call_id, "ok": False, **payload}
+        target = tool_call_target(call)
+        if target:
+            failed["target"] = target
+        yield self._event(context, "tool.completed", failed)
+        rendered = json.dumps(failed, ensure_ascii=False, sort_keys=True)
+        context.messages.append(
+            ModelMessage(
+                role="tool",
+                content=tool_result_message(call, ToolResult(ok=False, content=failed), rendered),
+                tool_call_id=call.call_id,
+            )
+        )
+        context.context_bytes = sum(
+            len(message.content.encode("utf-8")) for message in context.messages
+        )
+
     def _propose(self, context: RunContext, call: ModelToolCall) -> Iterator[EventEnvelope]:
         try:
             proposal = ProposalInput.model_validate(call.arguments)
+            invalid_init = context.command.mode == "project_init" and (
+                len(proposal.changes) != 1
+                or proposal.changes[0].path != "VERA.md"
+                or proposal.changes[0].operation not in {"create", "update"}
+                or proposal.verification
+            )
+            if invalid_init:
+                yield from self._fail(context, "project_init_scope_violation")
+                return
+            planned = self._plan_verification(context, proposal.verification)
             built = ChangeSetBuilder(WorkspacePaths(context.command.workspace_root)).build(
                 context.run_id,
                 proposal.summary,
                 proposal.changes,
-                proposal.verification,
+                planned,
             )
-        except Exception as exc:
-            yield self._event(
+        except VerificationArtifactError as exc:
+            yield from self._reject_tool(
                 context,
-                "tool.completed",
-                {"name": call.name, "ok": False, "error": str(exc)},
+                call,
+                {
+                    "error": exc.code,
+                    "reason_code": exc.code,
+                    "basename": exc.basename,
+                    "suggestion": exc.suggestion,
+                },
             )
             return
+        except Exception as exc:
+            if context.command.mode == "project_init":
+                yield from self._fail(context, "project_init_scope_violation")
+                return
+            yield from self._reject_tool(context, call, {"error": str(exc)})
+            return
+        change_set = built.change_set
+        if context.command.mode == "project_init":
+            try:
+                self.project_instructions.validate_init_changeset(change_set)
+            except ValueError:
+                yield from self._fail(context, "project_init_scope_violation")
+                return
         context.built_change_set = built
         context.machine.transition(RunState.CHANGESET_PROPOSED)
-        change_set = built.change_set
         yield self._event(
             context,
             "changeset.proposed",
@@ -530,11 +789,29 @@ class VeraRuntime:
         if built is None:
             yield from self._fail(context, "missing_changeset")
             return
-        runner = VerificationRunner(context.command.workspace_root)
+        runner = self._verification_runner(context)
         policy = self.command_policy
         while context.verification_index < len(built.change_set.verification):
             index = context.verification_index
             command = built.change_set.verification[index]
+            if not self._verification_binding_matches(context, command, index):
+                context.verification_failed = True
+                context.verification_index += 1
+                context.pending_command = None
+                yield self._stable_event(
+                    context,
+                    "verification.completed",
+                    self._verification_event_payload(
+                        index,
+                        command,
+                        extra={
+                            "status": "rejected",
+                            "reason_code": "verification_not_planned",
+                        },
+                    ),
+                    RecoveryStage.VERIFYING,
+                )
+                continue
             decision = policy.classify(
                 command,
                 risk_labels=collected_risk_labels(context.security_findings),
@@ -546,7 +823,11 @@ class VeraRuntime:
                 yield self._stable_event(
                     context,
                     "verification.completed",
-                    {"index": index, "status": "rejected", "reason": decision.reason},
+                    self._verification_event_payload(
+                        index,
+                        command,
+                        extra={"status": "rejected", "reason": decision.reason},
+                    ),
                     RecoveryStage.VERIFYING,
                 )
                 continue
@@ -562,8 +843,7 @@ class VeraRuntime:
                     policy_hash=self.policy_engine.policy_hash,
                     **self._security_approval_kwargs(context),
                 )
-                payload = self._approval_payload(request)
-                payload.update({"argv": list(command.argv), "cwd": command.cwd})
+                payload = self._approval_payload(request, context)
                 yield self._stable_event(
                     context,
                     "approval.required",
@@ -574,7 +854,7 @@ class VeraRuntime:
             yield self._stable_event(
                 context,
                 "verification.started",
-                {"index": index, "argv": list(command.argv), "cwd": command.cwd},
+                self._verification_event_payload(index, command),
                 RecoveryStage.VERIFYING,
             )
             result = runner.run(command)
@@ -583,15 +863,7 @@ class VeraRuntime:
             yield self._stable_event(
                 context,
                 "verification.completed",
-                {
-                    "index": index,
-                    "status": result.status,
-                    "exit_code": result.exit_code,
-                    "stdout": result.stdout,
-                    "stderr": result.stderr,
-                    "stdout_truncated": result.stdout_truncated,
-                    "stderr_truncated": result.stderr_truncated,
-                },
+                self._verification_event_payload(index, command, result),
                 RecoveryStage.VERIFYING,
             )
         terminal = (
@@ -717,6 +989,18 @@ class VeraRuntime:
                     approval_id=request.approval_id,
                 )
                 return
+        if request.kind == ApprovalKind.COMMAND.value:
+            pending = context.pending_command
+            if pending is None or not self._verification_binding_matches(
+                context, pending, context.verification_index
+            ):
+                yield from self._expire_approval(
+                    context,
+                    command,
+                    "verification_binding_changed",
+                    approval_id=request.approval_id,
+                )
+                return
         yield self._event(
             context,
             "approval.resolved",
@@ -724,19 +1008,25 @@ class VeraRuntime:
         )
         if request.kind == ApprovalKind.COMMAND.value:
             if decision == "reject":
+                index = context.verification_index
+                pending = context.pending_command
                 context.verification_failed = True
                 context.pending_command = None
                 context.verification_index += 1
                 yield self._stable_event(
                     context,
                     "verification.completed",
-                    {"index": context.verification_index - 1, "status": "rejected"},
+                    self._verification_event_payload(
+                        index,
+                        pending or VerificationCommand(argv=()),
+                        extra={"status": "rejected"},
+                    ),
                     RecoveryStage.VERIFYING,
                 )
             elif context.pending_command is not None:
-                result = VerificationRunner(context.command.workspace_root).run(
-                    context.pending_command
-                )
+                pending = context.pending_command
+                index = context.verification_index
+                result = self._verification_runner(context).run(pending)
                 context.verification_failed = (
                     context.verification_failed or result.status != "passed"
                 )
@@ -745,11 +1035,7 @@ class VeraRuntime:
                 yield self._stable_event(
                     context,
                     "verification.completed",
-                    {
-                        "index": context.verification_index - 1,
-                        "status": result.status,
-                        "exit_code": result.exit_code,
-                    },
+                    self._verification_event_payload(index, pending, result),
                     RecoveryStage.VERIFYING,
                 )
             yield from self._verify(context)
@@ -861,12 +1147,31 @@ class VeraRuntime:
             )
 
     def _execute_tool(self, context: RunContext, call: ModelToolCall) -> Iterator[EventEnvelope]:
-        key = f"{call.name}:{call.arguments}"
-        context.repeated_calls[key] = context.repeated_calls.get(key, 0) + 1
-        if context.repeated_calls[key] >= 3:
+        signature = f"{call.name}:{call.arguments}"
+        if context.last_tool_signature == signature:
+            context.repeated_tool_streak += 1
+        else:
+            context.last_tool_signature = signature
+            context.repeated_tool_streak = 1
+        if context.repeated_tool_streak >= 3:
             yield from self._fail(context, "repeated_tool_call")
             return
-        yield self._event(context, "tool.started", {"name": call.name, "call_id": call.call_id})
+        started: dict[str, Any] = {"name": call.name, "call_id": call.call_id}
+        target = tool_call_target(call)
+        if target:
+            started["target"] = target
+        yield self._event(context, "tool.started", started)
+        if call.parse_error:
+            yield from self._reject_tool(
+                context,
+                call,
+                {
+                    "error": call.parse_error,
+                    "reason_code": call.parse_error,
+                    "suggestion": "resend the tool call as a single complete JSON object",
+                },
+            )
+            return
         if call.name == "propose_changeset":
             yield from self._propose(context, call)
             return
@@ -900,17 +1205,12 @@ class VeraRuntime:
             "trust_level": envelope.trust_level.value,
             "content_hash": envelope.content_hash,
         }
+        if target:
+            payload["target"] = target
         yield self._event(context, "tool.completed", payload)
         tool_text = tool_result_message(call, result, rendered)
         context.messages.append(
             ModelMessage(role="tool", content=tool_text, tool_call_id=call.call_id)
-        )
-        context.context_bytes = sum(
-            len(message.content.encode("utf-8")) for message in context.messages
-        )
-        context.messages = compact_run_messages(
-            context.messages,
-            max_bytes=self.limits.max_context_bytes,
         )
         context.context_bytes = sum(
             len(message.content.encode("utf-8")) for message in context.messages
@@ -1002,7 +1302,15 @@ class VeraRuntime:
         yield None
 
     def _drive(self, context: RunContext) -> Iterator[RuntimeOutput]:
-        while context.machine.state not in {RunState.AWAITING_APPROVAL, RunState.FAILED}:
+        halt = {
+            RunState.AWAITING_APPROVAL,
+            RunState.FAILED,
+            RunState.CANCELLED,
+            RunState.COMPLETED,
+            RunState.VERIFICATION_FAILED,
+            RunState.STALE,
+        }
+        while context.machine.state not in halt:
             if context.model_turns >= self.limits.max_model_turns:
                 yield from self._fail(context, "max_model_turns")
                 return
@@ -1025,6 +1333,8 @@ class VeraRuntime:
                     yield item
                 else:
                     turn = item
+            if context.machine.state == RunState.CANCELLED:
+                return
             if turn is None:
                 yield from self._fail(context, "model_error")
                 return
@@ -1033,6 +1343,7 @@ class VeraRuntime:
                     role="assistant",
                     content=turn.assistant_text or "",
                     tool_calls=turn.tool_calls,
+                    reasoning_content=turn.reasoning_content,
                 )
             )
             if turn.assistant_text:
@@ -1046,8 +1357,21 @@ class VeraRuntime:
             if not turn.tool_calls:
                 text = (turn.assistant_text or "").strip()
                 if not text:
+                    if context.tool_calls > 0 and not context.empty_after_tools_nudge:
+                        context.empty_after_tools_nudge = True
+                        context.messages.append(
+                            ModelMessage(role="user", content=_EMPTY_AFTER_TOOLS_NUDGE)
+                        )
+                        continue
                     yield from self._fail(context, "empty_model_response")
                     return
+                if claims_unissued_changeset(text) and not context.claimed_changeset_nudge:
+                    context.claimed_changeset_nudge = True
+                    context.messages.append(ModelMessage(role="assistant", content=text))
+                    context.messages.append(
+                        ModelMessage(role="user", content=_CLAIMED_CHANGESET_NUDGE)
+                    )
+                    continue
                 context.machine.transition(RunState.COMPLETED)
                 yield self._event(
                     context,
@@ -1072,11 +1396,20 @@ class VeraRuntime:
                 )
                 return
             context.machine.transition(RunState.GENERATING)
-            for call in turn.tool_calls:
-                context.tool_calls += 1
-                if context.tool_calls > self.limits.max_tool_calls:
-                    yield from self._fail(context, "max_tool_calls")
+            pending = list(turn.tool_calls)
+            for index, call in enumerate(pending):
+                if context.tool_calls >= self.limits.max_tool_calls:
+                    for skipped in pending[index:]:
+                        context.messages.append(
+                            ModelMessage(
+                                role="tool",
+                                content=_TOOL_LIMIT_SKIPPED,
+                                tool_call_id=skipped.call_id,
+                            )
+                        )
+                    yield from self._finish_at_tool_limit(context)
                     return
+                context.tool_calls += 1
                 encoded = json.dumps(call.arguments, ensure_ascii=False, sort_keys=True)
                 _envelope, _rendered, flagged = self._prepare_content(
                     context,
@@ -1086,9 +1419,64 @@ class VeraRuntime:
                 )
                 yield from flagged
                 yield from self._execute_tool(context, call)
-                if context.machine.state in {RunState.AWAITING_APPROVAL, RunState.FAILED}:
+                if context.machine.state in {
+                    RunState.AWAITING_APPROVAL,
+                    RunState.FAILED,
+                    RunState.CANCELLED,
+                }:
                     return
+            context.messages = compact_run_messages(
+                context.messages,
+                max_bytes=self.limits.max_context_bytes,
+            )
+            context.context_bytes = sum(
+                len(message.content.encode("utf-8")) for message in context.messages
+            )
             context.machine.transition(RunState.DISCOVERING)
+
+    def _finish_at_tool_limit(self, context: RunContext) -> Iterator[RuntimeOutput]:
+        if context.workspace_write_started or context.built_change_set is not None:
+            yield from self._fail(context, "max_tool_calls")
+            return
+        if context.model_turns >= self.limits.max_model_turns:
+            yield from self._fail(context, "max_tool_calls")
+            return
+        context.messages.append(ModelMessage(role="user", content=_TOOL_LIMIT_WRAP_UP))
+        context.model_turns += 1
+        request = ModelRequest(
+            messages=tuple(context.messages),
+            tools=(),
+            max_output_tokens=4_096,
+        )
+        turn: ModelTurn | None = None
+        for item in self._complete_with_retry(context, request):
+            if isinstance(item, (EventEnvelope, StreamFrame)):
+                yield item
+            else:
+                turn = item
+        if turn is None or turn.tool_calls:
+            yield from self._fail(context, "max_tool_calls")
+            return
+        text = (turn.assistant_text or "").strip()
+        if not text:
+            yield from self._fail(context, "max_tool_calls")
+            return
+        context.messages.append(
+            ModelMessage(
+                role="assistant",
+                content=text,
+                reasoning_content=turn.reasoning_content,
+            )
+        )
+        context.machine.transition(RunState.DISCOVERING)
+        context.machine.transition(RunState.COMPLETED)
+        yield self._event(context, "assistant.message", {"content": text})
+        yield self._stable_event(
+            context,
+            "run.completed",
+            {"state": RunState.COMPLETED.value, "outcome": "responded"},
+            RecoveryStage.TERMINAL,
+        )
 
     def _compact(self, context: RunContext) -> Iterator[RuntimeOutput]:
         request = ModelRequest(

@@ -34,6 +34,7 @@ def _runtime(workspace: Path, state: Path, kind: str, scenario: str) -> VeraRunt
         state,
         command_policy=allowed_python_policy(),
         installation_id="install-phase5",
+        artifact_prefix=state.parent / f"{state.name}-artifacts",
     )
 
 
@@ -181,6 +182,7 @@ def test_interrupt_then_resume_applies_once(tmp_path: Path, kind: str) -> None:
         state,
         snapshot_store=_CrashOnApproval(state),
         installation_id="install-phase5",
+        artifact_prefix=tmp_path / "resume-artifacts",
     )
     with pytest.raises(SimulatedCrash):
         list(first.handle(StartRun(goal="edit", workspace_root=workspace, model_profile="fake")))
@@ -191,6 +193,7 @@ def test_interrupt_then_resume_applies_once(tmp_path: Path, kind: str) -> None:
         tool_registry_for(workspace),
         state,
         installation_id="install-phase5",
+        artifact_prefix=tmp_path / "resume-artifacts",
     )
     resumed = list(second.handle(ResumeRun(run_id=run_id)))
     approval = next(event for event in resumed if event.type == "approval.required")
@@ -213,9 +216,11 @@ def test_path_escape_and_dangerous_command_are_rejected(tmp_path: Path, kind: st
 
     workspace_d = tmp_path / "danger"
     runtime_d = _runtime(workspace_d, tmp_path / "state-danger", kind, "dangerous")
-    _run_id, approval, _events = _start(runtime_d, workspace_d)
-    assert approval is not None
-    follow = _approve_until_terminal(runtime_d, approval)
-    assert "verification.started" not in [event.type for event in follow]
-    assert any(event.type == "verification.completed" for event in follow)
-    assert follow[-1].payload.get("state") in {"verification_failed", "completed"}
+    events_d = list(
+        runtime_d.handle(StartRun(goal="danger", workspace_root=workspace_d, model_profile="fake"))
+    )
+    assert "changeset.applied" not in [event.type for event in events_d]
+    assert "verification.started" not in [event.type for event in events_d]
+    completed = [event for event in events_d if event.type == "tool.completed"]
+    assert completed
+    assert completed[0].payload.get("reason_code") == "verification_artifact_isolation_unavailable"

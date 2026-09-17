@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -14,6 +15,7 @@ from vera.evals.corpus import sha256_tree
 
 CLOSE_SESSION = '{"schema_version":1,"type":"session.close"}\n'
 PLACEHOLDER_KEY = "vera-test-placeholder-not-a-secret"
+_ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
 
 
 def _run(
@@ -58,6 +60,7 @@ def _isolated_env(home: Path) -> dict[str, str]:
         ):
             env.pop(key)
     env["VERA_PROVIDER_ENV_FILE"] = str(home / "missing-provider.env")
+    env.pop("PYTHONPATH", None)
     return env
 
 
@@ -84,6 +87,9 @@ def main(argv: list[str]) -> int:
     home = dist / "home"
     home.mkdir(parents=True, exist_ok=True)
     env = _isolated_env(home)
+    state_dir = home / "vera-state"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    env["VERA_STATE_DIR"] = str(state_dir)
     before = sha256_tree(workspace)
 
     created = _run(
@@ -114,11 +120,30 @@ def main(argv: list[str]) -> int:
         return repeat.returncode or 1
 
     help_proc = _run([str(vera), "--help"], cwd=workspace, env=env)
-    if help_proc.returncode != 0 or (
-        "Usage" not in help_proc.stdout and "usage" not in help_proc.stdout
-    ):
+    help_text = _ANSI.sub("", help_proc.stdout)
+    help_ok = help_proc.returncode == 0 and ("Usage" in help_text or "usage" in help_text)
+    if not help_ok or "--version" not in help_text:
         sys.stderr.write(help_proc.stdout + help_proc.stderr)
         return help_proc.returncode or 1
+
+    version_proc = _run([str(vera), "--version"], cwd=workspace, env=env)
+    if version_proc.returncode != 0 or "vera 0.1.0" not in version_proc.stdout:
+        sys.stderr.write(version_proc.stdout + version_proc.stderr)
+        return version_proc.returncode or 1
+    json_version = _run([str(vera), "--json", "--version"], cwd=workspace, env=env)
+    if json_version.returncode != 0:
+        sys.stderr.write(json_version.stdout + json_version.stderr)
+        return json_version.returncode or 1
+    version_payload = json.loads(json_version.stdout)
+    if (
+        version_payload.get("name") != "vera"
+        or version_payload.get("version") != "0.1.0"
+        or version_payload.get("install") != "wheel"
+        or "site-packages" not in str(version_payload.get("location", ""))
+        or "git" in version_payload
+    ):
+        sys.stderr.write(json_version.stdout)
+        return 1
 
     for args_cli in (["eval", "validate", "--json"], ["eval", "list", "--json"]):
         proc = _run([str(vera), *args_cli], cwd=workspace, env=env)
@@ -142,6 +167,14 @@ def main(argv: list[str]) -> int:
         sys.stderr.write(default_mode.stdout + default_mode.stderr)
         return default_mode.returncode or 1
 
+    no_continue = _run([str(vera), "--json", "-c"], cwd=workspace, env=ready)
+    if no_continue.returncode != 2:
+        sys.stderr.write(no_continue.stdout + no_continue.stderr)
+        return no_continue.returncode or 1
+    if "\u001b" in no_continue.stdout:
+        sys.stderr.write("continue json emitted ANSI\n")
+        return 1
+
     json_session = _run(
         [str(vera), "--json"],
         cwd=workspace,
@@ -152,9 +185,157 @@ def main(argv: list[str]) -> int:
         sys.stderr.write(json_session.stderr)
         return json_session.returncode or 1
 
-    doctor_input = (
-        '{"schema_version":1,"type":"session.command","raw":"/doctor"}\n' + CLOSE_SESSION
+    picker = _run(
+        [str(vera), "--json", "-r"],
+        cwd=workspace,
+        env=ready,
+        input_text="should-not-be-id\n",
     )
+    if picker.returncode != 2 or "\u001b" in picker.stdout:
+        sys.stderr.write(picker.stdout + picker.stderr)
+        return picker.returncode or 1
+
+    missing_resume = _run(
+        [str(vera), "--json", "-r", "session_missing"],
+        cwd=workspace,
+        env=ready,
+    )
+    if missing_resume.returncode != 2:
+        sys.stderr.write(missing_resume.stdout + missing_resume.stderr)
+        return missing_resume.returncode or 1
+
+    listed = _run(
+        [str(vera), "--json"],
+        cwd=workspace,
+        env=ready,
+        input_text='{"schema_version":1,"type":"session.command","raw":"/sessions"}\n'
+        + CLOSE_SESSION,
+    )
+    if listed.returncode != 0:
+        sys.stderr.write(listed.stderr)
+        return listed.returncode or 1
+    if not any(
+        (json.loads(line).get("event") or {}).get("type") == "session.listed"
+        for line in listed.stdout.splitlines()
+        if line.strip()
+    ):
+        sys.stderr.write(listed.stdout)
+        return 1
+
+    session_dirs = [path for path in (state_dir / "sessions").iterdir() if path.is_dir()]
+    if not session_dirs:
+        sys.stderr.write("json session did not create VERA_STATE_DIR sessions\n")
+        return 1
+    session_id = session_dirs[0].name
+    journal_path = session_dirs[0] / "session.jsonl"
+    v1_bytes = journal_path.read_bytes()
+    if b'"session_format_version":1' not in v1_bytes.replace(b" ", b""):
+        sys.stderr.write("created session journal is not v1\n")
+        return 1
+
+    continued = _run(
+        [str(vera), "--json", "-c"],
+        cwd=workspace,
+        env=ready,
+        input_text=CLOSE_SESSION,
+    )
+    if continued.returncode != 0 or "\u001b" in continued.stdout:
+        sys.stderr.write(continued.stdout + continued.stderr)
+        return continued.returncode or 1
+    if "session.loaded" not in continued.stdout:
+        sys.stderr.write("continue did not emit session.loaded\n")
+        sys.stderr.write(continued.stdout)
+        return 1
+
+    healthy = _run(
+        [
+            str(vera),
+            "sessions",
+            "inspect",
+            session_id,
+            "--workspace",
+            str(workspace),
+            "--json",
+        ],
+        cwd=workspace,
+        env=ready,
+    )
+    if healthy.returncode != 2:
+        sys.stderr.write(healthy.stdout + healthy.stderr)
+        return healthy.returncode or 1
+
+    journal_path.write_bytes(v1_bytes + b'{"session_format_version":1')
+    inspect_trunc = _run(
+        [
+            str(vera),
+            "sessions",
+            "inspect",
+            session_id,
+            "--workspace",
+            str(workspace),
+            "--json",
+        ],
+        cwd=workspace,
+        env=ready,
+    )
+    if inspect_trunc.returncode != 0:
+        sys.stderr.write(inspect_trunc.stdout + inspect_trunc.stderr)
+        return inspect_trunc.returncode or 1
+    inspect_payload = json.loads(inspect_trunc.stdout.strip().splitlines()[-1])
+    if inspect_payload.get("failure_code") != "truncated_tail":
+        sys.stderr.write(inspect_trunc.stdout)
+        return 1
+    repair = _run(
+        [
+            str(vera),
+            "sessions",
+            "repair",
+            session_id,
+            "--workspace",
+            str(workspace),
+            "--json",
+        ],
+        cwd=workspace,
+        env=ready,
+    )
+    if repair.returncode != 0:
+        sys.stderr.write(repair.stdout + repair.stderr)
+        return repair.returncode or 1
+    repair_payload = json.loads(repair.stdout.strip().splitlines()[-1])
+    if repair_payload.get("applied") is not False:
+        sys.stderr.write(repair.stdout)
+        return 1
+    truncated = v1_bytes + b'{"session_format_version":1'
+    if journal_path.read_bytes() != truncated:
+        sys.stderr.write("repair dry-run mutated session journal\n")
+        return 1
+    journal_path.write_bytes(v1_bytes)
+
+    relisted = _run(
+        [str(vera), "--json"],
+        cwd=workspace,
+        env=ready,
+        input_text='{"schema_version":1,"type":"session.command","raw":"/sessions"}\n'
+        + CLOSE_SESSION,
+    )
+    if relisted.returncode != 0:
+        sys.stderr.write(relisted.stderr)
+        return relisted.returncode or 1
+    listed_ids: list[str] = []
+    for line in relisted.stdout.splitlines():
+        if not line.strip():
+            continue
+        event = json.loads(line).get("event") or {}
+        if event.get("type") == "session.listed":
+            listed_ids = [
+                str(item.get("session_id")) for item in event.get("payload", {}).get("items", [])
+            ]
+    if session_id not in listed_ids:
+        sys.stderr.write("v1 session disappeared from rebuilt list\n")
+        sys.stderr.write(relisted.stdout)
+        return 1
+
+    doctor_input = '{"schema_version":1,"type":"session.command","raw":"/doctor"}\n' + CLOSE_SESSION
     doctor = _run([str(vera), "--json"], cwd=workspace, env=ready, input_text=doctor_input)
     if doctor.returncode != 0:
         sys.stderr.write(doctor.stderr)
@@ -235,6 +416,55 @@ def main(argv: list[str]) -> int:
     after = sha256_tree(workspace)
     if after != before:
         sys.stderr.write("workspace hash changed during wheel smoke\n")
+        return 1
+
+    extra = home / "instruction-workspace"
+    extra.mkdir(parents=True)
+    (extra / "AGENTS.md").write_text("agents base\n", encoding="utf-8")
+    (extra / "VERA.md").write_text("vera extra\n", encoding="utf-8")
+    snap = sha256_tree(extra)
+    instruction_input = (
+        '{"schema_version":1,"type":"session.command","raw":"/instructions"}\n' + CLOSE_SESSION
+    )
+    instructions = _run(
+        [str(vera), "--workspace", str(extra), "--json"],
+        cwd=extra,
+        env=ready,
+        input_text=instruction_input,
+    )
+    if instructions.returncode != 0:
+        sys.stderr.write(instructions.stdout + instructions.stderr)
+        return instructions.returncode or 1
+    if "agents base" in instructions.stdout or "vera extra" in instructions.stdout:
+        sys.stderr.write("project instruction body leaked\n")
+        return 1
+    status_types = []
+    for line in instructions.stdout.splitlines():
+        if not line.strip():
+            continue
+        event = json.loads(line).get("event") or {}
+        status_types.append(event.get("type"))
+    if "project.instructions.status" not in status_types:
+        sys.stderr.write("missing project.instructions.status\n")
+        sys.stderr.write(instructions.stdout)
+        return 1
+    init_help = _run([str(vera), "init", "--help"], cwd=extra, env=env)
+    if init_help.returncode != 0 or "只提议 VERA.md" not in _ANSI.sub("", init_help.stdout):
+        sys.stderr.write(init_help.stdout + init_help.stderr)
+        return init_help.returncode or 1
+    init_json = _run(
+        [str(vera), "init", "--workspace", str(extra), "--json"],
+        cwd=extra,
+        env=ready,
+    )
+    if sha256_tree(extra) != snap:
+        sys.stderr.write("vera init wrote the workspace without approval\n")
+        return 1
+    if "agents base" in init_json.stdout:
+        sys.stderr.write("init output leaked project instruction body\n")
+        return 1
+    if sha256_tree(workspace) != before:
+        sys.stderr.write("instruction smoke mutated the primary workspace\n")
         return 1
     return 0
 

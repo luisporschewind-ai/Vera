@@ -1,4 +1,5 @@
 from vera.presentation.disclosure import DisclosurePolicy
+from vera.presentation.event_copy import format_tool_title
 from vera.presentation.timeline import BlockKind, BlockStatus, TimelineBlock
 from vera.terminal.disclosure import DisclosurePolicy as TerminalDisclosure
 
@@ -15,7 +16,7 @@ def test_default_disclosure_table() -> None:
         BlockKind.APPROVAL: True,
         BlockKind.VERIFICATION: False,
         BlockKind.ERROR: True,
-        BlockKind.STATUS: False,
+        BlockKind.STATUS: True,
     }
     for kind, expanded in cases.items():
         assert policy.initial_state(kind, BlockStatus.SUCCEEDED) is expanded
@@ -36,3 +37,14 @@ def test_manual_toggle_is_sticky() -> None:
     updated = policy.on_status_change(toggled, BlockStatus.SUCCEEDED)
     assert updated.expanded is True
     assert updated.user_overridden is True
+
+
+def test_default_tool_title_is_one_line_summary() -> None:
+    title = format_tool_title(
+        "read_file",
+        target="a.py",
+        status="completed",
+        duration_ms=12,
+    )
+    assert title == "读取文件  a.py  · 完成 · 12ms"
+    assert "\n" not in title

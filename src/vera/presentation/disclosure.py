@@ -12,7 +12,7 @@ class DisclosurePolicy:
         if status in {BlockStatus.FAILED, BlockStatus.CANCELLED}:
             return True
         match kind:
-            case BlockKind.TOOL | BlockKind.LOG | BlockKind.STATUS:
+            case BlockKind.TOOL | BlockKind.LOG:
                 return False
             case (
                 BlockKind.DIFF
@@ -20,6 +20,7 @@ class DisclosurePolicy:
                 | BlockKind.ERROR
                 | BlockKind.USER
                 | BlockKind.ASSISTANT
+                | BlockKind.STATUS
             ):
                 return True
             case BlockKind.VERIFICATION:

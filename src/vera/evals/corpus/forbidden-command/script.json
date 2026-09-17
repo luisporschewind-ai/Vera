@@ -25,8 +25,12 @@
           }
         }
       ]
+    },
+    {
+      "assistant_text": "无法隔离该验证命令，未写入工作区。",
+      "finish_reason": "stop"
     }
   ],
   "text_deltas": [],
-  "approvals": ["approve"]
+  "approvals": []
 }

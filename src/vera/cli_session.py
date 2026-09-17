@@ -10,6 +10,7 @@ from vera.cli_presenter import HumanPresenter
 from vera.cli_session_presenter import SessionPresenter
 from vera.contracts.events import EventEnvelope
 from vera.contracts.streaming import StreamFrame
+from vera.presentation.diagnostics_copy import format_config_body, format_doctor_body
 from vera.session.actions import (
     CloseSession,
     ExecuteSlashCommand,
@@ -178,12 +179,20 @@ class InteractiveSession:
             "session.usage",
             "session.shortcuts",
             "session.theme",
+            "session.listed",
+            "session.loaded",
+            "project.instructions.status",
         }:
             text = event.payload.get("text")
             if isinstance(text, str) and text:
                 self.io.write(text)
                 return
             self.io.write(_structured_plain(event.type, event.payload))
+            return
+        if event.type == "session.user_prompt":
+            prompt = str(event.payload.get("text", "")).strip()
+            if prompt:
+                self.io.write(f"你：{prompt}")
             return
         if event.type == "session.message":
             message_text = str(event.payload.get("text", ""))
@@ -212,6 +221,11 @@ class InteractiveSession:
         if event.type == "session.action_rejected":
             rejected = event.payload.get("message")
             self.io.write(str(rejected) if isinstance(rejected, str) else "操作被拒绝。")
+            return
+        if event.type in {"session.persistence_changed", "session.close_warning"}:
+            advice = event.payload.get("advice")
+            if isinstance(advice, str) and advice.strip():
+                self.io.write(advice.strip())
             return
         fallback = event.payload.get("text")
         if isinstance(fallback, str) and fallback:
@@ -250,14 +264,20 @@ def _structured_plain(event_type: str, payload: dict[str, object]) -> str:
         files = payload.get("files") or []
         return f"review files={len(files) if isinstance(files, list) else 0}"
     if event_type == "session.doctor":
-        items = payload.get("items") or []
-        if isinstance(items, list):
-            return "\n".join(
-                f"{item.get('name')} {item.get('status')}"
-                for item in items
-                if isinstance(item, dict)
-            )
+        return format_doctor_body(payload)
     if event_type == "session.config":
-        sources = payload.get("sources")
-        return f"config sources={sources}"
+        return format_config_body(payload)
+    if event_type == "session.loaded":
+        session_id = payload.get("session_id", "")
+        title = payload.get("title", "")
+        return f"已恢复会话 {session_id} {title}".strip()
+    if event_type == "session.listed":
+        return str(payload.get("text") or "当前工作区没有会话。")
+    if event_type == "project.instructions.status":
+        from vera.project_instructions import format_instruction_status
+
+        text = payload.get("text")
+        if isinstance(text, str) and text:
+            return text
+        return format_instruction_status(payload)
     return event_type

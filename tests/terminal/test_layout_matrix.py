@@ -8,6 +8,7 @@ from vera.models.base import FakeModelAdapter
 from vera.runtime.engine import VeraRuntime
 from vera.session.controller import SessionController
 from vera.terminal.app import VeraTerminalApp
+from vera.terminal.widgets.header import VeraHeader
 from vera.tools.registry import ToolRegistry
 
 
@@ -43,8 +44,20 @@ async def test_layout_matrix_keeps_composer_and_cjk_visible(
     app = make_app(tmp_path)
     async with app.run_test(size=size) as pilot:
         composer = app.query_one("#composer")
-        composer.load_text("你好 Vera")
+        composer.load_text("你好 Vera café 👩‍💻 e\u0301")
         await pilot.pause()
         assert "你好" in composer.text
+        assert "café" in composer.text
+        assert "👩" in composer.text or "👩‍💻" in composer.text
         assert app.query_one("#timeline")
+        assert app.query_one("#header")
+        assert app.query_one("#welcome")
+        assert app.query_one("#work-rail")
+        assert app.query_one("#status-line")
+        assert "Vera  0.1.0" in app.query_one(VeraHeader).visible_text()
         assert app.query_one("#terminal-too-small").display is False
+        assert app.query_one("#welcome").display is False
+        assert app.query_one("#work-rail").display is False
+        assert "\n" in app.query_one(VeraHeader).visible_text()
+        footer = str(app.query_one("#status-line").render())
+        assert "审批" in footer

@@ -238,8 +238,7 @@ def test_second_goal_receives_first_conversation_pair(tmp_path: Path) -> None:
 def test_new_clears_context_and_changes_session_id(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
-    ids = iter(["session-a", "session-b"])
-    conversation = ConversationContext(200_000, session_id_factory=lambda: next(ids))
+    conversation = ConversationContext(200_000, session_id_factory=lambda: "session-injected")
     session, adapter, io = make_session(
         workspace,
         [
@@ -249,11 +248,13 @@ def test_new_clears_context_and_changes_session_id(tmp_path: Path) -> None:
         ["Hello", "/new", "Hi", "/exit"],
         conversation=conversation,
     )
+    original = session.conversation.stats().session_id
 
     assert session.run() == 0
-    assert session.conversation.stats().session_id == "session-b"
+    assert session.conversation.stats().session_id != original
+    assert io.cleared >= 1
     assert all(message.content != "Hello" for message in adapter.requests[1].messages)
-    assert "已开始新会话：session-b" in "\n".join(io.output)
+    assert "已开始新会话：" in "\n".join(io.output)
 
 
 def test_clear_resets_context_and_clears_display(tmp_path: Path) -> None:
@@ -268,7 +269,9 @@ def test_clear_resets_context_and_clears_display(tmp_path: Path) -> None:
     assert session.run() == 0
     assert io.cleared == 1
     assert session.conversation.snapshot() == ()
-    assert "已清空显示并开始新会话" in "\n".join(io.output)
+    output = "\n".join(io.output)
+    assert "已清空显示并开始新会话" in output
+    assert sum(1 for line in io.output if line.startswith("Model")) == 1
 
 
 def test_readonly_commands_do_not_call_model(tmp_path: Path) -> None:
@@ -444,3 +447,13 @@ def test_model_builder_error_keeps_runtime(tmp_path: Path) -> None:
     assert session.dependencies is before
     assert session.model_profile == "fake"
     assert "模型切换失败" in "\n".join(io.output)
+
+
+def test_sessions_lists_current_workspace_session(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    session, _adapter, io = make_session(workspace, [], ["/sessions", "/exit"])
+
+    assert session.run() == 0
+    output = "\n".join(io.output)
+    assert session.conversation.stats().session_id in output or "没有会话" in output
