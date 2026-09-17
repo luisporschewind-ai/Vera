@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -99,6 +100,20 @@ def test_runner_uses_final_argv_cwd_and_planner_environment(tmp_path: Path) -> N
         assert request.env[key] == value
     assert "MODEL_INJECTED" not in request.env
     assert result.artifact_cleanup_status == "cleaned"
+
+
+def test_runner_prepends_workspace_venv_to_path(tmp_path: Path) -> None:
+    bindir = tmp_path / ".venv" / "bin"
+    bindir.mkdir(parents=True)
+    command, prefix = _planned(tmp_path, ("pytest", "-q"))
+    supervisor = FakeSupervisor(stdout=b"ok")
+    result = VerificationRunner(tmp_path, supervisor=supervisor, artifact_prefix=prefix).run(
+        command
+    )
+    assert result.status == "passed"
+    path = supervisor.requests[0].env["PATH"]
+    assert path.split(os.pathsep)[0] == str(bindir)
+    assert supervisor.requests[0].env["VIRTUAL_ENV"] == str(tmp_path / ".venv")
 
 
 @pytest.mark.parametrize(

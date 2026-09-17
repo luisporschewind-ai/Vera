@@ -44,6 +44,7 @@
 | — | [0051 走查发现 42](0051-cli-dogfood-path-wrap.md) | 回答署名 Vera；路径/中文不从中间折行 | In progress |
 | — | [0052 走查发现 50](0052-cli-dogfood-empty-after-tools.md) | 工具调查后空响应催促一次再失败 | In progress |
 | — | [0053 状态带 K 与审批边距](0053-cli-dogfood-footer-k-and-approval-margin.md) | 占用改 K、状态左置、审批卡上下 margin 1 | In progress |
+| — | [0054 走查发现 51–52](0054-cli-dogfood-claimed-changeset-and-ruff.md) | 禁止虚构审批卡；缺失 ruff 在规划期拒绝 | In progress |
 
 任务必须严格按 0034 → 0035 → 0036 → 0037 → 0043 → 0038 → 0039 → 0040 → 0041 执行。0043 完成项目上下文基线后再进入视觉任务；0038 是产品视觉审批任务，不得与 0039 并行实施；0039–0040 不得为了视觉便利回改持久化或项目指令语义。
 

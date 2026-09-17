@@ -15,6 +15,7 @@ from vera.verification.artifacts import (
     default_verification_prefix,
     environment_for_plan,
     installation_prefix,
+    with_workspace_runtime_path,
 )
 
 
@@ -22,6 +23,15 @@ def _workspace(tmp_path: Path) -> Path:
     root = tmp_path / "project"
     root.mkdir(exist_ok=True)
     return root
+
+
+def _fake_venv_tool(workspace: Path, name: str) -> Path:
+    bindir = workspace / ".venv" / "bin"
+    bindir.mkdir(parents=True, exist_ok=True)
+    tool = bindir / name
+    tool.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    tool.chmod(0o755)
+    return tool
 
 
 def _planner(tmp_path: Path) -> tuple[VerificationArtifactPlanner, Path]:
@@ -315,6 +325,39 @@ def test_ruff_forces_single_no_cache_and_rejects_fix(tmp_path: Path) -> None:
     with pytest.raises(VerificationArtifactError) as caught:
         _plan(tmp_path, ("ruff", "check", "--fix", "."))
     assert caught.value.code == "verification_artifact_isolation_unavailable"
+
+
+def test_ruff_from_workspace_venv_is_resolvable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = _workspace(tmp_path)
+    _fake_venv_tool(workspace, "ruff")
+    monkeypatch.setattr("vera.verification.artifacts.shutil.which", lambda _name: None)
+    planned = _plan(tmp_path, ("ruff", "check", "webstats.py"))
+    assert planned.argv == ("ruff", "check", "webstats.py", "--no-cache")
+    assert planned.artifact_plan is not None
+    assert planned.artifact_plan.profile == "ruff_no_cache"
+
+
+def test_missing_ruff_without_venv_fails_before_approval(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("vera.verification.artifacts.shutil.which", lambda _name: None)
+    with pytest.raises(VerificationArtifactError) as caught:
+        _plan(tmp_path, ("ruff", "check", "webstats.py"))
+    assert caught.value.code == "verification_executable_missing"
+    assert caught.value.basename == "ruff"
+    assert caught.value.suggestion
+
+
+def test_workspace_runtime_path_prepends_venv(tmp_path: Path) -> None:
+    workspace = _workspace(tmp_path)
+    _fake_venv_tool(workspace, "ruff")
+    env = with_workspace_runtime_path({"PATH": "/bin"}, workspace)
+    prefix = str(workspace / ".venv" / "bin")
+    assert env["PATH"].startswith(prefix)
+    assert env["PATH"].endswith("/bin")
+    assert env["VIRTUAL_ENV"] == str(workspace / ".venv")
 
 
 def test_git_readonly_and_tsc_no_emit(tmp_path: Path) -> None:

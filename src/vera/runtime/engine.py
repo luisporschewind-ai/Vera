@@ -104,6 +104,22 @@ _EMPTY_AFTER_TOOLS_NUDGE = (
     "上一次回复没有文本也没有工具调用。请根据已经收集到的证据给出最终中文回答，"
     "或调用 propose_changeset；不要返回空响应。"
 )
+_CLAIMED_CHANGESET_NUDGE = (
+    "你还没有调用 propose_changeset。只有该工具才会出现审批卡和 Diff；"
+    "不要声称已经形成 Change Set 或正在等待审批。"
+    "若要改文件，现在就调用 propose_changeset；否则只说明结论，不要假装变更已提交。"
+)
+_CLAIMED_CHANGESET_MARKERS = (
+    "已形成 change set",
+    "已形成 changeset",
+    "等待你审批",
+    "等待审批",
+)
+
+
+def claims_unissued_changeset(text: str) -> bool:
+    folded = text.casefold()
+    return any(marker in folded for marker in _CLAIMED_CHANGESET_MARKERS)
 
 
 def tool_call_target(call: ModelToolCall) -> str:
@@ -1349,6 +1365,13 @@ class VeraRuntime:
                         continue
                     yield from self._fail(context, "empty_model_response")
                     return
+                if claims_unissued_changeset(text) and not context.claimed_changeset_nudge:
+                    context.claimed_changeset_nudge = True
+                    context.messages.append(ModelMessage(role="assistant", content=text))
+                    context.messages.append(
+                        ModelMessage(role="user", content=_CLAIMED_CHANGESET_NUDGE)
+                    )
+                    continue
                 context.machine.transition(RunState.COMPLETED)
                 yield self._event(
                     context,

@@ -17,6 +17,7 @@ from vera.verification.artifacts import (
     VerificationArtifactError,
     VerificationArtifactRoot,
     environment_for_plan,
+    with_workspace_runtime_path,
 )
 
 
@@ -163,11 +164,14 @@ class VerificationRunner:
                 )
         before = workspace_file_fingerprint(self.workspace_root)
         before_git = git_porcelain(self.workspace_root)
-        environment = build_child_environment(
-            purpose="verification",
-            overrides=environment_for_plan(plan),
-            extra_allow_names=self.allowed_environment,
-        ).values
+        environment = with_workspace_runtime_path(
+            build_child_environment(
+                purpose="verification",
+                overrides=environment_for_plan(plan),
+                extra_allow_names=self.allowed_environment,
+            ).values,
+            self.workspace_root,
+        )
         completed = self._supervisor.run(
             ProcessRequest(
                 argv=command.argv,

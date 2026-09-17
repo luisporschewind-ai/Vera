@@ -253,3 +253,4 @@ class RunContext:
     findings_truncated: bool = False
     project_instructions: ProjectInstructionSet | None = None
     empty_after_tools_nudge: bool = False
+    claimed_changeset_nudge: bool = False

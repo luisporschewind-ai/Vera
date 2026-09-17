@@ -380,6 +380,24 @@ def test_unisolated_verification_is_rejected_before_changeset(
     assert "verification_artifact_isolation_unavailable" in tool_messages[-1].content
 
 
+def test_missing_verification_executable_is_rejected_before_changeset(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setattr("vera.verification.artifacts.shutil.which", lambda _name: None)
+    (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
+    runtime = runtime_with_verification_command(tmp_path, ("ruff", "check", "webstats.py"))
+    start_events = list(
+        runtime.handle(StartRun(goal="edit", workspace_root=tmp_path, model_profile="fake"))
+    )
+    completed = [event for event in start_events if event.type == "tool.completed"]
+    assert completed
+    assert completed[0].payload["ok"] is False
+    assert completed[0].payload["reason_code"] == "verification_executable_missing"
+    assert not any(event.type == "changeset.proposed" for event in start_events)
+    assert not any(event.type == "approval.required" for event in start_events)
+    assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "old\n"
+
+
 def test_unisolated_verification_lets_model_retry_without_thinking_break(
     tmp_path: Path,
 ) -> None:

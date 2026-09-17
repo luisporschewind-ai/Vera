@@ -28,6 +28,8 @@ def test_system_prompt_denies_untrusted_authorization() -> None:
     assert SYSTEM_PROMPT.startswith("你是 Vera。")
     assert "受控编码" not in SYSTEM_PROMPT
     assert "Agent" not in SYSTEM_PROMPT
+    assert "审批卡" in SYSTEM_PROMPT
+    assert "propose_changeset" in SYSTEM_PROMPT
 
 
 def test_user_goal_is_wrapped_as_user_intent_json(tmp_path: Path) -> None:

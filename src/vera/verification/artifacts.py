@@ -21,9 +21,13 @@ _UNAVAILABLE = "verification_artifact_isolation_unavailable"
 _INSIDE_WORKSPACE = "verification_output_inside_workspace"
 _NOT_OWNED = "verification_output_not_owned"
 _UNSAFE_ROOT = "verification_artifact_root_unsafe"
+_MISSING = "verification_executable_missing"
 _SUGGEST_PROFILE = (
     "use a supported no-write command, add an isolation profile, "
     "or move expected workspace writes into a Change Set"
+)
+_SUGGEST_MISSING = (
+    "install the tool in the workspace virtualenv, use a PATH executable, or omit verification"
 )
 _XCODE_ASSIGNMENTS = ("SYMROOT", "OBJROOT", "SHARED_PRECOMPS_DIR", "DSTROOT")
 
@@ -212,24 +216,29 @@ class VerificationArtifactPlanner:
         tool, tokens = _tool_tokens(command.argv)
         basename = Path(tool).name if tool else ""
         if _is_xcode(tool, tokens):
-            return self._plan_xcode(command, root=root, workspace=workspace, basename=basename)
-        if _is_swiftpm(tool, tokens):
-            return self._plan_swiftpm(command, root=root, workspace=workspace, basename=basename)
-        if _is_pytest(tool, tokens):
-            return self._plan_pytest(command, root=root, workspace=workspace, basename=basename)
-        if _is_mypy(tool, tokens):
-            return self._plan_mypy(command, root=root, workspace=workspace, basename=basename)
-        if _is_ruff(tool, tokens):
-            return self._plan_ruff(command, root=root, workspace=workspace, basename=basename)
-        if _is_git(tool, tokens):
-            return self._plan_git(command, root=root, basename=basename)
-        if _is_tsc(tool, tokens):
-            return self._plan_tsc(command, root=root, basename=basename)
-        raise VerificationArtifactError(
-            _UNAVAILABLE,
-            basename=basename,
-            suggestion=_SUGGEST_PROFILE,
-        )
+            planned = self._plan_xcode(command, root=root, workspace=workspace, basename=basename)
+        elif _is_swiftpm(tool, tokens):
+            planned = self._plan_swiftpm(command, root=root, workspace=workspace, basename=basename)
+        elif _is_pytest(tool, tokens):
+            planned = self._plan_pytest(command, root=root, workspace=workspace, basename=basename)
+        elif _is_mypy(tool, tokens):
+            planned = self._plan_mypy(command, root=root, workspace=workspace, basename=basename)
+        elif _is_ruff(tool, tokens):
+            planned = self._plan_ruff(command, root=root, workspace=workspace, basename=basename)
+        elif _is_git(tool, tokens):
+            planned = self._plan_git(command, root=root, basename=basename)
+        elif _is_tsc(tool, tokens):
+            planned = self._plan_tsc(command, root=root, basename=basename)
+        else:
+            raise VerificationArtifactError(
+                _UNAVAILABLE,
+                basename=basename,
+                suggestion=_SUGGEST_PROFILE,
+            )
+        argv0 = planned.argv[0] if planned.argv else ""
+        if _workspace_managed_tool(argv0):
+            _require_resolvable_executable(workspace, argv0, basename)
+        return planned
 
     def _planned(
         self,
@@ -414,6 +423,70 @@ def _resolve_output_path(raw: str, *, workspace: Path) -> Path:
     if candidate.exists() or candidate.parent.exists():
         return candidate.resolve()
     return Path(os.path.normpath(str(candidate)))
+
+
+def workspace_bin_dirs(workspace: Path) -> tuple[Path, ...]:
+    if sys.platform == "win32":
+        relatives = (Path(".venv") / "Scripts", Path("venv") / "Scripts")
+    else:
+        relatives = (Path(".venv") / "bin", Path("venv") / "bin")
+    found: list[Path] = []
+    for relative in relatives:
+        directory = workspace / relative
+        if directory.is_dir():
+            found.append(directory)
+    return tuple(found)
+
+
+def workspace_tool_path(workspace: Path, argv0: str) -> Path | None:
+    name = Path(argv0).name
+    if not name or Path(argv0).is_absolute():
+        return None
+    for directory in workspace_bin_dirs(workspace):
+        candidate = directory / name
+        if _is_executable_file(candidate):
+            return candidate
+    return None
+
+
+def with_workspace_runtime_path(values: dict[str, str], workspace: Path) -> dict[str, str]:
+    updated = dict(values)
+    directories = workspace_bin_dirs(workspace)
+    if not directories:
+        return updated
+    prefix = os.pathsep.join(str(item) for item in directories)
+    current = updated.get("PATH", "")
+    updated["PATH"] = prefix if not current else f"{prefix}{os.pathsep}{current}"
+    if "VIRTUAL_ENV" not in updated:
+        updated["VIRTUAL_ENV"] = str(directories[0].parent)
+    return updated
+
+
+def _is_executable_file(path: Path) -> bool:
+    try:
+        return path.exists() and not path.is_dir() and os.access(path, os.X_OK)
+    except OSError:
+        return False
+
+
+def _workspace_managed_tool(argv0: str) -> bool:
+    name = Path(argv0).name.lower()
+    if name.endswith(".exe"):
+        name = name[:-4]
+    return name in {"ruff", "pytest", "mypy"} or _is_python(name)
+
+
+def _require_resolvable_executable(workspace: Path, argv0: str, basename: str) -> None:
+    if not argv0:
+        raise VerificationArtifactError(_MISSING, basename=basename, suggestion=_SUGGEST_MISSING)
+    located = Path(argv0)
+    if located.is_absolute() and _is_executable_file(located):
+        return
+    if workspace_tool_path(workspace, argv0) is not None:
+        return
+    if shutil.which(argv0) is not None:
+        return
+    raise VerificationArtifactError(_MISSING, basename=basename, suggestion=_SUGGEST_MISSING)
 
 
 def _tool_tokens(argv: tuple[str, ...]) -> tuple[str, tuple[str, ...]]:
