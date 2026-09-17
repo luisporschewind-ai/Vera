@@ -30,3 +30,5 @@
 - [不可信内容、提示词投毒与内容安全](2026-09-12-untrusted-content-and-prompt-injection-defense.md)
 - [阶段八：Core 原生 Skills 系统（Accepted）](2026-09-15-core-native-skills-system.md)
 - [阶段九：桌面 Agent 工作台与 UI（Draft）](2026-09-12-desktop-agent-workbench-ui.md)
+- [Core 工具集与风险分级 Policy v2（Draft）](2026-09-17-core-tooling-and-risk-tiered-policy.md)
+- [Vera 原生 Git 能力（Draft）](2026-09-17-native-git-capability.md)

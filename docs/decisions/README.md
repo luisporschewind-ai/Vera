@@ -31,5 +31,6 @@
 - [ADR-0018：验证产物必须在审批前规划并隔离](ADR-0018-isolate-verification-artifacts.md)
 - [ADR-0019：以 `VERA.md` 作为原生项目指令并兼容 `AGENTS.md`](ADR-0019-native-vera-project-instructions.md)
 - [ADR-0020：在 CLI 封存后、桌面之前插入 Core-native Skills 阶段](ADR-0020-stage-core-native-skills.md)
+- [ADR-0021：桌面前插入 Core 工具集与 Git 能力阶段（Proposed）](ADR-0021-core-tools-before-desktop.md)
 
 Core Runtime、协议、持久化模型、关键依赖、安全边界或桌面框架等长期选择应建立决策记录；常规实现细节写入任务记录。
