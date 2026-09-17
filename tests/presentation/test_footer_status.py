@@ -119,6 +119,9 @@ def test_wide_footer_has_both_sides() -> None:
     assert "main" in text
     assert "审批 manual" in text
     assert "非 Git" not in text
+    padded = render_footer_status(footer, columns=76, unicode=True, frame="·")
+    assert padded.endswith("deepseek-chat  推理 不可用") or "deepseek-chat" in padded
+    assert "推理" in padded
 
 
 def test_narrow_footer_keeps_model_name() -> None:

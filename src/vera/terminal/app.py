@@ -135,6 +135,7 @@ class VeraTerminalApp(App[int]):
         else:
             self._apply_theme("default")
         self.set_interval(0.1, self._tick_status)
+        self.set_interval(0.05, self._tick_wave)
         self._present_bootstrap()
 
     def _present_bootstrap(self) -> None:
@@ -627,6 +628,15 @@ class VeraTerminalApp(App[int]):
         if not self.activity.current.active:
             return
         self._sync_activity()
+
+    def _tick_wave(self) -> None:
+        if not self.is_running or not self._welcome_expanded or not self.animations:
+            return
+        try:
+            header = self.query_one(VeraHeader)
+        except NoMatches:
+            return
+        header.set_wave_phase(self.animation.wave_phase())
 
 
 def _mention_prefix(text: str) -> str | None:

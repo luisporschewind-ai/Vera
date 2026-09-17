@@ -64,7 +64,7 @@ class VeraStatusLine(Static):
             footer = footer.model_copy(update={"unread": unread})
         text = render_footer_status(
             footer,
-            columns=self._columns,
+            columns=max(4, self._columns - 4),
             unicode=self._unicode,
         )
         if self._notice:

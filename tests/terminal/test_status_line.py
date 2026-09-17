@@ -1,4 +1,5 @@
 from vera.presentation.activity import ActivityState
+from vera.terminal.display import display_width
 from vera.terminal.widgets.status_line import VeraStatusLine
 
 
@@ -64,6 +65,8 @@ def test_footer_shows_context_and_model_on_wide_line() -> None:
     assert "就绪" not in text
     assert "fake-model" in text
     assert "模型默认" in text
+    assert "推理" in text
+    assert display_width(text) == 76
     line.set_geometry(columns=60, unicode=True)
     line.apply_session(status, ActivityState("就绪", "idle", False))
     narrow = rendered(line)

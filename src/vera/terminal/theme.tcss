@@ -24,6 +24,11 @@ Screen {
 #header-wordmark {
     color: $accent;
     text-style: bold;
+    background: $boost;
+}
+
+#header-meta {
+    background: $boost;
 }
 
 #work-rail {
@@ -119,6 +124,8 @@ Screen {
     background: $panel;
     color: $text-muted;
     padding: 0 2;
+    overflow: hidden;
+    text-wrap: nowrap;
 }
 
 UserBlockWidget {
@@ -188,7 +195,13 @@ DiffBlockWidget {
 
 .theme-high-contrast #header-wordmark,
 .-theme-high-contrast #header-wordmark {
+    background: #000000;
     color: #ffff00;
+}
+
+.theme-high-contrast #header-meta,
+.-theme-high-contrast #header-meta {
+    background: #000000;
 }
 
 .theme-high-contrast #timeline,

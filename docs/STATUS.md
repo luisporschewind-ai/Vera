@@ -50,7 +50,7 @@
 
 ## 最近验证
 
-- 2026-09-17 任务 0056：进场三行点阵欢迎卡、缩行全路径、底栏分支/审批/模型、用户时间 AM/PM。聚焦 `86 passed`；`ruff`/`mypy`/`git diff --check` 通过。待 Terminal.app。
+- 2026-09-17 任务 0056：进场三行点阵欢迎卡、缩行全路径、底栏分支/审批/模型、用户时间 AM/PM。Terminal.app 跟进修波动方向/速率、底栏右侧裁切与顶栏浅色块。聚焦 `74 passed`；`ruff`/`mypy`/`git diff --check` 通过。待再看。
 - 2026-09-17 任务 0055：工作轨上移、状态组默认收起、顶栏强化 `VERA` 字标。聚焦测试 `102 passed`；`ruff`/`mypy`/`git diff --check` 通过。待 Terminal.app。
 - 2026-09-17 任务 0054：发现 51、52 Terminal.app 复验通过。`bd3f308` 让虚构「等待审批」去真正提出 Change Set，缺失的 `ruff`/`pytest`/`mypy` 在规划期拒绝。
 - 2026-09-17 任务 0053：状态带 K 单位、运行状态左置、审批卡上下 margin 自动栏通过，待 Terminal.app 确认。

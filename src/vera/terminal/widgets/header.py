@@ -14,6 +14,13 @@ from vera.terminal.brand import BrandMark, select_brand_mark
 from vera.terminal.widgets.welcome import brand_header_text, header_fact_lines
 
 
+def logo_wave_value(*, row: int, column: int, phase: float) -> float:
+    """Bright crest travels bottom-left → top-right as phase increases."""
+
+    along = column + (2 - row) * 3.2
+    return sin(2 * pi * (phase - along / 28.0))
+
+
 class VeraHeader(Horizontal):
     """Top brand strip. Activity lives on the work rail, not here."""
 
@@ -35,14 +42,14 @@ class VeraHeader(Horizontal):
         text-style: bold;
         padding: 0;
         margin-right: 2;
-        background: transparent;
+        background: $boost;
     }
     VeraHeader #header-meta {
-        width: auto;
+        width: 1fr;
         height: auto;
         color: $text-muted;
         padding: 0;
-        background: transparent;
+        background: $boost;
     }
     """
 
@@ -131,7 +138,8 @@ class VeraHeader(Horizontal):
         self.set_class(self._expanded, "-welcome")
         if self._status is None:
             wordmark.update(self._logo_visual(self._mark.lines))
-            meta.display = False
+            meta.update("")
+            meta.display = True
             return
         if not self._expanded:
             text = brand_header_text(
@@ -142,7 +150,7 @@ class VeraHeader(Horizontal):
             )
             wordmark.update(text)
             meta.update("")
-            meta.display = False
+            meta.display = True
             return
         facts = header_fact_lines(self._status)
         wordmark.update(self._logo_visual(self._mark.lines))
@@ -160,6 +168,9 @@ class VeraHeader(Horizontal):
                 if char == " ":
                     out.append(" ")
                     continue
-                wave = sin(index * 0.45 - self._wave_phase * 2 * pi)
-                out.append(char, style="bold" if wave > 0 else "dim")
+                value = logo_wave_value(row=row, column=index, phase=self._wave_phase)
+                if value > 0.25:
+                    out.append(char, style="bold")
+                else:
+                    out.append(char)
         return out

@@ -1,5 +1,6 @@
 from vera.terminal.brand import select_brand_mark
 from vera.terminal.display import display_width
+from vera.terminal.widgets.header import logo_wave_value
 
 
 def test_full_mark_at_80x24_unicode() -> None:
@@ -47,3 +48,11 @@ def test_cjk_neighbor_does_not_widen_mark() -> None:
     neighbor = mark.lines[0] + "深海"
     assert display_width(mark.lines[0]) <= 8
     assert neighbor.startswith("VERA")
+
+
+def test_logo_wave_travels_bottom_left_to_top_right() -> None:
+    bottom_left = logo_wave_value(row=2, column=0, phase=0.25)
+    top_right = logo_wave_value(row=0, column=16, phase=0.25)
+    assert bottom_left > top_right
+    later = logo_wave_value(row=0, column=16, phase=0.85)
+    assert later > logo_wave_value(row=2, column=0, phase=0.85)
