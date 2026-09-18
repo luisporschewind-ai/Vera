@@ -5,6 +5,7 @@ import json
 import pytest
 
 from vera.contracts.approvals import ApprovalRequest
+from vera.contracts.changes import ChangeSet
 from vera.contracts.codec import CommandType
 from vera.contracts.commands import StartRun
 from vera.contracts.compatibility import (
@@ -16,8 +17,12 @@ from vera.contracts.compatibility import (
 from vera.contracts.errors import CoreErrorCode
 from vera.contracts.events import EventEnvelope
 from vera.contracts.recovery import RecoveryClassification
+from vera.contracts.tool_actions import ToolAction
+from vera.policy.models import PolicyAction
+from vera.policy.permissions import WorkspacePermissionSummary
 from vera.runtime.approval import ApprovalKind
 from vera.session.protocol import SessionRecord
+from vera.tools.definitions import ToolDefinition, ToolDefinitionV2
 
 
 def test_compatibility_manifest_is_missing_until_implemented() -> None:
@@ -59,6 +64,15 @@ def test_manifest_snapshots_public_contract_names_and_required_fields() -> None:
         "prompt.queue.clear",
         "editor.confirm",
         "editor.open",
+    }
+    tooling = {(item.name, item.schema_version) for item in manifest.tooling_contracts}
+    assert tooling == {
+        (ToolDefinition.__name__, 1),
+        (ToolDefinitionV2.__name__, 2),
+        (ToolAction.__name__, 1),
+        (WorkspacePermissionSummary.__name__, 1),
+        (PolicyAction.__name__, 1),
+        (ChangeSet.__name__, 1),
     }
 
 

@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from vera.contracts import JsonValue
 from vera.models.capabilities import ModelCapabilities
 from vera.models.errors import ModelProviderError
-from vera.tools.definitions import ToolDefinition
+from vera.tools.definitions import ToolDefinitionAny
 
 
 class ModelToolCall(BaseModel):
@@ -35,7 +35,7 @@ class ModelRequest(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     messages: tuple[ModelMessage, ...]
-    tools: tuple[ToolDefinition, ...] = ()
+    tools: tuple[ToolDefinitionAny, ...] = ()
     max_output_tokens: int = Field(ge=1)
 
 
