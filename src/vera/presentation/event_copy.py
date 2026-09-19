@@ -93,6 +93,8 @@ _FIELD_LABELS: dict[str, str] = {
 }
 
 _TOOL_ACTIONS = {
+    "write": "写入文件",
+    "edit": "编辑文件",
     "read_file": "读取文件",
     "list_directory": "列出目录",
     "search_text": "搜索文本",
