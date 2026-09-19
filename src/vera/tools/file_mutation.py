@@ -42,7 +42,9 @@ class _FileMutationTool:
             facts_complete=True,
         )
 
-    def plan_action(self, run_id: str, arguments: BaseModel) -> PlannedFileMutation:
+    def plan_action(
+        self, run_id: str, arguments: BaseModel, *, action_id: str | None = None
+    ) -> PlannedFileMutation:
         raise NotImplementedError
 
     def execute(self, _arguments: BaseModel) -> ToolResult:
@@ -72,13 +74,16 @@ class WriteTool(_FileMutationTool):
         self.state_dir = state_dir
         self.applier = FileMutationApplier(self.paths, state_dir)
 
-    def plan_action(self, run_id: str, arguments: BaseModel) -> PlannedFileMutation:
+    def plan_action(
+        self, run_id: str, arguments: BaseModel, *, action_id: str | None = None
+    ) -> PlannedFileMutation:
         parsed = WriteInput.model_validate(arguments.model_dump())
         return self.planner.plan_write(
             run_id,
             parsed.path,
             parsed.content,
             expected_before_hash=parsed.expected_before_hash,
+            action_id=action_id,
         )
 
 
@@ -105,7 +110,9 @@ class EditTool(_FileMutationTool):
         self.state_dir = state_dir
         self.applier = FileMutationApplier(self.paths, state_dir)
 
-    def plan_action(self, run_id: str, arguments: BaseModel) -> PlannedFileMutation:
+    def plan_action(
+        self, run_id: str, arguments: BaseModel, *, action_id: str | None = None
+    ) -> PlannedFileMutation:
         parsed = EditInput.model_validate(arguments.model_dump())
         return self.planner.plan_edit(
             run_id,
@@ -113,4 +120,5 @@ class EditTool(_FileMutationTool):
             parsed.old_text,
             parsed.new_text,
             expected_before_hash=parsed.expected_before_hash,
+            action_id=action_id,
         )

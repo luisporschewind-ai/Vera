@@ -67,13 +67,14 @@ class ToolExecutor:
         )
         if definition is None:
             raise ToolPreparationError("unknown_tool")
-        mutation = self._plan_mutation(tool, run_id, parsed)
+        action_id = uuid4().hex
+        mutation = self._plan_mutation(tool, run_id, parsed, action_id=action_id)
         facts = self._risk_facts(tool, parsed)
         if mutation is not None:
             facts = facts.model_copy(update={"target_facts_hash": mutation.plan.target_facts_hash})
         normalized = parsed.model_dump(mode="json")
         action = ToolAction(
-            action_id=uuid4().hex,
+            action_id=action_id,
             run_id=run_id,
             tool_name=definition.name,
             tool_version=definition.tool_version,
@@ -132,7 +133,9 @@ class ToolExecutor:
             parsed = tool.input_model.model_validate(dict(prepared.action.normalized_arguments))
         except ValidationError:
             return ToolResult(ok=False, error_code="stale_tool_action")
-        mutation = self._plan_mutation(tool, prepared.action.run_id, parsed)
+        mutation = self._plan_mutation(
+            tool, prepared.action.run_id, parsed, action_id=prepared.action.action_id
+        )
         facts = self._risk_facts(tool, parsed)
         if mutation is not None:
             facts = facts.model_copy(update={"target_facts_hash": mutation.plan.target_facts_hash})
@@ -208,7 +211,7 @@ class ToolExecutor:
         return facts
 
     def _plan_mutation(
-        self, tool: Any, run_id: str, arguments: BaseModel
+        self, tool: Any, run_id: str, arguments: BaseModel, *, action_id: str | None = None
     ) -> PlannedFileMutation | None:
         planner = getattr(tool, "plan_action", None)
         if planner is None:
@@ -218,7 +221,7 @@ class ToolExecutor:
             if binder is not None:
                 binder(self.state_dir)
         try:
-            planned = planner(run_id, arguments)
+            planned = planner(run_id, arguments, action_id=action_id)
         except FileMutationPlanningError as exc:
             raise ToolPreparationError(exc.code) from exc
         if not isinstance(planned, PlannedFileMutation):
@@ -239,7 +242,9 @@ def _facts_hash(facts: ToolRiskFacts) -> str:
 
 def _same_mutation(left: PlannedFileMutation, right: PlannedFileMutation) -> bool:
     return (
-        left.plan.path == right.plan.path
+        left.plan.action_id == right.plan.action_id
+        and left.plan.run_id == right.plan.run_id
+        and left.plan.path == right.plan.path
         and left.plan.operation == right.plan.operation
         and left.plan.before_hash == right.plan.before_hash
         and left.plan.after_hash == right.plan.after_hash

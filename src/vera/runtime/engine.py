@@ -1155,7 +1155,12 @@ class VeraRuntime:
                 parsed = implementation.input_model.model_validate(
                     dict(pending_tool.action.normalized_arguments)
                 )
-                mutation = executor._plan_mutation(implementation, context.run_id, parsed)
+                mutation = executor._plan_mutation(
+                    implementation,
+                    context.run_id,
+                    parsed,
+                    action_id=pending_tool.action.action_id,
+                )
                 current_facts = executor._risk_facts(implementation, parsed)
                 if mutation is not None:
                     current_facts = current_facts.model_copy(

@@ -60,6 +60,9 @@ def test_trusted_goal_write_applies_without_approval(tmp_path: Path) -> None:
     assert not any(event.type == "approval.required" for event in events)
     assert any(event.type == "file_mutation.planned" for event in events)
     assert any(event.type == "file_mutation.applied" for event in events)
+    prepared = next(event for event in events if event.type == "tool.action_prepared")
+    planned = next(event for event in events if event.type == "file_mutation.planned")
+    assert prepared.payload["action_id"] == planned.payload["action_id"]
 
 
 def test_untrusted_write_creates_exact_approval_and_snapshot(tmp_path: Path) -> None:

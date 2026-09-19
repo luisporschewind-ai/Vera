@@ -76,6 +76,7 @@ class FileMutationPlanner:
         content: str,
         *,
         expected_before_hash: str | None = None,
+        action_id: str | None = None,
     ) -> PlannedFileMutation:
         fact = self._inspect(path)
         target = self._target(fact)
@@ -87,7 +88,7 @@ class FileMutationPlanner:
         self._check_expected(before_hash, expected_before_hash)
         after = content.encode("utf-8")
         operation: Literal["create", "replace"] = "replace" if fact.exists else "create"
-        return self._planned(run_id, operation, path, fact, before, after)
+        return self._planned(run_id, operation, path, fact, before, after, action_id=action_id)
 
     def plan_edit(
         self,
@@ -97,6 +98,7 @@ class FileMutationPlanner:
         new_text: str,
         *,
         expected_before_hash: str | None = None,
+        action_id: str | None = None,
     ) -> PlannedFileMutation:
         if not old_text:
             raise FileMutationPlanningError("empty_old_text")
@@ -119,7 +121,7 @@ class FileMutationPlanner:
         if matches != 1:
             raise FileMutationPlanningError("edit_not_unique")
         after = text.replace(old_text, new_text, 1).encode("utf-8")
-        return self._planned(run_id, "edit", path, fact, before, after)
+        return self._planned(run_id, "edit", path, fact, before, after, action_id=action_id)
 
     def _inspect(self, path: str) -> PathFact:
         try:
@@ -162,11 +164,13 @@ class FileMutationPlanner:
         fact: PathFact,
         before: bytes,
         after: bytes,
+        *,
+        action_id: str | None,
     ) -> PlannedFileMutation:
         before_hash = ABSENT_HASH if not fact.exists else _sha256(before)
         after_hash = _sha256(after)
         plan = FileMutationPlan(
-            action_id=f"action_{uuid4().hex}",
+            action_id=action_id or f"action_{uuid4().hex}",
             run_id=run_id,
             operation=operation,
             path=fact.relative_path,
