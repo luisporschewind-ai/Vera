@@ -10,6 +10,7 @@ from vera.contracts.changes import ChangeSet
 from vera.contracts.codec import _COMMAND_DECODERS, CommandType
 from vera.contracts.errors import CoreErrorCode
 from vera.contracts.events import EventEnvelope
+from vera.contracts.file_mutations import FileMutationPlan
 from vera.contracts.recovery import RecoveryClassification
 from vera.contracts.tool_actions import ToolAction
 from vera.policy.models import PolicyAction
@@ -134,6 +135,7 @@ def current_compatibility_manifest() -> CompatibilityManifest:
             (WorkspacePermissionSummary, 1),
             (PolicyAction, 1),
             (ChangeSet, 1),
+            (FileMutationPlan, 1),
         )
     )
     return CompatibilityManifest(

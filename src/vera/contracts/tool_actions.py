@@ -73,6 +73,7 @@ class ToolRiskFacts(ContractModel):
     external_target: str | None = None
     secrets_present: bool = False
     facts_complete: bool = False
+    target_facts_hash: str | None = None
 
 
 class ToolAction(ContractModel):

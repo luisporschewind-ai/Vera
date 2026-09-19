@@ -21,6 +21,7 @@ from vera.recovery.probe import workspace_identity
 from vera.runtime.engine import VeraRuntime
 from vera.tools.builtin import FindTool, GrepTool, LsTool, ReadTool
 from vera.tools.command_policy import CommandPolicy
+from vera.tools.file_mutation import EditTool, WriteTool
 from vera.tools.registry import ToolRegistry
 from vera.workspace.paths import WorkspacePaths
 
@@ -88,6 +89,8 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
     paths = WorkspacePaths(workspace)
     registry = ToolRegistry()
     registry.register(ReadTool(paths, config.limits.max_file_bytes))
+    registry.register(WriteTool(workspace, config.state_dir))
+    registry.register(EditTool(workspace, config.state_dir))
     registry.register(GrepTool(paths))
     registry.register(FindTool(paths))
     registry.register(LsTool(paths))

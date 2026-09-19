@@ -16,6 +16,7 @@ from vera.contracts.compatibility import (
 )
 from vera.contracts.errors import CoreErrorCode
 from vera.contracts.events import EventEnvelope
+from vera.contracts.file_mutations import FileMutationPlan
 from vera.contracts.recovery import RecoveryClassification
 from vera.contracts.tool_actions import ToolAction
 from vera.policy.models import PolicyAction
@@ -73,6 +74,7 @@ def test_manifest_snapshots_public_contract_names_and_required_fields() -> None:
         (WorkspacePermissionSummary.__name__, 1),
         (PolicyAction.__name__, 1),
         (ChangeSet.__name__, 1),
+        (FileMutationPlan.__name__, 1),
     }
 
 

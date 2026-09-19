@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -16,6 +17,7 @@ from vera.policy.models import PolicyDecision, PolicyDecisionKind
 from vera.policy.permissions import WorkspacePermissionSnapshot
 from vera.tools.definitions import ToolDefinitionV2, ToolResult
 from vera.tools.registry import ToolRegistry
+from vera.workspace.mutation import FileMutationPlanningError, PlannedFileMutation
 from vera.workspace.paths import WorkspaceBoundaryError
 
 
@@ -32,6 +34,7 @@ class PreparedToolAction:
     parsed_arguments: BaseModel
     policy_decision: PolicyDecision
     target_facts_hash: str
+    mutation: PlannedFileMutation | None = None
 
 
 class ToolExecutor:
@@ -42,11 +45,13 @@ class ToolExecutor:
         permissions: WorkspacePermissionSnapshot,
         *,
         goal_authorized: bool = False,
+        state_dir: Path | None = None,
     ) -> None:
         self.registry = registry
         self.policy_engine = policy_engine
         self.permissions = permissions
         self.goal_authorized = goal_authorized
+        self.state_dir = state_dir
 
     def prepare(self, *, run_id: str, name: str, arguments: dict[str, Any]) -> PreparedToolAction:
         tool = self.registry.implementation(name)
@@ -62,7 +67,10 @@ class ToolExecutor:
         )
         if definition is None:
             raise ToolPreparationError("unknown_tool")
+        mutation = self._plan_mutation(tool, run_id, parsed)
         facts = self._risk_facts(tool, parsed)
+        if mutation is not None:
+            facts = facts.model_copy(update={"target_facts_hash": mutation.plan.target_facts_hash})
         normalized = parsed.model_dump(mode="json")
         action = ToolAction(
             action_id=uuid4().hex,
@@ -90,6 +98,7 @@ class ToolExecutor:
                 action, self.permissions, goal_authorized=self.goal_authorized
             ),
             target_facts_hash=_facts_hash(facts),
+            mutation=mutation,
         )
 
     def execute_allowed(
@@ -123,7 +132,10 @@ class ToolExecutor:
             parsed = tool.input_model.model_validate(dict(prepared.action.normalized_arguments))
         except ValidationError:
             return ToolResult(ok=False, error_code="stale_tool_action")
+        mutation = self._plan_mutation(tool, prepared.action.run_id, parsed)
         facts = self._risk_facts(tool, parsed)
+        if mutation is not None:
+            facts = facts.model_copy(update={"target_facts_hash": mutation.plan.target_facts_hash})
         if _facts_hash(facts) != prepared.target_facts_hash:
             return ToolResult(ok=False, error_code="stale_tool_action")
         normalized = parsed.model_dump(mode="json")
@@ -137,7 +149,30 @@ class ToolExecutor:
         )
         if expected_hash != prepared.action.input_hash:
             return ToolResult(ok=False, error_code="stale_tool_action")
-        result = tool.execute(parsed)
+        if mutation is not None:
+            original = prepared.mutation
+            if original is None or not _same_mutation(original, mutation):
+                return ToolResult(ok=False, error_code="stale_tool_action")
+            applier = getattr(tool, "applier", None)
+            if applier is None:
+                return ToolResult(ok=False, error_code="mutation_executor_unbound")
+            applied = applier.apply(mutation)
+            if applied.status.value != "applied":
+                return ToolResult(ok=False, error_code=applied.error_code or applied.status.value)
+            result = ToolResult(
+                ok=True,
+                content={
+                    "action_id": mutation.plan.action_id,
+                    "operation": mutation.plan.operation,
+                    "path": mutation.plan.path,
+                    "before_hash": mutation.plan.before_hash,
+                    "after_hash": mutation.plan.after_hash,
+                    "unified_diff": mutation.plan.unified_diff,
+                    "status": applied.status.value,
+                },
+            )
+        else:
+            result = tool.execute(parsed)
         normalized = result if isinstance(result, ToolResult) else ToolResult.model_validate(result)
         if normalized.content is not None:
             rendered = json.dumps(
@@ -172,6 +207,24 @@ class ToolExecutor:
             raise ToolPreparationError("invalid_tool_risk_facts")
         return facts
 
+    def _plan_mutation(
+        self, tool: Any, run_id: str, arguments: BaseModel
+    ) -> PlannedFileMutation | None:
+        planner = getattr(tool, "plan_action", None)
+        if planner is None:
+            return None
+        if self.state_dir is not None:
+            binder = getattr(tool, "bind_state", None)
+            if binder is not None:
+                binder(self.state_dir)
+        try:
+            planned = planner(run_id, arguments)
+        except FileMutationPlanningError as exc:
+            raise ToolPreparationError(exc.code) from exc
+        if not isinstance(planned, PlannedFileMutation):
+            raise ToolPreparationError("invalid_mutation_plan")
+        return planned
+
     @staticmethod
     def facts_hash(facts: ToolRiskFacts) -> str:
         return _facts_hash(facts)
@@ -182,3 +235,15 @@ def _facts_hash(facts: ToolRiskFacts) -> str:
         facts.model_dump(mode="json"), ensure_ascii=False, sort_keys=True, separators=(",", ":")
     ).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
+
+
+def _same_mutation(left: PlannedFileMutation, right: PlannedFileMutation) -> bool:
+    return (
+        left.plan.path == right.plan.path
+        and left.plan.operation == right.plan.operation
+        and left.plan.before_hash == right.plan.before_hash
+        and left.plan.after_hash == right.plan.after_hash
+        and left.plan.target_facts_hash == right.plan.target_facts_hash
+        and left.plan.content_hash == right.plan.content_hash
+        and left.plan.unified_diff == right.plan.unified_diff
+    )

@@ -107,6 +107,7 @@ class RecoverySnapshot(FrozenPrivateModel):
     built_changeset: PersistedChangeSet | None = None
     """Change Set bytes include planned verification argv/profile/root when present."""
     pending_tool_action: PersistedToolAction | None = None
+    applied_file_mutations: tuple[dict[str, str], ...] = ()
     checkpoint_id: str | None = None
     pending_approval: ApprovalRequest | None = None
     verification_index: int = 0

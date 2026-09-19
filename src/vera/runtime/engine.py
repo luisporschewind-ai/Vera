@@ -293,6 +293,7 @@ class VeraRuntime:
             engine,
             permissions,
             goal_authorized=bool(context.command.goal.strip()),
+            state_dir=self.state_dir,
         )
 
     def _security_approval_kwargs(self, context: RunContext) -> dict[str, Any]:
@@ -587,6 +588,7 @@ class VeraRuntime:
             last_event_sequence=sequence,
             built_changeset=built,
             pending_tool_action=context.pending_tool_action,
+            applied_file_mutations=tuple(context.applied_file_mutations),
             checkpoint_id=checkpoint_id,
             pending_approval=context.approval_gate.pending_approval,
             verification_index=context.verification_index,
@@ -1153,7 +1155,12 @@ class VeraRuntime:
                 parsed = implementation.input_model.model_validate(
                     dict(pending_tool.action.normalized_arguments)
                 )
+                mutation = executor._plan_mutation(implementation, context.run_id, parsed)
                 current_facts = executor._risk_facts(implementation, parsed)
+                if mutation is not None:
+                    current_facts = current_facts.model_copy(
+                        update={"target_facts_hash": mutation.plan.target_facts_hash}
+                    )
             except Exception:
                 yield from self._expire_approval(
                     context,
@@ -1176,6 +1183,7 @@ class VeraRuntime:
                 parsed_arguments=parsed,
                 policy_decision=pending_tool.policy_decision,
                 target_facts_hash=pending_tool.target_facts_hash,
+                mutation=mutation,
             )
             if executor.facts_hash(current_facts) != pending_tool.target_facts_hash:
                 yield from self._expire_approval(
@@ -1420,7 +1428,39 @@ class VeraRuntime:
         }
         if target:
             payload["target"] = target
+        mutation_payload = result.content if call.name in {"write", "edit"} else None
+        if isinstance(mutation_payload, dict) and mutation_payload.get("action_id"):
+            yield self._event(
+                context,
+                "file_mutation.planned",
+                {
+                    "action_id": mutation_payload.get("action_id"),
+                    "operation": mutation_payload.get("operation"),
+                    "path": mutation_payload.get("path"),
+                    "before_hash": mutation_payload.get("before_hash"),
+                    "after_hash": mutation_payload.get("after_hash"),
+                    "unified_diff": mutation_payload.get("unified_diff"),
+                },
+            )
         yield self._event(context, "tool.completed", payload)
+        if isinstance(mutation_payload, dict) and mutation_payload.get("action_id") and result.ok:
+            context.applied_file_mutations.append(
+                {
+                    "action_id": str(mutation_payload.get("action_id")),
+                    "path": str(mutation_payload.get("path")),
+                    "unified_diff": str(mutation_payload.get("unified_diff", "")),
+                }
+            )
+            yield self._event(
+                context,
+                "file_mutation.applied",
+                {
+                    "action_id": mutation_payload.get("action_id"),
+                    "path": mutation_payload.get("path"),
+                    "status": mutation_payload.get("status", "applied"),
+                    "cumulative_diff": list(context.applied_file_mutations),
+                },
+            )
         tool_text = tool_result_message(call, result, rendered)
         context.messages.append(
             ModelMessage(role="tool", content=tool_text, tool_call_id=call.call_id)

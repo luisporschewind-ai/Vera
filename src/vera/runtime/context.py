@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 from vera.content.envelope import ContentFinding
@@ -242,6 +242,7 @@ class RunContext:
     pending_command: VerificationCommand | None = None
     """Planned VerificationCommand waiting for command approval; never a second derived copy."""
     pending_tool_action: PersistedToolAction | None = None
+    applied_file_mutations: list[dict[str, str]] = field(default_factory=list)
     verification_index: int = 0
     verification_failed: bool = False
     last_tool_signature: str | None = None

@@ -78,6 +78,7 @@ class RecoveryHydrator:
             built_change_set=built,
             pending_command=pending_command,
             pending_tool_action=snapshot.pending_tool_action,
+            applied_file_mutations=list(snapshot.applied_file_mutations),
             verification_index=snapshot.verification_index,
             verification_failed=snapshot.verification_failed,
             checkpoint_manifest=checkpoint_manifest,
