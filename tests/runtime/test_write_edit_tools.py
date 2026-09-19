@@ -65,6 +65,24 @@ def test_trusted_goal_write_applies_without_approval(tmp_path: Path) -> None:
     assert prepared.payload["action_id"] == planned.payload["action_id"]
 
 
+def test_oversized_mutation_result_is_rejected_before_writing(tmp_path: Path) -> None:
+    runtime_instance = runtime(tmp_path, trusted=True)
+    tool = runtime_instance.registry.implementation("write")
+    assert tool is not None
+    tool.definition = tool.definition.model_copy(update={"max_output_bytes": 1})
+
+    events = list(
+        runtime_instance.handle(
+            StartRun(goal="实现功能并修改代码", workspace_root=tmp_path, model_profile="fake")
+        )
+    )
+
+    completed = next(event for event in events if event.type == "tool.completed")
+    assert completed.payload["ok"] is False
+    assert completed.payload["error_code"] == "output_limit_exceeded"
+    assert not (tmp_path / "hello.txt").exists()
+
+
 def test_untrusted_write_creates_exact_approval_and_snapshot(tmp_path: Path) -> None:
     runtime_instance = runtime(tmp_path, trusted=False)
     events = list(

@@ -70,5 +70,5 @@ class ExactEditInput(BaseModel):
 
 ## 当前证据与待完成项
 
-- 2026-09-19：Planner、Checkpoint-before-effect Applier、动作级 Receipt、Runtime `write/edit`、审批恢复、累计 Diff 与兼容清单已接入；相关 workspace/runtime/recovery/persistence/contracts/tools/CLI/presentation 分组 `552 passed`；Ruff、格式、Mypy 与 `git diff --check` 通过，外部网络重试后的 wheel/sdist 构建成功。
+- 2026-09-19：Planner、Checkpoint-before-effect Applier、动作级 Receipt、Runtime `write/edit`、审批恢复、累计 Diff 与兼容清单已接入；补齐落盘前输出上限、Checkpoint 绑定回滚和父目录竞态保护；相关 workspace/runtime/recovery/persistence/contracts/tools/CLI/presentation 分组 `555 passed`；Ruff、格式、Mypy 与 `git diff --check` 通过。
 - 仍需完成共同全量门禁、最终审查和本任务提交；0060 的完整非-live 环境阻塞记录继续保留，不进入 0062。

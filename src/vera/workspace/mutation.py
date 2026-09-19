@@ -200,6 +200,8 @@ class FileMutationApplier:
             current = self._current_bytes(planned.plan.path)
         except WorkspaceBoundaryError as exc:
             return FileMutationResult(FileMutationStatus.STALE, planned.plan.path, exc.code)
+        if not target.parent.is_dir():
+            return FileMutationResult(FileMutationStatus.STALE, planned.plan.path, "parent_missing")
         current_hash = ABSENT_HASH if current is None else _sha256(current)
         operation_id, input_hash = _receipt_identity(planned.plan)
         existing = self.receipts.load(planned.plan.run_id, operation_id)
@@ -254,6 +256,19 @@ class FileMutationApplier:
 
     def rollback(self, plan: FileMutationPlan) -> FileMutationResult:
         checkpoint = self.checkpoints.load(plan.run_id, plan.action_id)
+        if (
+            checkpoint.run_id != plan.run_id
+            or checkpoint.action_id != plan.action_id
+            or checkpoint.workspace_root != self.paths.root
+            or checkpoint.path != plan.path
+            or checkpoint.before_hash != plan.before_hash
+            or checkpoint.after_hash != plan.after_hash
+        ):
+            return FileMutationResult(
+                FileMutationStatus.CONFLICTED,
+                plan.path,
+                "checkpoint_binding_mismatch",
+            )
         try:
             target = self.paths.resolve_mutation(plan.path)
             current = self._current_bytes(plan.path)

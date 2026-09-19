@@ -134,6 +134,24 @@ def test_applier_replays_same_receipt_without_second_write(tmp_path: Path, state
     assert writer.calls == 1
 
 
+def test_applier_rejects_rollback_for_plan_with_mismatched_checkpoint_binding(
+    tmp_path: Path, state_dir: Path
+) -> None:
+    target = tmp_path / "hello.txt"
+    target.write_text("old\n", encoding="utf-8")
+    planned = planner(tmp_path).plan_edit("run-1", "hello.txt", "old", "new")
+    applier = FileMutationApplier(WorkspacePaths(tmp_path), state_dir)
+
+    assert applier.apply(planned).status == "applied"
+    forged = planned.plan.model_copy(update={"path": "other.txt"})
+
+    rolled_back = applier.rollback(forged)
+
+    assert rolled_back.status == "conflicted"
+    assert rolled_back.error_code == "checkpoint_binding_mismatch"
+    assert target.read_text(encoding="utf-8") == "new\n"
+
+
 def planned_hash(value: bytes) -> str:
     import hashlib
 

@@ -156,24 +156,27 @@ class ToolExecutor:
             original = prepared.mutation
             if original is None or not _same_mutation(original, mutation):
                 return ToolResult(ok=False, error_code="stale_tool_action")
+            mutation_content = {
+                "action_id": mutation.plan.action_id,
+                "operation": mutation.plan.operation,
+                "path": mutation.plan.path,
+                "before_hash": mutation.plan.before_hash,
+                "after_hash": mutation.plan.after_hash,
+                "unified_diff": mutation.plan.unified_diff,
+                "status": "applied",
+            }
+            rendered = json.dumps(
+                mutation_content, ensure_ascii=False, separators=(",", ":")
+            ).encode("utf-8")
+            if len(rendered) > current_definition.max_output_bytes:
+                return ToolResult(ok=False, truncated=True, error_code="output_limit_exceeded")
             applier = getattr(tool, "applier", None)
             if applier is None:
                 return ToolResult(ok=False, error_code="mutation_executor_unbound")
             applied = applier.apply(mutation)
             if applied.status.value != "applied":
                 return ToolResult(ok=False, error_code=applied.error_code or applied.status.value)
-            result = ToolResult(
-                ok=True,
-                content={
-                    "action_id": mutation.plan.action_id,
-                    "operation": mutation.plan.operation,
-                    "path": mutation.plan.path,
-                    "before_hash": mutation.plan.before_hash,
-                    "after_hash": mutation.plan.after_hash,
-                    "unified_diff": mutation.plan.unified_diff,
-                    "status": applied.status.value,
-                },
-            )
+            result = ToolResult(ok=True, content=mutation_content)
         else:
             result = tool.execute(parsed)
         normalized = result if isinstance(result, ToolResult) else ToolResult.model_validate(result)
