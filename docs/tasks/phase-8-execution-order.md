@@ -26,8 +26,8 @@
 | 顺序 | 任务 | 独立交付 | 进入下一项的门禁 |
 |---|---|---|---|
 | 1 | [0059 ToolAction、Policy v2 与 workspace trust](0059-tool-action-policy-v2-contracts.md) | Done：v2 契约、风险/模式、私有 trust/grant store | 已通过契约、Codec、权限矩阵和损坏存储测试；进入 0060 |
-| 2 | [0060 统一 ToolExecutor 与只读工具迁移](0060-unified-tool-executor-and-read-tools.md) | In progress：统一 prepare/execute、canonical 只读工具和可恢复审批已落地；完整非-live 仍有环境阻塞 | 继续补齐共同门禁；不进入 0062 |
-| 3 | [0061 write/edit 与多动作文件变更](0061-file-mutation-write-edit.md) | In progress：实现与审查修复已提交（`f35b2e1`、`3b1fe2f`），相关分组 `555 passed` | 共同门禁仍受 0060 外部 DNS/PyPI setup 阻塞；不进入 0062 |
+| 2 | [0060 统一 ToolExecutor 与只读工具迁移](0060-unified-tool-executor-and-read-tools.md) | Done：统一 prepare/execute、canonical 只读工具和可恢复审批已落地；共同门禁通过 | 不自动进入 0062，等待用户重新授权 |
+| 3 | [0061 write/edit 与多动作文件变更](0061-file-mutation-write-edit.md) | Done：实现与审查修复已提交（`f35b2e1`、`3b1fe2f`），相关分组 `555 passed`，共同门禁通过 | 不自动进入 0062，等待用户重新授权 |
 | 4 | [0062 结构化 bash、授权作用域与 CLI](0062-structured-bash-and-permissions.md) | argv 命令、风险分类、trust/permissions UI | shell/提权/秘密/Git 绕过负例和三客户端对照通过 |
 | 5 | [0063 原生 Git 只读能力](0063-native-git-read-tools.md) | repository discovery、status/diff/log/show/branch-list | 稳定机器格式和特殊仓库矩阵通过 |
 | 6 | [0064 GitCommitPlan 与精确提交](0064-native-git-commit.md) | path-scoped Commit、index 保全、结果反向验证 | 混合 index、新文件、特殊路径、stale 矩阵通过 |

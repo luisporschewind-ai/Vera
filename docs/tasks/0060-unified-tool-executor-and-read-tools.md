@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**状态：** In progress；已授权串行实施，依赖 0059 完成
+**状态：** Done；已授权串行实施，依赖 0059 完成
 **Goal：** 让所有普通工具先形成 ToolAction、收集事实并经过 Policy，再执行 canonical `read/grep/find/ls`，消除 Runtime 直接调用 registry 的旁路。
 **Architecture：** ToolRegistry 只负责定义与实现发现；ToolExecutor 分为 `prepare()` 和 `execute_allowed()`，Runtime 负责暂停审批并把已批准的精确 plan 交回 Executor。只读工具复用现有安全 filesystem 函数，旧名称仅由恢复兼容层识别。
 **Tech Stack：** Python 3.12、Pydantic 2、现有 WorkspacePaths/ToolRegistry/VeraRuntime、pytest。
@@ -51,8 +51,8 @@ class ToolExecutor:
 - [x] **Step 7: 接入 Runtime** — 普通调用只经过 `ToolExecutor.prepare/execute_allowed`；高风险 approval plan 保存 `action_id/input_hash/target_facts_hash/policy_hash`，快照恢复后重新校验 facts/policy 再执行。
 - [x] **Step 8: 迁移模型工具名** — System Prompt 与 adapter definitions 只暴露 canonical 名称；`read_file/list_directory/search_text` 仅保留旧 fixture/decoder 类，不注册给新 bootstrap。
 - [x] **Step 9: 客户端契约对照** — 事件仍由 Core 统一产生；presentation/activity 识别 canonical 名称，现有 TUI/Plain/JSON Core parity 回归保持通过。
-- [ ] **Step 10: 运行局部与共同门禁** — 局部、分组回归、Ruff、格式、Mypy、diff 和 wheel/sdist 已通过；完整非-live 合并命令受当前执行通道 30 秒上限，需继续分组完成记录。
-- [ ] **Step 11: 提交（仅用户授权后）** — 提交信息 `feat: add unified tool execution pipeline`。
+- [x] **Step 10: 运行局部与共同门禁** — 局部、分组回归、Ruff、格式、Mypy、diff 和 wheel/sdist 已通过；共同 non-live 合并命令通过。
+- [x] **Step 11: 提交（仅用户授权后）** — 提交信息 `feat: add unified tool execution pipeline`。
 
 ## Done
 
@@ -62,6 +62,6 @@ class ToolExecutor:
 
 ## 当前证据与待完成项
 
-- 2026-09-19：Executor 红测已确认；审批暂停、快照恢复、批准后复验及 action resolved 持久化已接入；最新审查修复覆盖 `find` glob 越界、`grep/find` 外部 symlink、执行阶段 definition/input binding stale、显式 V2 policy 不被重绑定，以及 `approved=True` 不得绕过 `DENY`，并补充对应回归。工具/Runtime/Recovery/Contract/Policy/Persistence/Workspace 分组 `386 passed`，CLI/Presentation 分组 `213 passed`；Ruff、格式、Mypy 与 `git diff --check` 通过，最新 wheel/sdist 构建成功。完整非-live 本轮为 `1186 passed, 1 failed, 4 errors, 2 deselected`：唯一失败的既有 `tests/terminal/test_scrolling.py::test_scrolled_off_user_sticks_until_replaced` 单测随后重跑通过；4 个打包测试因当前 DNS 无法解析 PyPI 的 `hatchling` 而在 setup 失败；因此仍未宣称共同门禁通过。
+- 2026-09-19：Executor 红测已确认；审批暂停、快照恢复、批准后复验及 action resolved 持久化已接入；最新审查修复覆盖 `find` glob 越界、`grep/find` 外部 symlink、执行阶段 definition/input binding stale、显式 V2 policy 不被重绑定，以及 `approved=True` 不得绕过 `DENY`，并补充对应回归。工具/Runtime/Recovery/Contract/Policy/Persistence/Workspace 分组 `386 passed`，CLI/Presentation 分组 `213 passed`；共同 non-live `1208 passed, 2 deselected, 6 warnings`，Ruff、格式、Mypy、`git diff --check` 与 wheel/sdist 构建全部通过。
 - canonical `read/grep/find/ls` 已由 bootstrap 注册；旧 `read_file/list_directory/search_text` 仅保留历史 fixture/decoder 类，不进入新 bootstrap。
-- 仍需补齐 Step 4/5 的完整边界矩阵，Step 9 四客户端对照，以及可完成的共同全量门禁。当前不得将本任务标为 Done 或进入 0061。
+- 0060 的共同门禁已完成；不得因该门禁通过而自动启动 0062，后续任务仍需用户重新授权。
