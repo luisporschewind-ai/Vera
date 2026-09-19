@@ -62,6 +62,6 @@ class ToolExecutor:
 
 ## 当前证据与待完成项
 
-- 2026-09-19：Executor 红测已确认；审批暂停、快照恢复、批准后复验及 action resolved 持久化已接入；最新审批/恢复 focused suite `30 passed`，兼容组 `340 passed`，presentation `95 passed`，代表性 E2E 分组 `11 passed`，额外 E2E 分组通过 `20 + 25 + 18 + 2 + 1 + 1 + 4` 项；Ruff、格式、Mypy 与 `git diff --check` 通过，wheel/sdist 构建成功。安装态 wheel smoke 超过当前 30 秒执行窗口，未宣称通过。
+- 2026-09-19：Executor 红测已确认；审批暂停、快照恢复、批准后复验及 action resolved 持久化已接入；最新审查修复覆盖 `find` glob 越界、`grep/find` 外部 symlink、执行阶段 definition/input binding stale、显式 V2 policy 不被重绑定，以及 `approved=True` 不得绕过 `DENY`，并补充对应回归。工具/Runtime/Recovery/Contract/Policy/Persistence/Workspace 分组 `386 passed`，CLI/Presentation 分组 `213 passed`；Ruff、格式、Mypy 与 `git diff --check` 通过，wheel/sdist 构建曾在网络可用环境成功。完整非-live 本轮为 `1186 passed, 1 failed, 4 errors, 2 deselected`：唯一失败是既有 `tests/terminal/test_scrolling.py::test_scrolled_off_user_sticks_until_replaced`，4 个打包测试因当前 DNS 无法解析 PyPI 的 `hatchling` 而在 setup 失败；因此仍未宣称共同门禁通过。
 - canonical `read/grep/find/ls` 已由 bootstrap 注册；旧 `read_file/list_directory/search_text` 仅保留历史 fixture/decoder 类，不进入新 bootstrap。
 - 仍需补齐 Step 4/5 的完整边界矩阵，Step 9 四客户端对照，以及可完成的共同全量门禁。当前不得将本任务标为 Done 或进入 0061。

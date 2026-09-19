@@ -6,6 +6,8 @@ from vera.contracts.commands import ResolveApproval, ResumeRun, StartRun
 from vera.contracts.tool_actions import ToolEffect, ToolRiskFacts
 from vera.models.base import FakeModelAdapter, ModelToolCall, ModelTurn
 from vera.persistence.recovery_snapshot import RecoverySnapshotStore
+from vera.policy.engine import PolicyEngine
+from vera.policy.snapshot import EffectivePolicySnapshotV2
 from vera.runtime.engine import VeraRuntime
 from vera.tools.builtin import ReadTool
 from vera.tools.definitions import ToolDefinitionV2, ToolResult
@@ -87,6 +89,41 @@ def test_runtime_uses_executor_not_legacy_registry_dispatch(tmp_path: Path, monk
     ]
     assert events[-1].payload["outcome"] == "responded"
     assert [tool.name for tool in runtime.adapter.requests[0].tools] == ["read"]
+
+
+def test_runtime_does_not_rebind_explicit_policy_to_current_workspace(tmp_path: Path) -> None:
+    (tmp_path / "hello.txt").write_text("hello\n", encoding="utf-8")
+    registry = ToolRegistry()
+    registry.register(ReadTool(WorkspacePaths(tmp_path), 100))
+    explicit_policy = PolicyEngine(EffectivePolicySnapshotV2(workspace_identity="other"))
+    runtime = VeraRuntime(
+        FakeModelAdapter(
+            [
+                ModelTurn(
+                    finish_reason="tool_calls",
+                    tool_calls=(
+                        ModelToolCall(
+                            call_id="read-mismatch",
+                            name="read",
+                            arguments={"path": "hello.txt"},
+                        ),
+                    ),
+                ),
+                ModelTurn(assistant_text="策略拒绝。", finish_reason="stop"),
+            ]
+        ),
+        registry,
+        tmp_path / "state",
+        policy_engine=explicit_policy,
+    )
+
+    events = list(
+        runtime.handle(StartRun(goal="读取 hello", workspace_root=tmp_path, model_profile="fake"))
+    )
+
+    completed = next(event for event in events if event.type == "tool.completed")
+    assert completed.payload["ok"] is False
+    assert completed.payload["error_code"] == "policy_denied"
 
 
 def test_runtime_pauses_high_risk_tool_before_implementation(tmp_path: Path) -> None:

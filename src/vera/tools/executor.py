@@ -95,18 +95,30 @@ class ToolExecutor:
     def execute_allowed(
         self, prepared: PreparedToolAction, *, approved: bool = False
     ) -> ToolResult:
-        if not approved and prepared.policy_decision.decision is not PolicyDecisionKind.ALLOW:
+        decision = prepared.policy_decision.decision
+        if decision is PolicyDecisionKind.DENY:
+            return ToolResult(ok=False, error_code="policy_denied")
+        if not approved and decision is PolicyDecisionKind.APPROVAL_REQUIRED:
             return ToolResult(
                 ok=False,
-                error_code=(
-                    "approval_required"
-                    if prepared.policy_decision.decision is PolicyDecisionKind.APPROVAL_REQUIRED
-                    else "policy_denied"
-                ),
+                error_code="approval_required",
             )
         tool = self.registry.implementation(prepared.definition.name)
         if tool is None:
             return ToolResult(ok=False, error_code="unknown_tool")
+        current_definition = next(
+            (item for item in self.registry.definitions() if item.name == prepared.definition.name),
+            None,
+        )
+        if current_definition != prepared.definition:
+            return ToolResult(ok=False, error_code="stale_tool_action")
+        if (
+            prepared.action.tool_version != current_definition.tool_version
+            or prepared.action.effects != current_definition.effects
+            or prepared.action.workspace_identity != self.permissions.workspace_identity
+            or prepared.policy_decision.policy_hash != self.policy_engine.policy_hash
+        ):
+            return ToolResult(ok=False, error_code="stale_tool_action")
         try:
             parsed = tool.input_model.model_validate(dict(prepared.action.normalized_arguments))
         except ValidationError:
@@ -114,13 +126,24 @@ class ToolExecutor:
         facts = self._risk_facts(tool, parsed)
         if _facts_hash(facts) != prepared.target_facts_hash:
             return ToolResult(ok=False, error_code="stale_tool_action")
+        normalized = parsed.model_dump(mode="json")
+        expected_hash = tool_action_input_hash(
+            tool_name=current_definition.name,
+            tool_version=current_definition.tool_version,
+            workspace_identity=self.permissions.workspace_identity,
+            effects=current_definition.effects,
+            normalized_arguments=normalized,
+            risk_facts=facts,
+        )
+        if expected_hash != prepared.action.input_hash:
+            return ToolResult(ok=False, error_code="stale_tool_action")
         result = tool.execute(parsed)
         normalized = result if isinstance(result, ToolResult) else ToolResult.model_validate(result)
         if normalized.content is not None:
             rendered = json.dumps(
                 normalized.content, ensure_ascii=False, separators=(",", ":")
             ).encode("utf-8")
-            if len(rendered) > prepared.definition.max_output_bytes:
+            if len(rendered) > current_definition.max_output_bytes:
                 return ToolResult(ok=False, truncated=True, error_code="output_limit_exceeded")
         return normalized
 

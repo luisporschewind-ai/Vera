@@ -84,6 +84,7 @@ def test_approval_and_deny_never_call_the_implementation() -> None:
     denied = executor.prepare(run_id="run", name="echo", arguments={"path": "../outside"})
     assert denied.policy_decision.decision.value == "deny"
     assert executor.execute_allowed(denied).error_code == "policy_denied"
+    assert executor.execute_allowed(denied, approved=True).error_code == "policy_denied"
     assert tool.calls == 0
 
 
@@ -102,3 +103,13 @@ def test_execute_allowed_bounds_oversized_result() -> None:
     assert result.ok is False
     assert result.truncated is True
     assert result.error_code == "output_limit_exceeded"
+
+
+def test_execute_allowed_rejects_definition_or_input_binding_changes() -> None:
+    executor, tool = _executor()
+    prepared = executor.prepare(run_id="run", name="echo", arguments={"path": "a.txt"})
+    tool.definition = tool.definition.model_copy(update={"tool_version": 2})
+    result = executor.execute_allowed(prepared)
+    assert result.ok is False
+    assert result.error_code == "stale_tool_action"
+    assert tool.calls == 0

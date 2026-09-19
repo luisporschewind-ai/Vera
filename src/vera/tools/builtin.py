@@ -1,6 +1,6 @@
 """Built-in read-only tools registered by the CLI bootstrap."""
 
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from pydantic import BaseModel
 
@@ -149,6 +149,13 @@ class FindTool(_WorkspaceReadTool):
 
     def __init__(self, paths: WorkspacePaths) -> None:
         self.paths = paths
+
+    def risk_facts(self, arguments: BaseModel) -> ToolRiskFacts:
+        facts = super().risk_facts(arguments)
+        pattern = PurePosixPath(str(getattr(arguments, "pattern", "*")).replace("\\", "/"))
+        if pattern.is_absolute() or ".." in pattern.parts:
+            return facts.model_copy(update={"outside_workspace": True})
+        return facts
 
     def execute(self, arguments: FindInput) -> ToolResult:
         result = find_files(self.paths, arguments.pattern, arguments.path)

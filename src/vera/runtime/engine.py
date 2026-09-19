@@ -213,6 +213,7 @@ class VeraRuntime:
             content_detector or BaselinePromptInjectionDetector()
         )
         self.project_instructions = project_instructions or ProjectInstructionService()
+        self._uses_default_policy = policy_engine is None and command_policy is None
         if policy_engine is not None:
             self.policy_engine = policy_engine
         elif command_policy is not None:
@@ -243,8 +244,10 @@ class VeraRuntime:
 
     def _bind_default_policy_to_workspace(self, root: Path) -> None:
         snapshot = self.policy_engine.snapshot
-        if not isinstance(snapshot, EffectivePolicySnapshotV2) or (
-            snapshot.workspace_identity != "default"
+        if (
+            not self._uses_default_policy
+            or not isinstance(snapshot, EffectivePolicySnapshotV2)
+            or (snapshot.workspace_identity != "default")
         ):
             return
         bound = snapshot.model_copy(
@@ -277,13 +280,10 @@ class VeraRuntime:
                 project_denied_tools=snapshot.project_denied_tools,
             )
             engine = PolicyEngine(snapshot)
-        elif self.workspace_permissions is None and snapshot.workspace_identity != current_identity:
-            snapshot = snapshot.model_copy(update={"workspace_identity": current_identity})
-            engine = PolicyEngine(snapshot)
         permissions = self.workspace_permissions
         if permissions is None:
             permissions = WorkspacePermissionSnapshot(
-                workspace_identity=snapshot.workspace_identity,
+                workspace_identity=current_identity,
                 policy_major_version=snapshot.builtin_policy_version,
                 protected_roots_hash=snapshot.protected_roots_hash,
                 trusted=False,
