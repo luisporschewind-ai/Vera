@@ -56,7 +56,7 @@
 - 2026-09-18 实施授权：用户选择方案 2（Inline Execution），授权阶段八按已接受计划串行实施并创建计划内本地提交；不包含 push、merge 或远程变更。
 - 2026-09-18 任务 0059：ToolAction/Policy v2/workspace permission 基座完成；双轮安全审查关闭所有 Critical/Important，聚焦 `59 passed`、完整非 live `1176 passed, 2 deselected`，Ruff、格式、Mypy、wheel/sdist、diff 检查通过。下一项为 0060。
 - 2026-09-19 任务 0060（进行中）：canonical `read/grep/find/ls` 与 ToolExecutor 已接入；Runtime 普通只读路径不再调用 `ToolRegistry.execute`，高风险 ToolAction 的审批、快照恢复、批准后复验及 action resolved 持久化已接入；本轮审查修复补齐 `find` glob 越界、外部 symlink、执行阶段 action binding stale、显式 V2 policy identity 保护，以及 `approved=True` 不得绕过 `DENY`；相关 Core 分组 `386 passed`，CLI/Presentation `213 passed`，Ruff、格式、Mypy、diff 检查通过，最新 wheel/sdist 构建成功。完整非-live 本轮为 `1186 passed, 1 failed, 4 errors, 2 deselected`：既有终端滚动测试随后重跑通过，4 个打包测试受当前 DNS/PyPI `hatchling` 依赖解析阻塞；共同门禁未通过，不能进入 0061。
-- 2026-09-19 任务 0061（进行中）：新增 `FileMutationPlan`、只读 Planner、动作级 Checkpoint/Receipt、`write/edit` ToolExecutor 管线、审批恢复和累计 Diff；补齐落盘前输出上限、Checkpoint 绑定回滚和父目录竞态保护；workspace/runtime/recovery/persistence/contracts/tools/CLI/presentation 分组 `555 passed`，Ruff、格式、Mypy、diff 检查通过；Terminal.app 独立状态目录下首屏与窄窗口视觉走查通过，未进入 0062。
+- 2026-09-19 任务 0061（进行中）：新增 `FileMutationPlan`、只读 Planner、动作级 Checkpoint/Receipt、`write/edit` ToolExecutor 管线、审批恢复和累计 Diff；补齐落盘前输出上限、Checkpoint 绑定回滚和父目录竞态保护；相关分组 `555 passed`，Ruff、格式、Mypy、diff 检查通过；Terminal.app 独立状态目录下首屏与窄窗口视觉走查通过。最新共同 non-live 为 `1204 passed, 2 deselected, 4 errors`，4 个错误均为 DNS 无法解析 PyPI `hatchling` 的打包测试；未进入 0062。
 - 2026-09-18 规格审批：用户确认阶段八两份规格，允许继续编写实施计划；未授权产品代码、提交、推送或阶段状态切换。
 - 2026-09-18 路线校准（早期检查点）：ADR-0021 Accepted；先实施阶段八 Core 工具集、Policy v2 与原生 Git，再进入阶段九 Skills。当时规格仍为 Draft，尚未授权实现；后续规格接受与实施授权见上方记录。
 - 2026-09-17 阶段七封存：用户接受把剩余量化 dogfood 样本转入后续 Bug 收敛阶段规划，并原文确认「CLI 版本达到预期，可以封存」。任务 0041 与阶段七转 Complete。

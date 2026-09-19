@@ -71,4 +71,4 @@ class ExactEditInput(BaseModel):
 ## 当前证据与待完成项
 
 - 2026-09-19：Planner、Checkpoint-before-effect Applier、动作级 Receipt、Runtime `write/edit`、审批恢复、累计 Diff 与兼容清单已接入；补齐落盘前输出上限、Checkpoint 绑定回滚和父目录竞态保护；相关 workspace/runtime/recovery/persistence/contracts/tools/CLI/presentation 分组 `555 passed`；Ruff、格式、Mypy 与 `git diff --check` 通过。
-- 实现与本地审查修复已提交；真实 Terminal.app 独立 `VERA_STATE_DIR` 下完成首屏与窄窗口视觉走查，品牌、工作区/模型信息、输入框和状态栏无裁切；Step 10 的共同全量门禁仍受 0060 已记录的外部 DNS/PyPI setup 阻塞，故不进入 0062。
+- 实现与本地审查修复已提交；真实 Terminal.app 独立 `VERA_STATE_DIR` 下完成首屏与窄窗口视觉走查，品牌、工作区/模型信息、输入框和状态栏无裁切；最新共同 non-live 为 `1204 passed, 2 deselected, 4 errors`，4 个错误均为 DNS 无法解析 PyPI `hatchling` 的打包测试；Step 10 仍未通过，故不进入 0062。
