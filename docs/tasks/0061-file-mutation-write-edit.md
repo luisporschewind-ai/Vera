@@ -60,7 +60,7 @@ class ExactEditInput(BaseModel):
 - [x] **Step 8: 写恢复分类测试** — before 仍在=可重试、after 已在且 receipt 匹配=补记完成、第三种字节=manual_required；不得重复写入。
 - [x] **Step 9: 旧 Change Set 兼容回归** — legacy fixture、pending approval、partial apply、rollback 场景继续按旧 decoder 恢复；新代码不重写旧 Journal。
 - [ ] **Step 10: 运行局部与共同门禁** — `uv run pytest tests/workspace/test_file_mutation.py tests/runtime/test_write_edit_tools.py tests/recovery/test_file_mutation_resume.py tests/persistence/test_legacy_state.py -q` 后运行共同门禁。
-- [ ] **Step 11: 提交（仅用户授权后）** — 提交信息 `feat: add recoverable write and edit tools`。
+- [x] **Step 11: 提交（仅用户授权后）** — 实现提交 `f35b2e1 feat: add recoverable write and edit tools`；审查修复提交 `3b1fe2f fix: close file mutation safety gaps`。
 
 ## Done
 
@@ -71,4 +71,4 @@ class ExactEditInput(BaseModel):
 ## 当前证据与待完成项
 
 - 2026-09-19：Planner、Checkpoint-before-effect Applier、动作级 Receipt、Runtime `write/edit`、审批恢复、累计 Diff 与兼容清单已接入；补齐落盘前输出上限、Checkpoint 绑定回滚和父目录竞态保护；相关 workspace/runtime/recovery/persistence/contracts/tools/CLI/presentation 分组 `555 passed`；Ruff、格式、Mypy 与 `git diff --check` 通过。
-- 仍需完成共同全量门禁、最终审查和本任务提交；0060 的完整非-live 环境阻塞记录继续保留，不进入 0062。
+- 实现与本地审查修复已提交；Step 10 的共同全量门禁仍受 0060 已记录的外部 DNS/PyPI setup 阻塞，故不进入 0062。
