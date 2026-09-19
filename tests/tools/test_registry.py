@@ -37,3 +37,11 @@ def test_registry_validates_arguments_and_duplicate_names() -> None:
         pass
     else:
         raise AssertionError("duplicate tool must fail")
+
+
+def test_registry_definitions_are_versioned_and_do_not_dispatch() -> None:
+    registry = ToolRegistry()
+    registry.register(EchoTool())
+    definitions = registry.definitions()
+    assert [definition.name for definition in definitions] == ["echo"]
+    assert definitions[0].schema_version == 2

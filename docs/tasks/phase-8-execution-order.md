@@ -26,7 +26,7 @@
 | 顺序 | 任务 | 独立交付 | 进入下一项的门禁 |
 |---|---|---|---|
 | 1 | [0059 ToolAction、Policy v2 与 workspace trust](0059-tool-action-policy-v2-contracts.md) | Done：v2 契约、风险/模式、私有 trust/grant store | 已通过契约、Codec、权限矩阵和损坏存储测试；进入 0060 |
-| 2 | [0060 统一 ToolExecutor 与只读工具迁移](0060-unified-tool-executor-and-read-tools.md) | 所有普通工具统一准备/执行，canonical read/grep/find/ls | Runtime 不再直接 `registry.execute`；旧记录可读 |
+| 2 | [0060 统一 ToolExecutor 与只读工具迁移](0060-unified-tool-executor-and-read-tools.md) | In progress：统一 prepare/execute、canonical 只读工具和可恢复审批已落地 | 仍须完成边界矩阵、客户端对照和共同门禁；不得进入 0061 |
 | 3 | [0061 write/edit 与多动作文件变更](0061-file-mutation-write-edit.md) | FileMutationPlan、动作级 Checkpoint/Receipt、累计 Diff | stale/恢复/旧 Change Set 兼容矩阵通过 |
 | 4 | [0062 结构化 bash、授权作用域与 CLI](0062-structured-bash-and-permissions.md) | argv 命令、风险分类、trust/permissions UI | shell/提权/秘密/Git 绕过负例和三客户端对照通过 |
 | 5 | [0063 原生 Git 只读能力](0063-native-git-read-tools.md) | repository discovery、status/diff/log/show/branch-list | 稳定机器格式和特殊仓库矩阵通过 |

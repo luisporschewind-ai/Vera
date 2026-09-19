@@ -10,7 +10,7 @@ class ApprovalRequest(ContractModel):
     schema_version: Literal[1] = 1
     approval_id: str
     run_id: str
-    kind: Literal["changeset", "command", "recovery"]
+    kind: Literal["changeset", "command", "tool", "recovery"]
     target_id: str
     target_hash: str
     description: str

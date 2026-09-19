@@ -14,6 +14,7 @@ from vera.contracts.verification import VerificationCommand
 from vera.models.base import ModelMessage, ModelToolCall
 from vera.persistence.journal import EventJournal
 from vera.project_instructions import ProjectInstructionSet
+from vera.recovery.models import PersistedToolAction
 from vera.redaction import Redactor
 from vera.runtime.approval import ApprovalGate
 from vera.runtime.state import RunStateMachine
@@ -240,6 +241,7 @@ class RunContext:
     built_change_set: BuiltChangeSet | None = None
     pending_command: VerificationCommand | None = None
     """Planned VerificationCommand waiting for command approval; never a second derived copy."""
+    pending_tool_action: PersistedToolAction | None = None
     verification_index: int = 0
     verification_failed: bool = False
     last_tool_signature: str | None = None

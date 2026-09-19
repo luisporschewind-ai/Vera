@@ -28,6 +28,10 @@ class SearchResult(ToolResult):
     matches: list[SearchMatch] = Field(default_factory=list)
 
 
+class FindResult(ToolResult):
+    paths: list[str] = Field(default_factory=list)
+
+
 def read_file(paths: WorkspacePaths, path: str, max_bytes: int = 100_000) -> ReadFileResult:
     try:
         target = paths.resolve_read(path)
@@ -79,6 +83,29 @@ def search_text(paths: WorkspacePaths, query: str, path: str = ".") -> SearchRes
     for file_path in sorted(root.rglob("*")):
         _collect_search_matches(paths, file_path, query, matches)
     return SearchResult(ok=True, matches=matches)
+
+
+def find_files(paths: WorkspacePaths, pattern: str = "*", path: str = ".") -> FindResult:
+    """Discover regular files using a workspace-relative glob, in stable order."""
+
+    try:
+        root = paths.resolve_read(path)
+    except WorkspaceBoundaryError:
+        return FindResult(ok=False, error_code="workspace_boundary")
+    if root.is_file():
+        relative = root.relative_to(paths.root)
+        return FindResult(ok=True, paths=[relative.as_posix()] if root.match(pattern) else [])
+    if not root.is_dir():
+        return FindResult(ok=False, error_code="not_found")
+    found: list[str] = []
+    for file_path in sorted(root.rglob(pattern)):
+        relative = file_path.relative_to(paths.root)
+        if not file_path.is_file() or any(part in _IGNORED_DIRECTORIES for part in relative.parts):
+            continue
+        if paths.protected.is_protected(relative):
+            continue
+        found.append(relative.as_posix())
+    return FindResult(ok=True, paths=found)
 
 
 def _collect_search_matches(

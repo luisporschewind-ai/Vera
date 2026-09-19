@@ -12,6 +12,7 @@ from vera.contracts.commands import ResolveApproval
 class ApprovalKind(StrEnum):
     CHANGESET = "changeset"
     COMMAND = "command"
+    TOOL = "tool"
     RECOVERY = "recovery"
 
 

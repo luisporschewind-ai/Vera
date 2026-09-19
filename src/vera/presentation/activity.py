@@ -9,6 +9,10 @@ from vera.contracts import JsonValue
 from vera.contracts.events import EventEnvelope
 
 _STEP_LABELS = {
+    "read": "读取",
+    "ls": "列出",
+    "grep": "搜索",
+    "find": "发现",
     "read_file": "读取",
     "list_directory": "列出",
     "search_text": "搜索",
@@ -77,7 +81,7 @@ class ActivityPresenter:
         label, phase, active, severity = mapped
         if event.type == "tool.started":
             name = str(event.payload.get("name", ""))
-            if name in {"read_file", "list_directory", "search_text"}:
+            if name in {"read", "read_file", "ls", "grep", "find", "list_directory", "search_text"}:
                 label = "正在读取"
             elif name == "propose_changeset":
                 label = "正在规划修改"

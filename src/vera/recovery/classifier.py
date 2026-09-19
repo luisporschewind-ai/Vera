@@ -83,7 +83,22 @@ class RecoveryClassifier:
                 "safe_to_abandon",
             )
 
-        awaiting_approval = snapshot.stage is RecoveryStage.AWAITING_CHANGESET_APPROVAL
+        awaiting_approval = snapshot.stage in {
+            RecoveryStage.AWAITING_CHANGESET_APPROVAL,
+            RecoveryStage.AWAITING_TOOL_APPROVAL,
+        }
+        if (
+            snapshot.stage is RecoveryStage.AWAITING_TOOL_APPROVAL
+            and snapshot.pending_approval is not None
+            and snapshot.pending_tool_action is not None
+            and not snapshot.workspace_write_started
+        ):
+            return self._report(
+                snapshot,
+                evidence,
+                RecoveryClassification.RESUMABLE_APPROVAL,
+                "awaiting_tool_approval",
+            )
         if (
             awaiting_approval
             and all_before
@@ -94,7 +109,11 @@ class RecoveryClassifier:
                 snapshot,
                 evidence,
                 RecoveryClassification.RESUMABLE_APPROVAL,
-                "awaiting_changeset_approval",
+                (
+                    "awaiting_tool_approval"
+                    if snapshot.stage is RecoveryStage.AWAITING_TOOL_APPROVAL
+                    else "awaiting_changeset_approval"
+                ),
             )
 
         if snapshot.stage in _VERIFICATION_STAGES and all_after:

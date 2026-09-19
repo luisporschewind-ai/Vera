@@ -45,7 +45,7 @@
 - [持久化对话会话与个人主力 CLI](specs/2026-09-13-persistent-conversation-sessions.md)：Accepted；实施归入阶段七。
 - [项目指令发现与 `VERA.md` 初始化](specs/2026-09-14-project-instructions-and-vera-init.md)与 [ADR-0019](decisions/ADR-0019-native-vera-project-instructions.md)：Accepted；任务 0043 计划在会话恢复后、视觉原型前实施，普通启动不得静默写工程。
 - [阶段八：Core 工具集与风险分级 Policy v2](specs/2026-09-17-core-tooling-and-risk-tiered-policy.md)与 [Vera 原生 Git 能力](specs/2026-09-17-native-git-capability.md)：Accepted；[ADR-0021](decisions/ADR-0021-core-tools-before-desktop.md)已 Accepted，阶段八 In progress。
-- [阶段八执行顺序](tasks/phase-8-execution-order.md)：Accepted；按 0059–0066 串行推进，任务 0059 Done，0060 为下一项。
+- [阶段八执行顺序](tasks/phase-8-execution-order.md)：Accepted；按 0059–0066 串行推进，0059 Done，0060 In progress；不得进入 0061。
 - [阶段九：Core-native Skills](specs/2026-09-15-core-native-skills-system.md)与 [ADR-0020](decisions/ADR-0020-stage-core-native-skills.md)：Accepted；范围与安全边界不变，由 ADR-0021 顺延到阶段九，必须等待阶段八 Complete。
 - [ADR-0013：首个桌面底版采用 Electron](decisions/ADR-0013-electron-desktop-baseline.md)：Accepted；当前实施编号由 ADR-0021 调整为阶段十，只固定未来方向，当前不引入 Electron 代码或依赖。
 - [阶段十：桌面 Agent 工作台与 UI](specs/2026-09-12-desktop-agent-workbench-ui.md)：Draft；不启动阶段十。
@@ -55,6 +55,7 @@
 
 - 2026-09-18 实施授权：用户选择方案 2（Inline Execution），授权阶段八按已接受计划串行实施并创建计划内本地提交；不包含 push、merge 或远程变更。
 - 2026-09-18 任务 0059：ToolAction/Policy v2/workspace permission 基座完成；双轮安全审查关闭所有 Critical/Important，聚焦 `59 passed`、完整非 live `1176 passed, 2 deselected`，Ruff、格式、Mypy、wheel/sdist、diff 检查通过。下一项为 0060。
+- 2026-09-19 任务 0060（进行中）：canonical `read/grep/find/ls` 与 ToolExecutor 已接入；Runtime 普通只读路径不再调用 `ToolRegistry.execute`，高风险 ToolAction 的审批、快照恢复、批准后复验及 action resolved 持久化已接入；审批/恢复 focused `30 passed`，兼容组 `340 passed`，presentation `95 passed`，代表性及额外 E2E 分组通过；核心非 UI `448 passed`，CLI `118 passed`，wheel/sdist 构建成功；Ruff、格式、Mypy、diff 检查通过。安装态 wheel smoke 超过当前执行窗口，完整非-live 门禁仍未宣称通过，不能进入 0061。
 - 2026-09-18 规格审批：用户确认阶段八两份规格，允许继续编写实施计划；未授权产品代码、提交、推送或阶段状态切换。
 - 2026-09-18 路线校准（早期检查点）：ADR-0021 Accepted；先实施阶段八 Core 工具集、Policy v2 与原生 Git，再进入阶段九 Skills。当时规格仍为 Draft，尚未授权实现；后续规格接受与实施授权见上方记录。
 - 2026-09-17 阶段七封存：用户接受把剩余量化 dogfood 样本转入后续 Bug 收敛阶段规划，并原文确认「CLI 版本达到预期，可以封存」。任务 0041 与阶段七转 Complete。
@@ -110,7 +111,7 @@
 
 ## 下一检查点
 
-1. 在同一隔离工作树中按 TDD 开始任务 0060；不得绕过 0059 的 ToolAction/PolicyEngine/permission contract。
+1. 在同一隔离工作树中继续任务 0060；补齐输出上界/边界矩阵、客户端对照与可完成的共同门禁，不得进入 0061。
 2. 不自动删除、取消暂存或忽略 `VeraTestDemo` 索引里残留的 `AD build/`；未改 `.gitignore`。
 3. 阶段五仍缺 20 次真实 dogfood 与三类真实工程走查，不得把阶段五标为 Complete。
 4. 用户已确认「CLI 版本达到预期，可以封存」；该确认不自动授权下一阶段或 Electron 实施。

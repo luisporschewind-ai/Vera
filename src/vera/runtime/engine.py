@@ -59,11 +59,12 @@ from vera.persistence.operation_receipt import (
 from vera.persistence.recovery_snapshot import RecoverySnapshotError, RecoverySnapshotStore
 from vera.persistence.run_store import RunStore
 from vera.policy.engine import PolicyEngine
-from vera.policy.snapshot import EffectivePolicySnapshot
+from vera.policy.permissions import WorkspacePermissionSnapshot
+from vera.policy.snapshot import EffectivePolicySnapshotV2
 from vera.project_instructions import ProjectInstructionService
 from vera.recovery.coordinator import RecoveryCoordinator
 from vera.recovery.hydrator import RecoveryHydrationError, RecoveryHydrator
-from vera.recovery.models import PersistedChangeSet, RecoverySnapshot
+from vera.recovery.models import PersistedChangeSet, PersistedToolAction, RecoverySnapshot
 from vera.recovery.planner import RecoveryPlanError, RecoveryPlanner
 from vera.recovery.probe import workspace_identity
 from vera.recovery.resume import ResumeRejected, RunResumer
@@ -81,7 +82,8 @@ from vera.runtime.security import (
 )
 from vera.runtime.state import RunState, RunStateMachine
 from vera.tools.command_policy import CommandDecisionKind, CommandPolicy
-from vera.tools.definitions import ToolResult
+from vera.tools.definitions import ToolDefinitionV2, ToolResult
+from vera.tools.executor import PreparedToolAction, ToolExecutor, ToolPreparationError
 from vera.tools.registry import ToolRegistry
 from vera.verification.artifacts import (
     VerificationArtifactError,
@@ -197,6 +199,7 @@ class VeraRuntime:
         sleep: Callable[[float], None] = default_sleep,
         content_detector: ContentDetector | None = None,
         project_instructions: ProjectInstructionService | None = None,
+        workspace_permissions: WorkspacePermissionSnapshot | None = None,
     ) -> None:
         self.adapter = adapter
         self.registry = registry
@@ -215,12 +218,15 @@ class VeraRuntime:
         elif command_policy is not None:
             self.policy_engine = command_policy.engine
         else:
-            self.policy_engine = PolicyEngine(EffectivePolicySnapshot(workspace_identity="default"))
+            self.policy_engine = PolicyEngine(
+                EffectivePolicySnapshotV2(workspace_identity="default")
+            )
         self.command_policy = command_policy or CommandPolicy(
             self.policy_engine.snapshot.user_allowed_command_prefixes,
             policy_engine=self.policy_engine,
             workspace_identity=self.policy_engine.snapshot.workspace_identity,
         )
+        self.workspace_permissions = workspace_permissions
         self.runs: dict[str, RunContext] = {}
         self.snapshot_store = snapshot_store or RecoverySnapshotStore(state_dir)
         self.receipts = OperationReceiptStore(state_dir)
@@ -234,6 +240,60 @@ class VeraRuntime:
     def _policy_binding(self, root: Path) -> tuple[str, str]:
         identity = workspace_identity(root, self.installation_id)
         return identity, self.policy_engine.policy_hash
+
+    def _bind_default_policy_to_workspace(self, root: Path) -> None:
+        snapshot = self.policy_engine.snapshot
+        if not isinstance(snapshot, EffectivePolicySnapshotV2) or (
+            snapshot.workspace_identity != "default"
+        ):
+            return
+        bound = snapshot.model_copy(
+            update={"workspace_identity": workspace_identity(root, self.installation_id)}
+        )
+        self.policy_engine = PolicyEngine(bound)
+        self.command_policy = CommandPolicy(
+            bound.user_allowed_command_prefixes,
+            policy_engine=self.policy_engine,
+            workspace_identity=bound.workspace_identity,
+        )
+
+    def _tool_executor(self, context: RunContext) -> ToolExecutor:
+        """Bind ordinary tools to the current v2 Policy before they can execute.
+
+        A v1 engine can still exist while resuming historical Phase-6 state.  It is
+        projected to its equivalent v2 fields solely for ordinary read-tool
+        compatibility; new bootstraps always inject a native v2 engine.
+        """
+
+        snapshot = self.policy_engine.snapshot
+        engine = self.policy_engine
+        current_identity = workspace_identity(context.command.workspace_root, self.installation_id)
+        if not isinstance(snapshot, EffectivePolicySnapshotV2):
+            snapshot = EffectivePolicySnapshotV2(
+                workspace_identity=current_identity,
+                protected_path_globs=snapshot.protected_path_globs,
+                user_allowed_command_prefixes=snapshot.user_allowed_command_prefixes,
+                project_denied_path_globs=snapshot.project_denied_path_globs,
+                project_denied_tools=snapshot.project_denied_tools,
+            )
+            engine = PolicyEngine(snapshot)
+        elif self.workspace_permissions is None and snapshot.workspace_identity != current_identity:
+            snapshot = snapshot.model_copy(update={"workspace_identity": current_identity})
+            engine = PolicyEngine(snapshot)
+        permissions = self.workspace_permissions
+        if permissions is None:
+            permissions = WorkspacePermissionSnapshot(
+                workspace_identity=snapshot.workspace_identity,
+                policy_major_version=snapshot.builtin_policy_version,
+                protected_roots_hash=snapshot.protected_roots_hash,
+                trusted=False,
+            )
+        return ToolExecutor(
+            self.registry,
+            engine,
+            permissions,
+            goal_authorized=bool(context.command.goal.strip()),
+        )
 
     def _security_approval_kwargs(self, context: RunContext) -> dict[str, Any]:
         return {
@@ -402,6 +462,16 @@ class VeraRuntime:
             if plan is not None:
                 payload["artifact_profile"] = plan.profile
                 payload["artifact_root"] = plan.root
+        if (
+            context is not None
+            and request.kind == ApprovalKind.TOOL.value
+            and context.pending_tool_action is not None
+        ):
+            pending = context.pending_tool_action
+            payload["tool_name"] = pending.action.tool_name
+            payload["action_id"] = pending.action.action_id
+            payload["input_hash"] = pending.action.input_hash
+            payload["target_facts_hash"] = pending.target_facts_hash
         return payload
 
     def _event(
@@ -516,6 +586,7 @@ class VeraRuntime:
             stage=stage,
             last_event_sequence=sequence,
             built_changeset=built,
+            pending_tool_action=context.pending_tool_action,
             checkpoint_id=checkpoint_id,
             pending_approval=context.approval_gate.pending_approval,
             verification_index=context.verification_index,
@@ -557,38 +628,13 @@ class VeraRuntime:
             context.snapshot_created_at = snapshot.created_at
         return event
 
-    def _definitions(self) -> tuple[dict[str, Any], ...]:
-        definitions: list[dict[str, Any]] = []
-        for name in self.registry.definitions():
-            tool = self.registry.get(name)
-            if tool is None:
-                continue
-            model = tool.input_model
-            definitions.append(
-                {
-                    "name": name,
-                    "description": getattr(tool, "description", name),
-                    "input_schema": model.model_json_schema(),
-                }
-            )
-        definitions.extend(
-            [
-                {
-                    "name": "propose_changeset",
-                    "description": "propose a reviewable set of file changes",
-                    "input_schema": ProposalInput.model_json_schema(),
-                }
-            ]
-        )
-        return tuple(definitions)
+    def _definitions(self) -> tuple[ToolDefinitionV2, ...]:
+        return self.registry.definitions()
 
     def _model_request(self, context: RunContext) -> ModelRequest:
-        from vera.tools.definitions import ToolDefinition
-
-        tools = tuple(ToolDefinition(**definition) for definition in self._definitions())
         return ModelRequest(
             messages=tuple(context.messages),
-            tools=tools,
+            tools=self._definitions(),
             max_output_tokens=4_096,
         )
 
@@ -1001,6 +1047,21 @@ class VeraRuntime:
                     approval_id=request.approval_id,
                 )
                 return
+        if request.kind == ApprovalKind.TOOL.value:
+            pending_tool = context.pending_tool_action
+            if (
+                pending_tool is None
+                or pending_tool.action.action_id != request.target_id
+                or pending_tool.action.input_hash != request.target_hash
+                or pending_tool.target_facts_hash != request.fact_hash
+            ):
+                yield from self._expire_approval(
+                    context,
+                    command,
+                    "tool_binding_changed",
+                    approval_id=request.approval_id,
+                )
+                return
         yield self._event(
             context,
             "approval.resolved",
@@ -1051,6 +1112,95 @@ class VeraRuntime:
                 )
                 return
             yield from self._apply_recovery_plan(context, request)
+            return
+        if request.kind == ApprovalKind.TOOL.value:
+            pending_tool = context.pending_tool_action
+            assert pending_tool is not None
+            context.pending_tool_action = None
+            call = ModelToolCall(
+                call_id=pending_tool.call_id,
+                name=pending_tool.action.tool_name,
+                arguments=dict(pending_tool.action.normalized_arguments),
+            )
+            if decision == "reject":
+                yield from self._emit_tool_result(
+                    context,
+                    call,
+                    ToolResult(ok=False, error_code="approval_rejected"),
+                )
+                context.machine.transition(RunState.DISCOVERING)
+                yield self._stable_event(
+                    context,
+                    "tool.action_resolved",
+                    {"action_id": pending_tool.action.action_id, "status": "rejected"},
+                    RecoveryStage.STARTED,
+                )
+                for output in self._drive(context):
+                    if isinstance(output, EventEnvelope):
+                        yield output
+                return
+            executor = self._tool_executor(context)
+            implementation = executor.registry.implementation(pending_tool.action.tool_name)
+            if implementation is None:
+                yield from self._expire_approval(
+                    context,
+                    command,
+                    "unknown_tool",
+                    approval_id=request.approval_id,
+                )
+                return
+            try:
+                parsed = implementation.input_model.model_validate(
+                    dict(pending_tool.action.normalized_arguments)
+                )
+                current_facts = executor._risk_facts(implementation, parsed)
+            except Exception:
+                yield from self._expire_approval(
+                    context,
+                    command,
+                    "tool_fact_changed",
+                    approval_id=request.approval_id,
+                )
+                return
+            if executor.policy_engine.policy_hash != request.policy_hash:
+                yield from self._expire_approval(
+                    context,
+                    command,
+                    "policy_changed",
+                    approval_id=request.approval_id,
+                )
+                return
+            prepared = PreparedToolAction(
+                action=pending_tool.action,
+                definition=pending_tool.definition,
+                parsed_arguments=parsed,
+                policy_decision=pending_tool.policy_decision,
+                target_facts_hash=pending_tool.target_facts_hash,
+            )
+            if executor.facts_hash(current_facts) != pending_tool.target_facts_hash:
+                yield from self._expire_approval(
+                    context,
+                    command,
+                    "tool_fact_changed",
+                    approval_id=request.approval_id,
+                )
+                return
+            tool_result = executor.execute_allowed(prepared, approved=True)
+            yield from self._emit_tool_result(context, call, tool_result)
+            context.machine.transition(RunState.DISCOVERING)
+            yield self._stable_event(
+                context,
+                "tool.action_resolved",
+                {
+                    "action_id": pending_tool.action.action_id,
+                    "status": "completed" if tool_result.ok else "failed",
+                    "error_code": tool_result.error_code,
+                },
+                RecoveryStage.STARTED,
+            )
+            for output in self._drive(context):
+                if isinstance(output, EventEnvelope):
+                    yield output
             return
         if decision == "reject":
             context.machine.transition(RunState.CANCELLED)
@@ -1175,13 +1325,76 @@ class VeraRuntime:
         if call.name == "propose_changeset":
             yield from self._propose(context, call)
             return
-        result = self.registry.execute(call.name, call.arguments)
+        executor = self._tool_executor(context)
+        try:
+            prepared = executor.prepare(
+                run_id=context.run_id, name=call.name, arguments=call.arguments
+            )
+        except ToolPreparationError as exc:
+            yield from self._reject_tool(
+                context, call, {"error": exc.error_code, "reason_code": exc.error_code}
+            )
+            return
+        yield self._event(
+            context,
+            "tool.policy_decided",
+            {
+                "action_id": prepared.action.action_id,
+                "name": prepared.action.tool_name,
+                "decision": prepared.policy_decision.decision.value,
+                "policy_hash": prepared.policy_decision.policy_hash,
+            },
+        )
+        yield self._event(
+            context,
+            "tool.action_prepared",
+            {
+                "action_id": prepared.action.action_id,
+                "input_hash": prepared.action.input_hash,
+                "target_facts_hash": prepared.target_facts_hash,
+                "name": prepared.action.tool_name,
+            },
+        )
+        if prepared.policy_decision.decision.value == "approval_required":
+            context.pending_tool_action = PersistedToolAction(
+                call_id=call.call_id,
+                action=prepared.action,
+                definition=prepared.definition,
+                policy_decision=prepared.policy_decision,
+                target_facts_hash=prepared.target_facts_hash,
+            )
+            context.machine.transition(RunState.AWAITING_APPROVAL)
+            request = context.approval_gate.require(
+                ApprovalKind.TOOL,
+                prepared.action.action_id,
+                prepared.action.input_hash,
+                f"execute tool {prepared.action.tool_name}",
+                "high",
+                workspace_identity=prepared.action.workspace_identity,
+                policy_hash=prepared.policy_decision.policy_hash,
+                fact_hash=prepared.target_facts_hash,
+                **self._security_approval_kwargs(context),
+            )
+            yield self._stable_event(
+                context,
+                "approval.required",
+                self._approval_payload(request, context),
+                RecoveryStage.AWAITING_TOOL_APPROVAL,
+            )
+            return
+        result = executor.execute_allowed(prepared)
+        yield from self._emit_tool_result(context, call, result)
+
+    def _emit_tool_result(
+        self, context: RunContext, call: ModelToolCall, result: ToolResult
+    ) -> Iterator[EventEnvelope]:
+        target = tool_call_target(call)
         origin = call.name
         source_kind = "tool_output"
         if isinstance(call.arguments, dict) and call.arguments.get("path") is not None:
             relative = str(call.arguments.get("path"))
             origin = f"{call.name}:{relative}"
-            if call.name == "read_file":
+            if call.name in {"read", "read_file"}:
                 source_kind = source_kind_for_path(relative)
         if result.content is None:
             text = ""
@@ -1219,7 +1432,10 @@ class VeraRuntime:
     def _complete_with_retry(
         self, context: RunContext, request: ModelRequest
     ) -> Iterator[EventEnvelope | StreamFrame | ModelTurn | None]:
-        has_tools = bool(request.tools)
+        # The Runtime protocol remains tool-capable even while a compatibility
+        # fixture has an empty registry; providers must reject that mismatch
+        # before receiving a request.
+        has_tools = True
         if not self.adapter.capabilities.supports_request(has_tools=has_tools):
             error = ModelProviderError(
                 ModelErrorCode.CAPABILITY_MISMATCH,
@@ -1620,6 +1836,7 @@ class VeraRuntime:
             return
         run_id = f"run_{uuid4().hex}"
         kind = "compaction" if command.mode == "compact" else "task"
+        self._bind_default_policy_to_workspace(command.workspace_root)
         goal_envelope = build_content_envelope(
             command.goal, source_kind="user_goal", origin="start_run.goal"
         )
@@ -1835,6 +2052,7 @@ class VeraRuntime:
         except (ResumeRejected, RecoveryHydrationError, RecoverySnapshotError, OSError, ValueError):
             yield from self._reject_resume(report)
             return
+        self._bind_default_policy_to_workspace(context.command.workspace_root)
         self.runs[context.run_id] = context
         if report.classification is RecoveryClassification.RECOVERABLE_PARTIAL_APPLY:
             yield from self._propose_partial_restore(context, report)

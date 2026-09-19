@@ -16,6 +16,9 @@ from vera.contracts.approvals import ApprovalRequest
 from vera.contracts.changes import ChangeSet
 from vera.contracts.commands import StartRun
 from vera.contracts.recovery import RecoveryPlan, RecoveryStage
+from vera.contracts.tool_actions import ToolAction
+from vera.policy.models import PolicyDecision
+from vera.tools.definitions import ToolDefinitionV2
 from vera.workspace.changeset import BuiltChangeSet
 from vera.workspace.paths import PathFact
 
@@ -83,6 +86,16 @@ class PersistedChangeSet(FrozenPrivateModel):
         return self
 
 
+class PersistedToolAction(FrozenPrivateModel):
+    """Exact tool plan retained while a Core approval is pending."""
+
+    call_id: str
+    action: ToolAction
+    definition: ToolDefinitionV2
+    policy_decision: PolicyDecision
+    target_facts_hash: str
+
+
 class RecoverySnapshot(FrozenPrivateModel):
     snapshot_version: Literal[1] = 1
     run_id: str
@@ -93,6 +106,7 @@ class RecoverySnapshot(FrozenPrivateModel):
     last_event_sequence: int
     built_changeset: PersistedChangeSet | None = None
     """Change Set bytes include planned verification argv/profile/root when present."""
+    pending_tool_action: PersistedToolAction | None = None
     checkpoint_id: str | None = None
     pending_approval: ApprovalRequest | None = None
     verification_index: int = 0
