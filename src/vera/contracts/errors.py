@@ -20,6 +20,17 @@ class CoreErrorCode(StrEnum):
     WRITE_INTERRUPTED = "write_interrupted"
     WRITE_FAILED = "write_failed"
     FILE_BUSY = "file_busy"
+    SKILL_NOT_FOUND = "skill_not_found"
+    SKILL_MANIFEST_MISSING = "skill_manifest_missing"
+    SKILL_MANIFEST_INVALID = "skill_manifest_invalid"
+    SKILL_MANIFEST_VERSION_UNSUPPORTED = "skill_manifest_version_unsupported"
+    SKILL_VERSION_INCOMPATIBLE = "skill_version_incompatible"
+    SKILL_NAME_CONFLICT = "skill_name_conflict"
+    SKILL_PATH_ESCAPE = "skill_path_escape"
+    SKILL_SYMLINK_REFUSED = "skill_symlink_refused"
+    SKILL_RESOURCE_MISSING = "skill_resource_missing"
+    SKILL_RESOURCE_INVALID = "skill_resource_invalid"
+    SKILL_PACKAGE_LIMIT_EXCEEDED = "skill_package_limit_exceeded"
 
 
 _ERRNO_CODES: dict[int, CoreErrorCode] = {
