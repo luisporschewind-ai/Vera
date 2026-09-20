@@ -45,7 +45,7 @@
 - [持久化对话会话与个人主力 CLI](specs/2026-09-13-persistent-conversation-sessions.md)：Accepted；实施归入阶段七。
 - [项目指令发现与 `VERA.md` 初始化](specs/2026-09-14-project-instructions-and-vera-init.md)与 [ADR-0019](decisions/ADR-0019-native-vera-project-instructions.md)：Accepted；任务 0043 计划在会话恢复后、视觉原型前实施，普通启动不得静默写工程。
 - [阶段八：Core 工具集与风险分级 Policy v2](specs/2026-09-17-core-tooling-and-risk-tiered-policy.md)与 [Vera 原生 Git 能力](specs/2026-09-17-native-git-capability.md)：Accepted；[ADR-0021](decisions/ADR-0021-core-tools-before-desktop.md)已 Accepted，阶段八 In progress。
-- [阶段八执行顺序](tasks/phase-8-execution-order.md)：Accepted；按 0059–0066 串行推进，0059–0064 Done；0065 Git Hooks、恢复与分支进行中。
+- [阶段八执行顺序](tasks/phase-8-execution-order.md)：Accepted；按 0059–0066 串行推进，0059–0065 Done；0066 已完成自动验收并进入 Ready for manual acceptance，Node/TypeScript 与本轮 Terminal.app 人工验收仍待完成。
 - [阶段九：Core-native Skills](specs/2026-09-15-core-native-skills-system.md)与 [ADR-0020](decisions/ADR-0020-stage-core-native-skills.md)：Accepted；范围与安全边界不变，由 ADR-0021 顺延到阶段九，必须等待阶段八 Complete。
 - [ADR-0013：首个桌面底版采用 Electron](decisions/ADR-0013-electron-desktop-baseline.md)：Accepted；当前实施编号由 ADR-0021 调整为阶段十，只固定未来方向，当前不引入 Electron 代码或依赖。
 - [阶段十：桌面 Agent 工作台与 UI](specs/2026-09-12-desktop-agent-workbench-ui.md)：Draft；不启动阶段十。
@@ -61,6 +61,7 @@
 - 2026-09-20 任务 0063（已完成）：新增 Core-owned native Git discovery、porcelain-v2 status parser、workspace-bounded `status/diff/log/show/branch-list`、binary summary、linked worktree/submodule/sparse/unborn/detached/operation-state fixtures；五个 canonical Git read tools 已注册并纳入 CompatibilityManifest，`balanced` 下只读 Git 自动允许；通用 `bash` 的 Git 写子命令返回 `use_native_git_tool` 并拒绝执行。专项与受影响回归 `47 passed`，全量 non-live `1255 passed, 2 deselected, 4 errors`；4 个 error 均为 wheel/sdist fixture 无法解析 PyPI 的 hatchling 依赖，未伪造通过。Ruff、format、影响范围 Mypy 通过；本地提交 `c37af18`，未合并、未推送。
 - 2026-09-20 任务 0064（已完成）：新增 `GitCommitPlan`、path-scoped `git_commit`、私有 index backup/失败恢复、消息安全、父提交/目标 blob/路径集合/剩余 staged diff 反向验证，并接入 ToolExecutor、Policy/Approval、Receipt 与 CompatibilityManifest；临时仓库覆盖多路径、无关 staged、新建/删除/重命名及特殊路径。专项 `22 passed`；全量 non-live `1268 passed, 2 deselected, 4 errors`，4 个 error 均为 wheel/e2e setup 无法解析 PyPI 的 hatchling 依赖；Ruff、format、Mypy、`git diff --check` 通过。本地提交 `de93fb2`、`781e756`，未合并、未推送。Hook/签名/崩溃幂等恢复/分支动作保留给 0065。
 - 2026-09-20 任务 0065（已完成）：已落地 Hook facts 与 trusted/untrusted Policy 边界、签名配置/失败稳定错误、Hook 越界修改检测、Commit receipt facts 与不重复恢复、branch create/switch 及 ToolExecutor 接入；补齐 Run 级 `PendingGitOperation` 快照、Git 生命周期事件和 TUI/Plain/JSON 共用呈现。受影响测试 `70 passed`，全量 non-live `1295 passed, 2 deselected, 7 warnings`；Ruff、format、Mypy、`git diff --check` 通过。本地提交 `6d0e37f`、`aeec20e`、`494b095`，未合并、未推送。
+- 2026-09-20 任务 0066（自动验收完成，待人工确认）：新增阶段八 E2E/native Git/client parity/PTY 矩阵，修复安装态 recovery→tools Git 循环导入；全量 non-live `1307 passed, 2 deselected, 8 warnings in 313.68s`，阶段八新增 `10 passed`，安全/拒绝/恢复专项 `35 passed`；Ruff、format、Mypy、wheel/sdist、`git diff --check` 通过，仓库外 installed wheel smoke `All checks passed!`。Python dogfood 通过并完成原生精确 commit `5e702ba`，Swift/Xcode 安全副本在外部 DerivedData 与 `CODE_SIGNING_ALLOWED=NO` 模拟器边界下构建成功并完成原生精确 commit `78afaed`；Node/TypeScript 因 `.ts` 测试发现 0 个且离线 `tsc` `ENOTCACHED` 暂阻塞。本地提交待在本工作树收口，未合并、未推送。
 - 2026-09-18 规格审批：用户确认阶段八两份规格，允许继续编写实施计划；未授权产品代码、提交、推送或阶段状态切换。
 - 2026-09-18 路线校准（早期检查点）：ADR-0021 Accepted；先实施阶段八 Core 工具集、Policy v2 与原生 Git，再进入阶段九 Skills。当时规格仍为 Draft，尚未授权实现；后续规格接受与实施授权见上方记录。
 - 2026-09-17 阶段七封存：用户接受把剩余量化 dogfood 样本转入后续 Bug 收敛阶段规划，并原文确认「CLI 版本达到预期，可以封存」。任务 0041 与阶段七转 Complete。
@@ -116,7 +117,7 @@
 
 ## 下一检查点
 
-1. 评估并单独授权 0066。共同 wheel/sdist 安装态门禁需在依赖网络可用时另行验证。
+1. 完成 0066 的真实 Terminal.app 人工验收，并重新提供可用 TypeScript runner/compiler 后复验 Node/TypeScript；用户明确确认阶段八后，才可把阶段八标为 Complete。
 2. 不自动删除、取消暂存或忽略 `VeraTestDemo` 索引里残留的 `AD build/`；未改 `.gitignore`。
 3. 阶段五仍缺 20 次真实 dogfood 与三类真实工程走查，不得把阶段五标为 Complete。
 4. 用户已确认「CLI 版本达到预期，可以封存」；该确认不自动授权下一阶段或 Electron 实施。

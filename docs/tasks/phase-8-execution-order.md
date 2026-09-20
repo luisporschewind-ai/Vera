@@ -32,7 +32,7 @@
 | 5 | [0063 原生 Git 只读能力](0063-native-git-read-tools.md) | Done：`c37af18`，repository discovery、status/diff/log/show/branch-list 已实现；共同 wheel/sdist 受 DNS/PyPI 阻塞 | 本地提交已完成；0064 可开始，但必须保留 DNS 阻塞证据 |
 | 6 | [0064 GitCommitPlan 与精确提交](0064-native-git-commit.md) | Done：`de93fb2`、`781e756`，path-scoped Commit、index 保全、结果反向验证 | 0064 已完成，进入 0065 |
 | 7 | [0065 Git Hooks、恢复与分支](0065-git-hooks-recovery-and-branches.md) | Done：`6d0e37f`、`aeec20e`、`494b095`；Hook/签名、Commit 恢复、branch create/switch、Run 级事件/快照与客户端对照均完成 | 下一步仅评估 0066，需单独授权 |
-| 8 | [0066 阶段八验收与真实 dogfood](0066-phase-8-tooling-git-acceptance.md) | 完整门禁、wheel、PTY、三类工程 Terminal.app 证据 | 用户确认后才可把阶段八标为 Complete |
+| 8 | [0066 阶段八验收与真实 dogfood](0066-phase-8-tooling-git-acceptance.md) | Ready for manual acceptance：自动门禁、wheel、PTY、Python/Swift 副本证据已记录；Node/TypeScript 与 Terminal.app 待复验 | 用户确认后才可把阶段八标为 Complete |
 
 任务严格按 0059 → 0060 → 0061 → 0062 → 0063 → 0064 → 0065 → 0066 执行。0059–0062 冻结工具与 Policy 基座后才允许接入 Git；0064 不得与 0065 并行修改 GitService、Receipt 或恢复逻辑。
 
