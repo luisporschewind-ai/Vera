@@ -89,6 +89,8 @@ All checks passed!
 
 ## 5. 未运行与人工门
 
+- 原生 Terminal.app 前置测试已执行：`vera --help` exit 0；`vera --version` exit 0 并显示 `0.1.0+d7f5932`；`TERM=dumb vera` exit 2 并提示使用 `--plain`/`--json`；`vera eval validate/list/run --json` 分别 exit 0，14 个离线 eval suite 为 `pass`。
+- 该 Terminal.app 前置测试没有改变隔离工作树；当前新增的 `.pytest_cache`/`__pycache__` 均为既有 ignored cache，`git status --short --branch` 仍干净。
 - 未运行真实 Provider、真实 API Key、网络依赖安装和 `git push`；这些不是本任务的离线自动门禁，且 `bash` 的远程 Git 写操作仍保持拒绝边界。
 - 未完成真实 Terminal.app 的本轮人工全流程验收；PTY 只能证明文本/无 ANSI 契约，不能替代原生 Terminal.app 视觉和交互验收。
 - 因此本证据只允许将 0066 和阶段八推进到 `Ready for manual acceptance`。只有用户明确确认阶段八结果后，才可将任务/阶段标为 Done/Complete；阶段九仍需独立授权。
