@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**状态：** In progress；已获用户继续推进授权，当前仍不提交、不合并、不推送
+**状态：** Done；已完成并创建本地提交，未合并、未推送
 **Goal：** 实现 `shell=False` 的结构化 `bash` 工具、命令风险分类、一次/Run/workspace 授权和统一 CLI 可见性。
 **Architecture：** `BashTool` 只生成 `CommandActionPlan`；CommandClassifier 根据 argv/cwd/effects/目标授权分类，ProcessSupervisor 是唯一进程执行器。CLI 只展示 Core 返回的 trust、模式、决策和授权摘要。
 **Tech Stack：** Python 3.12、Pydantic 2、ProcessSupervisor、Typer、Textual、pytest/PTY。
@@ -57,7 +57,7 @@ class CommandActionPlan(ContractModel):
 - [x] **Step 8: CLI 状态与审批卡** — `/status` 显示 trust/mode/sandbox；`/permissions` 支持查看、trust、revoke 并原子持久化；审批卡仅展示 Core 提供的可用作用域。
 - [x] **Step 9: 三客户端和 PTY 对照** — TUI/Plain/JSON 对同一决策语义一致；60×16 PTY 下可见 effect、cwd、argv 摘要与风险，正文仍脱敏。
 - [x] **Step 10: 运行局部与共同门禁** — 局部专项 `94 passed`；全量 `1241 passed, 2 skipped, 7 warnings`；Ruff、format、Mypy、`git diff --check` 与离线 wheel/sdist 均通过。2 个 skip 为 live provider 测试，未伪造为通过。
-- [ ] **Step 11: 提交（仅用户授权后）** — 提交信息 `feat: add structured bash permissions`。
+- [x] **Step 11: 提交** — `7cbdfd9 feat: add structured bash permissions`；CLI 权限摘要补齐见后续收口提交。
 
 ## Done
 
