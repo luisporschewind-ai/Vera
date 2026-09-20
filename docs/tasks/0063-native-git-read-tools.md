@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**状态：** Implemented；已授权串行实施，依赖 0062 完成；当前不提交、不合并、不推送
+**状态：** Done；已完成并创建本地提交，未合并、未推送
 **Goal：** 提供稳定、结构化、无网络的 repository discovery、status/diff/log/show/branch-list 工具。
 **Architecture：** `GitService` 只通过 ProcessSupervisor 执行固定 argv；Parser 只消费 Git 稳定机器格式。所有模型可见路径经过 workspace prefix 过滤，Git stderr 只作脱敏诊断。
 **Tech Stack：** Python 3.12、系统 Git CLI、ProcessSupervisor、Pydantic 2、pytest 临时仓库。
@@ -112,7 +112,7 @@ class GitService:
 - [x] **Step 8: 注册原生工具** — `git_status/git_diff/git_log/git_show/git_branch_list` effects 为 workspace_read/process_execute；只读 Git 在 Policy v2 下自动允许，bash Git 写入返回 `use_native_git_tool` 且不执行。
 - [x] **Step 9: Event/兼容测试** — workspace prefix 过滤、protected path 拒绝、结构化兼容清单 additive；公共结果不携带 stderr、凭据或 workspace 外文件条目。
 - [x] **Step 10: 运行局部与共同门禁** — 0063 专项与受影响回归 `47 passed`；全量 non-live `1255 passed, 2 deselected, 4 errors`。4 个 error 均为 wheel/sdist fixture 因 DNS 无法解析 PyPI hatchling 依赖阻塞；Ruff、format、影响范围 Mypy、`git diff --check` 通过，保留阻塞证据，不伪造通过。
-- [ ] **Step 11: 提交（仅用户授权后）** — 提交信息 `feat: add native git read tools`。
+- [x] **Step 11: 提交** — `c37af18 feat: add native git read tools`。
 
 ## Done
 

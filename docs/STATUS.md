@@ -45,7 +45,7 @@
 - [持久化对话会话与个人主力 CLI](specs/2026-09-13-persistent-conversation-sessions.md)：Accepted；实施归入阶段七。
 - [项目指令发现与 `VERA.md` 初始化](specs/2026-09-14-project-instructions-and-vera-init.md)与 [ADR-0019](decisions/ADR-0019-native-vera-project-instructions.md)：Accepted；任务 0043 计划在会话恢复后、视觉原型前实施，普通启动不得静默写工程。
 - [阶段八：Core 工具集与风险分级 Policy v2](specs/2026-09-17-core-tooling-and-risk-tiered-policy.md)与 [Vera 原生 Git 能力](specs/2026-09-17-native-git-capability.md)：Accepted；[ADR-0021](decisions/ADR-0021-core-tools-before-desktop.md)已 Accepted，阶段八 In progress。
-- [阶段八执行顺序](tasks/phase-8-execution-order.md)：Accepted；按 0059–0066 串行推进，0059、0060、0061 Done；0062 与 0063 实现及功能门禁已完成，均保留在当前隔离分支未提交，暂不进入 0064。
+- [阶段八执行顺序](tasks/phase-8-execution-order.md)：Accepted；按 0059–0066 串行推进，0059–0063 Done；0064 GitCommitPlan 与精确提交现为当前任务。
 - [阶段九：Core-native Skills](specs/2026-09-15-core-native-skills-system.md)与 [ADR-0020](decisions/ADR-0020-stage-core-native-skills.md)：Accepted；范围与安全边界不变，由 ADR-0021 顺延到阶段九，必须等待阶段八 Complete。
 - [ADR-0013：首个桌面底版采用 Electron](decisions/ADR-0013-electron-desktop-baseline.md)：Accepted；当前实施编号由 ADR-0021 调整为阶段十，只固定未来方向，当前不引入 Electron 代码或依赖。
 - [阶段十：桌面 Agent 工作台与 UI](specs/2026-09-12-desktop-agent-workbench-ui.md)：Draft；不启动阶段十。
@@ -58,7 +58,7 @@
 - 2026-09-19 任务 0060（已完成）：canonical `read/grep/find/ls` 与 ToolExecutor 已接入；Runtime 普通只读路径不再调用 `ToolRegistry.execute`，高风险 ToolAction 的审批、快照恢复、批准后复验及 action resolved 持久化已接入；本轮审查修复补齐 `find` glob 越界、外部 symlink、执行阶段 action binding stale、显式 V2 policy identity 保护，以及 `approved=True` 不得绕过 `DENY`；相关 Core 分组 `386 passed`，CLI/Presentation `213 passed`；共同 non-live `1208 passed, 2 deselected, 6 warnings`，Ruff、格式、Mypy、wheel/sdist、diff 检查全部通过。
 - 2026-09-19 任务 0061（已完成）：新增 `FileMutationPlan`、只读 Planner、动作级 Checkpoint/Receipt、`write/edit` ToolExecutor 管线、审批恢复和累计 Diff；补齐落盘前输出上限、Checkpoint 绑定回滚和父目录竞态保护；相关分组 `555 passed`；共同 non-live `1208 passed, 2 deselected, 6 warnings`，Ruff、格式、Mypy、wheel/sdist、diff 检查全部通过；Terminal.app 独立状态目录下首屏与窄窗口视觉走查通过。
 - 2026-09-19 任务 0062（实现与门禁完成，待本地提交）：新增结构化 `BashInput`/`CommandActionPlan`、`BashTool`、命令风险矩阵与 `CommandClassifier`，接入 ToolExecutor、最小子进程环境、process Receipt/恢复和 `/permissions [trust|revoke]` 持久化可见性；局部专项 `94 passed`，全量 `1241 passed, 2 skipped, 7 warnings`；Ruff、format、Mypy、`git diff --check` 与离线 wheel/sdist 通过。2 个 skip 为 live provider 测试；当时仍不提交、不合并、不推送，后续经用户明确要求进入 0063。
-- 2026-09-20 任务 0063（实现完成，待本地提交）：新增 Core-owned native Git discovery、porcelain-v2 status parser、workspace-bounded `status/diff/log/show/branch-list`、binary summary、linked worktree/submodule/sparse/unborn/detached/operation-state fixtures；五个 canonical Git read tools 已注册并纳入 CompatibilityManifest，`balanced` 下只读 Git 自动允许；通用 `bash` 的 Git 写子命令返回 `use_native_git_tool` 并拒绝执行。专项与受影响回归 `47 passed`，全量 non-live `1255 passed, 2 deselected, 4 errors`；4 个 error 均为 wheel/sdist fixture 无法解析 PyPI 的 hatchling 依赖，未伪造通过。Ruff、format、影响范围 Mypy 通过；当前仍不提交、不合并、不推送，不进入 0064。
+- 2026-09-20 任务 0063（已完成）：新增 Core-owned native Git discovery、porcelain-v2 status parser、workspace-bounded `status/diff/log/show/branch-list`、binary summary、linked worktree/submodule/sparse/unborn/detached/operation-state fixtures；五个 canonical Git read tools 已注册并纳入 CompatibilityManifest，`balanced` 下只读 Git 自动允许；通用 `bash` 的 Git 写子命令返回 `use_native_git_tool` 并拒绝执行。专项与受影响回归 `47 passed`，全量 non-live `1255 passed, 2 deselected, 4 errors`；4 个 error 均为 wheel/sdist fixture 无法解析 PyPI 的 hatchling 依赖，未伪造通过。Ruff、format、影响范围 Mypy 通过；本地提交 `c37af18`，未合并、未推送。
 - 2026-09-18 规格审批：用户确认阶段八两份规格，允许继续编写实施计划；未授权产品代码、提交、推送或阶段状态切换。
 - 2026-09-18 路线校准（早期检查点）：ADR-0021 Accepted；先实施阶段八 Core 工具集、Policy v2 与原生 Git，再进入阶段九 Skills。当时规格仍为 Draft，尚未授权实现；后续规格接受与实施授权见上方记录。
 - 2026-09-17 阶段七封存：用户接受把剩余量化 dogfood 样本转入后续 Bug 收敛阶段规划，并原文确认「CLI 版本达到预期，可以封存」。任务 0041 与阶段七转 Complete。
@@ -114,7 +114,7 @@
 
 ## 下一检查点
 
-1. 0062 与 0063 实现和功能/静态门禁已完成，保留当前隔离分支和全部未提交改动；等待用户明确授权后再创建本地提交。共同 wheel/sdist 门禁仍受 DNS/PyPI 阻塞；提交前不得进入 0064。
+1. 开始 0064：先以 TDD 完成 GitCommitPlan、精确 path-scoped Commit、index 保全和结果反向验证；共同 wheel/sdist 门禁仍受 DNS/PyPI 阻塞，不能伪造通过。
 2. 不自动删除、取消暂存或忽略 `VeraTestDemo` 索引里残留的 `AD build/`；未改 `.gitignore`。
 3. 阶段五仍缺 20 次真实 dogfood 与三类真实工程走查，不得把阶段五标为 Complete。
 4. 用户已确认「CLI 版本达到预期，可以封存」；该确认不自动授权下一阶段或 Electron 实施。
