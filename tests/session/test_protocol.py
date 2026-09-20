@@ -61,3 +61,18 @@ def test_session_record_event_only() -> None:
     assert payload["record_type"] == "event"
     assert payload.get("stream") is None
     assert CloseSession().type == "session.close"
+
+
+def test_session_record_preserves_git_lifecycle_event_for_json_clients() -> None:
+    event = EventEnvelope(
+        event_id="e-git",
+        run_id="run_1",
+        sequence=1,
+        timestamp=datetime.now(UTC),
+        type="git.operation.manual_required",
+        payload={"operation": "git_commit", "error_code": "manual_required"},
+    )
+    payload = json.loads(SessionRecordCodec.encode(SessionRecord(record_type="event", event=event)))
+
+    assert payload["event"]["type"] == "git.operation.manual_required"
+    assert payload["event"]["payload"]["error_code"] == "manual_required"

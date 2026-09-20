@@ -56,6 +56,13 @@ class RecoveryClassifier:
             return self._report(snapshot, evidence, _MANUAL, "rollback_in_flight")
         if snapshot.process_in_flight:
             return self._report(snapshot, evidence, _MANUAL, "process_in_flight")
+        if snapshot.pending_git_operation is not None:
+            return self._report(
+                snapshot,
+                evidence,
+                _MANUAL,
+                "git_operation_pending",
+            )
 
         expected = set()
         if snapshot.built_changeset is not None:

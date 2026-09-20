@@ -5,10 +5,14 @@ from pathlib import Path
 import pytest
 
 from tests.git.conftest import run_git
+from tests.recovery.helpers import make_snapshot
+from vera.contracts.recovery import RecoveryClassification, RecoveryStage
 from vera.git.commit import GitCommitter, GitCommitTransactionError
 from vera.git.commit_plan import GitCommitPlanBuilder
 from vera.git.service import GitService
+from vera.recovery.classifier import RecoveryClassifier
 from vera.recovery.git import classify_commit_recovery
+from vera.recovery.models import PendingGitOperation
 
 
 @pytest.fixture
@@ -76,3 +80,24 @@ def test_commit_recovery_classifier_has_explicit_terminal_states(
     )
 
     assert decision.state == state
+
+
+def test_pending_git_operation_is_private_snapshot_fact_and_resumable() -> None:
+    snapshot = make_snapshot(Path("/tmp/vera-recovery-test"), stage=RecoveryStage.STARTED)
+    pending = PendingGitOperation(
+        operation="git_commit",
+        plan_id="plan-1",
+        run_id=snapshot.run_id,
+        expected_head_oid="a" * 40,
+        expected_branch="main",
+        commit_message_hash="b" * 64,
+        paths=("app.py",),
+        policy_hash="c" * 64,
+    )
+    snapshot = snapshot.model_copy(update={"pending_git_operation": pending})
+
+    report = RecoveryClassifier().classify(snapshot, ())
+
+    assert report.classification is RecoveryClassification.MANUAL_REQUIRED
+    assert report.reason_code == "git_operation_pending"
+    assert "message" not in snapshot.model_dump(mode="json")

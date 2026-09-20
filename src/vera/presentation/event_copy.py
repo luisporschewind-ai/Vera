@@ -43,6 +43,11 @@ _TITLES: dict[str, str] = {
     "state.inspected": "已检查状态",
     "state.migration_completed": "状态迁移完成",
     "run.completed": "任务完成",
+    "git.operation.started": "开始 Git 操作",
+    "git.operation.completed": "Git 操作完成",
+    "git.operation.recovered": "Git 操作已恢复",
+    "git.operation.manual_required": "Git 操作需要人工恢复",
+    "git.operation.failed": "Git 操作失败",
     "session.status": "会话状态",
     "session.closed": "会话已关闭",
     "session.message": "会话",
@@ -134,6 +139,7 @@ _RECOVERY_REASON_TEXT = {
     "invalid_snapshot": "快照无效或损坏",
     "missing_journal": "缺少事件日志",
     "not_resumable": "当前分类不可续跑",
+    "git_operation_pending": "Git 操作中断，等待恢复判断",
 }
 
 _RECOVERY_ACTION_COMMANDS = {
@@ -201,6 +207,9 @@ _HIDDEN_FIELDS = frozenset(
         "content_hash",
         "policy_hash",
         "target_id",
+        "plan_id",
+        "expected_head_oid",
+        "expected_branch",
         "call_id",
         "workspace_root",
         "text",

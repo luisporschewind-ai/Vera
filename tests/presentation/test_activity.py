@@ -27,6 +27,8 @@ def event(event_type: str, payload: dict | None = None) -> EventEnvelope:
         ("recovery.detected", "已列出待恢复任务"),
         ("recovery.resume_started", "正在恢复"),
         ("run.failed", "失败"),
+        ("git.operation.started", "正在执行 Git 操作"),
+        ("git.operation.recovered", "Git 操作已恢复"),
     ],
 )
 def test_activity_labels_are_derived_from_events(event_type: str, label: str) -> None:

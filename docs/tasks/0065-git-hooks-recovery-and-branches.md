@@ -13,15 +13,26 @@
 - Create: `src/vera/git/hooks.py`
 - Create: `src/vera/git/branches.py`
 - Create: `src/vera/recovery/git.py`
+- Modify: `src/vera/recovery/models.py`
 - Modify: `src/vera/git/commit.py`
 - Modify: `src/vera/git/service.py`
 - Modify: `src/vera/persistence/operation_receipt.py`
 - Modify: `src/vera/recovery/classifier.py`
 - Modify: `src/vera/recovery/resume.py`
 - Modify: `src/vera/tools/git.py`
+- Modify: `src/vera/runtime/context.py`
+- Modify: `src/vera/runtime/engine.py`
+- Modify: `src/vera/presentation/activity.py`
+- Modify: `src/vera/presentation/event_copy.py`
+- Modify: `src/vera/presentation/projector.py`
 - Test: `tests/git/test_hooks_and_signing.py`
 - Test: `tests/git/test_branches.py`
 - Test: `tests/recovery/test_git_recovery.py`
+- Test: `tests/runtime/test_git_runtime_recovery.py`
+- Test: `tests/presentation/test_event_copy.py`
+- Test: `tests/presentation/test_activity.py`
+- Test: `tests/cli/test_presenter.py`
+- Test: `tests/session/test_protocol.py`
 - Modify: `tests/e2e/test_crash_recovery.py`
 
 ## Interfaces
@@ -56,9 +67,9 @@ class GitBranchPlan(ContractModel):
 - [x] **Step 5: 扩展 Receipt/Recovery** — operation 支持 `git_commit/git_branch`；receipt 保存旧/新 OID、tree、路径和剩余 staged diff facts，不含 message。
 - [x] **Step 6: 写 branch create/switch Red 测试** — 覆盖非法名称、dirty、已存在/缺失、HEAD stale 和 clean-state 边界；禁止 `-f` 与隐式新建。
 - [x] **Step 7: 实现 branch tools** — `git_branch_create`/`git_branch_switch` 通过 ToolExecutor，稳定事实校验、默认 approval、完成后验证 HEAD/branch。
-- [ ] **Step 8: 客户端与恢复对照** — 待补 Run 级 Git pending operation 快照、结构化 started/completed/recovered/manual_required 事件及 TUI/Plain/JSON 对照。
-- [x] **Step 9: 运行局部与共同门禁** — 受影响测试 `48 passed`；全量 non-live `1286 passed, 2 deselected, 4 errors`，4 个 error 均为 DNS 无法解析 PyPI `hatchling` 的打包/e2e setup 阻塞；Ruff/format/Mypy/diff 通过。
-- [x] **Step 10: 提交（仅用户授权后）** — 当前切片提交 `6d0e37f`、`aeec20e`；任务仍未完成，待 Step 8。
+- [x] **Step 8: 客户端与恢复对照** — RunContext/RecoverySnapshot 保存不含提交正文的 `PendingGitOperation`；Git Runtime 发出统一 `git.operation.started/completed/recovered/manual_required/failed` 事件；TUI projector、Plain presenter 和 JSON SessionRecord 均保留同一结构化事实。中断的 Git 操作在恢复扫描中明确归类为 `manual_required`，避免把缺少安全重试材料的操作伪装成可直接续跑。
+- [x] **Step 9: 运行局部与共同门禁** — 受影响测试 `70 passed`；全量 non-live `1295 passed, 2 deselected, 7 warnings`；Ruff/format/Mypy/`git diff --check` 通过。
+- [ ] **Step 10: 提交（仅用户授权后）** — 已获用户授权，待最终检查后提交本任务切片。
 
 ## Done
 
@@ -66,4 +77,4 @@ class GitBranchPlan(ContractModel):
 - 崩溃恢复不重复 Commit，无法证明时停止。
 - branch create/switch 精确、可审阅，不包含 delete/revert/remote/history rewrite。
 
-当前剩余：把 Git 操作状态纳入 Run 级恢复快照与结构化事件，并让客户端共享同一恢复事实；完成前不得把 0065 标记 Done 或进入 0066。
+当前剩余：完成最终检查并提交 0065；提交后再把任务标为 Done。0066 仍不得在本任务提交前启动。

@@ -14,7 +14,7 @@ from vera.contracts.verification import VerificationCommand
 from vera.models.base import ModelMessage, ModelToolCall
 from vera.persistence.journal import EventJournal
 from vera.project_instructions import ProjectInstructionSet
-from vera.recovery.models import PersistedToolAction
+from vera.recovery.models import PendingGitOperation, PersistedToolAction
 from vera.redaction import Redactor
 from vera.runtime.approval import ApprovalGate
 from vera.runtime.state import RunStateMachine
@@ -242,6 +242,7 @@ class RunContext:
     pending_command: VerificationCommand | None = None
     """Planned VerificationCommand waiting for command approval; never a second derived copy."""
     pending_tool_action: PersistedToolAction | None = None
+    pending_git_operation: PendingGitOperation | None = None
     applied_file_mutations: list[dict[str, str]] = field(default_factory=list)
     verification_index: int = 0
     verification_failed: bool = False

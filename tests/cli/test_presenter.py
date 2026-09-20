@@ -159,6 +159,20 @@ def test_presenter_hides_silent_model_round_trips() -> None:
     assert "model.completed" not in "\n".join(output)
 
 
+def test_presenter_keeps_git_lifecycle_facts_in_plain_output() -> None:
+    output: list[str] = []
+    presenter = HumanPresenter(output.append)
+
+    presenter.write_events(
+        (
+            event("git.operation.started", {"operation": "git_commit"}),
+            event("git.operation.recovered", {}, sequence=2),
+        )
+    )
+
+    assert output == ["Git 操作开始：git_commit", "Git 操作已恢复"]
+
+
 def test_presenter_reports_recovery_without_file_bodies() -> None:
     output: list[str] = []
     presenter = HumanPresenter(output.append)

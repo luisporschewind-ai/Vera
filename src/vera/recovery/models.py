@@ -7,7 +7,7 @@ import binascii
 import hashlib
 from datetime import datetime
 from pathlib import Path
-from typing import Literal, Self
+from typing import TYPE_CHECKING, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -21,6 +21,10 @@ from vera.policy.models import PolicyDecision
 from vera.tools.definitions import ToolDefinitionV2
 from vera.workspace.changeset import BuiltChangeSet
 from vera.workspace.paths import PathFact
+
+if TYPE_CHECKING:
+    from vera.git.branches import GitBranchPlan
+    from vera.git.commit_plan import GitCommitPlan
 
 
 class FrozenPrivateModel(BaseModel):
@@ -96,6 +100,45 @@ class PersistedToolAction(FrozenPrivateModel):
     target_facts_hash: str
 
 
+class PendingGitOperation(FrozenPrivateModel):
+    """Non-secret facts needed to classify an interrupted native Git action."""
+
+    operation: Literal["git_commit", "git_branch"]
+    plan_id: str
+    run_id: str
+    expected_head_oid: str
+    expected_branch: str | None = None
+    branch_name: str | None = None
+    commit_message_hash: str | None = None
+    paths: tuple[str, ...] = ()
+    policy_hash: str
+
+    @classmethod
+    def from_commit(cls, plan: GitCommitPlan) -> PendingGitOperation:
+        return cls(
+            operation="git_commit",
+            plan_id=plan.plan_id,
+            run_id=plan.run_id,
+            expected_head_oid=plan.head_oid,
+            expected_branch=plan.branch,
+            commit_message_hash=plan.commit_message_hash,
+            paths=plan.paths,
+            policy_hash=plan.policy_hash,
+        )
+
+    @classmethod
+    def from_branch(cls, plan: GitBranchPlan) -> PendingGitOperation:
+        return cls(
+            operation="git_branch",
+            plan_id=plan.action_id,
+            run_id=plan.run_id,
+            expected_head_oid=plan.expected_head_oid,
+            expected_branch=plan.expected_branch,
+            branch_name=plan.branch_name,
+            policy_hash=plan.policy_hash,
+        )
+
+
 class RecoverySnapshot(FrozenPrivateModel):
     snapshot_version: Literal[1] = 1
     run_id: str
@@ -107,6 +150,7 @@ class RecoverySnapshot(FrozenPrivateModel):
     built_changeset: PersistedChangeSet | None = None
     """Change Set bytes include planned verification argv/profile/root when present."""
     pending_tool_action: PersistedToolAction | None = None
+    pending_git_operation: PendingGitOperation | None = None
     applied_file_mutations: tuple[dict[str, str], ...] = ()
     checkpoint_id: str | None = None
     pending_approval: ApprovalRequest | None = None

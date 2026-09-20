@@ -31,7 +31,7 @@
 | 4 | [0062 结构化 bash、授权作用域与 CLI](0062-structured-bash-and-permissions.md) | Done：`7cbdfd9` 与 `a27ba4d`，结构化 bash、权限与 CLI 摘要已落地 | 0062 已完成，进入 0063 |
 | 5 | [0063 原生 Git 只读能力](0063-native-git-read-tools.md) | Done：`c37af18`，repository discovery、status/diff/log/show/branch-list 已实现；共同 wheel/sdist 受 DNS/PyPI 阻塞 | 本地提交已完成；0064 可开始，但必须保留 DNS 阻塞证据 |
 | 6 | [0064 GitCommitPlan 与精确提交](0064-native-git-commit.md) | Done：`de93fb2`、`781e756`，path-scoped Commit、index 保全、结果反向验证 | 0064 已完成，进入 0065 |
-| 7 | [0065 Git Hooks、恢复与分支](0065-git-hooks-recovery-and-branches.md) | In progress：`6d0e37f`、`aeec20e` 已完成 Hook/签名、Commit 恢复、branch create/switch；Run 级事件/快照待补 | 继续完成 Step 8 后才进入 0066 |
+| 7 | [0065 Git Hooks、恢复与分支](0065-git-hooks-recovery-and-branches.md) | In progress：`6d0e37f`、`aeec20e` 已完成 Hook/签名、Commit 恢复、branch create/switch；Run 级事件/快照已补，待最终提交 | 提交 0065 后才进入 0066 |
 | 8 | [0066 阶段八验收与真实 dogfood](0066-phase-8-tooling-git-acceptance.md) | 完整门禁、wheel、PTY、三类工程 Terminal.app 证据 | 用户确认后才可把阶段八标为 Complete |
 
 任务严格按 0059 → 0060 → 0061 → 0062 → 0063 → 0064 → 0065 → 0066 执行。0059–0062 冻结工具与 Policy 基座后才允许接入 Git；0064 不得与 0065 并行修改 GitService、Receipt 或恢复逻辑。

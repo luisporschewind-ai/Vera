@@ -34,6 +34,7 @@ class GitCommitResult(ContractModel):
     tree_oid: str
     committed_paths: tuple[str, ...]
     remaining_staged_diff_hash: str
+    recovered: bool = False
 
 
 class GitCommitter:
@@ -76,6 +77,7 @@ class GitCommitter:
             )
             if decision.state != "recovered":
                 raise GitCommitTransactionError(decision.state)
+            recovered = recovered.model_copy(update={"recovered": True})
             self._save_receipt(plan, recovered, terminal_result="git.commit.recovered")
             return recovered
         self._revalidate(plan)

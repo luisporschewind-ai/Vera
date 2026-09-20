@@ -175,6 +175,11 @@ class TimelineProjector:
             "run.completed": self._terminal_status,
             "run.failed": self._run_failed,
             "run.cancelled": self._run_cancelled,
+            "git.operation.started": self._git_operation_event,
+            "git.operation.completed": self._git_operation_event,
+            "git.operation.recovered": self._git_operation_event,
+            "git.operation.manual_required": self._git_operation_event,
+            "git.operation.failed": self._git_operation_event,
             "recovery.detected": self._recovery_event,
             "recovery.manual_required": self._recovery_event,
             "conversation.compacted": self._status_event,
@@ -636,6 +641,17 @@ class TimelineProjector:
             title=event_title(event.type),
             body=format_recovery_inspection(event.run_id, event.payload),
             status=BlockStatus.SUCCEEDED,
+        )
+
+    def _git_operation_event(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
+        failed = event.type in {"git.operation.failed", "git.operation.manual_required"}
+        return self._append(
+            block_id=f"{event.run_id}:{event.sequence}:git",
+            run_id=event.run_id,
+            kind=BlockKind.ERROR if failed else BlockKind.STATUS,
+            title=event_title(event.type),
+            body=sanitize_terminal_text(event_summary(event.payload)),
+            status=BlockStatus.FAILED if failed else BlockStatus.SUCCEEDED,
         )
 
     def _error_event(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:

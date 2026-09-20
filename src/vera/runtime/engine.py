@@ -65,7 +65,12 @@ from vera.policy.snapshot import EffectivePolicySnapshotV2
 from vera.project_instructions import ProjectInstructionService
 from vera.recovery.coordinator import RecoveryCoordinator
 from vera.recovery.hydrator import RecoveryHydrationError, RecoveryHydrator
-from vera.recovery.models import PersistedChangeSet, PersistedToolAction, RecoverySnapshot
+from vera.recovery.models import (
+    PendingGitOperation,
+    PersistedChangeSet,
+    PersistedToolAction,
+    RecoverySnapshot,
+)
 from vera.recovery.planner import RecoveryPlanError, RecoveryPlanner
 from vera.recovery.probe import workspace_identity
 from vera.recovery.resume import ResumeRejected, RunResumer
@@ -586,6 +591,8 @@ class VeraRuntime:
         *,
         approved: bool = False,
     ) -> tuple[ToolResult, tuple[EventEnvelope, ...]]:
+        if prepared.git_commit_plan is not None or prepared.git_branch_plan is not None:
+            return self._execute_git_tool(context, call, executor, prepared, approved=approved)
         if prepared.process_plan is None:
             result = executor.execute_allowed(prepared, approved=approved)
             events = tuple(self._emit_tool_result(context, call, result))
@@ -633,6 +640,90 @@ class VeraRuntime:
             events=events,
         )
         return result, events
+
+    @staticmethod
+    def _git_operation_payload(prepared: PreparedToolAction) -> dict[str, Any]:
+        if prepared.git_commit_plan is not None:
+            plan = prepared.git_commit_plan
+            return {
+                "operation": "git_commit",
+                "plan_id": plan.plan_id,
+                "expected_head_oid": plan.head_oid,
+                "branch": plan.branch,
+                "paths": list(plan.paths),
+                "policy_hash": plan.policy_hash,
+            }
+        if prepared.git_branch_plan is not None:
+            branch_plan = prepared.git_branch_plan
+            return {
+                "operation": "git_branch",
+                "plan_id": branch_plan.action_id,
+                "expected_head_oid": branch_plan.expected_head_oid,
+                "expected_branch": branch_plan.expected_branch,
+                "branch": branch_plan.branch_name,
+                "policy_hash": branch_plan.policy_hash,
+            }
+        raise ValueError("git operation plan missing")
+
+    def _execute_git_tool(
+        self,
+        context: RunContext,
+        call: ModelToolCall,
+        executor: ToolExecutor,
+        prepared: PreparedToolAction,
+        *,
+        approved: bool,
+    ) -> tuple[ToolResult, tuple[EventEnvelope, ...]]:
+        if prepared.git_commit_plan is not None:
+            context.pending_git_operation = PendingGitOperation.from_commit(
+                prepared.git_commit_plan
+            )
+        elif prepared.git_branch_plan is not None:
+            context.pending_git_operation = PendingGitOperation.from_branch(
+                prepared.git_branch_plan
+            )
+        else:
+            raise ValueError("git operation plan missing")
+        operation_payload = self._git_operation_payload(prepared)
+        started = self._stable_event(
+            context,
+            "git.operation.started",
+            operation_payload,
+            RecoveryStage.STARTED,
+        )
+        # A crash from the underlying transaction intentionally propagates. The
+        # started event has already persisted the pending Git facts.
+        result = executor.execute_allowed(prepared, approved=approved)
+        error_code = result.error_code or ""
+        if result.ok:
+            recovered = bool(
+                isinstance(result.content, dict) and result.content.get("recovered") is True
+            )
+            context.pending_git_operation = None
+            terminal_type = "git.operation.recovered" if recovered else "git.operation.completed"
+            terminal = self._stable_event(
+                context,
+                terminal_type,
+                {**operation_payload, "ok": True},
+                RecoveryStage.STARTED,
+            )
+        elif error_code == "manual_required":
+            terminal = self._stable_event(
+                context,
+                "git.operation.manual_required",
+                {**operation_payload, "ok": False, "error_code": error_code},
+                RecoveryStage.STARTED,
+            )
+        else:
+            context.pending_git_operation = None
+            terminal = self._stable_event(
+                context,
+                "git.operation.failed",
+                {**operation_payload, "ok": False, "error_code": error_code},
+                RecoveryStage.STARTED,
+            )
+        tool_events = tuple(self._emit_tool_result(context, call, result))
+        return result, (started, terminal, *tool_events)
 
     def _with_receipt(
         self,
@@ -695,6 +786,7 @@ class VeraRuntime:
             last_event_sequence=sequence,
             built_changeset=built,
             pending_tool_action=context.pending_tool_action,
+            pending_git_operation=context.pending_git_operation,
             applied_file_mutations=tuple(context.applied_file_mutations),
             checkpoint_id=checkpoint_id,
             pending_approval=context.approval_gate.pending_approval,
