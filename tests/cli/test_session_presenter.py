@@ -49,6 +49,8 @@ def test_session_presenter_renders_status_panel_without_secrets() -> None:
     assert "session-1" in text
     assert "2 messages" in text
     assert "manual" in text
+    assert "balanced" in text
+    assert "untrusted" in text
     assert "no OS sandbox" in text
     assert "must-not-render" not in text
     assert "api" not in text.lower()

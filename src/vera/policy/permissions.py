@@ -84,6 +84,9 @@ _RISK_ORDER = {
     RiskLevel.HIGH: 2,
     RiskLevel.FORBIDDEN: 3,
 }
+_NATIVE_GIT_READ_TOOLS = frozenset(
+    {"git_status", "git_diff", "git_log", "git_show", "git_branch_list"}
+)
 
 
 def classify_risk(
@@ -95,10 +98,25 @@ def classify_risk(
             reason_codes=("workspace_identity_mismatch",),
         )
     facts = action.risk_facts
-    if facts.outside_workspace or facts.secrets_present:
+    if facts.outside_workspace or facts.secrets_present or facts.policy_forbidden:
+        reason = (
+            "outside_workspace"
+            if facts.outside_workspace
+            else "secrets_present"
+            if facts.secrets_present
+            else facts.policy_reason_code or "policy_forbidden"
+        )
         return RiskAssessment(
             level=RiskLevel.FORBIDDEN,
-            reason_codes=("outside_workspace" if facts.outside_workspace else "secrets_present",),
+            reason_codes=(reason,),
+        )
+    if action.tool_name in _NATIVE_GIT_READ_TOOLS and set(action.effects) == {
+        ToolEffect.WORKSPACE_READ,
+        ToolEffect.PROCESS_EXECUTE,
+    }:
+        return RiskAssessment(
+            level=RiskLevel.LOW,
+            reason_codes=("native_git_read",),
         )
     levels = [
         risk_level_for_effect(effect, trusted=permission_snapshot.trusted)
@@ -130,6 +148,8 @@ def classify_risk(
         reasons += ("protected_target",)
     if facts.destructive:
         reasons += ("destructive",)
+    if facts.external_target is not None:
+        reasons += (f"external_target:{facts.external_target}",)
     return RiskAssessment(level=level, reason_codes=reasons)
 
 
@@ -157,12 +177,21 @@ def decide_v2(
             policy_digest,
         )
     elif assessment.level is RiskLevel.HIGH:
-        if grant is not None and grant.scope == "once":
+        if grant is not None and (
+            grant.scope in {"once", "run"}
+            or (
+                action.risk_facts.external_target is None
+                and not {
+                    ToolEffect.NETWORK_ACCESS,
+                    ToolEffect.EXTERNAL_SERVICE,
+                }.intersection(action.effects)
+            )
+        ):
             base = _decision(
                 PolicyDecisionKind.ALLOW,
                 "permission_grant_matched",
-                "an exact one-time user permission grant matched",
-                "permission:once",
+                "a user-created structured permission grant matched",
+                f"permission:{grant.scope}",
                 policy_digest,
             )
         else:
@@ -186,6 +215,14 @@ def decide_v2(
             PolicyDecisionKind.ALLOW,
             "workspace_read_allowed",
             "workspace reads are allowed in every policy mode",
+            "risk_v2",
+            policy_digest,
+        )
+    elif action.tool_name in _NATIVE_GIT_READ_TOOLS:
+        base = _decision(
+            PolicyDecisionKind.ALLOW,
+            "native_git_read_allowed",
+            "native Git reads are allowed in every policy mode",
             "risk_v2",
             policy_digest,
         )

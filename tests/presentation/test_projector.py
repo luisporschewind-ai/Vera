@@ -114,6 +114,27 @@ def test_command_approval_shows_planned_argv_profile_and_root() -> None:
     assert "verification_0" not in block.body
 
 
+def test_tool_approval_shows_only_core_provided_permission_scopes() -> None:
+    projector = TimelineProjector()
+    block = only_appended_block(
+        projector.apply(
+            event(
+                "approval.required",
+                payload={
+                    "approval_id": "a-tool",
+                    "kind": "tool",
+                    "risk": "high",
+                    "available_scopes": ["once", "run"],
+                    "description": "执行命令",
+                },
+            )
+        )
+    )
+
+    assert "授权范围 once, run" in block.body
+    assert "workspace" not in block.body
+
+
 def test_session_diff_is_a_diff_block() -> None:
     projector = TimelineProjector()
     filled = only_appended_block(

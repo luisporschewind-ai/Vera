@@ -43,6 +43,11 @@ class ApprovalGate:
         security_context_hash: str | None = None,
         risk_labels: tuple[str, ...] = (),
         risk_sources: tuple[ContentEnvelope, ...] = (),
+        available_scopes: tuple[Literal["once", "run", "workspace"], ...] = (
+            "once",
+            "run",
+            "workspace",
+        ),
     ) -> ApprovalRequest:
         if self.pending_approval is not None:
             raise ApprovalMismatch("an approval is already pending", reason="duplicate_pending")
@@ -60,6 +65,7 @@ class ApprovalGate:
             security_context_hash=security_context_hash,
             risk_labels=risk_labels,
             risk_sources=risk_sources,
+            available_scopes=available_scopes,
         )
         self.pending_approval = request
         return request

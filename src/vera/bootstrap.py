@@ -12,13 +12,17 @@ from vera.config import ConfigurationError, VeraConfig, load_config, load_provid
 from vera.models.base import ModelAdapter
 from vera.models.openai_compatible import OpenAICompatibleAdapter
 from vera.persistence.recovery_snapshot import RecoverySnapshotStore
+from vera.persistence.workspace_permissions import (
+    WorkspacePermissionStore,
+    WorkspacePermissionStoreError,
+)
 from vera.policy.engine import PolicyEngine
-from vera.policy.permissions import WorkspacePermissionSnapshot
 from vera.policy.snapshot import EffectivePolicySnapshotV2
 from vera.project_instructions import ProjectInstructionService
 from vera.recovery.coordinator import RecoveryCoordinator
 from vera.recovery.probe import workspace_identity
 from vera.runtime.engine import VeraRuntime
+from vera.tools.bash import BashTool
 from vera.tools.builtin import FindTool, GrepTool, LsTool, ReadTool
 from vera.tools.command_policy import CommandPolicy
 from vera.tools.file_mutation import EditTool, WriteTool
@@ -94,12 +98,22 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
     registry.register(GrepTool(paths))
     registry.register(FindTool(paths))
     registry.register(LsTool(paths))
+    registry.register(BashTool(workspace))
     policy_prefixes = config.user_allowed_command_prefixes
     identity = workspace_identity(workspace, installation_id)
     effective_snapshot = EffectivePolicySnapshotV2(
         workspace_identity=identity,
         user_allowed_command_prefixes=policy_prefixes,
     )
+    permission_store = WorkspacePermissionStore(
+        config.state_dir,
+        policy_major_version=effective_snapshot.builtin_policy_version,
+        protected_roots_hash=effective_snapshot.protected_roots_hash,
+    )
+    try:
+        workspace_permissions = permission_store.load(identity)
+    except WorkspacePermissionStoreError as exc:
+        raise ConfigurationError("permissions_unavailable", "无法读取工作区权限状态") from exc
     engine = PolicyEngine(effective_snapshot)
     policy = CommandPolicy(
         policy_prefixes,
@@ -124,12 +138,7 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
         recovery_coordinator=coordinator,
         policy_engine=engine,
         project_instructions=project_instructions,
-        workspace_permissions=WorkspacePermissionSnapshot(
-            workspace_identity=identity,
-            policy_major_version=effective_snapshot.builtin_policy_version,
-            protected_roots_hash=effective_snapshot.protected_roots_hash,
-            trusted=False,
-        ),
+        workspace_permissions=workspace_permissions,
     )
     return RuntimeDependencies(
         runtime=runtime,

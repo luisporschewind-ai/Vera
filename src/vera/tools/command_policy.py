@@ -6,10 +6,15 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
+from pydantic import ValidationError
+
+from vera.contracts.process_actions import BashInput
+from vera.contracts.tool_actions import ToolEffect
 from vera.contracts.verification import VerificationCommand
 from vera.policy.engine import PolicyEngine
-from vera.policy.models import PolicyAction, PolicyActionKind, PolicyDecisionKind
+from vera.policy.models import PolicyAction, PolicyActionKind, PolicyDecisionKind, RiskLevel
 from vera.policy.snapshot import EffectivePolicySnapshot, normalize_prefixes
+from vera.tools.bash import classify_argv
 
 
 class CommandDecisionKind(StrEnum):
@@ -75,4 +80,61 @@ class CommandPolicy:
             reason=decision.reason,
             reason_code=decision.reason_code,
             policy_hash=decision.policy_hash,
+        )
+
+
+@dataclass(frozen=True)
+class CommandClassification:
+    """Stable v2 facts for a structured argv command."""
+
+    executable: str
+    risk_level: RiskLevel
+    effects: tuple[ToolEffect, ...]
+    reason_codes: tuple[str, ...]
+
+
+class CommandClassifier:
+    """Classify argv before policy evaluation; never invokes a shell."""
+
+    def classify(self, argv: tuple[str, ...], *, cwd: str = ".") -> CommandClassification:
+        try:
+            parsed = BashInput(argv=argv, cwd=cwd)
+        except ValidationError:
+            executable = argv[0] if argv else ""
+            return CommandClassification(
+                executable=executable,
+                risk_level=RiskLevel.FORBIDDEN,
+                effects=(ToolEffect.PROCESS_EXECUTE,),
+                reason_codes=("invalid_command",),
+            )
+        facts = classify_argv(parsed.argv)
+        effects: list[ToolEffect] = [ToolEffect.PROCESS_EXECUTE]
+        reasons: list[str] = []
+        if facts["writes"]:
+            effects.append(ToolEffect.WORKSPACE_WRITE)
+            reasons.append("workspace_write")
+        if facts["network"]:
+            effects.append(ToolEffect.NETWORK_ACCESS)
+            reasons.append("network_access")
+        if facts["installer"]:
+            reasons.append("package_install")
+        if facts["build"]:
+            reasons.append("build_or_verification")
+        if facts["service"]:
+            reasons.append("background_service")
+        if facts["shell"]:
+            reasons.append("shell_forbidden")
+        if facts["privileged"]:
+            reasons.append("privilege_forbidden")
+        if facts["destructive"]:
+            reasons.append("destructive_forbidden")
+        if facts["secret"]:
+            reasons.append("secret_access_forbidden")
+        if facts["git_write"]:
+            reasons.append("use_native_git_tool")
+        return CommandClassification(
+            executable=str(facts["executable"]),
+            risk_level=facts["risk_level"],
+            effects=tuple(effects),
+            reason_codes=tuple(reasons),
         )

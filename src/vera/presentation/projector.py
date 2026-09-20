@@ -486,14 +486,16 @@ class TimelineProjector:
             or "批准后才会执行该动作"
         )
         argv = event.payload.get("argv", [])
-        command = (
-            shlex.join(str(part) for part in argv)
-            if kind == "command" and isinstance(argv, list) and argv
-            else ""
-        )
+        command = shlex.join(str(part) for part in argv) if isinstance(argv, list) and argv else ""
         profile = event.payload.get("artifact_profile") if kind == "command" else None
         root = event.payload.get("artifact_root") if kind == "command" else None
-        cwd = event.payload.get("cwd") if kind == "command" else None
+        cwd = event.payload.get("cwd")
+        available_scopes = event.payload.get("available_scopes", [])
+        scopes = (
+            ", ".join(str(scope) for scope in available_scopes)
+            if isinstance(available_scopes, list) and available_scopes
+            else ""
+        )
         body = "\n".join(
             part
             for part in (
@@ -504,6 +506,7 @@ class TimelineProjector:
                 f"工作目录 {cwd}" if cwd else "",
                 f"目标 {target}" if target and not command else "",
                 f"风险 {risk}",
+                f"授权范围 {scopes}" if scopes else "",
                 f"工作区 {workspace}" if workspace else "",
                 f"效果 {effect}",
             )

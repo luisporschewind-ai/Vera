@@ -245,6 +245,7 @@ class RunContext:
     applied_file_mutations: list[dict[str, str]] = field(default_factory=list)
     verification_index: int = 0
     verification_failed: bool = False
+    process_in_flight: bool = False
     last_tool_signature: str | None = None
     repeated_tool_streak: int = 0
     checkpoint_manifest: CheckpointManifest | None = None

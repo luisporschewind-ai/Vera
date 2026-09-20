@@ -81,6 +81,7 @@ class RecoveryHydrator:
             applied_file_mutations=list(snapshot.applied_file_mutations),
             verification_index=snapshot.verification_index,
             verification_failed=snapshot.verification_failed,
+            process_in_flight=snapshot.process_in_flight,
             checkpoint_manifest=checkpoint_manifest,
             workspace_write_started=snapshot.workspace_write_started,
             snapshot_created_at=snapshot.created_at,

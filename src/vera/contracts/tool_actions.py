@@ -72,6 +72,8 @@ class ToolRiskFacts(ContractModel):
     protected_target: bool = False
     external_target: str | None = None
     secrets_present: bool = False
+    policy_forbidden: bool = False
+    policy_reason_code: str | None = None
     facts_complete: bool = False
     target_facts_hash: str | None = None
 

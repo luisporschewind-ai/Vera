@@ -21,3 +21,8 @@ class ApprovalRequest(ContractModel):
     security_context_hash: str | None = None
     risk_labels: tuple[str, ...] = ()
     risk_sources: tuple[ContentEnvelope, ...] = ()
+    available_scopes: tuple[Literal["once", "run", "workspace"], ...] = (
+        "once",
+        "run",
+        "workspace",
+    )

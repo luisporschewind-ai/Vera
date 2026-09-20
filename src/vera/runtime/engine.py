@@ -44,6 +44,7 @@ from vera.contracts.conversation import ConversationMessage
 from vera.contracts.events import EventEnvelope
 from vera.contracts.recovery import RecoveryClassification, RecoveryReport, RecoveryStage
 from vera.contracts.streaming import RuntimeOutput, StreamFrame, StreamFrameType
+from vera.contracts.tool_actions import ToolEffect
 from vera.contracts.verification import VerificationCommand, VerificationResult
 from vera.models.base import ModelAdapter, ModelMessage, ModelRequest, ModelToolCall, ModelTurn
 from vera.models.errors import ModelErrorCode, ModelProviderError, safe_error_payload
@@ -451,6 +452,7 @@ class VeraRuntime:
             "security_context_hash": request.security_context_hash,
             "risk_labels": list(request.risk_labels),
             "risk_sources": [item.model_dump(mode="json") for item in request.risk_sources],
+            "available_scopes": list(request.available_scopes),
         }
         if (
             context is not None
@@ -474,6 +476,21 @@ class VeraRuntime:
             payload["input_hash"] = pending.action.input_hash
             payload["target_facts_hash"] = pending.target_facts_hash
         return payload
+
+    @staticmethod
+    def _available_tool_scopes(
+        prepared: PreparedToolAction,
+    ) -> tuple[Literal["once", "run", "workspace"], ...]:
+        action = prepared.action
+        if action.risk_facts.external_target is not None:
+            return ("once", "run")
+        if {
+            ToolEffect.NETWORK_ACCESS,
+            ToolEffect.EXTERNAL_SERVICE,
+            ToolEffect.SECRET_ACCESS,
+        }.intersection(action.effects):
+            return ("once", "run")
+        return ("once", "run", "workspace")
 
     def _event(
         self, context: RunContext, event_type: str, payload: dict[str, Any]
@@ -506,7 +523,7 @@ class VeraRuntime:
     def _commit_receipt(
         self,
         *,
-        operation: Literal["resume", "resolve_approval", "cancel", "rollback"],
+        operation: Literal["resume", "resolve_approval", "cancel", "rollback", "process"],
         run_id: str,
         payload: dict[str, Any],
         events: Sequence[EventEnvelope],
@@ -526,6 +543,88 @@ class VeraRuntime:
                 created_at=datetime.now(UTC),
             )
         )
+
+    @staticmethod
+    def _process_receipt_payload(prepared: PreparedToolAction) -> dict[str, str]:
+        plan = prepared.process_plan
+        if plan is None:
+            raise ValueError("process receipt requires a process plan")
+        return {
+            "action_id": plan.action_id,
+            "run_id": plan.run_id,
+            "input_hash": plan.input_hash,
+            "policy_hash": plan.policy_hash,
+        }
+
+    @staticmethod
+    def _replayed_tool_result(events: Sequence[EventEnvelope]) -> ToolResult:
+        for event in reversed(events):
+            if event.type != "tool.completed":
+                continue
+            payload = event.payload
+            return ToolResult(
+                ok=bool(payload.get("ok", False)),
+                truncated=bool(payload.get("truncated", False)),
+                error_code=(str(payload["error_code"]) if payload.get("error_code") else None),
+            )
+        return ToolResult(ok=False, error_code="process_receipt_replayed")
+
+    def _execute_prepared_tool(
+        self,
+        context: RunContext,
+        call: ModelToolCall,
+        executor: ToolExecutor,
+        prepared: PreparedToolAction,
+        *,
+        approved: bool = False,
+    ) -> tuple[ToolResult, tuple[EventEnvelope, ...]]:
+        if prepared.process_plan is None:
+            result = executor.execute_allowed(prepared, approved=approved)
+            events = tuple(self._emit_tool_result(context, call, result))
+            return result, events
+
+        payload = self._process_receipt_payload(prepared)
+        operation_id, _input_hash = receipt_key("process", payload)
+        existing = self.receipts.load(context.run_id, operation_id)
+        if existing is not None:
+            events = tuple(self._replay_receipt(existing))
+            return self._replayed_tool_result(events), events
+
+        context.process_in_flight = True
+        started = self._stable_event(
+            context,
+            "process.started",
+            {
+                "action_id": prepared.action.action_id,
+                "tool_name": prepared.action.tool_name,
+                "input_hash": prepared.process_plan.input_hash,
+            },
+            RecoveryStage.STARTED,
+        )
+        result = executor.execute_allowed(prepared, approved=approved)
+        context.process_in_flight = False
+        status = result.content.get("status") if isinstance(result.content, dict) else None
+        completed = self._stable_event(
+            context,
+            "process.completed",
+            {
+                "action_id": prepared.action.action_id,
+                "tool_name": prepared.action.tool_name,
+                "status": status or ("exited" if result.ok else "error"),
+                "ok": result.ok,
+                "error_code": result.error_code,
+            },
+            RecoveryStage.STARTED,
+        )
+        tool_events = tuple(self._emit_tool_result(context, call, result))
+        events = (started, completed, *tool_events)
+        self._commit_receipt(
+            operation="process",
+            run_id=context.run_id,
+            payload=payload,
+            events=events,
+        )
+        return result, events
 
     def _with_receipt(
         self,
@@ -594,6 +693,7 @@ class VeraRuntime:
             verification_index=context.verification_index,
             verification_failed=context.verification_failed,
             verification_in_flight=verification_in_flight,
+            process_in_flight=context.process_in_flight,
             workspace_write_started=context.workspace_write_started,
             recovery_plan=context.pending_recovery_plan,
             security_findings=context.security_findings,
@@ -1155,7 +1255,7 @@ class VeraRuntime:
                 parsed = implementation.input_model.model_validate(
                     dict(pending_tool.action.normalized_arguments)
                 )
-                mutation = executor._plan_mutation(
+                mutation, process_plan = executor._plan_action(
                     implementation,
                     context.run_id,
                     parsed,
@@ -1189,6 +1289,7 @@ class VeraRuntime:
                 policy_decision=pending_tool.policy_decision,
                 target_facts_hash=pending_tool.target_facts_hash,
                 mutation=mutation,
+                process_plan=process_plan,
             )
             if executor.facts_hash(current_facts) != pending_tool.target_facts_hash:
                 yield from self._expire_approval(
@@ -1198,8 +1299,10 @@ class VeraRuntime:
                     approval_id=request.approval_id,
                 )
                 return
-            tool_result = executor.execute_allowed(prepared, approved=True)
-            yield from self._emit_tool_result(context, call, tool_result)
+            tool_result, tool_events = self._execute_prepared_tool(
+                context, call, executor, prepared, approved=True
+            )
+            yield from tool_events
             context.machine.transition(RunState.DISCOVERING)
             yield self._stable_event(
                 context,
@@ -1386,6 +1489,7 @@ class VeraRuntime:
                 workspace_identity=prepared.action.workspace_identity,
                 policy_hash=prepared.policy_decision.policy_hash,
                 fact_hash=prepared.target_facts_hash,
+                available_scopes=self._available_tool_scopes(prepared),
                 **self._security_approval_kwargs(context),
             )
             yield self._stable_event(
@@ -1395,8 +1499,8 @@ class VeraRuntime:
                 RecoveryStage.AWAITING_TOOL_APPROVAL,
             )
             return
-        result = executor.execute_allowed(prepared)
-        yield from self._emit_tool_result(context, call, result)
+        _result, tool_events = self._execute_prepared_tool(context, call, executor, prepared)
+        yield from tool_events
 
     def _emit_tool_result(
         self, context: RunContext, call: ModelToolCall, result: ToolResult

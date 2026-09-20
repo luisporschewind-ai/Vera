@@ -27,6 +27,8 @@ def format_status_panel(status: SessionStatus) -> str:
                 f" · compacted {session.compaction_count}"
             ),
             f"Approval    {status.permissions.approval_mode}",
+            f"Policy      {status.permissions.policy_mode} · "
+            f"{'trusted' if status.permissions.trusted else 'untrusted'}",
             f"Execution   {status.permissions.execution_boundary} · {sandbox}",
         )
     )

@@ -11,7 +11,13 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ValidationError
 
-from vera.contracts.tool_actions import ToolAction, ToolRiskFacts, tool_action_input_hash
+from vera.contracts.process_actions import CommandActionPlan
+from vera.contracts.tool_actions import (
+    ToolAction,
+    ToolEffect,
+    ToolRiskFacts,
+    tool_action_input_hash,
+)
 from vera.policy.engine import PolicyEngine
 from vera.policy.models import PolicyDecision, PolicyDecisionKind
 from vera.policy.permissions import WorkspacePermissionSnapshot
@@ -35,6 +41,7 @@ class PreparedToolAction:
     policy_decision: PolicyDecision
     target_facts_hash: str
     mutation: PlannedFileMutation | None = None
+    process_plan: CommandActionPlan | None = None
 
 
 class ToolExecutor:
@@ -68,17 +75,18 @@ class ToolExecutor:
         if definition is None:
             raise ToolPreparationError("unknown_tool")
         action_id = uuid4().hex
-        mutation = self._plan_mutation(tool, run_id, parsed, action_id=action_id)
+        mutation, process_plan = self._plan_action(tool, run_id, parsed, action_id=action_id)
         facts = self._risk_facts(tool, parsed)
         if mutation is not None:
             facts = facts.model_copy(update={"target_facts_hash": mutation.plan.target_facts_hash})
         normalized = parsed.model_dump(mode="json")
+        effects = self._effects(tool, parsed, definition)
         action = ToolAction(
             action_id=action_id,
             run_id=run_id,
             tool_name=definition.name,
             tool_version=definition.tool_version,
-            effects=definition.effects,
+            effects=effects,
             workspace_identity=self.permissions.workspace_identity,
             normalized_arguments=normalized,
             risk_facts=facts,
@@ -86,20 +94,26 @@ class ToolExecutor:
                 tool_name=definition.name,
                 tool_version=definition.tool_version,
                 workspace_identity=self.permissions.workspace_identity,
-                effects=definition.effects,
+                effects=effects,
                 normalized_arguments=normalized,
                 risk_facts=facts,
             ),
         )
+        policy_decision = self.policy_engine.decide_tool_action(
+            action, self.permissions, goal_authorized=self.goal_authorized
+        )
+        if process_plan is not None:
+            process_plan = process_plan.model_copy(
+                update={"policy_hash": policy_decision.policy_hash}
+            )
         return PreparedToolAction(
             action=action,
             definition=definition,
             parsed_arguments=parsed,
-            policy_decision=self.policy_engine.decide_tool_action(
-                action, self.permissions, goal_authorized=self.goal_authorized
-            ),
+            policy_decision=policy_decision,
             target_facts_hash=_facts_hash(facts),
             mutation=mutation,
+            process_plan=process_plan,
         )
 
     def execute_allowed(
@@ -122,18 +136,19 @@ class ToolExecutor:
         )
         if current_definition != prepared.definition:
             return ToolResult(ok=False, error_code="stale_tool_action")
-        if (
-            prepared.action.tool_version != current_definition.tool_version
-            or prepared.action.effects != current_definition.effects
-            or prepared.action.workspace_identity != self.permissions.workspace_identity
-            or prepared.policy_decision.policy_hash != self.policy_engine.policy_hash
-        ):
-            return ToolResult(ok=False, error_code="stale_tool_action")
         try:
             parsed = tool.input_model.model_validate(dict(prepared.action.normalized_arguments))
         except ValidationError:
             return ToolResult(ok=False, error_code="stale_tool_action")
-        mutation = self._plan_mutation(
+        current_effects = self._effects(tool, parsed, current_definition)
+        if (
+            prepared.action.tool_version != current_definition.tool_version
+            or prepared.action.effects != current_effects
+            or prepared.action.workspace_identity != self.permissions.workspace_identity
+            or prepared.policy_decision.policy_hash != self.policy_engine.policy_hash
+        ):
+            return ToolResult(ok=False, error_code="stale_tool_action")
+        mutation, process_plan = self._plan_action(
             tool, prepared.action.run_id, parsed, action_id=prepared.action.action_id
         )
         facts = self._risk_facts(tool, parsed)
@@ -146,7 +161,7 @@ class ToolExecutor:
             tool_name=current_definition.name,
             tool_version=current_definition.tool_version,
             workspace_identity=self.permissions.workspace_identity,
-            effects=current_definition.effects,
+            effects=current_effects,
             normalized_arguments=normalized,
             risk_facts=facts,
         )
@@ -178,6 +193,14 @@ class ToolExecutor:
                 return ToolResult(ok=False, error_code=applied.error_code or applied.status.value)
             result = ToolResult(ok=True, content=mutation_content)
         else:
+            if prepared.process_plan is not None:
+                if process_plan is None:
+                    return ToolResult(ok=False, error_code="stale_tool_action")
+                process_plan = process_plan.model_copy(
+                    update={"policy_hash": prepared.process_plan.policy_hash}
+                )
+                if process_plan != prepared.process_plan:
+                    return ToolResult(ok=False, error_code="stale_tool_action")
             result = tool.execute(parsed)
         normalized = result if isinstance(result, ToolResult) else ToolResult.model_validate(result)
         if normalized.content is not None:
@@ -230,6 +253,38 @@ class ToolExecutor:
         if not isinstance(planned, PlannedFileMutation):
             raise ToolPreparationError("invalid_mutation_plan")
         return planned
+
+    def _plan_action(
+        self, tool: Any, run_id: str, arguments: BaseModel, *, action_id: str | None = None
+    ) -> tuple[PlannedFileMutation | None, CommandActionPlan | None]:
+        planner = getattr(tool, "plan_action", None)
+        if planner is None:
+            return None, None
+        if self.state_dir is not None:
+            binder = getattr(tool, "bind_state", None)
+            if binder is not None:
+                binder(self.state_dir)
+        try:
+            planned = planner(run_id, arguments, action_id=action_id)
+        except FileMutationPlanningError as exc:
+            raise ToolPreparationError(exc.code) from exc
+        if isinstance(planned, PlannedFileMutation):
+            return planned, None
+        if isinstance(planned, CommandActionPlan):
+            return None, planned
+        raise ToolPreparationError("invalid_action_plan")
+
+    @staticmethod
+    def _effects(
+        tool: Any, arguments: BaseModel, definition: ToolDefinitionV2
+    ) -> tuple[ToolEffect, ...]:
+        resolver = getattr(tool, "effects", None)
+        if resolver is None or not callable(resolver):
+            return definition.effects
+        effects = resolver(arguments)
+        if not isinstance(effects, tuple) or not effects:
+            raise ToolPreparationError("invalid_tool_effects")
+        return effects
 
     @staticmethod
     def facts_hash(facts: ToolRiskFacts) -> str:
