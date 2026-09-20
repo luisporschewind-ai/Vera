@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**状态：** In progress；已完成本地切片提交 `6d0e37f`、`aeec20e`，依赖 0064 已满足
+**状态：** Done；已完成本地切片提交 `6d0e37f`、`aeec20e`、`494b095`，依赖 0064 已满足
 **Goal：** 完成 Commit Hooks/签名边界、崩溃幂等恢复和安全的 branch create/switch，使原生 Git 达到阶段退出范围。
 **Architecture：** Hook 授权绑定 hook 路径、内容 hash、Git 配置和 Policy；Commit Receipt 记录预期新 OID。Recovery 只在能证明结果时补记或重试，否则 manual_required。分支动作使用精确旧 HEAD/工作树事实做 CAS 式校验。
 **Tech Stack：** Python 3.12、系统 Git CLI、OperationReceipt/Recovery、pytest failpoints。
@@ -69,7 +69,7 @@ class GitBranchPlan(ContractModel):
 - [x] **Step 7: 实现 branch tools** — `git_branch_create`/`git_branch_switch` 通过 ToolExecutor，稳定事实校验、默认 approval、完成后验证 HEAD/branch。
 - [x] **Step 8: 客户端与恢复对照** — RunContext/RecoverySnapshot 保存不含提交正文的 `PendingGitOperation`；Git Runtime 发出统一 `git.operation.started/completed/recovered/manual_required/failed` 事件；TUI projector、Plain presenter 和 JSON SessionRecord 均保留同一结构化事实。中断的 Git 操作在恢复扫描中明确归类为 `manual_required`，避免把缺少安全重试材料的操作伪装成可直接续跑。
 - [x] **Step 9: 运行局部与共同门禁** — 受影响测试 `70 passed`；全量 non-live `1295 passed, 2 deselected, 7 warnings`；Ruff/format/Mypy/`git diff --check` 通过。
-- [ ] **Step 10: 提交（仅用户授权后）** — 已获用户授权，待最终检查后提交本任务切片。
+- [x] **Step 10: 提交（仅用户授权后）** — 用户已授权本地提交；最终切片提交为 `494b095`，未合并、未推送。
 
 ## Done
 
@@ -77,4 +77,4 @@ class GitBranchPlan(ContractModel):
 - 崩溃恢复不重复 Commit，无法证明时停止。
 - branch create/switch 精确、可审阅，不包含 delete/revert/remote/history rewrite。
 
-当前剩余：完成最终检查并提交 0065；提交后再把任务标为 Done。0066 仍不得在本任务提交前启动。
+0065 已完成并封存。0066 尚未启动，需另行按执行顺序推进。
