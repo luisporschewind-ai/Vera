@@ -8,6 +8,7 @@ from tests.git.conftest import run_git
 from vera.git.commit import GitCommitter, GitCommitTransactionError
 from vera.git.commit_plan import GitCommitPlanBuilder
 from vera.git.service import GitService
+from vera.recovery.git import classify_commit_recovery
 
 
 @pytest.fixture
@@ -58,3 +59,20 @@ def test_commit_recovery_stops_when_head_has_an_unrelated_third_party_commit(
 
     assert caught.value.code == "manual_required"
     assert run_git(repository, "log", "-1", "--format=%s", env=env).strip() == "third party"
+
+
+@pytest.mark.parametrize(
+    ("current_head", "result_proven", "state"),
+    [("old", False, "retry"), ("new", True, "recovered"), ("new", False, "manual_required")],
+)
+def test_commit_recovery_classifier_has_explicit_terminal_states(
+    current_head: str, result_proven: bool, state: str
+) -> None:
+    decision = classify_commit_recovery(
+        plan_id="plan-1",
+        current_head=current_head,
+        expected_head="old",
+        result_proven=result_proven,
+    )
+
+    assert decision.state == state

@@ -15,6 +15,7 @@ from vera.git.commit_plan import GitCommitPlan, GitCommitPlanBuilder, GitCommitP
 from vera.git.hooks import GitHookInspector
 from vera.git.service import GitService, GitServiceError
 from vera.persistence.operation_receipt import OperationReceipt, OperationReceiptStore, receipt_key
+from vera.recovery.git import classify_commit_recovery
 
 
 class GitCommitTransactionError(ValueError):
@@ -60,7 +61,21 @@ class GitCommitter:
             try:
                 recovered = self._verify_result(plan, current.entries)
             except GitCommitTransactionError as exc:
-                raise GitCommitTransactionError("manual_required") from exc
+                decision = classify_commit_recovery(
+                    plan_id=plan.plan_id,
+                    current_head=current.head_oid,
+                    expected_head=plan.head_oid,
+                    result_proven=False,
+                )
+                raise GitCommitTransactionError(decision.state) from exc
+            decision = classify_commit_recovery(
+                plan_id=plan.plan_id,
+                current_head=current.head_oid,
+                expected_head=plan.head_oid,
+                result_proven=True,
+            )
+            if decision.state != "recovered":
+                raise GitCommitTransactionError(decision.state)
             self._save_receipt(plan, recovered, terminal_result="git.commit.recovered")
             return recovered
         self._revalidate(plan)
