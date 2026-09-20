@@ -103,6 +103,14 @@ DEFAULT_COMMANDS: tuple[CommandDescriptor, ...] = (
     CommandDescriptor("/help", "/help", "显示帮助", "开始", "help", enabled_when=_always),
     CommandDescriptor("/status", "/status", "显示会话状态", "开始", "status"),
     CommandDescriptor(
+        "/skills",
+        "/skills [show|use|clear] [selector]",
+        "发现、查看和选择 Core-native Skill",
+        "开始",
+        "skills",
+        args="optional",
+    ),
+    CommandDescriptor(
         "/instructions",
         "/instructions",
         "显示当前项目指令状态",
