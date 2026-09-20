@@ -166,3 +166,61 @@ def test_commit_transaction_handles_literal_special_paths(
     assert set(
         run_git(repository, "ls-tree", "-r", "--name-only", "-z", "HEAD", env=env).split("\0")
     ) >= set(paths)
+
+
+def test_commit_transaction_commits_a_deletion(
+    git_repo: tuple[Path, dict[str, str]],
+    tmp_path: Path,
+) -> None:
+    repository, env = git_repo
+    run_git(repository, "config", "user.name", "Vera Test", env=env)
+    run_git(repository, "config", "user.email", "vera-test@example.invalid", env=env)
+    (repository / "obsolete.txt").write_text("remove me\n", encoding="utf-8")
+    run_git(repository, "add", "--", "obsolete.txt", env=env)
+    run_git(repository, "commit", "--quiet", "-m", "add obsolete", env=env)
+    (repository / "obsolete.txt").unlink()
+    service = GitService(repository, environment=env)
+    plan = GitCommitPlanBuilder(service).build(
+        run_id="run-1",
+        action_ids=("action-1",),
+        workspace_identity="workspace-1",
+        paths=("obsolete.txt",),
+        message="Remove obsolete",
+        verification_status="passed",
+        policy_hash="policy-1",
+    )
+
+    result = GitCommitter(service, state_dir=tmp_path / "state").execute(plan, "Remove obsolete")
+
+    assert result.committed_paths == ("obsolete.txt",)
+    assert not (repository / "obsolete.txt").exists()
+
+
+def test_commit_transaction_commits_a_rename_as_two_explicit_paths(
+    git_repo: tuple[Path, dict[str, str]],
+    tmp_path: Path,
+) -> None:
+    repository, env = git_repo
+    run_git(repository, "config", "user.name", "Vera Test", env=env)
+    run_git(repository, "config", "user.email", "vera-test@example.invalid", env=env)
+    (repository / "old.txt").write_text("rename me\n", encoding="utf-8")
+    run_git(repository, "add", "--", "old.txt", env=env)
+    run_git(repository, "commit", "--quiet", "-m", "add old", env=env)
+    (repository / "old.txt").rename(repository / "new.txt")
+    service = GitService(repository, environment=env)
+    paths = ("old.txt", "new.txt")
+    plan = GitCommitPlanBuilder(service).build(
+        run_id="run-1",
+        action_ids=("action-1",),
+        workspace_identity="workspace-1",
+        paths=paths,
+        message="Rename file",
+        verification_status="passed",
+        policy_hash="policy-1",
+    )
+
+    result = GitCommitter(service, state_dir=tmp_path / "state").execute(plan, "Rename file")
+
+    assert result.committed_paths == paths
+    assert not (repository / "old.txt").exists()
+    assert (repository / "new.txt").read_text(encoding="utf-8") == "rename me\n"
