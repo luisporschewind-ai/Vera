@@ -32,6 +32,7 @@ class CoreErrorCode(StrEnum):
     SKILL_RESOURCE_INVALID = "skill_resource_invalid"
     SKILL_PACKAGE_LIMIT_EXCEEDED = "skill_package_limit_exceeded"
     SKILL_SOURCE_CHANGED = "skill_source_changed"
+    SKILL_SELECTION_INVALID = "skill_selection_invalid"
     SKILL_SNAPSHOT_WRITE_FAILED = "skill_snapshot_write_failed"
     SKILL_SNAPSHOT_MISSING = "skill_snapshot_missing"
     SKILL_SNAPSHOT_CORRUPT = "skill_snapshot_corrupt"

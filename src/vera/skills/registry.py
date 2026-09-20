@@ -62,6 +62,19 @@ class SkillRegistry:
             )
         return self._selection_from_summary(named[0], selector)
 
+    def package_for(self, selection: SkillSelection, workspace_root: Path) -> SkillCandidate | None:
+        if selection.status != "selected" or selection.skill_id is None:
+            return None
+        return next(
+            (
+                candidate
+                for candidate in self.candidates(workspace_root)
+                if candidate.package is not None
+                and candidate.package.skill_id == selection.skill_id
+            ),
+            None,
+        )
+
     @staticmethod
     def _selection_from_summary(
         summary: SkillSummary, selector: str, *, allow_conflict: bool = False

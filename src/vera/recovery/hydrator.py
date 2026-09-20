@@ -81,6 +81,7 @@ class RecoveryHydrator:
             checkpoint_manifest=checkpoint_manifest,
             workspace_write_started=snapshot.workspace_write_started,
             snapshot_created_at=snapshot.created_at,
+            skill_snapshot=snapshot.skill_snapshot,
             pending_recovery_plan=snapshot.recovery_plan,
             security_findings=snapshot.security_findings,
             security_context_hash=current_security_hash(snapshot.security_findings),

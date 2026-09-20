@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import shlex
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
@@ -23,6 +23,7 @@ from vera.contracts.commands import (
 from vera.contracts.errors import classify_os_error
 from vera.contracts.events import EventEnvelope
 from vera.contracts.recovery import RecoveryClassification
+from vera.contracts.skills import SkillSelection
 from vera.contracts.streaming import RuntimeOutput
 from vera.persistence.errors import PersistenceFault
 from vera.persistence.run_store import RunStore
@@ -77,6 +78,7 @@ class SessionSnapshot:
     pending_approval_id: str | None
     model_profile: str
     closed: bool
+    skill_selection: SkillSelection = field(default_factory=SkillSelection)
 
 
 class SessionController:
@@ -156,7 +158,12 @@ class SessionController:
             pending_approval_id=self.pending_approval_id,
             model_profile=self.model_profile,
             closed=self._closed,
+            skill_selection=self._skill_selection(),
         )
+
+    def _skill_selection(self) -> SkillSelection:
+        service = getattr(self.dependencies.runtime, "skill_selection_service", None)
+        return service.pending if service is not None else SkillSelection()
 
     @property
     def session_source(self) -> Literal["new", "continued", "resumed"]:
@@ -795,6 +802,7 @@ class SessionController:
             conversation=self.conversation_stats(),
             permissions=permission_status(self.dependencies.runtime.command_policy),
             reasoning=self._reasoning_status(),
+            skill_selection=self._skill_selection(),
         )
 
     def _status_event(self) -> EventEnvelope:

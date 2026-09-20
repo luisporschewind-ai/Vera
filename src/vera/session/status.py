@@ -8,6 +8,7 @@ from pathlib import Path
 from subprocess import CompletedProcess
 from typing import Protocol
 
+from vera.contracts.skills import SkillSelection
 from vera.session.models import (
     ConversationStats,
     GitStatus,
@@ -96,6 +97,7 @@ class SessionStatusService:
         conversation: ConversationStats,
         permissions: PermissionStatus,
         reasoning: ReasoningStatus | None = None,
+        skill_selection: SkillSelection | None = None,
     ) -> SessionStatus:
         try:
             package_version = self._version_reader()
@@ -112,4 +114,5 @@ class SessionStatusService:
             context=conversation,
             permissions=permissions,
             reasoning=reasoning or ReasoningStatus(mode="unavailable"),
+            skill_selection=skill_selection or SkillSelection(),
         )
