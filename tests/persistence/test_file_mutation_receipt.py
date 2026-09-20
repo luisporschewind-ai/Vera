@@ -23,6 +23,23 @@ def test_file_mutation_receipt_round_trips_and_is_idempotent(tmp_path) -> None:
     assert store.load("run-1", "file_mutation_123") == receipt
 
 
+def test_git_commit_receipt_round_trips_and_is_idempotent(tmp_path) -> None:
+    store = OperationReceiptStore(tmp_path)
+    receipt = OperationReceipt(
+        operation_id="git_commit_123",
+        operation="git_commit",
+        run_id="run-1",
+        input_hash="b" * 64,
+        terminal_result="git.commit.completed",
+        created_at=datetime.now(UTC),
+    )
+
+    store.save(receipt)
+    store.save(receipt)
+
+    assert store.load("run-1", "git_commit_123") == receipt
+
+
 def test_unknown_receipt_version_is_rejected(tmp_path) -> None:
     store = OperationReceiptStore(tmp_path)
     path = store.path_for("run-1", "file_mutation_123")

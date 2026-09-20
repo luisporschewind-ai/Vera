@@ -46,7 +46,14 @@ class OperationReceipt(BaseModel):
     receipt_version: Literal[1] = 1
     operation_id: str
     operation: Literal[
-        "resume", "resolve_approval", "cancel", "rollback", "file_mutation", "process"
+        "resume",
+        "resolve_approval",
+        "cancel",
+        "rollback",
+        "file_mutation",
+        "process",
+        "git_commit",
+        "git_branch",
     ]
     run_id: str
     input_hash: str

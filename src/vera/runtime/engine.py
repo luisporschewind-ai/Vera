@@ -523,7 +523,15 @@ class VeraRuntime:
     def _commit_receipt(
         self,
         *,
-        operation: Literal["resume", "resolve_approval", "cancel", "rollback", "process"],
+        operation: Literal[
+            "resume",
+            "resolve_approval",
+            "cancel",
+            "rollback",
+            "process",
+            "git_commit",
+            "git_branch",
+        ],
         run_id: str,
         payload: dict[str, Any],
         events: Sequence[EventEnvelope],
@@ -1255,7 +1263,7 @@ class VeraRuntime:
                 parsed = implementation.input_model.model_validate(
                     dict(pending_tool.action.normalized_arguments)
                 )
-                mutation, process_plan = executor._plan_action(
+                mutation, process_plan, git_commit_plan = executor._plan_action(
                     implementation,
                     context.run_id,
                     parsed,
@@ -1290,6 +1298,7 @@ class VeraRuntime:
                 target_facts_hash=pending_tool.target_facts_hash,
                 mutation=mutation,
                 process_plan=process_plan,
+                git_commit_plan=git_commit_plan,
             )
             if executor.facts_hash(current_facts) != pending_tool.target_facts_hash:
                 yield from self._expire_approval(

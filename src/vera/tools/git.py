@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import os
+from collections.abc import Mapping
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, Literal
 
 from vera.contracts import ContractModel
 from vera.contracts.tool_actions import ToolEffect, ToolRiskFacts
+from vera.git.commit import GitCommitter, GitCommitTransactionError
+from vera.git.commit_plan import GitCommitPlan, GitCommitPlanBuilder, GitCommitPlanError
 from vera.git.models import (
     GitDiffRequest,
     GitLogRequest,
@@ -18,6 +22,13 @@ from vera.tools.definitions import ToolDefinitionV2, ToolResult
 
 class GitStatusInput(ContractModel):
     """No arguments: inspect the configured workspace repository."""
+
+
+class GitCommitInput(ContractModel):
+    paths: tuple[str, ...]
+    message: str
+    action_ids: tuple[str, ...]
+    verification_status: Literal["passed", "failed"] = "passed"
 
 
 class _GitReadTool:
@@ -169,3 +180,89 @@ class GitBranchListTool(_GitReadTool):
             return self._result([branch.model_dump(mode="json") for branch in branches])
         except GitServiceError as exc:
             return self._error(exc)
+
+
+class GitCommitTool:
+    name = "git_commit"
+    description = "Commit only the exact verified paths from the current Run."
+    input_model = GitCommitInput
+    definition = ToolDefinitionV2(
+        name=name,
+        description=description,
+        input_schema=GitCommitInput.model_json_schema(),
+        tool_version=1,
+        effects=(ToolEffect.WORKSPACE_WRITE, ToolEffect.PROCESS_EXECUTE),
+        supports_cancellation=False,
+        supports_recovery=True,
+        max_output_bytes=100_000,
+    )
+
+    def __init__(self, workspace: Path, *, environment: Mapping[str, str] | None = None) -> None:
+        self.workspace = Path(workspace)
+        self.environment = dict(environment) if environment is not None else os.environ.copy()
+        self.service: GitService | None = None
+        self.state_dir: Path | None = None
+        self._workspace_identity: str | None = None
+        self._policy_hash: str | None = None
+
+    def bind_state(self, state_dir: Path) -> None:
+        self.state_dir = Path(state_dir)
+
+    def bind_policy(self, workspace_identity: str, policy_hash: str) -> None:
+        self._workspace_identity = workspace_identity
+        self._policy_hash = policy_hash
+
+    def _service(self) -> GitService:
+        if self.service is None:
+            self.service = GitService(self.workspace, environment=self.environment)
+        return self.service
+
+    def risk_facts(self, arguments: GitCommitInput) -> ToolRiskFacts:
+        outside = any(
+            not path
+            or PurePosixPath(path.replace("\\", "/")).is_absolute()
+            or ".." in PurePosixPath(path.replace("\\", "/")).parts
+            for path in arguments.paths
+        )
+        return ToolRiskFacts(
+            normalized_paths=arguments.paths,
+            argv=("git", "commit"),
+            cwd=".",
+            recoverable=True,
+            outside_workspace=outside,
+            facts_complete=True,
+        )
+
+    def plan_action(
+        self, run_id: str, arguments: GitCommitInput, *, action_id: str | None = None
+    ) -> GitCommitPlan:
+        if self._workspace_identity is None or self._policy_hash is None:
+            raise GitCommitPlanError("git_policy_unbound")
+        action_ids = arguments.action_ids or ((action_id,) if action_id else ())
+        return GitCommitPlanBuilder(self._service()).build(
+            run_id=run_id,
+            action_ids=action_ids,
+            workspace_identity=self._workspace_identity,
+            paths=arguments.paths,
+            message=arguments.message,
+            verification_status=arguments.verification_status,
+            policy_hash=self._policy_hash,
+        )
+
+    def execute_plan(self, plan: GitCommitPlan, arguments: GitCommitInput) -> ToolResult:
+        if self.state_dir is None:
+            return ToolResult(ok=False, error_code="git_state_unbound")
+        try:
+            result = GitCommitter(self._service(), state_dir=self.state_dir).execute(
+                plan, arguments.message
+            )
+        except (GitCommitPlanError, GitCommitTransactionError) as exc:
+            return ToolResult(ok=False, error_code=exc.code)
+        return ToolResult(ok=True, content=result.model_dump(mode="json"))
+
+    def execute(self, arguments: GitCommitInput) -> ToolResult:
+        try:
+            plan = self.plan_action("direct", arguments)
+        except GitCommitPlanError as exc:
+            return ToolResult(ok=False, error_code=exc.code)
+        return self.execute_plan(plan, arguments)

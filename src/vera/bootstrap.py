@@ -28,6 +28,7 @@ from vera.tools.command_policy import CommandPolicy
 from vera.tools.file_mutation import EditTool, WriteTool
 from vera.tools.git import (
     GitBranchListTool,
+    GitCommitTool,
     GitDiffTool,
     GitLogTool,
     GitShowTool,
@@ -106,6 +107,7 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
     registry.register(FindTool(paths))
     registry.register(LsTool(paths))
     registry.register(BashTool(workspace))
+    registry.register(GitCommitTool(workspace))
     registry.register(GitStatusTool(workspace))
     registry.register(GitDiffTool(workspace))
     registry.register(GitLogTool(workspace))

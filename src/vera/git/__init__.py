@@ -1,5 +1,7 @@
-"""Core-owned, read-only native Git capabilities."""
+"""Core-owned native Git capabilities."""
 
+from vera.git.commit import GitCommitResult, GitCommitter, GitCommitTransactionError
+from vera.git.commit_plan import GitCommitPlan, GitCommitPlanBuilder, GitCommitPlanError
 from vera.git.discovery import GitDiscovery, GitDiscoveryError
 from vera.git.models import (
     GitBranchSummary,
@@ -17,7 +19,13 @@ from vera.git.service import GitService, GitServiceError
 
 __all__ = [
     "GitBranchSummary",
+    "GitCommitPlan",
+    "GitCommitPlanBuilder",
+    "GitCommitPlanError",
     "GitCommitSummary",
+    "GitCommitResult",
+    "GitCommitter",
+    "GitCommitTransactionError",
     "GitDiffRequest",
     "GitDiffResult",
     "GitDiscovery",

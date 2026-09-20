@@ -4,6 +4,7 @@ from vera.tools.bash import BashTool
 from vera.tools.definitions import ToolDefinition, ToolDefinitionV2, ToolResult
 from vera.tools.git import (
     GitBranchListTool,
+    GitCommitTool,
     GitDiffTool,
     GitLogTool,
     GitShowTool,
@@ -14,6 +15,7 @@ from vera.tools.registry import DuplicateToolError, ToolRegistry
 __all__ = [
     "BashTool",
     "GitBranchListTool",
+    "GitCommitTool",
     "GitDiffTool",
     "GitLogTool",
     "GitShowTool",
