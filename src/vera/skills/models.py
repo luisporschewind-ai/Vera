@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
-from vera.contracts.skills import SkillSourceKind, SkillSummary
+from vera.contracts.skills import SkillSnapshot, SkillSourceKind, SkillSummary
 
 if TYPE_CHECKING:
     from vera.skills.manifest import SkillManifest
@@ -62,3 +63,41 @@ class SkillCandidate:
     source_kind: SkillSourceKind
     summary: SkillSummary
     package: ParsedSkillPackage | None = None
+
+
+@dataclass(frozen=True)
+class FrozenSkillFile:
+    relative_path: str
+    kind: SkillFileKind
+    content: bytes
+    content_hash: str
+
+
+@dataclass(frozen=True)
+class FrozenSkillSnapshot:
+    snapshot: SkillSnapshot
+    manifest: SkillManifest
+    files: tuple[FrozenSkillFile, ...]
+    created_at: datetime
+
+    @property
+    def snapshot_id(self) -> str:
+        return self.snapshot.snapshot_id
+
+    def context_files(self) -> tuple[FrozenSkillFile, ...]:
+        return self.files
+
+
+@dataclass(frozen=True)
+class SnapshotReferenceReport:
+    referenced_ids: tuple[str, ...] = ()
+    uncertain: bool = False
+
+
+@dataclass(frozen=True)
+class SnapshotCleanupReport:
+    scanned_ids: tuple[str, ...] = ()
+    retained_ids: tuple[str, ...] = ()
+    deleted_ids: tuple[str, ...] = ()
+    refused_ids: tuple[str, ...] = ()
+    reason_code: str | None = None

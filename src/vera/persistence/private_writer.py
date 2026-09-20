@@ -22,6 +22,14 @@ def _fail(code: str, path: Path | str, message: str) -> NoReturn:
 
 
 class PrivateAtomicWriter:
+    def fsync_directory(self, path: Path) -> None:
+        path = Path(path)
+        fd = os.open(path, os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+
     def ensure_directory(self, path: Path) -> None:
         path = Path(path)
         if path.exists():

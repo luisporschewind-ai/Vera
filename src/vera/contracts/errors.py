@@ -31,6 +31,12 @@ class CoreErrorCode(StrEnum):
     SKILL_RESOURCE_MISSING = "skill_resource_missing"
     SKILL_RESOURCE_INVALID = "skill_resource_invalid"
     SKILL_PACKAGE_LIMIT_EXCEEDED = "skill_package_limit_exceeded"
+    SKILL_SOURCE_CHANGED = "skill_source_changed"
+    SKILL_SNAPSHOT_WRITE_FAILED = "skill_snapshot_write_failed"
+    SKILL_SNAPSHOT_MISSING = "skill_snapshot_missing"
+    SKILL_SNAPSHOT_CORRUPT = "skill_snapshot_corrupt"
+    SKILL_SNAPSHOT_VERSION_UNSUPPORTED = "skill_snapshot_version_unsupported"
+    SKILL_SNAPSHOT_CLEANUP_REFUSED = "skill_snapshot_cleanup_refused"
 
 
 _ERRNO_CODES: dict[int, CoreErrorCode] = {
