@@ -13,6 +13,18 @@ from vera.contracts.events import EventEnvelope
 from vera.contracts.file_mutations import FileMutationPlan
 from vera.contracts.recovery import RecoveryClassification
 from vera.contracts.tool_actions import ToolAction
+from vera.git.models import (
+    GitBranchSummary,
+    GitCommitSummary,
+    GitDiffRequest,
+    GitDiffResult,
+    GitLogRequest,
+    GitRepositoryInfo,
+    GitRepositorySnapshot,
+    GitShowRequest,
+    GitShowResult,
+    GitStatusEntry,
+)
 from vera.policy.models import PolicyAction
 from vera.policy.permissions import WorkspacePermissionSummary
 from vera.runtime.approval import ApprovalKind
@@ -136,6 +148,16 @@ def current_compatibility_manifest() -> CompatibilityManifest:
             (PolicyAction, 1),
             (ChangeSet, 1),
             (FileMutationPlan, 1),
+            (GitRepositoryInfo, 1),
+            (GitStatusEntry, 1),
+            (GitRepositorySnapshot, 1),
+            (GitDiffResult, 1),
+            (GitCommitSummary, 1),
+            (GitShowResult, 1),
+            (GitBranchSummary, 1),
+            (GitDiffRequest, 1),
+            (GitLogRequest, 1),
+            (GitShowRequest, 1),
         )
     )
     return CompatibilityManifest(

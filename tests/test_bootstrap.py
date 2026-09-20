@@ -21,3 +21,11 @@ def test_runtime_and_session_store_share_installation_id(
     dependencies = build_runtime(tmp_path)
     assert dependencies.installation_id
     assert dependencies.installation_id == dependencies.runtime.installation_id
+    tool_names = {definition.name for definition in dependencies.runtime.registry.definitions()}
+    assert {
+        "git_status",
+        "git_diff",
+        "git_log",
+        "git_show",
+        "git_branch_list",
+    } <= tool_names

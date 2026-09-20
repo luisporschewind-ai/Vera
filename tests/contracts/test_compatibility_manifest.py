@@ -19,6 +19,18 @@ from vera.contracts.events import EventEnvelope
 from vera.contracts.file_mutations import FileMutationPlan
 from vera.contracts.recovery import RecoveryClassification
 from vera.contracts.tool_actions import ToolAction
+from vera.git.models import (
+    GitBranchSummary,
+    GitCommitSummary,
+    GitDiffRequest,
+    GitDiffResult,
+    GitLogRequest,
+    GitRepositoryInfo,
+    GitRepositorySnapshot,
+    GitShowRequest,
+    GitShowResult,
+    GitStatusEntry,
+)
 from vera.policy.models import PolicyAction
 from vera.policy.permissions import WorkspacePermissionSummary
 from vera.runtime.approval import ApprovalKind
@@ -75,6 +87,16 @@ def test_manifest_snapshots_public_contract_names_and_required_fields() -> None:
         (PolicyAction.__name__, 1),
         (ChangeSet.__name__, 1),
         (FileMutationPlan.__name__, 1),
+        (GitRepositoryInfo.__name__, 1),
+        (GitStatusEntry.__name__, 1),
+        (GitRepositorySnapshot.__name__, 1),
+        (GitDiffResult.__name__, 1),
+        (GitCommitSummary.__name__, 1),
+        (GitShowResult.__name__, 1),
+        (GitBranchSummary.__name__, 1),
+        (GitDiffRequest.__name__, 1),
+        (GitLogRequest.__name__, 1),
+        (GitShowRequest.__name__, 1),
     }
 
 
