@@ -18,6 +18,7 @@ from vera.contracts.tool_actions import (
     ToolRiskFacts,
     tool_action_input_hash,
 )
+from vera.git.branches import GitBranchError, GitBranchPlan
 from vera.git.commit_plan import GitCommitPlan, GitCommitPlanError
 from vera.policy.engine import PolicyEngine
 from vera.policy.models import PolicyDecision, PolicyDecisionKind
@@ -44,6 +45,7 @@ class PreparedToolAction:
     mutation: PlannedFileMutation | None = None
     process_plan: CommandActionPlan | None = None
     git_commit_plan: GitCommitPlan | None = None
+    git_branch_plan: GitBranchPlan | None = None
 
 
 class ToolExecutor:
@@ -77,7 +79,7 @@ class ToolExecutor:
         if definition is None:
             raise ToolPreparationError("unknown_tool")
         action_id = uuid4().hex
-        mutation, process_plan, git_commit_plan = self._plan_action(
+        mutation, process_plan, git_commit_plan, git_branch_plan = self._plan_action(
             tool, run_id, parsed, action_id=action_id
         )
         facts = self._risk_facts(tool, parsed)
@@ -114,6 +116,10 @@ class ToolExecutor:
             git_commit_plan = git_commit_plan.model_copy(
                 update={"policy_hash": policy_decision.policy_hash}
             )
+        if git_branch_plan is not None:
+            git_branch_plan = git_branch_plan.model_copy(
+                update={"policy_hash": policy_decision.policy_hash}
+            )
         return PreparedToolAction(
             action=action,
             definition=definition,
@@ -123,6 +129,7 @@ class ToolExecutor:
             mutation=mutation,
             process_plan=process_plan,
             git_commit_plan=git_commit_plan,
+            git_branch_plan=git_branch_plan,
         )
 
     def execute_allowed(
@@ -157,7 +164,7 @@ class ToolExecutor:
             or prepared.policy_decision.policy_hash != self.policy_engine.policy_hash
         ):
             return ToolResult(ok=False, error_code="stale_tool_action")
-        mutation, process_plan, git_commit_plan = self._plan_action(
+        mutation, process_plan, git_commit_plan, git_branch_plan = self._plan_action(
             tool, prepared.action.run_id, parsed, action_id=prepared.action.action_id
         )
         facts = self._risk_facts(tool, parsed)
@@ -217,6 +224,21 @@ class ToolExecutor:
                 if execute_plan is None:
                     return ToolResult(ok=False, error_code="git_commit_executor_unbound")
                 result = execute_plan(git_commit_plan, parsed)
+            elif prepared.git_branch_plan is not None:
+                if git_branch_plan is None:
+                    return ToolResult(ok=False, error_code="stale_tool_action")
+                git_branch_plan = git_branch_plan.model_copy(
+                    update={
+                        "action_id": prepared.git_branch_plan.action_id,
+                        "policy_hash": prepared.git_branch_plan.policy_hash,
+                    }
+                )
+                if git_branch_plan != prepared.git_branch_plan:
+                    return ToolResult(ok=False, error_code="stale_tool_action")
+                execute_plan = getattr(tool, "execute_plan", None)
+                if execute_plan is None:
+                    return ToolResult(ok=False, error_code="git_branch_executor_unbound")
+                result = execute_plan(git_branch_plan, parsed)
             elif prepared.process_plan is not None:
                 if process_plan is None:
                     return ToolResult(ok=False, error_code="stale_tool_action")
@@ -282,29 +304,42 @@ class ToolExecutor:
 
     def _plan_action(
         self, tool: Any, run_id: str, arguments: BaseModel, *, action_id: str | None = None
-    ) -> tuple[PlannedFileMutation | None, CommandActionPlan | None, GitCommitPlan | None]:
+    ) -> tuple[
+        PlannedFileMutation | None,
+        CommandActionPlan | None,
+        GitCommitPlan | None,
+        GitBranchPlan | None,
+    ]:
         planner = getattr(tool, "plan_action", None)
         if planner is None:
-            return None, None, None
+            return None, None, None, None
         if self.state_dir is not None:
             binder = getattr(tool, "bind_state", None)
             if binder is not None:
                 binder(self.state_dir)
         policy_binder = getattr(tool, "bind_policy", None)
         if policy_binder is not None:
-            policy_binder(self.permissions.workspace_identity, self.policy_engine.policy_hash)
+            policy_binder(
+                self.permissions.workspace_identity,
+                self.policy_engine.policy_hash,
+                self.permissions.trusted,
+            )
         try:
             planned = planner(run_id, arguments, action_id=action_id)
         except FileMutationPlanningError as exc:
             raise ToolPreparationError(exc.code) from exc
         except GitCommitPlanError as exc:
             raise ToolPreparationError(exc.code) from exc
+        except GitBranchError as exc:
+            raise ToolPreparationError(exc.code) from exc
         if isinstance(planned, PlannedFileMutation):
-            return planned, None, None
+            return planned, None, None, None
         if isinstance(planned, CommandActionPlan):
-            return None, planned, None
+            return None, planned, None, None
         if isinstance(planned, GitCommitPlan):
-            return None, None, planned
+            return None, None, planned, None
+        if isinstance(planned, GitBranchPlan):
+            return None, None, None, planned
         raise ToolPreparationError("invalid_action_plan")
 
     @staticmethod

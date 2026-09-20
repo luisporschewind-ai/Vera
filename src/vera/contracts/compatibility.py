@@ -13,8 +13,10 @@ from vera.contracts.events import EventEnvelope
 from vera.contracts.file_mutations import FileMutationPlan
 from vera.contracts.recovery import RecoveryClassification
 from vera.contracts.tool_actions import ToolAction
+from vera.git.branches import GitBranchPlan, GitBranchResult
 from vera.git.commit import GitCommitResult
 from vera.git.commit_plan import GitCommitPlan
+from vera.git.hooks import GitHookEntry, GitHookFacts, GitSigningFacts
 from vera.git.models import (
     GitBranchSummary,
     GitCommitSummary,
@@ -162,6 +164,11 @@ def current_compatibility_manifest() -> CompatibilityManifest:
             (GitShowRequest, 1),
             (GitCommitPlan, 1),
             (GitCommitResult, 1),
+            (GitBranchPlan, 1),
+            (GitBranchResult, 1),
+            (GitHookEntry, 1),
+            (GitHookFacts, 1),
+            (GitSigningFacts, 1),
         )
     )
     return CompatibilityManifest(

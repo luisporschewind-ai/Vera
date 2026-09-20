@@ -19,8 +19,10 @@ from vera.contracts.events import EventEnvelope
 from vera.contracts.file_mutations import FileMutationPlan
 from vera.contracts.recovery import RecoveryClassification
 from vera.contracts.tool_actions import ToolAction
+from vera.git.branches import GitBranchPlan, GitBranchResult
 from vera.git.commit import GitCommitResult
 from vera.git.commit_plan import GitCommitPlan
+from vera.git.hooks import GitHookEntry, GitHookFacts, GitSigningFacts
 from vera.git.models import (
     GitBranchSummary,
     GitCommitSummary,
@@ -101,6 +103,11 @@ def test_manifest_snapshots_public_contract_names_and_required_fields() -> None:
         (GitShowRequest.__name__, 1),
         (GitCommitPlan.__name__, 1),
         (GitCommitResult.__name__, 1),
+        (GitBranchPlan.__name__, 1),
+        (GitBranchResult.__name__, 1),
+        (GitHookEntry.__name__, 1),
+        (GitHookFacts.__name__, 1),
+        (GitSigningFacts.__name__, 1),
     }
 
 

@@ -29,8 +29,9 @@ from vera.workspace.paths import ProtectedPathPolicy
 class GitServiceError(ValueError):
     """Stable, redacted error from a native Git read operation."""
 
-    def __init__(self, code: str, message: str | None = None) -> None:
+    def __init__(self, code: str, message: str | None = None, *, stderr: bytes = b"") -> None:
         self.code = code
+        self.stderr = stderr
         super().__init__(message or code)
 
 
@@ -286,7 +287,7 @@ class GitService:
                 }.get(result.status, "git_process_error")
             )
         if result.exit_code not in {0, None}:
-            raise GitServiceError("git_command_failed", "Git command failed")
+            raise GitServiceError("git_command_failed", "Git command failed", stderr=result.stderr)
         return result
 
     def _resolve_ref(self, ref: str) -> str:

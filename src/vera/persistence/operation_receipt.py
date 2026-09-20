@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from vera.contracts.errors import classify_os_error
 from vera.persistence.decode import inspect_payload, parse_json_object
@@ -25,6 +25,7 @@ _RECEIPT_ALLOWED = frozenset(
         "input_hash",
         "terminal_result",
         "effect_refs",
+        "facts",
         "created_at",
     }
 )
@@ -59,6 +60,7 @@ class OperationReceipt(BaseModel):
     input_hash: str
     terminal_result: str
     effect_refs: tuple[str, ...] = ()
+    facts: dict[str, str] = Field(default_factory=dict)
     created_at: datetime
 
 

@@ -27,7 +27,9 @@ from vera.tools.builtin import FindTool, GrepTool, LsTool, ReadTool
 from vera.tools.command_policy import CommandPolicy
 from vera.tools.file_mutation import EditTool, WriteTool
 from vera.tools.git import (
+    GitBranchCreateTool,
     GitBranchListTool,
+    GitBranchSwitchTool,
     GitCommitTool,
     GitDiffTool,
     GitLogTool,
@@ -113,6 +115,8 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
     registry.register(GitLogTool(workspace))
     registry.register(GitShowTool(workspace))
     registry.register(GitBranchListTool(workspace))
+    registry.register(GitBranchCreateTool(workspace))
+    registry.register(GitBranchSwitchTool(workspace))
     policy_prefixes = config.user_allowed_command_prefixes
     identity = workspace_identity(workspace, installation_id)
     effective_snapshot = EffectivePolicySnapshotV2(

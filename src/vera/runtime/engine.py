@@ -1263,7 +1263,7 @@ class VeraRuntime:
                 parsed = implementation.input_model.model_validate(
                     dict(pending_tool.action.normalized_arguments)
                 )
-                mutation, process_plan, git_commit_plan = executor._plan_action(
+                mutation, process_plan, git_commit_plan, git_branch_plan = executor._plan_action(
                     implementation,
                     context.run_id,
                     parsed,
@@ -1299,6 +1299,7 @@ class VeraRuntime:
                 mutation=mutation,
                 process_plan=process_plan,
                 git_commit_plan=git_commit_plan,
+                git_branch_plan=git_branch_plan,
             )
             if executor.facts_hash(current_facts) != pending_tool.target_facts_hash:
                 yield from self._expire_approval(

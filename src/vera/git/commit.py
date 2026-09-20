@@ -12,6 +12,7 @@ from typing import Literal
 
 from vera.contracts import ContractModel
 from vera.git.commit_plan import GitCommitPlan, GitCommitPlanBuilder, GitCommitPlanError
+from vera.git.hooks import GitHookInspector
 from vera.git.service import GitService, GitServiceError
 from vera.persistence.operation_receipt import OperationReceipt, OperationReceiptStore, receipt_key
 
@@ -47,7 +48,23 @@ class GitCommitter:
             raise GitCommitTransactionError(exc.code) from exc
         if _sha256(message.encode("utf-8")) != plan.commit_message_hash:
             raise GitCommitTransactionError("git_plan_stale")
+        operation_id, _input_hash = self._receipt_identity(plan)
+        existing = self.receipts.load(plan.run_id, operation_id)
+        if existing is not None:
+            try:
+                return self._verify_result(plan, self.service.status().entries)
+            except GitCommitTransactionError as exc:
+                raise GitCommitTransactionError("manual_required") from exc
+        current = self.service.status()
+        if current.head_oid != plan.head_oid:
+            try:
+                recovered = self._verify_result(plan, current.entries)
+            except GitCommitTransactionError as exc:
+                raise GitCommitTransactionError("manual_required") from exc
+            self._save_receipt(plan, recovered, terminal_result="git.commit.recovered")
+            return recovered
         self._revalidate(plan)
+        before_entries = self.service.status().entries
         self._require_identity()
         repository_paths = self._repository_paths(plan.paths)
         message_path = self._write_message(message)
@@ -62,28 +79,52 @@ class GitCommitter:
                 self._restore_index(index_backup)
             except OSError as restore_exc:
                 raise GitCommitTransactionError("manual_required") from restore_exc
+            if self._scope_changed(before_entries, plan.paths):
+                raise GitCommitTransactionError("git_hook_changed_scope") from exc
+            if (
+                _looks_like_signing_failure(exc)
+                and GitHookInspector(self.service).signing_facts().configured
+            ):
+                raise GitCommitTransactionError("git_signing_unavailable") from exc
             raise GitCommitTransactionError(
                 "git_commit_failed" if exc.code == "git_command_failed" else exc.code
             ) from exc
         finally:
             message_path.unlink(missing_ok=True)
         index_backup.path.unlink(missing_ok=True)
-        result = self._verify_result(plan)
-        operation_id, input_hash = receipt_key(
+        result = self._verify_result(plan, before_entries)
+        self._save_receipt(plan, result, terminal_result="git.commit.completed")
+        return result
+
+    @staticmethod
+    def _receipt_identity(plan: GitCommitPlan) -> tuple[str, str]:
+        return receipt_key(
             "git_commit", {"plan_id": plan.plan_id, "message_hash": plan.commit_message_hash}
         )
+
+    def _save_receipt(
+        self, plan: GitCommitPlan, result: GitCommitResult, *, terminal_result: str
+    ) -> None:
+        operation_id, input_hash = self._receipt_identity(plan)
         self.receipts.save(
             OperationReceipt(
                 operation_id=operation_id,
                 operation="git_commit",
                 run_id=plan.run_id,
                 input_hash=input_hash,
-                terminal_result="git.commit.completed",
+                terminal_result=terminal_result,
                 effect_refs=(f"git:head:{result.new_head_oid}", f"git:tree:{result.tree_oid}"),
+                facts={
+                    "plan_id": result.plan_id,
+                    "old_head_oid": result.old_head_oid,
+                    "new_head_oid": result.new_head_oid,
+                    "tree_oid": result.tree_oid,
+                    "committed_paths": "\0".join(result.committed_paths),
+                    "remaining_staged_diff_hash": result.remaining_staged_diff_hash,
+                },
                 created_at=datetime.now(UTC),
             )
         )
-        return result
 
     def _revalidate(self, plan: GitCommitPlan) -> None:
         snapshot = self.service.status()
@@ -109,7 +150,9 @@ class GitCommitter:
             if builder._working_hash(repository_path) != plan.after_hashes[path]:
                 raise GitCommitTransactionError("git_plan_stale")
 
-    def _verify_result(self, plan: GitCommitPlan) -> GitCommitResult:
+    def _verify_result(
+        self, plan: GitCommitPlan, before_entries: tuple[object, ...]
+    ) -> GitCommitResult:
         try:
             new_head = (
                 self.service._run(("rev-parse", "--verify", "HEAD")).stdout.decode("ascii").strip()
@@ -137,6 +180,8 @@ class GitCommitter:
         ):
             if builder._head_hash(repository_path) != plan.after_hashes[path]:
                 raise GitCommitTransactionError("git_commit_result_mismatch")
+            if builder._working_hash(repository_path) != plan.after_hashes[path]:
+                raise GitCommitTransactionError("git_commit_result_mismatch")
         paths = tuple(
             item.decode("utf-8", errors="strict") for item in committed.split(b"\0") if item
         )
@@ -144,6 +189,8 @@ class GitCommitter:
         visible = tuple(path for path in workspace_paths if path is not None)
         if set(visible) != set(plan.paths):
             raise GitCommitTransactionError("git_commit_result_mismatch")
+        if self._scope_changed(before_entries, plan.paths):
+            raise GitCommitTransactionError("git_hook_changed_scope")
         remaining = builder._digest(
             ("diff", "--cached", "--binary", "--no-color", "--no-ext-diff", "--no-textconv")
         )
@@ -156,6 +203,35 @@ class GitCommitter:
             tree_oid=tree_oid,
             committed_paths=plan.paths,
             remaining_staged_diff_hash=remaining,
+        )
+
+    def _scope_changed(self, before_entries: tuple[object, ...], paths: tuple[str, ...]) -> bool:
+        ignored = set(paths)
+        before = {
+            self._entry_key(entry)
+            for entry in before_entries
+            if getattr(entry, "path", None) not in ignored
+            and getattr(entry, "original_path", None) not in ignored
+        }
+        after_snapshot = self.service.status()
+        after = {
+            self._entry_key(entry)
+            for entry in after_snapshot.entries
+            if entry.path not in ignored and entry.original_path not in ignored
+        }
+        return before != after
+
+    @staticmethod
+    def _entry_key(entry: object) -> tuple[object, ...]:
+        return (
+            getattr(entry, "path", None),
+            getattr(entry, "original_path", None),
+            getattr(entry, "staged", None),
+            getattr(entry, "unstaged", None),
+            getattr(entry, "untracked", None),
+            getattr(entry, "ignored", None),
+            getattr(entry, "conflicted", None),
+            getattr(entry, "submodule", None),
         )
 
     def _require_identity(self) -> None:
@@ -228,3 +304,11 @@ class _IndexBackup:
 
 def _sha256(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
+
+
+def _looks_like_signing_failure(exc: GitServiceError) -> bool:
+    diagnostic = exc.stderr.decode("utf-8", errors="replace").casefold()
+    return any(
+        marker in diagnostic
+        for marker in ("gpg failed", "signing failed", "could not load public key", "ssh-keygen")
+    )

@@ -224,3 +224,38 @@ def test_commit_transaction_commits_a_rename_as_two_explicit_paths(
     assert result.committed_paths == paths
     assert not (repository / "old.txt").exists()
     assert (repository / "new.txt").read_text(encoding="utf-8") == "rename me\n"
+
+
+def test_commit_recovery_after_receipt_write_failure_does_not_duplicate_commit(
+    git_repo: tuple[Path, dict[str, str]],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository, env = git_repo
+    run_git(repository, "config", "user.name", "Vera Test", env=env)
+    run_git(repository, "config", "user.email", "vera-test@example.invalid", env=env)
+    (repository / "app.py").write_text("changed\n", encoding="utf-8")
+    service = GitService(repository, environment=env)
+    plan = GitCommitPlanBuilder(service).build(
+        run_id="run-1",
+        action_ids=("action-1",),
+        workspace_identity="workspace-1",
+        paths=("app.py",),
+        message="Add app",
+        verification_status="passed",
+        policy_hash="policy-1",
+    )
+    committer = GitCommitter(service, state_dir=tmp_path / "state")
+
+    def fail_receipt(_receipt: object) -> None:
+        raise RuntimeError("simulated receipt failure")
+
+    monkeypatch.setattr(committer.receipts, "save", fail_receipt)
+    with pytest.raises(RuntimeError, match="simulated receipt failure"):
+        committer.execute(plan, "Add app")
+    assert run_git(repository, "rev-list", "--count", "HEAD", env=env).strip() == "2"
+
+    recovered = GitCommitter(service, state_dir=tmp_path / "state").execute(plan, "Add app")
+
+    assert recovered.new_head_oid == run_git(repository, "rev-parse", "HEAD", env=env).strip()
+    assert run_git(repository, "rev-list", "--count", "HEAD", env=env).strip() == "2"

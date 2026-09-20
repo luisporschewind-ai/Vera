@@ -1,8 +1,16 @@
 """Core-owned native Git capabilities."""
 
+from vera.git.branches import (
+    GitBrancher,
+    GitBranchError,
+    GitBranchPlan,
+    GitBranchPlanBuilder,
+    GitBranchResult,
+)
 from vera.git.commit import GitCommitResult, GitCommitter, GitCommitTransactionError
 from vera.git.commit_plan import GitCommitPlan, GitCommitPlanBuilder, GitCommitPlanError
 from vera.git.discovery import GitDiscovery, GitDiscoveryError
+from vera.git.hooks import GitHookEntry, GitHookFacts, GitHookInspector, GitSigningFacts
 from vera.git.models import (
     GitBranchSummary,
     GitCommitSummary,
@@ -26,6 +34,15 @@ __all__ = [
     "GitCommitResult",
     "GitCommitter",
     "GitCommitTransactionError",
+    "GitBranchError",
+    "GitBranchPlan",
+    "GitBranchPlanBuilder",
+    "GitBranchResult",
+    "GitBrancher",
+    "GitHookEntry",
+    "GitHookFacts",
+    "GitHookInspector",
+    "GitSigningFacts",
     "GitDiffRequest",
     "GitDiffResult",
     "GitDiscovery",
