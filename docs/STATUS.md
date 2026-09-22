@@ -58,6 +58,7 @@
 - 2026-09-18 实施授权：用户选择方案 2（Inline Execution），授权阶段八按已接受计划串行实施并创建计划内本地提交；不包含 push、merge 或远程变更。
 - 2026-09-21 阶段九自动验收：新增矩阵 `5 passed`；全量非 live `1169 passed, 2 deselected, 8 warnings`，另有 1 error + 1 failed，均为 offline wheel 依赖缓存缺少 `openai`；排除该环境阻断后 `1165 passed, 2 deselected, 8 warnings`。任务 0067–0071 完成，0072 Ready for manual acceptance。
 - 2026-09-21 实施授权：用户明确允许阶段九不等待阶段八完全完成；阶段九使用独立分支/工作树 `codex/phase-9-skills`。当时不合并、不推送、不删除既有分支或工作树。
+- 2026-09-22 GitHub 同步完成：Phase 9 实现与验收准备已合并到 `main`（`4665ab2`）；`origin/main`、`origin/codex/phase-9-skills`、`origin/codex/phase-8-tooling-policy-git`、规划分支与 Phase 6 修正分支均已核对对齐。阶段九仍为 Ready for manual acceptance。
 - 2026-09-22 同步授权：用户要求将当前代码和文档更新推送到 GitHub 以保持进度对齐；本次允许合并阶段九实现并推送相关本地分支，不改变阶段八/九状态，也不启动阶段十。
 - 2026-09-18 规格审批：用户确认阶段八两份规格，允许继续编写实施计划；未授权产品代码、提交、推送或阶段状态切换。
 - 2026-09-18 路线校准（早期检查点）：ADR-0021 Accepted；先实施阶段八 Core 工具集、Policy v2 与原生 Git，再进入阶段九 Skills。当时规格仍为 Draft，尚未授权实现；后续规格接受与实施授权见上方记录。
