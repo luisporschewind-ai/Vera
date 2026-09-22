@@ -2,7 +2,7 @@
 
 > 供 Cursor 执行：阶段六人工走查发现 Medium 缺陷——`vera --version` 不存在，且首屏版本恒为 `0.1.0`，无法自证当前构建。
 
-**状态：** In progress
+**状态：** In progress（实现已提交 `c0e26c9`；smoke 的 ANSI/`PYTHONPATH` 隔离补丁仍在工作区未提交）
 **执行就绪：** 任务 0029 停在 Ready for manual acceptance；本项为阶段六修正，不封存阶段六
 **分支：** `phase-6/0031-cli-version-identity`
 **依赖：** 任务 0029 自动部分已完成
@@ -73,3 +73,11 @@ git diff --check
 - 源码/editable 安装的展示版本含短 commit；wheel 安装不含 git 字段。
 - 版本查询不启动 TUI/会话，不要求工作区存在。
 - `__version__` 仍为 `0.1.0`；任务 0029 保持 Ready for manual acceptance。
+
+## 已记录验证
+
+- `uv run vera --version`：退出 0，输出发行版本、`location`、`install: editable` 与源码短 commit。
+- `uv run vera --json --version`：单行 JSON，含 `name`/`version`/`location`/`install`。
+- 聚焦测试：`tests/test_version.py`、`tests/cli/test_version.py`、`tests/cli/test_run.py`、`tests/session/test_diagnostics.py` 通过。
+- `tests/e2e/test_phase_5_install_upgrade.py::test_smoke_installed_wheel_outside_repo` 在剥离帮助 ANSI、并清除隔离环境 `PYTHONPATH` 后通过。
+- 未把任务 0029 或阶段六标为 Complete。Terminal.app 复验待用户执行。
