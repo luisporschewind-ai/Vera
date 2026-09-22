@@ -6,7 +6,7 @@ import shlex
 from collections.abc import Callable, Sequence
 
 from vera.contracts.events import EventEnvelope
-from vera.presentation.event_copy import event_title, is_silent
+from vera.presentation.event_copy import event_title, format_skill_event, is_silent
 from vera.project_instructions import format_instruction_status
 from vera.redaction import Redactor
 
@@ -124,6 +124,13 @@ class HumanPresenter:
                 self._write(text)
             else:
                 self._write(format_instruction_status(payload))
+        elif event.type in {
+            "skill.listed",
+            "skill.shown",
+            "skill.selection.changed",
+            "skill.snapshot.bound",
+        }:
+            self._write(format_skill_event(payload))
         elif event.type == "run.completed":
             self._write(f"任务完成：{event.run_id}（{payload.get('state', 'completed')}）")
         elif event.type == "run.failed":

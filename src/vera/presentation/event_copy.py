@@ -63,6 +63,10 @@ _TITLES: dict[str, str] = {
     "project.instructions.loaded": "已加载项目指令",
     "project.instructions.skipped": "已跳过项目指令",
     "project.instructions.status": "项目指令",
+    "skill.listed": "Skill 列表",
+    "skill.shown": "Skill 详情",
+    "skill.selection.changed": "Skill 选择",
+    "skill.snapshot.bound": "Skill 快照已绑定",
 }
 
 _FIELD_LABELS: dict[str, str] = {
@@ -321,3 +325,30 @@ def event_summary(payload: Mapping[str, object]) -> str:
         label = _FIELD_LABELS.get(key, key)
         lines.append(f"{label}：{_render_value(value)}")
     return "\n".join(lines)
+
+
+def format_skill_event(payload: Mapping[str, object]) -> str:
+    text = payload.get("text")
+    if isinstance(text, str) and text.strip():
+        return text.strip()
+    items = payload.get("items")
+    if isinstance(items, list):
+        lines: list[str] = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            name = item.get("name") or item.get("skill_id") or "未命名"
+            source = item.get("source_kind", "unknown")
+            availability = item.get("availability", "unknown")
+            version = item.get("version") or "-"
+            lines.append(f"{name} [{source}] {version} · {availability}")
+        if lines:
+            return "\n".join(lines)
+    selection = payload.get("selection")
+    if isinstance(selection, dict):
+        status = selection.get("status", "none")
+        selector = selection.get("selector") or selection.get("skill_id") or "none"
+        reason = selection.get("reason_codes") or []
+        suffix = f" · {reason[0]}" if isinstance(reason, list) and reason else ""
+        return f"{selector} · {status}{suffix}"
+    return event_summary(payload)

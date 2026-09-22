@@ -118,8 +118,10 @@
 
 ## 阶段 9——Core-native Skills
 
-**状态：** Not started
-**入口条件：** 阶段八 Complete，且 [Core 原生 Skills 系统](specs/2026-09-15-core-native-skills-system.md)与 [ADR-0020](decisions/ADR-0020-stage-core-native-skills.md)均为 Accepted。
+**状态：** Ready for manual acceptance
+**入口条件：** 通常为阶段八 Complete，且 [Core 原生 Skills 系统](specs/2026-09-15-core-native-skills-system.md)与 [ADR-0020](decisions/ADR-0020-stage-core-native-skills.md)均为 Accepted。本次用户于 2026-09-21 明确授权在阶段八仍 In progress 时使用独立工作树并行实施；阶段八状态和边界不变。
+
+**自动实现状态：** 任务 0067–0071 已完成；任务 0072 已形成自动验收记录。自动证据尚不能替代 Terminal.app、真实工程副本和用户确认。
 
 - 建立 UI 无关的 `SkillManifest`、`SkillSummary`、`SkillSelection`、`SkillSnapshot`、稳定错误码和 Core 私有 `SkillSnapshotStore`。
 - 采用“Core 控制面 + 外部 Skill 包”；v1 只支持内置、用户本地和 workspace 本地三种来源。
@@ -128,10 +130,10 @@
 - Run 开始前冻结内容寻址 Snapshot；原始包后续修改或删除不影响活动 Run 与恢复。
 - Skill 只接入 Run 启动和 Context 装配，不改变 Tool、Workspace、Policy、Approval、Verification、Checkpoint 或 Recovery 权威。
 - CLI 提供 `/skills`、`/skills show`、`/skills use`、`/skills clear` 与 `/status`，并验证完整 `NoSkill` 兼容路径。
-- 通过离线安全矩阵、真实 Terminal.app、一个 Python 工程和一个 Swift/Xcode 工程副本完成 dogfood。
+- 通过离线安全矩阵、真实 Terminal.app、一个 Python 工程和一个 Swift/Xcode 工程副本完成 dogfood。当前离线矩阵已通过，后三项人工证据待用户有电脑后补齐；隔离 wheel smoke 受 `openai` 离线缓存缺失阻断。
 - 远程安装、市场、评分、支付、自动更新、多 Skill、Multi-Agent、Plugin、Hook 和脚本执行不属于 v1。
 
-**退出条件：** 单 Skill 在 CLI 中可发现、可审阅、可显式选择、可固定、可恢复且不能扩大权限；`NoSkill`、离线安全矩阵和两个真实工程 dogfood 没有未关闭的 Critical/High 问题。
+**退出条件：** 单 Skill 在 CLI 中可发现、可审阅、可显式选择、可固定、可恢复且不能扩大权限；`NoSkill`、离线安全矩阵和两个真实工程 dogfood 没有未关闭的 Critical/High 问题。当前只达到 Ready for manual acceptance，未满足 Complete。
 
 ## 阶段 10——桌面集成
 

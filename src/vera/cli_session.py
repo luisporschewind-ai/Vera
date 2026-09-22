@@ -11,6 +11,7 @@ from vera.cli_session_presenter import SessionPresenter
 from vera.contracts.events import EventEnvelope
 from vera.contracts.streaming import StreamFrame
 from vera.presentation.diagnostics_copy import format_config_body, format_doctor_body
+from vera.presentation.event_copy import format_skill_event
 from vera.session.actions import (
     CloseSession,
     ExecuteSlashCommand,
@@ -194,6 +195,14 @@ class InteractiveSession:
             if prompt:
                 self.io.write(f"你：{prompt}")
             return
+        if event.type in {
+            "skill.listed",
+            "skill.shown",
+            "skill.selection.changed",
+            "skill.snapshot.bound",
+        }:
+            self.io.write(format_skill_event(event.payload))
+            return
         if event.type == "session.message":
             message_text = str(event.payload.get("text", ""))
             if event.payload.get("clear_display"):
@@ -280,4 +289,11 @@ def _structured_plain(event_type: str, payload: dict[str, object]) -> str:
         if isinstance(text, str) and text:
             return text
         return format_instruction_status(payload)
+    if event_type in {
+        "skill.listed",
+        "skill.shown",
+        "skill.selection.changed",
+        "skill.snapshot.bound",
+    }:
+        return format_skill_event(payload)
     return event_type

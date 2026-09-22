@@ -1,8 +1,8 @@
 # Vera 状态
 
-**更新日期：** 2026-09-18
+**更新日期：** 2026-09-22
 **当前阶段：** 阶段 8——Core 工具集、Policy v2 与原生 Git（In progress）
-**仓库状态：** `main` 文档基线，阶段八实施使用隔离工作树；阶段五停在 Ready for manual acceptance，阶段六与阶段七已 Complete。用户于 2026-09-17 原文确认「CLI 版本达到预期，可以封存」，并于 2026-09-18 选择 Inline Execution，授权阶段八按 0059–0066 串行实施和创建计划内本地提交。
+**仓库状态：** `main` 文档基线，阶段八实施使用隔离工作树；阶段五停在 Ready for manual acceptance，阶段六与阶段七已 Complete。用户于 2026-09-17 原文确认「CLI 版本达到预期，可以封存」，并于 2026-09-18 选择 Inline Execution，授权阶段八按 0059–0066 串行实施和创建计划内本地提交。用户于 2026-09-21 明确授权阶段九在阶段八完全收口前并行实施；阶段九自动实现现为 Ready for manual acceptance，仍不等于 Complete。
 
 ## 已完成
 
@@ -46,7 +46,9 @@
 - [项目指令发现与 `VERA.md` 初始化](specs/2026-09-14-project-instructions-and-vera-init.md)与 [ADR-0019](decisions/ADR-0019-native-vera-project-instructions.md)：Accepted；任务 0043 计划在会话恢复后、视觉原型前实施，普通启动不得静默写工程。
 - [阶段八：Core 工具集与风险分级 Policy v2](specs/2026-09-17-core-tooling-and-risk-tiered-policy.md)与 [Vera 原生 Git 能力](specs/2026-09-17-native-git-capability.md)：Accepted；[ADR-0021](decisions/ADR-0021-core-tools-before-desktop.md)已 Accepted，阶段八 In progress。
 - [阶段八执行顺序](tasks/phase-8-execution-order.md)：Accepted；按 0059–0066 串行推进，任务 0059 In progress。
-- [阶段九：Core-native Skills](specs/2026-09-15-core-native-skills-system.md)与 [ADR-0020](decisions/ADR-0020-stage-core-native-skills.md)：Accepted；范围与安全边界不变，由 ADR-0021 顺延到阶段九，必须等待阶段八 Complete。
+- [阶段九执行顺序](tasks/phase-9-execution-order.md)：任务 0067–0071 自动实现完成，任务 0072 为 Ready for manual acceptance；用户授权本阶段在阶段八仍 In progress 时使用独立工作树并行实施。
+- [阶段九自动验收记录](evals/phase-9-core-native-skills.md)：自动门禁与新增矩阵已记录；隔离 wheel 安装因 offline 缓存缺少 `openai` 阻断，Terminal.app 和真实工程 dogfood 待用户有电脑后执行。
+- [阶段九：Core-native Skills](specs/2026-09-15-core-native-skills-system.md)与 [ADR-0020](decisions/ADR-0020-stage-core-native-skills.md)：Accepted；范围与安全边界不变。通常入口仍为阶段八 Complete；本次按用户明确授权并行实施，不改变阶段八状态。
 - [ADR-0013：首个桌面底版采用 Electron](decisions/ADR-0013-electron-desktop-baseline.md)：Accepted；当前实施编号由 ADR-0021 调整为阶段十，只固定未来方向，当前不引入 Electron 代码或依赖。
 - [阶段十：桌面 Agent 工作台与 UI](specs/2026-09-12-desktop-agent-workbench-ui.md)：Draft；不启动阶段十。
 - [不可信内容、提示词投毒与内容安全](specs/2026-09-12-untrusted-content-and-prompt-injection-defense.md)：Accepted；由任务 0030 与 ADR-0015 实施。
@@ -54,6 +56,9 @@
 ## 最近验证
 
 - 2026-09-18 实施授权：用户选择方案 2（Inline Execution），授权阶段八按已接受计划串行实施并创建计划内本地提交；不包含 push、merge 或远程变更。
+- 2026-09-21 阶段九自动验收：新增矩阵 `5 passed`；全量非 live `1169 passed, 2 deselected, 8 warnings`，另有 1 error + 1 failed，均为 offline wheel 依赖缓存缺少 `openai`；排除该环境阻断后 `1165 passed, 2 deselected, 8 warnings`。任务 0067–0071 完成，0072 Ready for manual acceptance。
+- 2026-09-21 实施授权：用户明确允许阶段九不等待阶段八完全完成；阶段九使用独立分支/工作树 `codex/phase-9-skills`。当时不合并、不推送、不删除既有分支或工作树。
+- 2026-09-22 同步授权：用户要求将当前代码和文档更新推送到 GitHub 以保持进度对齐；本次允许合并阶段九实现并推送相关本地分支，不改变阶段八/九状态，也不启动阶段十。
 - 2026-09-18 规格审批：用户确认阶段八两份规格，允许继续编写实施计划；未授权产品代码、提交、推送或阶段状态切换。
 - 2026-09-18 路线校准（早期检查点）：ADR-0021 Accepted；先实施阶段八 Core 工具集、Policy v2 与原生 Git，再进入阶段九 Skills。当时规格仍为 Draft，尚未授权实现；后续规格接受与实施授权见上方记录。
 - 2026-09-17 阶段七封存：用户接受把剩余量化 dogfood 样本转入后续 Bug 收敛阶段规划，并原文确认「CLI 版本达到预期，可以封存」。任务 0041 与阶段七转 Complete。
@@ -113,4 +118,4 @@
 2. 不自动删除、取消暂存或忽略 `VeraTestDemo` 索引里残留的 `AD build/`；未改 `.gitignore`。
 3. 阶段五仍缺 20 次真实 dogfood 与三类真实工程走查，不得把阶段五标为 Complete。
 4. 用户已确认「CLI 版本达到预期，可以封存」；该确认不自动授权下一阶段或 Electron 实施。
-5. Skills 当前只有 Accepted 规划、无实现，且必须等待阶段八完成；市场、远程安装、自动更新、Plugin、Hook 与可执行能力继续保持独立且不进入 v1。
+5. 阶段九自动实现已达到 Ready for manual acceptance；待用户有电脑后完成 Terminal.app、Python/Swift 工程副本 dogfood 和用户确认。市场、远程安装、自动更新、Plugin、Hook 与可执行能力继续保持独立且不进入 v1。

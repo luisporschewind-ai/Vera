@@ -7,6 +7,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from vera.contracts.skills import SkillSelection, SkillSnapshot
+
 
 class ConversationStats(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -81,3 +83,5 @@ class SessionStatus(BaseModel):
     context: ConversationStats
     permissions: PermissionStatus
     reasoning: ReasoningStatus = Field(default_factory=lambda: ReasoningStatus(mode="unavailable"))
+    skill_selection: SkillSelection = Field(default_factory=SkillSelection)
+    active_skill_snapshot: SkillSnapshot | None = None

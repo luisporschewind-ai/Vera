@@ -30,7 +30,9 @@ COMPATIBILITY_RULES: dict[str, str] = {
         "New optional fields, event types, or command names may be added at the "
         "current schema_version. Existing clients may ignore unknown additive data. "
         "StartRun.mode=project_init and project.instructions.loaded/skipped/status "
-        "are additive at schema_version 1; default mode remains agent."
+        "are additive at schema_version 1; default mode remains agent. Core-native "
+        "Skill summaries, selections, snapshots, errors, and events are optional "
+        "additive facts; NoSkill remains the default."
     ),
     "deprecated": (
         "Deprecated fields remain readable at the current schema_version but must "

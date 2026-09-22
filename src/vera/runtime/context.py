@@ -10,6 +10,7 @@ from vera.content.envelope import ContentFinding
 from vera.contracts.checkpoints import CheckpointManifest
 from vera.contracts.commands import StartRun
 from vera.contracts.recovery import RecoveryPlan
+from vera.contracts.skills import SkillSnapshot
 from vera.contracts.verification import VerificationCommand
 from vera.models.base import ModelMessage, ModelToolCall
 from vera.persistence.journal import EventJournal
@@ -17,6 +18,7 @@ from vera.project_instructions import ProjectInstructionSet
 from vera.redaction import Redactor
 from vera.runtime.approval import ApprovalGate
 from vera.runtime.state import RunStateMachine
+from vera.skills.context import SkillContextPart
 from vera.tools.definitions import ToolResult
 from vera.workspace.changeset import BuiltChangeSet
 
@@ -254,3 +256,5 @@ class RunContext:
     project_instructions: ProjectInstructionSet | None = None
     empty_after_tools_nudge: bool = False
     claimed_changeset_nudge: bool = False
+    skill_snapshot: SkillSnapshot | None = None
+    skill_context: tuple[SkillContextPart, ...] = ()

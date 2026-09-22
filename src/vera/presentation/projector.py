@@ -17,6 +17,7 @@ from vera.presentation.event_copy import (
     event_summary,
     event_title,
     format_recovery_inspection,
+    format_skill_event,
     format_tool_body,
     format_tool_title,
     is_silent,
@@ -200,6 +201,10 @@ class TimelineProjector:
             "project.instructions.loaded": self._instruction_status,
             "project.instructions.skipped": self._instruction_status,
             "project.instructions.status": self._instruction_status,
+            "skill.listed": self._skill_event,
+            "skill.shown": self._skill_event,
+            "skill.selection.changed": self._skill_event,
+            "skill.snapshot.bound": self._skill_event,
         }
         if event.type in _SIDE_EFFECT_EVENTS:
             self._side_effect_runs.add(event.run_id)
@@ -706,6 +711,16 @@ class TimelineProjector:
             kind=BlockKind.STATUS,
             title=title,
             body=body,
+            status=BlockStatus.SUCCEEDED,
+        )
+
+    def _skill_event(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
+        return self._append(
+            block_id=f"{event.run_id}:{event.sequence}:skill",
+            run_id=event.run_id,
+            kind=BlockKind.STATUS,
+            title=event_title(event.type),
+            body=sanitize_terminal_text(format_skill_event(event.payload)),
             status=BlockStatus.SUCCEEDED,
         )
 

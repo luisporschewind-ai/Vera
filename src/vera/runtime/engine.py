@@ -25,7 +25,7 @@ from vera.content.envelope import (
     render_content_for_model,
     render_project_guidance_for_model,
 )
-from vera.content.trust import source_kind_for_path
+from vera.content.trust import ContentTrustLevel, source_kind_for_path
 from vera.contracts.approvals import ApprovalRequest
 from vera.contracts.commands import (
     AbandonRun,
@@ -80,6 +80,9 @@ from vera.runtime.security import (
     worst_disposition,
 )
 from vera.runtime.state import RunState, RunStateMachine
+from vera.skills.context import SkillContextAssembler, SkillContextError
+from vera.skills.selection import SkillSelectionService
+from vera.skills.snapshot_store import SkillSnapshotError, SkillSnapshotStore
 from vera.tools.command_policy import CommandDecisionKind, CommandPolicy
 from vera.tools.definitions import ToolResult
 from vera.tools.registry import ToolRegistry
@@ -197,6 +200,9 @@ class VeraRuntime:
         sleep: Callable[[float], None] = default_sleep,
         content_detector: ContentDetector | None = None,
         project_instructions: ProjectInstructionService | None = None,
+        skill_selection_service: SkillSelectionService | None = None,
+        skill_snapshot_store: SkillSnapshotStore | None = None,
+        skill_context_assembler: SkillContextAssembler | None = None,
     ) -> None:
         self.adapter = adapter
         self.registry = registry
@@ -210,6 +216,9 @@ class VeraRuntime:
             content_detector or BaselinePromptInjectionDetector()
         )
         self.project_instructions = project_instructions or ProjectInstructionService()
+        self.skill_selection_service = skill_selection_service
+        self.skill_snapshot_store = skill_snapshot_store or SkillSnapshotStore()
+        self.skill_context_assembler = skill_context_assembler or SkillContextAssembler()
         if policy_engine is not None:
             self.policy_engine = policy_engine
         elif command_policy is not None:
@@ -250,6 +259,7 @@ class VeraRuntime:
         source_kind: str | None,
         origin: str,
         truncated: bool = False,
+        trust_level: ContentTrustLevel | None = None,
     ) -> tuple[Any, str, list[EventEnvelope]]:
         envelope = build_content_envelope(
             text,
@@ -257,12 +267,49 @@ class VeraRuntime:
             origin=origin,
             truncated=truncated,
         )
+        if trust_level is not None:
+            envelope = envelope.model_copy(update={"trust_level": trust_level})
         detection = self.content_detector.assess(envelope, text)
         envelope = envelope.model_copy(update={"risk_labels": detection.risk_labels})
         events: list[EventEnvelope] = []
         if detection.disposition is not DetectionDisposition.CLEAR:
             events.extend(self._record_finding(context, envelope, detection))
         return envelope, render_content_for_model(envelope, text), events
+
+    def _bind_skill_snapshot(self, context: RunContext) -> bool:
+        service = self.skill_selection_service
+        if service is None or service.pending.mode == "none":
+            return False
+        selection = service.pending
+        if selection.status != "selected":
+            raise SkillSnapshotError(
+                "skill_selection_invalid", "pending Skill selection is not valid"
+            )
+        candidate = service.package_for(selection, context.command.workspace_root)
+        if candidate is None or candidate.package is None:
+            raise SkillSnapshotError("skill_source_changed", "selected Skill is unavailable")
+        frozen = self.skill_snapshot_store.freeze(
+            candidate.package,
+            state_dir=self.state_dir,
+        )
+        context.skill_snapshot = frozen.snapshot
+        context.skill_context = self.skill_context_assembler.assemble(frozen)
+        consumed = service.consume_for_run(context.command.workspace_root)
+        if consumed.status != "selected":
+            raise SkillSnapshotError("skill_source_changed", "selected Skill changed before Run")
+        return True
+
+    def _seed_skill_context(self, context: RunContext) -> Iterator[EventEnvelope]:
+        for part in context.skill_context:
+            _envelope, rendered, events = self._prepare_content(
+                context,
+                part.text,
+                source_kind="skill_content",
+                origin=part.envelope.origin,
+                trust_level=part.envelope.trust_level,
+            )
+            yield from events
+            context.messages.append(ModelMessage(role="user", content=rendered))
 
     def _record_finding(
         self, context: RunContext, envelope: Any, detection: Any
@@ -293,6 +340,7 @@ class VeraRuntime:
         context.messages.append(ModelMessage(role="system", content=system))
         if command.mode != "compact":
             yield from self._seed_project_instructions(context)
+            yield from self._seed_skill_context(context)
         for message in command.conversation:
             yield from self._append_conversation_message(context, message)
         envelope, rendered, events = self._prepare_content(
@@ -523,6 +571,7 @@ class VeraRuntime:
             verification_in_flight=verification_in_flight,
             workspace_write_started=context.workspace_write_started,
             recovery_plan=context.pending_recovery_plan,
+            skill_snapshot=context.skill_snapshot,
             security_findings=context.security_findings,
             security_context_hash=context.security_context_hash,
             created_at=created_at,
@@ -1632,6 +1681,15 @@ class VeraRuntime:
             approval_gate=ApprovalGate(run_id),
             security_context_hash=EMPTY_SECURITY_CONTEXT_HASH,
         )
+        try:
+            skill_bound = self._bind_skill_snapshot(context)
+        except (SkillSnapshotError, SkillContextError) as exc:
+            yield self._ephemeral_event(
+                run_id,
+                "run.failed",
+                {"reason": getattr(exc, "code", "skill_snapshot_failed")},
+            )
+            return
         self.runs[run_id] = context
         context.machine.transition(RunState.DISCOVERING)
         yield self._stable_event(
@@ -1647,6 +1705,20 @@ class VeraRuntime:
             },
             RecoveryStage.STARTED,
         )
+        if skill_bound and context.skill_snapshot is not None:
+            yield self._stable_event(
+                context,
+                "skill.snapshot.bound",
+                {
+                    "snapshot_id": context.skill_snapshot.snapshot_id,
+                    "skill_id": context.skill_snapshot.skill_id,
+                    "source_kind": context.skill_snapshot.source_kind,
+                    "version": context.skill_snapshot.version,
+                    "manifest_hash": context.skill_snapshot.manifest_hash,
+                    "resource_hash": context.skill_snapshot.resource_hash,
+                },
+                RecoveryStage.STARTED,
+            )
         yield from self._seed_context(context)
         if command.mode == "compact":
             yield from self._compact(context)
@@ -2011,13 +2083,32 @@ class VeraRuntime:
             RecoveryStage.TERMINAL,
         )
 
+    def _restore_skill_snapshot(
+        self, context: RunContext, snapshot: RecoverySnapshot
+    ) -> RunContext:
+        if snapshot.skill_snapshot is None:
+            return context
+        try:
+            frozen = self.skill_snapshot_store.load(
+                snapshot.skill_snapshot.snapshot_id,
+                state_dir=self.state_dir,
+            )
+            if frozen.snapshot != snapshot.skill_snapshot:
+                raise SkillSnapshotError("skill_snapshot_corrupt", "recovery facts mismatch")
+            context.skill_snapshot = frozen.snapshot
+            context.skill_context = self.skill_context_assembler.assemble(frozen)
+        except (SkillSnapshotError, SkillContextError) as exc:
+            raise RecoveryHydrationError(getattr(exc, "code", "skill_snapshot_corrupt")) from exc
+        return context
+
     def _context_from_snapshot(self, run_id: str) -> RunContext:
         snapshot = self.snapshot_store.load(run_id)
         journal = EventJournal(self.state_dir, run_id, Redactor([]))
         try:
-            return RecoveryHydrator().hydrate(snapshot, journal)
+            hydrated = RecoveryHydrator().hydrate(snapshot, journal)
+            return self._restore_skill_snapshot(hydrated, snapshot)
         except RecoveryHydrationError:
-            return RunContext(
+            context = RunContext(
                 run_id=snapshot.run_id,
                 command=snapshot.command,
                 machine=RunStateMachine(),
@@ -2031,6 +2122,7 @@ class VeraRuntime:
                 ),
                 snapshot_created_at=snapshot.created_at,
             )
+            return self._restore_skill_snapshot(context, snapshot)
 
     def _abandon(self, command: AbandonRun) -> Iterator[EventEnvelope]:
         report = self.coordinator.prepare_resume(command.run_id)

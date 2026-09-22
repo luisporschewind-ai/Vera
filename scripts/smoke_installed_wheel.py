@@ -18,6 +18,29 @@ PLACEHOLDER_KEY = "vera-test-placeholder-not-a-secret"
 _ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
 
 
+def _write_smoke_skill(root: Path, name: str) -> Path:
+    package = root / name
+    package.mkdir(parents=True, exist_ok=True)
+    (package / "skill.toml").write_text(
+        "\n".join(
+            (
+                "format_version = 1",
+                f'name = "{name}"',
+                'version = "1.0.0"',
+                'description = "Installed wheel smoke Skill"',
+                "",
+                "[compatibility]",
+                'min_vera_core = "0.1.0"',
+                'max_vera_core_exclusive = "1.0.0"',
+                "",
+            )
+        ),
+        encoding="utf-8",
+    )
+    (package / "SKILL.md").write_text("# Smoke Skill\n", encoding="utf-8")
+    return package
+
+
 def _run(
     argv: list[str],
     *,
@@ -72,6 +95,49 @@ def _with_placeholder_provider(env: dict[str, str]) -> dict[str, str]:
     return updated
 
 
+def _installed_skill_checks(workspace: Path, state_dir: Path, user_skill: Path) -> str:
+    return f"""
+from pathlib import Path
+
+from vera.contracts.commands import StartRun
+from vera.models.base import FakeModelAdapter, ModelTurn
+from vera.runtime.engine import VeraRuntime
+from vera.skills.manifest import ManifestLoader
+from vera.skills.snapshot_store import SkillSnapshotError, SkillSnapshotStore
+from vera.tools.registry import ToolRegistry
+
+workspace = Path({str(workspace)!r})
+state_dir = Path({str(state_dir)!r})
+user_skill = Path({str(user_skill)!r})
+no_skill_state = state_dir / "no-skill-runtime"
+runtime = VeraRuntime(
+    FakeModelAdapter([ModelTurn(assistant_text="done", finish_reason="stop")]),
+    ToolRegistry(),
+    no_skill_state,
+)
+events = tuple(
+    runtime.handle(StartRun(goal="hello", workspace_root=workspace, model_profile="fake"))
+)
+assert all(not event.type.startswith("skill.") for event in events)
+assert not (no_skill_state / "skills").exists()
+
+package = ManifestLoader().load(user_skill, source_kind="user")
+store = SkillSnapshotStore()
+frozen = store.freeze(package, state_dir=state_dir)
+snapshot_id = frozen.snapshot.snapshot_id
+user_skill.joinpath("SKILL.md").write_text("changed source\\n", encoding="utf-8")
+restored = store.load(snapshot_id, state_dir=state_dir)
+assert restored.files[0].content == b"# Smoke Skill\\n"
+(state_dir / "skills" / "snapshots" / "sha256" / snapshot_id / "snapshot.json").unlink()
+try:
+    store.load(snapshot_id, state_dir=state_dir)
+except SkillSnapshotError as exc:
+    assert exc.code == "skill_snapshot_missing"
+else:
+    raise AssertionError("missing Skill Snapshot was accepted")
+"""
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dist", type=Path, required=True)
@@ -90,6 +156,10 @@ def main(argv: list[str]) -> int:
     state_dir = home / "vera-state"
     state_dir.mkdir(parents=True, exist_ok=True)
     env["VERA_STATE_DIR"] = str(state_dir)
+    user_skill_root = home / "xdg-config" / "Vera" / "skills"
+    workspace_skill_root = workspace / ".vera" / "skills"
+    user_skill = _write_smoke_skill(user_skill_root, "user-smoke")
+    _write_smoke_skill(workspace_skill_root, "workspace-smoke")
     before = sha256_tree(workspace)
 
     created = _run(
@@ -184,6 +254,73 @@ def main(argv: list[str]) -> int:
     if json_session.returncode != 0:
         sys.stderr.write(json_session.stderr)
         return json_session.returncode or 1
+
+    skills_input = (
+        '{"schema_version":1,"type":"session.command","raw":"/skills"}\n'
+        '{"schema_version":1,"type":"session.command","raw":"/skills show user-smoke"}\n'
+        '{"schema_version":1,"type":"session.command","raw":"/skills use user-smoke"}\n'
+        '{"schema_version":1,"type":"session.command","raw":"/status"}\n'
+        '{"schema_version":1,"type":"session.command","raw":"/skills clear"}\n' + CLOSE_SESSION
+    )
+    skills_session = _run(
+        [str(vera), "--json"],
+        cwd=workspace,
+        env=ready,
+        input_text=skills_input,
+    )
+    if skills_session.returncode != 0 or "\u001b" in skills_session.stdout:
+        sys.stderr.write(skills_session.stdout + skills_session.stderr)
+        return skills_session.returncode or 1
+    skill_events = [
+        json.loads(line).get("event") or {}
+        for line in skills_session.stdout.splitlines()
+        if line.strip()
+    ]
+    listed_event = next(
+        (event for event in skill_events if event.get("type") == "skill.listed"), None
+    )
+    if listed_event is None:
+        sys.stderr.write(skills_session.stdout)
+        return 1
+    skill_ids = {item.get("skill_id") for item in listed_event.get("payload", {}).get("items", [])}
+    if skill_ids != {"user:user-smoke", "workspace:workspace-smoke"}:
+        sys.stderr.write(skills_session.stdout)
+        return 1
+    if (
+        str(workspace_skill_root) in skills_session.stdout
+        or "# Smoke Skill" in skills_session.stdout
+    ):
+        sys.stderr.write("Skill public output leaked source path or body\n")
+        return 1
+    status_event = next(
+        (event for event in skill_events if event.get("type") == "session.status"), None
+    )
+    if (
+        status_event is None
+        or status_event.get("payload", {}).get("skill_selection", {}).get("skill_id")
+        != "user:user-smoke"
+    ):
+        sys.stderr.write(skills_session.stdout)
+        return 1
+    selection_events = [
+        event for event in skill_events if event.get("type") == "skill.selection.changed"
+    ]
+    clear_event = selection_events[-1] if selection_events else None
+    if (
+        clear_event is None
+        or clear_event.get("payload", {}).get("selection", {}).get("mode") != "none"
+    ):
+        sys.stderr.write(skills_session.stdout)
+        return 1
+
+    installed_checks = _run(
+        [str(python), "-c", _installed_skill_checks(workspace, state_dir, user_skill)],
+        cwd=workspace,
+        env=env,
+    )
+    if installed_checks.returncode != 0:
+        sys.stderr.write(installed_checks.stdout + installed_checks.stderr)
+        return installed_checks.returncode or 1
 
     picker = _run(
         [str(vera), "--json", "-r"],

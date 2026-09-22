@@ -28,6 +28,7 @@ def test_context_full_still_lists_compact_and_new() -> None:
     assert "/diff" in names
     assert "/instructions" in names
     assert "/init" in names
+    assert "/skills" in names
 
 
 def test_help_is_grouped_and_unknown_command_suggests() -> None:
@@ -43,3 +44,6 @@ def test_help_is_grouped_and_unknown_command_suggests() -> None:
     assert known.unknown is False
     assert known.handler == "theme"
     assert known.args == ("no-color",)
+    skills = catalog.parse(["/skills", "use", "python-review"])
+    assert skills.handler == "skills"
+    assert skills.args == ("use", "python-review")

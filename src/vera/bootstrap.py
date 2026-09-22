@@ -18,6 +18,10 @@ from vera.project_instructions import ProjectInstructionService
 from vera.recovery.coordinator import RecoveryCoordinator
 from vera.recovery.probe import workspace_identity
 from vera.runtime.engine import VeraRuntime
+from vera.skills.discovery import SkillDiscovery
+from vera.skills.registry import SkillRegistry
+from vera.skills.selection import SkillSelectionService
+from vera.skills.snapshot_store import SkillSnapshotStore
 from vera.tools.builtin import ListDirectoryTool, ReadFileTool, SearchTextTool
 from vera.tools.command_policy import CommandPolicy
 from vera.tools.registry import ToolRegistry
@@ -109,6 +113,7 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
         snapshot_store=snapshot_store,
     )
     project_instructions = ProjectInstructionService()
+    skill_selection_service = SkillSelectionService(SkillRegistry(SkillDiscovery()))
     runtime = VeraRuntime(
         adapter,
         registry,
@@ -120,6 +125,8 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
         recovery_coordinator=coordinator,
         policy_engine=engine,
         project_instructions=project_instructions,
+        skill_selection_service=skill_selection_service,
+        skill_snapshot_store=SkillSnapshotStore(),
     )
     return RuntimeDependencies(
         runtime=runtime,

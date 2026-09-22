@@ -87,6 +87,12 @@ class RunSummary(BaseModel):
     terminal_state: str | None
 
 
+def user_skills_path() -> Path:
+    """Return the user-local Skill root without creating it."""
+
+    return user_config_path("Vera") / "skills"
+
+
 _PROJECT_FORBIDDEN_KEYS = {
     *DEFAULT_SECRET_POLICY.sensitive_fields,
     "user_allowed_command_prefixes",
