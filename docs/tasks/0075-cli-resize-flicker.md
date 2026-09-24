@@ -1,6 +1,6 @@
 # 任务 0075：CLI 窗口缩放闪动修正
 
-**状态：** Ready for manual acceptance（加强修复已落地；待 Terminal.app 复验）
+**状态：** Done（2026-09-24 用户确认 Terminal.app 闪烁已解决）
 **来源：** 2026-09-24 用户反馈“窗口扩大缩小时强烈闪动”
 **规格：** [阶段七 CLI 体验收口](../specs/2026-09-13-cli-experience-and-personal-dogfood.md)
 **关联：** [任务 0058：缩放右侧残留与底栏显示不全](0058-cli-resize-remnant-and-footer-clip.md)
@@ -23,7 +23,7 @@
 - 回归：连续三次缩小，拖动阶段清屏 0 次；稳定后恰好 1 次，且输出含同步括号与 Vera 画面。
 - 回归：纯放大路径全程无清屏。
 - 布局与终端聚焦测试、Ruff/Mypy/`git diff --check` 见实施记录。
-- 原生 Terminal.app 人工拖拽仍需用户复验。
+- 2026-09-24 用户在原生 Terminal.app 拖拽复验：闪烁问题解决。
 
 ## 边界
 

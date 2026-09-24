@@ -55,7 +55,8 @@
 
 ## 最近验证
 
-- 2026-09-24 Skill 浮层与缩放：用户确认 0074 计划并授权实施；落地分组 Skill 浮层、歧义 ID 拒绝、会话持久化已提交。0075 加强为仅缩窗防抖修复且同步更新清屏，拖拽帧不再逐次 `CSI 2J`；聚焦 `43 passed`，Ruff/Mypy/diff 检查通过。阶段九仍为 Ready for manual acceptance，Terminal.app 人工复验待用户。
+- 2026-09-24 任务 0075：用户确认原生 Terminal.app 缩放闪烁已解决；仅缩窗防抖 + 同步更新清屏生效。
+- 2026-09-24 Skill 浮层与缩放：用户确认 0074 计划并授权实施；落地分组 Skill 浮层、歧义 ID 拒绝、会话持久化已提交。0075 加强为仅缩窗防抖修复且同步更新清屏，拖拽帧不再逐次 `CSI 2J`；聚焦 `43 passed`，Ruff/Mypy/diff 检查通过。阶段九仍为 Ready for manual acceptance；0075 已 Done，0074 仍待浮层人工走查。
 
 - 2026-09-24 Skill 生效修正：`/skills use` 的待用选择现随 Session Journal 恢复，`/model` 切换不丢失，`/compact` 不误消费；Run 绑定 Snapshot 后先落盘一次性消费，再向客户端交付绑定事件。用户安装的 `interview-term-brief` 已用 FakeModelAdapter 验证选择、绑定与模型上下文注入。聚焦 `8 passed`，排除两个既有 wheel 安装环境阻断文件后完整非 live `1172 passed, 2 deselected, 8 warnings`；Ruff、Mypy、diff 检查通过。真实 CLI 因本机未配置 Provider（`missing_provider_config`）未完成交互 dogfood；阶段九仍为 Ready for manual acceptance。
 - 2026-09-18 实施授权：用户选择方案 2（Inline Execution），授权阶段八按已接受计划串行实施并创建计划内本地提交；不包含 push、merge 或远程变更。
@@ -118,7 +119,7 @@
 
 ## 下一检查点
 
-1. 在 Terminal.app 复验 0074 Skill 浮层与 0075 缩放；阶段八隔离分支完成 Node/TS 与人工验收后，用户确认再合入 `main`。
+1. 在 Terminal.app 复验 0074 Skill 浮层；阶段八隔离分支完成 Node/TS 与人工验收后，用户确认再合入 `main`。
 2. 不自动删除、取消暂存或忽略 `VeraTestDemo` 索引里残留的 `AD build/`；未改 `.gitignore`。
 3. 阶段五仍缺 20 次真实 dogfood 与三类真实工程走查，不得把阶段五标为 Complete。
 4. 用户已确认「CLI 版本达到预期，可以封存」；该确认不自动授权下一阶段或 Electron 实施。
