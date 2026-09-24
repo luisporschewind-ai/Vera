@@ -77,7 +77,7 @@ Codex CLI、Claude Code 与 Grok Build 作为成熟使用体验的参照，但 V
 
 ### 7. 主题与可访问性
 
-- 默认主题采用 Vera 深海方向，并保留高对比与无色回退。
+- 默认主题采用 Vera 深海方向，并保留 Light、高对比与无色回退。
 - 尊重 `NO_COLOR`、`TERM=dumb`、`VERA_NO_ANIMATIONS` 和 reduced-motion 配置。
 - CJK、英文、Emoji、宽字符和常见 Terminal.app 字体下不重叠、不破坏关键审批信息。
 - 颜色、符号和动画只增强理解，不能成为唯一状态来源。
@@ -104,7 +104,7 @@ Codex CLI、Claude Code 与 Grok Build 作为成熟使用体验的参照，但 V
 
 1. 持久化会话 Core 与跨进程恢复；
 2. 根目录项目指令发现、可见状态与 `VERA.md` 审批初始化；
-3. Vera CLI 标识、设计 token 与三类主题基线；
+3. Vera CLI 标识、设计 token 与主题基线（深海默认，另含 Light / 高对比 / 无色）；
 4. 启动首屏、状态区、时间线与卡片视觉收口；
 5. Composer、焦点、导航、小终端与长内容体验；
 6. wheel 安装、Terminal.app 和真实工程完整回归；

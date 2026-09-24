@@ -13,12 +13,16 @@
 | 3 | [0069：Session Selection、Run 绑定与 Context 装配](0069-skill-runtime-context.md) | Done | `965abe9` |
 | 4 | [0070：CLI 命令与三客户端结构化投影](0070-skill-cli-projection.md) | Done | `ec1e7da` |
 | 5 | [0071：NoSkill、兼容迁移与安装态整合](0071-skill-compatibility.md) | Done（安装态缓存阻断） | `33ae850` |
-| 6 | [0072：阶段九自动验收与人工验收准备](0072-phase-9-skills-acceptance.md) | Ready for manual acceptance | 待用户确认 |
+| 6 | [0072：阶段九自动验收与人工验收准备](0072-phase-9-skills-acceptance.md) | Ready for manual acceptance | 见任务记录 |
+| 7 | [0074：Skill 交互浮层](0074-phase-9-skill-picker-plan.md) | Done（主路径用户复验） | `02ed5f8`、`c94382c`、`77704e1` |
+| — | [0075：缩放闪动](0075-cli-resize-flicker.md) | Done | `19fc650`、`9fce985` |
+| — | [0076：Light 主题](0076-cli-light-theme.md) | Done | `f32fb58` |
+| — | Skill 会话持久化修正 | Done | `37b1c30` |
 
 ## 证据入口
 
 - 自动矩阵：[阶段九 Core-native Skills 评测记录](../evals/phase-9-core-native-skills.md)
-- 规格：[Core 原生 Skills 系统](../specs/2026-09-15-core-native-skills-system.md)
+- 规格：[Core 原生 Skills 系统](../specs/2026-09-15-core-native-skills-system.md)、[Skill 交互列表](../specs/2026-09-24-skills-interactive-picker.md)
 - 决策：[ADR-0020](../decisions/ADR-0020-stage-core-native-skills.md)
 
 阶段九在用户确认前不得标记为 Complete；阶段十仍不得开始。

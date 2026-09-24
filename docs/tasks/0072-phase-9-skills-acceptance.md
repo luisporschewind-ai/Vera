@@ -22,17 +22,18 @@ Blocked：
 
 - 仓库外隔离 venv 的 offline wheel smoke 未完成：uv 缓存缺少 `openai>=2,<3`，安装在依赖解析阶段失败；证据保留于 `/private/tmp/vera-phase9-nonlive.txt`。
 
-Not run：
+Not run / 仍待：
 
-- 用户当前没有电脑，未执行原生 Terminal.app 60×16/80×24 人工走查；
-- 未在 Python 工程安全副本和 Swift/Xcode 工程安全副本上做真实 Skill dogfood；
-- 未得到“阶段九可以封存”的用户确认。
+- Swift/Xcode 工程安全副本上的 Skill dogfood；
+- 冲突 / 非法包 / clear / NoSkill 等人工负例全矩阵；
+- 仓库外隔离 offline wheel smoke（缓存缺 `openai` 的历史阻断仍须复核）；
+- 用户明确确认「阶段九可以封存」。
 
 ## 人工验收清单
 
-待用户有电脑后，在独立安全副本和隔离状态目录中完成：
+待在独立安全副本和隔离状态目录中完成（部分已部分完成，见下方 2026-09-24 记录）：
 
-1. Terminal.app 运行 `/skills`、`/skills show`、`/skills use`、`/skills clear`、`/status`；确认成功/失败原因可读，正文、私有绝对路径和 ANSI 不泄漏。
+1. Terminal.app 运行 `/skills`、浮层选择、`/skills show`、`/skills use`、`/skills clear`、`/status`；确认成功/失败原因可读，正文、私有绝对路径和 ANSI 不泄漏。
 2. 分别验证 builtin/user/workspace 来源、同名冲突、完整 `skill_id` 消歧、非法包和源包修改/删除后的失败关闭。
 3. 运行一个 Python 工程副本和一个 Swift/Xcode 工程副本：显式选择 Skill，确认工程根、验证产物和 Skill Snapshot 不越界、不执行包内脚本。
 4. 中断并恢复一个绑定 Skill 的 Run；确认恢复读取同一 Snapshot，缺失/损坏 Snapshot 停止，不回读可变原始包。
@@ -46,6 +47,15 @@ Not run：
 
 用户安装 `interview-term-brief` 后要求使 Skill 真正生效。核查发现 `/skills use` 原本只保存在进程内，`-c/-r` 恢复会话后选择丢失，违反已接受规格中的“选择随持久化会话恢复”。现将选择变更写入 Session Journal 并在恢复时重放；Snapshot 绑定后在向客户端交付绑定事件前持久化一次性消费结果。`/model` 切换保留待用选择；`/compact` 不消耗仅供下一次任务 Run 使用的选择。
 
-新增会话恢复、模型切换、绑定事件写入时序和压缩路径回归。已用用户安装包与 FakeModelAdapter 验证 `user:interview-term-brief` 可被选择、绑定 Snapshot，且正文进入模型请求；未调用真实 Provider。真实 CLI 启动目前因本机没有配置 Provider 而返回 `missing_provider_config`，因此未声称真实 Provider dogfood 或完成阶段九人工验收。
+新增会话恢复、模型切换、绑定事件写入时序和压缩路径回归。提交：`37b1c30`。FakeModelAdapter 与后续真实 Provider dogfood 见下节。
 
-本次门禁：聚焦 `8 passed`；排除两个已记录的旧 wheel 安装环境阻断文件后，完整非 live `1172 passed, 2 deselected, 8 warnings`；Ruff check、format、Mypy（182 个源文件）和 `git diff --check` 均通过。阶段九仍为 `Ready for manual acceptance`。
+本次门禁：聚焦 `8 passed`；排除两个已记录的旧 wheel 安装环境阻断文件后，完整非 live `1172 passed, 2 deselected, 8 warnings`；Ruff check、format、Mypy 和 `git diff --check` 均通过。
+
+## 2026-09-24：交互浮层与真实 dogfood 进展
+
+- [0074](0074-phase-9-skill-picker-plan.md) 落地分组浮层；框线与斜杠补全互斥经用户确认通过（`77704e1`）。
+- 用户在 `VeraTestDemo` + Terminal.app + `deepseek-flash` 上完成主路径：绑定 Snapshot、一次性消费、按 `interview-term-brief` 结构作答；用户判断 Skill 主路径基本可用。
+- [0075](0075-cli-resize-flicker.md) 缩放闪烁用户确认已解决。
+- [0076](0076-cli-light-theme.md) 新增 Light 主题。
+
+阶段九仍为 `Ready for manual acceptance`，未标 Complete。

@@ -48,6 +48,6 @@ TUI 的可选行由 `SkillSummary` 和当前 `SkillSelection` 构成，只读投
 - Core/Session：三来源摘要、跨来源同名完整 ID、同来源重复 ID 拒绝、损坏与不兼容包、列表打开后源包变化；Enter 最终只产生一次显式选择，未产生 Run。
 - TUI Pilot：↑↓、Enter、Esc、空列表、禁用行、长列表滚动、草稿/光标保留、选择失败、重复 Enter、活动 Run 与审批状态；不依赖文案判断成功。
 - 客户端 parity：TUI、Plain、JSON 读取同一 `skill.listed`/`skill.selection.changed` 事实；Plain/JSON 不输出 TUI 控制字符；NoSkill、Session 恢复与原有命令回归。
-- 真实 Terminal.app：60×16 和 80×24、默认/高对比/无色主题；用 `interview-term-brief` 从 `/skills` 选中、回到输入框、手动提问，并在 Python 与 Swift/Xcode 安全工程副本完成既定阶段九 dogfood。真实 Provider 或安装态环境阻断必须单独记录，不以 Pilot 代替人工通过。
+- 真实 Terminal.app：60×16 和 80×24、默认 / Light / 高对比 / 无色主题；用 `interview-term-brief` 从 `/skills` 选中、回到输入框、手动提问，并在 Python 与 Swift/Xcode 安全工程副本完成既定阶段九 dogfood。真实 Provider 或安装态环境阻断必须单独记录，不以 Pilot 代替人工通过。
 
-本规格获用户书面接受并完成实施计划审阅前，不修改产品代码，也不把阶段九标为 Complete。
+**实施修订（2026-09-24）：** 规格已 Accepted 并完成计划实施；浮层框线与斜杠互斥已用户确认。任务记录见 [0074](../tasks/0074-phase-9-skill-picker-plan.md)。阶段九整体仍待封存确认。

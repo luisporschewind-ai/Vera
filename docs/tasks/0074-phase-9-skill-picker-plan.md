@@ -6,7 +6,9 @@
 **Architecture:** Core 继续负责发现、冲突、选择和 Run Snapshot。主 TUI 新增独立浮层 Widget，只消费 `skill.listed` 的公共摘要；选中后向 `SessionController` 发送已有 `/skills use <skill_id>`，等待结构化 `skill.selection.changed` 确认。Plain/JSON 不引入按键 UI，也不改变命令语义。
 **Tech Stack:** Python 3.12、Pydantic、Textual 8、Rich、pytest、Textual Pilot、PTY。
 **Spec:** [已接受的 Skill 交互列表规格](../specs/2026-09-24-skills-interactive-picker.md)，上位规格为 [Core 原生 Skills 系统](../specs/2026-09-15-core-native-skills-system.md)。
-**状态：** Implemented（2026-09-24 用户确认计划并授权实施）；自动测试通过，Terminal.app / 真实 Provider dogfood 仍待用户验收。阶段九保持 Ready for manual acceptance。
+**状态：** Done（2026-09-24）；用户确认计划并授权实施，Terminal.app 主路径与浮层框线/斜杠互斥已复验通过。阶段九整体仍为 Ready for manual acceptance，未标 Complete。
+**本地提交：** `02ed5f8`、`c94382c`、`77704e1`（含框线与斜杠互斥收口）
+**前置：** Skill 会话持久化 `37b1c30` 已合入同一工作树。
 
 ## Global Constraints
 
@@ -15,11 +17,11 @@
 - Enter 仅设置下一次任务 Run 的待用 Skill，不发送 `SubmitPrompt`，不读取 Provider Key，不执行 Skill 包脚本。
 - TUI 只消费 `SkillSummary`/`SkillSelection` 和结构化 Event；不自行扫描目录、解析 Manifest 或按人类文案判断成功。
 - 系统内置、用户本地、当前项目按此顺序分组；`invalid`/`incompatible` 与重复 `skill_id` 不可选，跨来源同名但完整 ID 唯一的 `conflict` 可选。
-- 60×16 可安全操作，80×24 为完整基线；高对比和无色主题不能仅靠颜色表达选择与错误。
-- 当前正式工作树含另一项尚未提交的 Skill 会话持久化修正（`src/vera/session/controller.py` 等）。执行前先与用户确定其提交/集成边界；隔离工作树不会自动带入这些未提交改动，不得重写或顺手暂存它们。实施时以实际已集成的代码为基线验证 `tests/session/test_skill_commands.py`。
+- 60×16 可安全操作，80×24 为完整基线；高对比、无色与 Light 主题不能仅靠颜色表达选择与错误。
+- Skill 选择随 Session Journal 持久化（`37b1c30`）已先于本浮层合入；实施与验证以该基线为准。
 - 若在隔离工作树实施，先运行 `uv run python -c 'import vera; print(vera.__file__)'` 核对导入的是该工作树源码；必要时显式设置该工作树的 `PYTHONPATH` 或使用独立环境，不能把正式工作树的 editable 安装误当测试通过。
 - 每项实施保持单一主 Agent；每项提交、合并或推送都以用户对本计划执行与 Git 边界的明确授权为前提。绝不使用 `git add .` 或重置正式工作树。
-
+- Skill 浮层与斜杠/路径补全互斥：浮层打开时不显示补全；Esc 先关浮层；浮层使用 `modal` 层、外框 `solid`、内层 OptionList `compact`，避免左侧 tall 边框残线。
 ## Review Focus
 
 1. 同一来源两个目录声明同一个 `skill_id`：Task 1 的测试必须证明完整 ID 也拒绝歧义，已选择的 ID 在绑定前出现重复时不能静默取第一个。
@@ -323,4 +325,20 @@ env -u DEEPSEEK_API_KEY -u GLM_API_KEY -u VERA_LIVE_API_KEY \
 | 活动 Run/审批不打开浮层、Plain/JSON 保持语义 | Task 3、Task 4 |
 | NoSkill/Session 恢复/安装态和真实终端门禁 | Task 4 |
 
-本计划待用户审阅并选择执行方式；在此之前不实施。推荐 **Native（由一个主 Agent 串行实施）**：Task 2/3 共用主 TUI 的键盘焦点与事件路由，单一实现者更容易守住现有正式工作树的改动边界；最后仍需独立整体验证。
+本计划已由用户审阅并授权 Native 实施。后续收口见下方「实施结果」。
+
+## 实施结果（2026-09-24）
+
+已完成并提交：
+
+- `02ed5f8` 拒绝同来源歧义完整 ID
+- `c94382c` 分组 Skill 浮层与 TUI 接线
+- `77704e1` 去掉 OptionList 内框残线；浮层升至 `modal`；与斜杠/路径补全互斥
+
+用户 Terminal.app 复验：
+
+- 样式与框线：通过（左侧小横线已消失）
+- 浮层与斜杠补全层级冲突：通过
+- 主路径：选择 `interview-term-brief` → 提问「解释 BM25」→ Snapshot 绑定、一次性消费、真实 `deepseek-flash` 按 Skill 作答，用户判断 Skill 主路径基本可用
+
+阶段九仍不 Complete：Swift/Xcode 副本、冲突/非法包负例全矩阵、安装态 offline wheel、以及用户明确「可以封存」确认仍待完成。

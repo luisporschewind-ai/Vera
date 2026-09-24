@@ -46,19 +46,25 @@
 - [项目指令发现与 `VERA.md` 初始化](specs/2026-09-14-project-instructions-and-vera-init.md)与 [ADR-0019](decisions/ADR-0019-native-vera-project-instructions.md)：Accepted；任务 0043 计划在会话恢复后、视觉原型前实施，普通启动不得静默写工程。
 - [阶段八：Core 工具集与风险分级 Policy v2](specs/2026-09-17-core-tooling-and-risk-tiered-policy.md)与 [Vera 原生 Git 能力](specs/2026-09-17-native-git-capability.md)：Accepted；[ADR-0021](decisions/ADR-0021-core-tools-before-desktop.md)已 Accepted，阶段八 In progress。
 - [阶段八执行顺序](tasks/phase-8-execution-order.md)：Accepted；实现在隔离分支 `codex/phase-8-tooling-policy-git`，0059–0065 Done，0066 Ready for manual acceptance；尚未合入 `main`。
-- [阶段九执行顺序](tasks/phase-9-execution-order.md)：任务 0067–0071 自动实现完成，任务 0072 为 Ready for manual acceptance；用户授权本阶段在阶段八仍 In progress 时使用独立工作树并行实施。
-- [阶段九自动验收记录](evals/phase-9-core-native-skills.md)：自动门禁与新增矩阵已记录；隔离 wheel 安装因 offline 缓存缺少 `openai` 阻断，Terminal.app 和真实工程 dogfood 待用户有电脑后执行。
+- [阶段九执行顺序](tasks/phase-9-execution-order.md)：任务 0067–0071 自动实现完成；0072 Ready for manual acceptance；0074 Skill 浮层 Done（主路径用户复验）；会话持久化 `37b1c30` 已合入。
+- [任务 0075：缩放闪动](tasks/0075-cli-resize-flicker.md)：Done；用户确认 Terminal.app 闪烁已解决。
+- [任务 0076：Light 主题](tasks/0076-cli-light-theme.md)：Done；`/theme light`。
+- [阶段九自动验收记录](evals/phase-9-core-native-skills.md)：自动门禁与新增矩阵已记录；隔离 wheel 安装曾因 offline 缓存缺少 `openai` 阻断，须复核；Python/`VeraTestDemo` 真实 Provider 主路径已由用户 dogfood，Swift/Xcode 与封存确认仍待。
 - [阶段九：Core-native Skills](specs/2026-09-15-core-native-skills-system.md)与 [ADR-0020](decisions/ADR-0020-stage-core-native-skills.md)：Accepted；范围与安全边界不变。通常入口仍为阶段八 Complete；本次按用户明确授权并行实施，不改变阶段八状态。
+- [Skill 交互列表](specs/2026-09-24-skills-interactive-picker.md)：Accepted 且已实施；浮层框线与斜杠互斥经用户确认。
+- [视觉 Token](specs/2026-09-13-vera-cli-visual-tokens.md)：Accepted；2026-09-24 增补 Light，内置主题为深海 / Light / 高对比 / 无色四套。
 - [ADR-0013：首个桌面底版采用 Electron](decisions/ADR-0013-electron-desktop-baseline.md)：Accepted；当前实施编号由 ADR-0021 调整为阶段十，只固定未来方向，当前不引入 Electron 代码或依赖。
 - [阶段十：桌面 Agent 工作台与 UI](specs/2026-09-12-desktop-agent-workbench-ui.md)：Draft；不启动阶段十。
 - [不可信内容、提示词投毒与内容安全](specs/2026-09-12-untrusted-content-and-prompt-injection-defense.md)：Accepted；由任务 0030 与 ADR-0015 实施。
 
 ## 最近验证
 
+- 2026-09-24 文档同步：将 Skill 持久化、0074 浮层（框线/斜杠互斥）、0075 缩放、0076 Light、以及用户 Terminal.app/`VeraTestDemo`/`deepseek-flash` 主路径 dogfood 写入任务与规格；阶段九仍非 Complete。
+- 2026-09-24 任务 0076：新增 Light 会话主题（`f32fb58`）；视觉 Token 规格增补 Light 列；`/theme light` 与 `/theme Light` 等价。
+- 2026-09-24 任务 0074 收口：用户确认浮层框线干净；确认 Skill 浮层与斜杠补全不再层级冲突（`77704e1`）。主路径：浮层选中 `interview-term-brief` → 提问生效 → Snapshot 绑定与一次性消费正确。
 - 2026-09-24 任务 0075：用户确认原生 Terminal.app 缩放闪烁已解决；仅缩窗防抖 + 同步更新清屏生效。
-- 2026-09-24 Skill 浮层与缩放：用户确认 0074 计划并授权实施；落地分组 Skill 浮层、歧义 ID 拒绝、会话持久化已提交。0075 加强为仅缩窗防抖修复且同步更新清屏，拖拽帧不再逐次 `CSI 2J`；聚焦 `43 passed`，Ruff/Mypy/diff 检查通过。阶段九仍为 Ready for manual acceptance；0075 已 Done，0074 仍待浮层人工走查。
-
-- 2026-09-24 Skill 生效修正：`/skills use` 的待用选择现随 Session Journal 恢复，`/model` 切换不丢失，`/compact` 不误消费；Run 绑定 Snapshot 后先落盘一次性消费，再向客户端交付绑定事件。用户安装的 `interview-term-brief` 已用 FakeModelAdapter 验证选择、绑定与模型上下文注入。聚焦 `8 passed`，排除两个既有 wheel 安装环境阻断文件后完整非 live `1172 passed, 2 deselected, 8 warnings`；Ruff、Mypy、diff 检查通过。真实 CLI 因本机未配置 Provider（`missing_provider_config`）未完成交互 dogfood；阶段九仍为 Ready for manual acceptance。
+- 2026-09-24 Skill 浮层实施：用户确认 0074 计划并授权实施；落地分组 Skill 浮层、歧义 ID 拒绝（`02ed5f8`、`c94382c`）；会话持久化已先提交（`37b1c30`）。
+- 2026-09-24 Skill 生效修正：`/skills use` 的待用选择现随 Session Journal 恢复，`/model` 切换不丢失，`/compact` 不误消费；Run 绑定 Snapshot 后先落盘一次性消费，再向客户端交付绑定事件。聚焦与完整非 live 门禁见 [0072](tasks/0072-phase-9-skills-acceptance.md)。
 - 2026-09-18 实施授权：用户选择方案 2（Inline Execution），授权阶段八按已接受计划串行实施并创建计划内本地提交；不包含 push、merge 或远程变更。
 - 2026-09-21 阶段九自动验收：新增矩阵 `5 passed`；全量非 live `1169 passed, 2 deselected, 8 warnings`，另有 1 error + 1 failed，均为 offline wheel 依赖缓存缺少 `openai`；排除该环境阻断后 `1165 passed, 2 deselected, 8 warnings`。任务 0067–0071 完成，0072 Ready for manual acceptance。
 - 2026-09-21 实施授权：用户明确允许阶段九不等待阶段八完全完成；阶段九使用独立分支/工作树 `codex/phase-9-skills`。当时不合并、不推送、不删除既有分支或工作树。
@@ -119,8 +125,8 @@
 
 ## 下一检查点
 
-1. 在 Terminal.app 复验 0074 Skill 浮层；阶段八隔离分支完成 Node/TS 与人工验收后，用户确认再合入 `main`。
-2. 不自动删除、取消暂存或忽略 `VeraTestDemo` 索引里残留的 `AD build/`；未改 `.gitignore`。
-3. 阶段五仍缺 20 次真实 dogfood 与三类真实工程走查，不得把阶段五标为 Complete。
-4. 用户已确认「CLI 版本达到预期，可以封存」；该确认不自动授权下一阶段或 Electron 实施。
-5. 阶段九自动实现已达到 Ready for manual acceptance；待用户有电脑后完成 Terminal.app、Python/Swift 工程副本 dogfood 和用户确认。市场、远程安装、自动更新、Plugin、Hook 与可执行能力继续保持独立且不进入 v1。
+1. 阶段九：补齐 Swift/Xcode 副本与负例矩阵 dogfood，复核隔离 wheel；用户确认后才可标 Complete。
+2. 阶段八隔离分支完成 Node/TS 与 Terminal.app 人工验收后，用户确认再合入 `main`。
+3. 不自动删除、取消暂存或忽略 `VeraTestDemo` 索引里残留的 `AD build/`；未改 `.gitignore`。
+4. 阶段五仍缺 20 次真实 dogfood 与三类真实工程走查，不得把阶段五标为 Complete。
+5. 用户已确认「CLI 版本达到预期，可以封存」；该确认不自动授权 Electron 或阶段十。市场、远程安装、自动更新、Plugin、Hook 与可执行 Skill 继续不进入 v1。
