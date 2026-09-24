@@ -78,4 +78,5 @@
 - [任务 0064：GitCommitPlan 与精确提交](0064-native-git-commit.md)
 - [任务 0065：Git Hooks、恢复与分支](0065-git-hooks-recovery-and-branches.md)
 - [任务 0066：阶段八验收与真实 dogfood](0066-phase-8-tooling-git-acceptance.md)
-- [任务 0075：CLI 状态动效与回答逐行呈现](0075-cli-activity-and-paced-replies.md)
+- [任务 0078：CLI 状态动效与回答逐行呈现](0078-cli-activity-and-paced-replies.md)
+- [任务 0079：清除 Apple Terminal 启动前的 `p`](0079-apple-terminal-startup-probe.md)

@@ -570,7 +570,7 @@ class EventGroupWidget(Vertical):
         if self._collapsible is None:
             return
         self._collapsible.title = self.group_title()
-        if self.should_expand():
+        if self._has_failure():
             self._collapsible.collapsed = False
 
     def group_title(self) -> str:
@@ -587,6 +587,9 @@ class EventGroupWidget(Vertical):
         return title
 
     def should_expand(self) -> bool:
+        return self.kind is BlockKind.STATUS or self._has_failure()
+
+    def _has_failure(self) -> bool:
         return any(item.block.status is BlockStatus.FAILED for item in self._items)
 
     def __contains__(self, block_id: object) -> bool:
