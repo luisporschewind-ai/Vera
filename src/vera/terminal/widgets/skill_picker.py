@@ -108,7 +108,7 @@ class SkillPicker(Vertical):
 
     def compose(self) -> ComposeResult:
         yield Static("Skills · ↑↓ 选择 · Enter 确认 · Esc 返回", id="skill-picker-title")
-        yield OptionList(id="skill-picker-options")
+        yield OptionList(id="skill-picker-options", compact=True)
         yield Static("", id="skill-picker-message")
 
     def open(self, rows: tuple[SkillPickerRow, ...]) -> None:

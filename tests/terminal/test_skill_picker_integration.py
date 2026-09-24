@@ -410,3 +410,55 @@ async def test_stale_same_skill_confirmation_cannot_complete_new_picker(
             ExecuteSlashCommand(raw="/skills"),
             ExecuteSlashCommand(raw="/skills use user:python-review"),
         ]
+
+
+@pytest.mark.asyncio
+async def test_skill_picker_hides_and_blocks_slash_completions(tmp_path: Path) -> None:
+    controller = _controller_with_skill(tmp_path)
+    app = VeraTerminalApp(controller, controller.workspace, "fake", animations=False)
+    async with app.run_test(size=(80, 24)) as pilot:
+        composer = app.query_one(PromptComposer)
+        from vera.terminal.widgets.completions import CompletionList
+
+        completions = app.query_one(CompletionList)
+        composer.load_text("/")
+        app._refresh_completions("/")
+        assert completions.display
+
+        _deliver_list(app, controller, _RecordingSubmit())
+        picker = app.query_one(SkillPicker)
+        assert picker.display
+        assert not completions.display
+
+        composer.focus()
+        composer.load_text("/st")
+        app._refresh_completions("/st")
+        assert picker.display
+        assert not completions.display
+        assert composer._slash_completions() is None
+
+        await pilot.press("escape")
+        await pilot.pause()
+        assert not picker.display
+        assert composer.has_focus
+
+        composer.load_text("/st")
+        app._refresh_completions("/st")
+        assert completions.display
+        assert not picker.display
+
+
+@pytest.mark.asyncio
+async def test_other_slash_command_closes_idle_skill_picker(tmp_path: Path) -> None:
+    controller = _controller_with_skill(tmp_path)
+    app = VeraTerminalApp(controller, controller.workspace, "fake", animations=False)
+    async with app.run_test(size=(80, 24)) as pilot:
+        recorder = _RecordingSubmit()
+        _deliver_list(app, controller, recorder)
+        picker = app.query_one(SkillPicker)
+        assert picker.display
+
+        app.on_prompt_submitted(PromptSubmitted("/status"))
+        await pilot.pause()
+        assert not picker.display
+        assert recorder.actions[-1] == ExecuteSlashCommand(raw="/status")

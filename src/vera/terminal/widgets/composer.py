@@ -268,6 +268,13 @@ class PromptComposer(TextArea):
 
     def _slash_completions(self) -> CompletionList | None:
         try:
+            from vera.terminal.widgets.skill_picker import SkillPicker
+
+            if self.app.query_one(SkillPicker).display:
+                return None
+        except Exception:
+            pass
+        try:
             return self.app.query_one(CompletionList)
         except Exception:
             return None

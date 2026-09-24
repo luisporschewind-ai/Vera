@@ -297,6 +297,10 @@ class VeraTerminalApp(App[int]):
 
     def _refresh_completions(self, text: str) -> None:
         completions = self.query_one(CompletionList)
+        if self.query_one(SkillPicker).display:
+            # Skill 浮层是模态选择；打开时不与斜杠/路径补全叠层。
+            completions.hide()
+            return
         snapshot = self.controller.snapshot()
         if completions.update_for_input(text, snapshot):
             if completions.needs_restore and completions.last_query and "@" not in text:
@@ -317,9 +321,13 @@ class VeraTerminalApp(App[int]):
 
     def on_prompt_submitted(self, message: PromptSubmitted) -> None:
         self.query_one(CompletionList).hide()
+        picker = self.query_one(SkillPicker)
+        text = message.text
+        # 新的斜杠/提问开始时收起未确认的 Skill 浮层，避免与命令补全抢层。
+        if picker.display and picker.pending_skill_id is None and text != "/skills":
+            picker.close()
         self.query_one(ConversationTimeline).return_to_tail()
         self._focus_composer_unless_approval()
-        text = message.text
         self.submitted.append(text)
         if text.startswith("/"):
             request_id = self.bridge.submit(ExecuteSlashCommand(raw=text))
@@ -541,6 +549,7 @@ class VeraTerminalApp(App[int]):
         if picker.display:
             if picker.pending_skill_id is None:
                 picker.close()
+                self.query_one(CompletionList).hide()
                 self.query_one(PromptComposer).focus()
             return
         if self.controller.active_run_id is not None:
@@ -552,6 +561,8 @@ class VeraTerminalApp(App[int]):
             return
         if completions.display:
             completions.hide()
+            self.query_one(PromptComposer).focus()
+            return
 
     def action_cancel_or_clear(self) -> None:
         composer = self.query_one(PromptComposer)
