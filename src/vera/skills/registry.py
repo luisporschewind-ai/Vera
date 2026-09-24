@@ -53,6 +53,13 @@ class SkillRegistry:
                     status="invalid",
                     reason_codes=("skill_not_found",),
                 )
+            if len(exact) > 1:
+                return SkillSelection(
+                    mode="explicit",
+                    selector=selector,
+                    status="invalid",
+                    reason_codes=("skill_name_conflict",),
+                )
             return self._selection_from_summary(exact[0], selector, allow_conflict=True)
         named = [item for item in summaries if item.name == selector]
         if len(named) != 1:
@@ -65,15 +72,12 @@ class SkillRegistry:
     def package_for(self, selection: SkillSelection, workspace_root: Path) -> SkillCandidate | None:
         if selection.status != "selected" or selection.skill_id is None:
             return None
-        return next(
-            (
-                candidate
-                for candidate in self.candidates(workspace_root)
-                if candidate.package is not None
-                and candidate.package.skill_id == selection.skill_id
-            ),
-            None,
-        )
+        matches = [
+            candidate
+            for candidate in self.candidates(workspace_root)
+            if candidate.summary.skill_id == selection.skill_id
+        ]
+        return matches[0] if len(matches) == 1 and matches[0].package is not None else None
 
     @staticmethod
     def _selection_from_summary(

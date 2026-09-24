@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 
 from tests.session.test_controller import make_controller
@@ -74,6 +75,17 @@ def test_skills_conflict_and_unknown_command_keep_reason_codes(tmp_path: Path) -
     assert event.payload["selection"]["status"] == "invalid"
     assert event.payload["selection"]["reason_codes"] == ["skill_name_conflict"]
     assert workspace.exists()
+
+
+def test_skills_use_rejects_duplicate_full_id_in_one_source(tmp_path: Path) -> None:
+    controller = _controller(tmp_path)
+    shutil.copytree(tmp_path / "user" / "python-review", tmp_path / "user" / "duplicate")
+
+    outputs = tuple(controller.dispatch(ExecuteSlashCommand(raw="/skills use user:python-review")))
+    event = next(item for item in outputs if item.type == "skill.selection.changed")
+    assert event.payload["selection"]["status"] == "invalid"
+    assert event.payload["selection"]["reason_codes"] == ["skill_name_conflict"]
+    assert controller.snapshot().skill_selection.status == "invalid"
 
 
 def test_selected_skill_survives_session_resume_and_is_consumed_once(tmp_path: Path) -> None:
