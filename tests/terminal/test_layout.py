@@ -108,7 +108,7 @@ async def test_resize_keeps_footer_model_and_chrome_inside_screen(tmp_path: Path
 
 
 @pytest.mark.asyncio
-async def test_resize_clears_terminal_before_full_repaint(
+async def test_resize_burst_does_not_clear_each_frame(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     controller = make_controller(tmp_path)
@@ -119,7 +119,34 @@ async def test_resize_clears_terminal_before_full_repaint(
         writes: list[str] = []
         monkeypatch.setattr(driver, "write", writes.append)
 
+        await pilot.resize_terminal(100, 32)
+        await pilot.resize_terminal(90, 28)
         await pilot.resize_terminal(80, 24)
-        await pilot.pause()
 
-        assert "\x1b[2J\x1b[H" in "".join(writes)
+        assert "\x1b[2J\x1b[H" not in "".join(writes)
+
+        await pilot.pause(0.6)
+        clears = [write for write in writes if "\x1b[2J\x1b[H" in write]
+        assert len(clears) == 1
+        assert "\x1b[?2026h" in clears[0]
+        assert "\x1b[?2026l" in clears[0]
+        assert "Vera" in clears[0]
+
+
+@pytest.mark.asyncio
+async def test_resize_grow_only_skips_terminal_clear(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    controller = make_controller(tmp_path)
+    app = VeraTerminalApp(controller, controller.workspace, "fake", animations=False)
+    async with app.run_test(size=(80, 24)) as pilot:
+        driver = app._driver
+        assert driver is not None
+        writes: list[str] = []
+        monkeypatch.setattr(driver, "write", writes.append)
+
+        await pilot.resize_terminal(100, 30)
+        await pilot.resize_terminal(120, 40)
+        await pilot.pause(0.6)
+
+        assert "\x1b[2J\x1b[H" not in "".join(writes)
