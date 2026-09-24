@@ -207,9 +207,9 @@ async def test_approval_card_shows_full_body_and_actions(tmp_path: Path) -> None
             assert line in rendered
         assert widget.size.height >= 6
         for button, label in (
-            (widget._cancel, "Cancel"),
-            (widget._reject, "Reject"),
-            (widget._approve, "Approve"),
+            (widget._cancel, "取消"),
+            (widget._reject, "拒绝"),
+            (widget._approve, "批准"),
         ):
             assert label in str(button.label)
             assert button.size.height >= 1

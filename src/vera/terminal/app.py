@@ -12,6 +12,8 @@ from rich.control import Control
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.css.query import NoMatches
+from textual.driver import Driver
+from textual.drivers.linux_driver import LinuxDriver
 from textual.events import Resize
 from textual.geometry import Size
 from textual.timer import Timer
@@ -19,9 +21,9 @@ from textual.widgets import Static
 
 from vera.contracts.events import EventEnvelope
 from vera.contracts.skills import SkillSelection, SkillSummary
-from vera.contracts.streaming import RuntimeOutput
-from vera.presentation.activity import ActivityPresenter
-from vera.presentation.projector import TimelineProjector, UpdateBlock
+from vera.contracts.streaming import RuntimeOutput, StreamFrame
+from vera.presentation.activity import ActivityPresenter, ActivityState
+from vera.presentation.projector import AppendBlock, TimelineProjector, UpdateBlock
 from vera.presentation.timeline import BlockKind
 from vera.session.actions import (
     CancelActiveRun,
@@ -67,6 +69,14 @@ _RESIZE_SYNC_BEGIN = "\x1b[?2026h"
 _RESIZE_SYNC_END = "\x1b[?2026l"
 
 
+class _AppleTerminalDriver(LinuxDriver):
+    """Skip a Textual probe that Terminal.app renders as a stray ``p``."""
+
+    def _query_in_band_window_resize(self) -> None:
+        # Textual still receives window changes through SIGWINCH.
+        pass
+
+
 class VeraTerminalApp(App[int]):
     """Fullscreen Textual shell; Core access only via SessionController."""
 
@@ -83,6 +93,12 @@ class VeraTerminalApp(App[int]):
         ("cmd+c", "copy_text", "Copy"),
         ("end", "return_to_tail", "End"),
     ]
+
+    def get_driver_class(self) -> type[Driver]:
+        driver_class = super().get_driver_class()
+        if os.environ.get("TERM_PROGRAM") == "Apple_Terminal" and driver_class is LinuxDriver:
+            return _AppleTerminalDriver
+        return driver_class
 
     def __init__(
         self,
@@ -136,7 +152,7 @@ class VeraTerminalApp(App[int]):
         )
         yield VeraWelcome(id="welcome")
         yield UserStickyBar(id="user-sticky")
-        yield ConversationTimeline(id="timeline")
+        yield ConversationTimeline(id="timeline", paced=self.animations, unicode=self._unicode())
         yield CompletionList(id="completions")
         yield SkillPicker(id="skill-picker")
         yield VeraWorkRail(id="work-rail")
@@ -373,7 +389,20 @@ class VeraTerminalApp(App[int]):
     def _sync_activity(self) -> None:
         rail = self._work_rail()
         if rail is not None:
-            rail.set_activity(self.activity.current, self.animation.frame())
+            state = self.activity.current
+            if state.phase == "done":
+                try:
+                    pending = self.query_one(ConversationTimeline).has_pending_reveal
+                except NoMatches:
+                    pending = False
+                if pending:
+                    state = ActivityState(
+                        "正在回复", "replying", True, target=state.target, steps=state.steps
+                    )
+            rail.set_activity(
+                state,
+                self.animation.frame(state.phase),
+            )
 
     def on_runtime_output_received(self, message: RuntimeOutputReceived) -> None:
         output = message.output
@@ -385,8 +414,9 @@ class VeraTerminalApp(App[int]):
             if output.type == "session.status":
                 self._session_status = SessionStatus.model_validate(output.payload)
                 self._refresh_chrome()
-            self.activity.apply(output)
-            self._sync_activity()
+        self.activity.apply(output)
+        self._sync_activity()
+        if isinstance(output, EventEnvelope):
             if output.type == "session.closed":
                 self.exit(0)
                 return
@@ -399,18 +429,44 @@ class VeraTerminalApp(App[int]):
                         status.set_status(text)
                 self._focus_composer_unless_approval()
                 return
-        mutations = self.projector.apply(output)
         timeline = self.query_one(ConversationTimeline)
-        streaming_updates = [
-            item.block
-            for item in mutations
-            if isinstance(item, UpdateBlock) and item.block.kind.value == "assistant"
-        ]
-        if streaming_updates and all(isinstance(item, UpdateBlock) for item in mutations):
-            for block in streaming_updates:
-                timeline.apply_streaming_update(block)
+        if isinstance(output, EventEnvelope) and output.type in {
+            "run.started",
+            "approval.required",
+            "run.failed",
+            "run.cancelled",
+        }:
+            timeline.finish_reveal()
+        mutations = self.projector.apply(output)
+        if isinstance(output, EventEnvelope) and output.type == "run.completed":
+            # The retained Done row replaces the generic completion status card.
+            mutations = tuple(
+                item
+                for item in mutations
+                if not isinstance(item, (AppendBlock, UpdateBlock))
+                or item.block.kind is not BlockKind.STATUS
+            )
+        if isinstance(output, StreamFrame) or (
+            isinstance(output, EventEnvelope) and output.type == "assistant.message"
+        ):
+            for item in mutations:
+                if (
+                    isinstance(item, (AppendBlock, UpdateBlock))
+                    and item.block.kind is BlockKind.ASSISTANT
+                ):
+                    timeline.queue_assistant(item.block)
+                else:
+                    timeline.apply((item,))
         else:
             timeline.apply(mutations)
+        if isinstance(output, EventEnvelope) and output.type in {
+            "run.completed",
+            "run.failed",
+            "run.cancelled",
+        }:
+            outcome = "done" if output.type == "run.completed" else output.type.removeprefix("run.")
+            timeline.mark_outcome(output.run_id, outcome)
+        self._sync_activity()
         if isinstance(output, EventEnvelope) and output.type in {
             "approval.resolved",
             "approval.expired",
@@ -687,6 +743,7 @@ class VeraTerminalApp(App[int]):
         status.set_status("已复制选中文本" if selected else "已复制最近一块文本")
 
     def _last_copyable_text(self) -> str:
+        timeline = self.query_one(ConversationTimeline)
         preferred = {
             BlockKind.ERROR,
             BlockKind.DIFF,
@@ -694,7 +751,11 @@ class VeraTerminalApp(App[int]):
             BlockKind.STATUS,
         }
         for block in reversed(list(self.projector.blocks())):
-            if block.kind in preferred and block.body.strip():
+            if (
+                timeline.has_block(block.block_id)
+                and block.kind in preferred
+                and block.body.strip()
+            ):
                 return block.body
         return ""
 
@@ -832,6 +893,8 @@ class VeraTerminalApp(App[int]):
                 self._sync_activity()
             return
         if not self.activity.current.active:
+            if self.activity.current.phase == "done":
+                self._sync_activity()
             return
         self._sync_activity()
 

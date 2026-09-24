@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 from vera.contracts import JsonValue
-from vera.contracts.events import EventEnvelope
+from vera.contracts.streaming import RuntimeOutput, StreamFrame, StreamFrameType
 
 _STEP_LABELS = {
     "read_file": "读取",
@@ -30,10 +30,14 @@ class ActivityPresenter:
     _LABELS = {
         "model.requested": ("正在思考", "thinking", True, "info"),
         "tool.started": ("正在读取", "tool", True, "info"),
-        "changeset.proposed": ("正在规划修改", "planning", True, "info"),
-        "approval.required": ("等待审批", "approval", True, "warning"),
-        "changeset.applied": ("正在验证", "verify", True, "info"),
+        "changeset.proposed": ("处理中", "processing", True, "info"),
+        "approval.required": ("等待审批", "approval", False, "warning"),
+        "changeset.applied": ("处理中", "processing", True, "info"),
         "verification.started": ("正在验证", "verify", True, "info"),
+        "verification.completed": ("处理中", "processing", True, "info"),
+        "tool.completed": ("处理中", "processing", True, "info"),
+        "tool.failed": ("处理中", "processing", True, "warning"),
+        "approval.resolved": ("处理中", "processing", True, "info"),
         "recovery.detected": ("已列出待恢复任务", "recovery", False, "warning"),
         "recovery.resume_started": ("正在恢复", "recovery", True, "warning"),
         "recovery.resumed": ("已续跑", "recovery", False, "info"),
@@ -48,19 +52,45 @@ class ActivityPresenter:
         self._steps: tuple[str, ...] = ()
         self._target = ""
         self._run_id = ""
+        self._accepting_delta = False
         self._state = ActivityState("就绪", "idle", False)
 
-    def apply(self, event: EventEnvelope) -> ActivityState:
+    def apply(self, event: RuntimeOutput) -> ActivityState:
+        if isinstance(event, StreamFrame):
+            if (
+                event.type is StreamFrameType.ASSISTANT_DELTA
+                and event.run_id == self._run_id
+                and self._accepting_delta
+                and self._state.phase not in {"done", "cancelled", "failed", "error"}
+            ):
+                self._state = self._emit("正在回复", "replying", True, "info")
+            return self._state
         if event.type == "run.started":
             self._steps = ()
             self._target = ""
             self._run_id = event.run_id
-            self._state = self._emit("就绪", "idle", False, "info")
+            self._accepting_delta = False
+            self._state = self._emit("处理中", "processing", True, "info")
             return self._state
-        if event.run_id and event.run_id != self._run_id and event.type in self._LABELS:
+        if self._run_id and event.run_id and event.run_id != self._run_id:
+            return self._state
+        if event.run_id and not self._run_id and event.type in self._LABELS:
             self._steps = ()
             self._target = ""
             self._run_id = event.run_id
+        if event.type == "model.requested":
+            self._accepting_delta = True
+        elif event.type in {
+            "model.completed",
+            "model.failed",
+            "tool.started",
+            "approval.required",
+            "verification.started",
+            "run.completed",
+            "run.cancelled",
+            "run.failed",
+        }:
+            self._accepting_delta = False
         if event.type == "tool.started":
             name = str(event.payload.get("name", ""))
             step = _STEP_LABELS.get(name)
@@ -75,6 +105,14 @@ class ActivityPresenter:
                 self._state = self._emit("正在规划修改", "planning", True, "info")
             return self._state
         label, phase, active, severity = mapped
+        if event.type in {
+            "tool.completed",
+            "tool.failed",
+            "changeset.proposed",
+            "changeset.applied",
+            "verification.completed",
+        }:
+            self._target = ""
         if event.type == "tool.started":
             name = str(event.payload.get("name", ""))
             if name in {"read_file", "list_directory", "search_text"}:
@@ -90,6 +128,7 @@ class ActivityPresenter:
         self._steps = ()
         self._target = ""
         self._run_id = ""
+        self._accepting_delta = False
         self._state = ActivityState("就绪", "idle", False)
 
     def set_failed(self, label: str) -> ActivityState:

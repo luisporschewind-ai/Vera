@@ -50,6 +50,8 @@
 - [任务 0075：缩放闪动](tasks/0075-cli-resize-flicker.md)：Done；用户确认 Terminal.app 闪烁已解决。
 - [任务 0076：Light 主题](tasks/0076-cli-light-theme.md)：Done；`/theme light`。
 - [任务 0077：奶油风主题](tasks/0077-cli-cream-theme.md)：Done；`/theme cream` / `/theme 奶油`。
+- [任务 0078：CLI 状态动效与回答逐行呈现](tasks/0078-cli-activity-and-paced-replies.md)：Ready for manual acceptance；含审批卡小调整、状态组初次展开。
+- [任务 0079：Apple Terminal 启动字符](tasks/0079-apple-terminal-startup-probe.md)：Done；用户确认启动时不再出现 `p`。
 - [阶段九自动验收记录](evals/phase-9-core-native-skills.md)：自动门禁与新增矩阵已记录；隔离 wheel 安装曾因 offline 缓存缺少 `openai` 阻断，须复核；Python/`VeraTestDemo` 真实 Provider 主路径已由用户 dogfood，Swift/Xcode 与封存确认仍待。
 - [阶段九：Core-native Skills](specs/2026-09-15-core-native-skills-system.md)与 [ADR-0020](decisions/ADR-0020-stage-core-native-skills.md)：Accepted；范围与安全边界不变。通常入口仍为阶段八 Complete；本次按用户明确授权并行实施，不改变阶段八状态。
 - [Skill 交互列表](specs/2026-09-24-skills-interactive-picker.md)：Accepted 且已实施；浮层框线与斜杠互斥经用户确认。
@@ -60,6 +62,7 @@
 
 ## 最近验证
 
+- 2026-09-24 任务 0078/0079 并入 `main`：状态工作轨动效、回答逐行呈现、审批卡间距与中文标签、状态组初次展开及 Apple Terminal 启动字符修正。合并前聚焦测试 `62 passed`；合并后聚焦测试 `105 passed`，Ruff check/format、Mypy `src` 与差异检查通过。按用户要求，本轮不运行全量测试，Terminal.app 合并结果由用户验收。
 - 2026-09-24 任务 0077：新增奶油风会话主题；视觉 Token 规格增补奶油列；`/theme cream` 与 `/theme 奶油` 等价。
 - 2026-09-24 文档同步：将 Skill 持久化、0074 浮层（框线/斜杠互斥）、0075 缩放、0076 Light、以及用户 Terminal.app/`VeraTestDemo`/`deepseek-flash` 主路径 dogfood 写入任务与规格；阶段九仍非 Complete。
 - 2026-09-24 任务 0076：新增 Light 会话主题（`f32fb58`）；视觉 Token 规格增补 Light 列；`/theme light` 与 `/theme Light` 等价。
@@ -127,8 +130,9 @@
 
 ## 下一检查点
 
-1. 阶段九：补齐 Swift/Xcode 副本与负例矩阵 dogfood，复核隔离 wheel；用户确认后才可标 Complete。
-2. 阶段八隔离分支完成 Node/TS 与 Terminal.app 人工验收后，用户确认再合入 `main`。
-3. 不自动删除、取消暂存或忽略 `VeraTestDemo` 索引里残留的 `AD build/`；未改 `.gitignore`。
-4. 阶段五仍缺 20 次真实 dogfood 与三类真实工程走查，不得把阶段五标为 Complete。
-5. 用户已确认「CLI 版本达到预期，可以封存」；该确认不自动授权 Electron 或阶段十。市场、远程安装、自动更新、Plugin、Hook 与可执行 Skill 继续不进入 v1。
+1. 用户在合并后的 `main` 上验证任务 0078 的状态动效、逐行回答、审批卡和状态组默认展开；按本轮要求执行全量测试。
+2. 阶段九：补齐 Swift/Xcode 副本与负例矩阵 dogfood，复核隔离 wheel；用户确认后才可标 Complete。
+3. 阶段八隔离分支完成 Node/TS 与 Terminal.app 人工验收后，用户确认再合入 `main`。
+4. 不自动删除、取消暂存或忽略 `VeraTestDemo` 索引里残留的 `AD build/`；未改 `.gitignore`。
+5. 阶段五仍缺 20 次真实 dogfood 与三类真实工程走查，不得把阶段五标为 Complete。
+6. 用户已确认「CLI 版本达到预期，可以封存」；该确认不自动授权 Electron 或阶段十。市场、远程安装、自动更新、Plugin、Hook 与可执行 Skill 继续不进入 v1。

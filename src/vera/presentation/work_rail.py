@@ -21,8 +21,12 @@ class WorkRailStatus(BaseModel):
 
 
 def project_work_rail(activity: ActivityState) -> WorkRailStatus:
-    idle_done = activity.label in {"就绪", "已完成", "已取消"} and not activity.active
-    visible = (activity.active or activity.severity == "error") and not idle_done
+    terminal_idle = activity.phase in {"idle", "done", "cancelled"}
+    visible = (
+        activity.active
+        or activity.severity == "error"
+        or activity.phase in {"approval", "recovery"}
+    ) and not terminal_idle
     return WorkRailStatus(
         visible=visible,
         label=activity.label,
@@ -41,10 +45,9 @@ def render_work_rail(
     unicode: bool,
     frame: str,
 ) -> str:
-    del unicode
     if not rail.visible:
         return ""
-    marker = frame if rail.active else "!"
+    marker = frame if rail.active and unicode else "*  " if rail.active else "!  "
     line = f"{marker} {rail.label}"
     if rail.target:
         line = f"{line}  {rail.target}"

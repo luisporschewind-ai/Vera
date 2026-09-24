@@ -65,3 +65,17 @@ def test_failed_work_rail_stays_visible() -> None:
     text = render_work_rail(rail, columns=80, unicode=True, frame="·")
     assert "失败" in text
     assert "Esc/Ctrl-C 取消" not in text
+
+
+def test_approval_is_visible_without_motion_or_cancel_hint() -> None:
+    rail = project_work_rail(ActivityState("等待审批", "approval", False, "warning"))
+    assert rail.visible is True
+    text = render_work_rail(rail, columns=80, unicode=True, frame="›··")
+    assert text.startswith("!   等待审批")
+    assert "Esc/Ctrl-C 取消" not in text
+
+
+def test_ascii_work_rail_uses_fixed_plain_marker() -> None:
+    rail = project_work_rail(ActivityState("正在思考", "thinking", True))
+    text = render_work_rail(rail, columns=80, unicode=False, frame="▏  ")
+    assert text.startswith("*   正在思考")

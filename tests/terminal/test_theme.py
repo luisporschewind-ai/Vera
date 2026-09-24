@@ -90,6 +90,7 @@ async def test_v4_logo_uses_theme_color_and_never_extra_bold(tmp_path: Path) -> 
                 colors = {str(span.style.color) for span in visual.spans if span.style.color}
                 assert len(colors) >= 2
 
+
 def test_unknown_theme_is_rejected() -> None:
     assert normalize_theme("neon") is None
     assert normalize_theme("default.sh") is None

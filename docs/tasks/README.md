@@ -84,3 +84,6 @@
 - [任务 0074：Skill 交互浮层](0074-phase-9-skill-picker-plan.md)
 - [任务 0075：CLI 窗口缩放闪动修正](0075-cli-resize-flicker.md)
 - [任务 0076：CLI Light 主题](0076-cli-light-theme.md)
+- [任务 0077：CLI 奶油风主题](0077-cli-cream-theme.md)
+- [任务 0078：CLI 状态动效与回答逐行呈现](0078-cli-activity-and-paced-replies.md)
+- [任务 0079：清除 Apple Terminal 启动前的 `p`](0079-apple-terminal-startup-probe.md)

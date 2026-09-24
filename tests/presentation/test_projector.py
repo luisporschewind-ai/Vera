@@ -109,8 +109,8 @@ def test_command_approval_shows_planned_argv_profile_and_root() -> None:
     assert block.kind is BlockKind.APPROVAL
     derived = "-derivedDataPath /private/tmp/vera-verification/abcd/run_1/000/DerivedData"
     assert derived in block.body
-    assert "Profile xcode" in block.body
-    assert "产物根 /private/tmp/vera-verification/abcd/run_1/000" in block.body
+    assert "验证配置：xcode" in block.body
+    assert "产物根目录：/private/tmp/vera-verification/abcd/run_1/000" in block.body
     assert "verification_0" not in block.body
 
 

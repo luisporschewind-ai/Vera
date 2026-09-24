@@ -5,6 +5,7 @@ from rich.console import Console
 from rich.text import Text
 from textual.content import Content
 from textual.selection import SELECT_ALL
+from textual.widgets import Collapsible
 
 from vera.bootstrap import RuntimeDependencies
 from vera.config import Limits, ProviderConfig, VeraConfig
@@ -124,11 +125,30 @@ async def test_adjacent_same_kind_blocks_share_a_group(tmp_path: Path) -> None:
             "工具 · 1 次",
         ]
         assert groups[0].should_expand() is False
-        assert groups[1].should_expand() is False
+        assert groups[1].should_expand() is True
+        assert groups[1].query_one(Collapsible).collapsed is False
         assert app.block("tool_1").collapsed is True
         assert app.block("status_1").collapsed is False
         assert app.block("status_2").collapsed is False
         assert app.block("status_1")._collapsible is None
+
+
+@pytest.mark.asyncio
+async def test_status_group_manual_collapse_survives_new_status(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    async with app.run_test(size=(80, 24)) as pilot:
+        app._clear_timeline_display()
+        timeline = app.query_one("#timeline")
+        timeline.apply((AppendBlock(block=status_block("status_1", "任务已开始")),))
+        await pilot.pause()
+        group = timeline.query_one(EventGroupWidget)
+        collapsible = group.query_one(Collapsible)
+        assert collapsible.collapsed is False
+
+        collapsible.collapsed = True
+        timeline.apply((AppendBlock(block=status_block("status_2", "已创建检查点")),))
+        await pilot.pause()
+        assert collapsible.collapsed is True
 
 
 @pytest.mark.asyncio

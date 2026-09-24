@@ -74,7 +74,9 @@ class TimelineBlockWidget(Vertical):
         self._title = Static(self._title_text(block), classes="block-title")
         self._time = Static(format_block_clock(block_occurred_at(block)), classes="block-time")
         self._collapsible: Collapsible | None = None
-        self._markdown_render_key: tuple[str, int] | None = None
+        self._markdown_render_key: tuple[str, int, str] | None = None
+        self._markdown_text: Text | None = None
+        self._visible_lines: int | None = None
 
     @staticmethod
     def _dom_id(block_id: str) -> str:
@@ -137,6 +139,22 @@ class TimelineBlockWidget(Vertical):
             self._body.display = block.expanded
         self._render_body()
 
+    def set_visible_lines(self, count: int | None) -> None:
+        """Limit displayed answer rows without changing the authoritative block body."""
+        self._visible_lines = None if count is None else max(1, count)
+        if self.block.kind is BlockKind.ASSISTANT:
+            self._render_body()
+
+    @property
+    def visible_line_count(self) -> int:
+        return self.assistant_line_count if self._visible_lines is None else self._visible_lines
+
+    @property
+    def assistant_line_count(self) -> int:
+        if self.block.kind is not BlockKind.ASSISTANT:
+            return 0
+        return len(self._rendered_assistant().split(allow_blank=True))
+
     def toggle_expanded(self) -> None:
         policy = DisclosurePolicy()
         self.block = policy.with_manual_toggle(self.block, not self.block.expanded)
@@ -153,14 +171,31 @@ class TimelineBlockWidget(Vertical):
             self._body.update(escape(preview) if preview else "")
             return
         if self.block.kind is BlockKind.ASSISTANT:
-            width = self._assistant_content_width()
-            theme = str(getattr(self.app, "theme", "default"))
-            key = (body, width, theme)
-            if self._markdown_render_key != key:
-                self._markdown_render_key = key
-                self._body.update(_assistant_markdown(body, width=width, theme=theme))
+            rendered = self._rendered_assistant()
+            if self._visible_lines is None:
+                self._body.update(rendered)
+            else:
+                visible = Text()
+                for index, line in enumerate(
+                    rendered.split(allow_blank=True)[: self._visible_lines]
+                ):
+                    if index:
+                        visible.append("\n")
+                    visible.append_text(line)
+                self._body.update(visible)
             return
         self._body.update(escape(body) if body else "")
+
+    def _rendered_assistant(self) -> Text:
+        key = (
+            self.block.body,
+            self._assistant_content_width(),
+            str(getattr(self.app, "theme", "default")),
+        )
+        if self._markdown_render_key != key or self._markdown_text is None:
+            self._markdown_render_key = key
+            self._markdown_text = _assistant_markdown(key[0], width=key[1], theme=key[2])
+        return self._markdown_text
 
     def _assistant_content_width(self) -> int:
         width = self._body.size.width or self.size.width or 80
@@ -556,7 +591,7 @@ class EventGroupWidget(Vertical):
         if self._collapsible is None:
             return
         self._collapsible.title = self.group_title()
-        if self.should_expand():
+        if self._has_failure():
             self._collapsible.collapsed = False
 
     def group_title(self) -> str:
@@ -573,6 +608,9 @@ class EventGroupWidget(Vertical):
         return title
 
     def should_expand(self) -> bool:
+        return self.kind is BlockKind.STATUS or self._has_failure()
+
+    def _has_failure(self) -> bool:
         return any(item.block.status is BlockStatus.FAILED for item in self._items)
 
     def __contains__(self, block_id: object) -> bool:

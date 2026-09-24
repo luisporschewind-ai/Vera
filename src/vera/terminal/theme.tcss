@@ -78,6 +78,25 @@ Screen {
     scrollbar-size-horizontal: 0;
 }
 
+#timeline .run-outcome {
+    width: 1fr;
+    height: 1;
+    margin: 0 3 1 3;
+    color: $text-muted;
+}
+
+#timeline .run-outcome-done {
+    color: $success;
+}
+
+#timeline .run-outcome-cancelled {
+    color: $warning;
+}
+
+#timeline .run-outcome-failed {
+    color: $error;
+}
+
 #completions {
     layer: overlay;
     dock: bottom;
