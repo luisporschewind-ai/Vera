@@ -11,15 +11,19 @@ from vera.terminal.display import clip_display
 BrandMode = Literal["full", "compact", "ascii"]
 _WORDMARK = "VERA"
 _ACCESSIBLE = "Vera"
+# Accepted 2026-09-24: docs/evals/artifacts/vera-logo-v4.json.
+# Keep all spaces: each letter is 6 cells wide, with 1 blank cell between letters.
 _DENSE_UNICODE = (
-    "⢿⡀ ⢀⡿ ⣿⠛⠛⠛ ⣿⠛⠛⢳ ⢀⡞⢳⡀",
-    "⠈⢷⣀⡾⠁ ⣿⠛⠛  ⣿⠛⢿⡁ ⣸⠗⠺⣇",
-    " ⠈⣿⠁  ⠿⠶⠶⠶ ⠿  ⠿ ⠿  ⠿",
+    "⢿⣇  ⣸⡿ ⣿⡿⠿⠿⠿⠿ ⣿⡿⠿⠿⢿⣦  ⢀⡾⢷⡀ ",
+    "⠘⣿⡄⢠⣿⠃ ⣿⣧⣤⣤⣤  ⣿⣇⣀⣀⣼⡿  ⣼⡇⢸⣧ ",
+    " ⢹⣷⣾⡏  ⣿⡏⠉⠉⠉  ⣿⡏⠙⣿⡍  ⢀⣿⠿⠿⣿⡀",
+    "  ⢿⡿   ⣿⣷⣶⣶⣶⣶ ⣿⡇ ⠈⢿⣦ ⣼⡟  ⢻⣧",
 )
 _DENSE_ASCII = (
-    ".. .. .... .... ....",
-    "..... ...  .... ....",
-    " ...  .... .  . .  .",
+    "..  .. ...... ......  .... ",
+    "...... .....  ......  .... ",
+    " ....  .....  .....  ......",
+    "  ..   ...... .. ... ..  ..",
 )
 
 
@@ -27,7 +31,7 @@ class BrandMark(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     mode: BrandMode
-    lines: tuple[str, ...] = Field(min_length=1, max_length=3)
+    lines: tuple[str, ...] = Field(min_length=1, max_length=4)
     accessible_label: str = _ACCESSIBLE
 
 

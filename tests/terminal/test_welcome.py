@@ -55,11 +55,12 @@ def sample_status(
     )
 
 
-def test_welcome_card_is_three_lines() -> None:
+def test_welcome_card_is_four_lines_with_three_facts() -> None:
     mark = select_brand_mark(columns=80, rows=24, unicode=True, no_color=False)
     text = brand_header_text(mark, sample_status(dirty=True), columns=80, rows=24)
     lines = text.splitlines()
-    assert len(lines) == 3
+    assert len(lines) == 4
+    assert lines[3].rstrip() == mark.lines[3].rstrip()
     assert "Vera  0.1.0" in lines[0]
     assert "demo" in lines[1]
     assert "fake-model" in lines[2]
@@ -69,11 +70,11 @@ def test_welcome_card_is_three_lines() -> None:
     assert "10:24" not in text
 
 
-def test_ascii_welcome_is_three_ascii_lines() -> None:
+def test_ascii_welcome_is_four_ascii_lines() -> None:
     mark = select_brand_mark(columns=80, rows=24, unicode=False, no_color=False)
     assert mark.mode == "ascii"
     text = brand_header_text(mark, sample_status(), columns=80, rows=24)
-    assert len(text.splitlines()) == 3
+    assert len(text.splitlines()) == 4
     assert mark.lines[0].isascii()
     assert "\x1b" not in text
 

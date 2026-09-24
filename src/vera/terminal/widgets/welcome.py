@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from itertools import zip_longest
 from pathlib import Path
 
 from textual.widgets import Static
@@ -63,11 +64,9 @@ def brand_header_text(
         return clip_display(f"{word}  {path}", columns)
     facts = header_fact_lines(status)
     logo = mark.lines
-    if len(logo) < 3:
-        logo = (*logo, *("", "", ""))[:3]
     width = max((display_width(line) for line in logo), default=0)
     lines = [
-        clip_display(f"{pad_display(logo[index], width)}  {facts[index]}", columns)
-        for index in range(3)
+        clip_display(f"{pad_display(glyph_line, width)}  {fact}", columns).rstrip()
+        for glyph_line, fact in zip_longest(logo, facts, fillvalue="")
     ]
     return "\n".join(lines)
