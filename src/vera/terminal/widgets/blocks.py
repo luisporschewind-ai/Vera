@@ -350,6 +350,8 @@ def _assistant_markdown(body: str, *, width: int = 80, theme: str = "default") -
 def _assistant_body_color(theme: str) -> str:
     if theme == "light":
         return "#1A2B36"
+    if theme == "cream":
+        return "#3D3429"
     if theme == "high-contrast":
         return "#FFFFFF"
     if theme == "no-color":
@@ -358,7 +360,7 @@ def _assistant_body_color(theme: str) -> str:
 
 
 def _render_markdown_text(body: str, *, width: int, no_wrap: bool, theme: str = "default") -> Text:
-    code_theme = "ansi_light" if theme == "light" else "ansi_dark"
+    code_theme = "ansi_light" if theme in {"light", "cream"} else "ansi_dark"
     markdown = Markdown(body, code_theme=code_theme, hyperlinks=False)
     console = Console(
         width=max(width, 8),

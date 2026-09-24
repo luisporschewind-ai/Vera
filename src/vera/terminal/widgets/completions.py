@@ -275,6 +275,8 @@ class CompletionList(Static):
             return "bold #000000 on #c8c8c8"
         if theme == "light":
             return "bold #FFFFFF on #2F6F82"
+        if theme == "cream":
+            return "bold #FFFCF5 on #C4843A"
         return "bold #E8EEF6 on #2A5F9E"
 
 

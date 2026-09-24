@@ -6,11 +6,12 @@ from typing import Literal
 
 from textual.theme import Theme
 
-ThemeName = Literal["default", "light", "high-contrast", "no-color"]
-THEME_NAMES: tuple[ThemeName, ...] = ("default", "light", "high-contrast", "no-color")
+ThemeName = Literal["default", "light", "cream", "high-contrast", "no-color"]
+THEME_NAMES: tuple[ThemeName, ...] = ("default", "light", "cream", "high-contrast", "no-color")
 THEME_CHOICES: tuple[tuple[ThemeName, str], ...] = (
     ("default", "默认"),
     ("light", "Light"),
+    ("cream", "奶油"),
     ("high-contrast", "高对比"),
     ("no-color", "无色"),
 )
@@ -62,6 +63,21 @@ SEMANTIC_TOKENS: dict[ThemeName, dict[str, str]] = {
         "diff_add": "#2F6B4F",
         "diff_remove": "#A63D3D",
     },
+    "cream": {
+        "background": "#FBF6EC",
+        "surface": "#FFFCF5",
+        "surface_elevated": "#F3E8D4",
+        "text_primary": "#3D3429",
+        "text_muted": "#7A6E5F",
+        "accent": "#C4843A",
+        "logo": "#C4843A",
+        "success": "#5A7A4A",
+        "warning": "#C49A3A",
+        "danger": "#B85A45",
+        "focus": "#D4923F",
+        "diff_add": "#5A7A4A",
+        "diff_remove": "#B85A45",
+    },
     "high-contrast": {
         "background": "#000000",
         "surface": "#000000",
@@ -110,7 +126,7 @@ def _theme(name: ThemeName) -> Theme:
         surface=tokens["surface"],
         panel=tokens["surface_elevated"],
         boost=tokens["surface_elevated"],
-        dark=name != "light",
+        dark=name not in {"light", "cream"},
         variables={"logo": tokens["logo"]},
     )
 
@@ -118,6 +134,7 @@ def _theme(name: ThemeName) -> Theme:
 VERA_THEMES: tuple[Theme, ...] = (
     _theme("default"),
     _theme("light"),
+    _theme("cream"),
     _theme("high-contrast"),
     _theme("no-color"),
 )

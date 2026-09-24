@@ -16,7 +16,7 @@
 |---|---|
 | 标识 | 方案 A 字标 `VERA`；进场为四行加粗点阵，任务后一行拉丁字 |
 | 80×24 品牌区 | 进场四行欢迎卡；本进程第一次任务后一行 |
-| 色彩 | 下方深海 / Light / 高对比 / 无色四套 |
+| 色彩 | 下方深海 / Light / 奶油 / 高对比 / 无色五套 |
 | 时间线主轴 | 连续对话；最近用户消息钉顶，Diff/审批是证据不是主轴 |
 | 默认工具披露 | 一行摘要（动作、目标、状态、耗时）；状态组默认收起 |
 | 工作轨 | 固定在 Composer 上方；当前动作与本轮步骤 |
@@ -29,29 +29,29 @@
 
 TUI 只使用这些名字。实现映射到 Textual theme / CSS 变量，不得在 Widget 里写散落的装饰色。
 
-| Token | 深海默认 | Light | 高对比 | 无色 |
-|---|---|---|---|---|
-| `background` | `#0B1C28` | `#F3F6F9` | `#000000` | `#1A1A1A` |
-| `surface` | `#122433` | `#FFFFFF` | `#000000` | `#2A2A2A` |
-| `surface_elevated` | `#1A3144` | `#E7EEF3` | `#000000` | `#222222` |
-| `text_primary` | `#D7E4EE` | `#1A2B36` | `#FFFFFF` | `#E0E0E0` |
-| `text_muted` | `#7E96A8` | `#5A7180` | `#FFFFFF` | `#B0B0B0` |
-| `logo` | `#548EA0` | `#2F6F82` | `#FFFF00` | `#B0B0B0` |
-| `accent` | `#3D7A8C` | `#2F6F82` | `#FFFF00` | `#B0B0B0` |
-| `success` | `#4A8B6F` | `#2F6B4F` | `#00FF00` | `#C8C8C8` |
-| `warning` | `#B08A4A` | `#9A6B1F` | `#FFFF00` | `#D0D0D0` |
-| `danger` | `#A85A5A` | `#A63D3D` | `#FF4444` | `#E0E0E0` |
-| `focus` | `#5B9BB0` | `#2F6F82` | `#FFFF00` | `#F0F0F0` |
-| `diff_add` | `#3D6B55` | `#2F6B4F` | `#00FF00` | `#E0E0E0` |
-| `diff_remove` | `#8B4A4A` | `#A63D3D` | `#FF4444` | `#E0E0E0` |
+| Token | 深海默认 | Light | 奶油 | 高对比 | 无色 |
+|---|---|---|---|---|---|
+| `background` | `#0B1C28` | `#F3F6F9` | `#FBF6EC` | `#000000` | `#1A1A1A` |
+| `surface` | `#122433` | `#FFFFFF` | `#FFFCF5` | `#000000` | `#2A2A2A` |
+| `surface_elevated` | `#1A3144` | `#E7EEF3` | `#F3E8D4` | `#000000` | `#222222` |
+| `text_primary` | `#D7E4EE` | `#1A2B36` | `#3D3429` | `#FFFFFF` | `#E0E0E0` |
+| `text_muted` | `#7E96A8` | `#5A7180` | `#7A6E5F` | `#FFFFFF` | `#B0B0B0` |
+| `logo` | `#548EA0` | `#2F6F82` | `#C4843A` | `#FFFF00` | `#B0B0B0` |
+| `accent` | `#3D7A8C` | `#2F6F82` | `#C4843A` | `#FFFF00` | `#B0B0B0` |
+| `success` | `#4A8B6F` | `#2F6B4F` | `#5A7A4A` | `#00FF00` | `#C8C8C8` |
+| `warning` | `#B08A4A` | `#9A6B1F` | `#C49A3A` | `#FFFF00` | `#D0D0D0` |
+| `danger` | `#A85A5A` | `#A63D3D` | `#B85A45` | `#FF4444` | `#E0E0E0` |
+| `focus` | `#5B9BB0` | `#2F6F82` | `#D4923F` | `#FFFF00` | `#F0F0F0` |
+| `diff_add` | `#3D6B55` | `#2F6B4F` | `#5A7A4A` | `#00FF00` | `#E0E0E0` |
+| `diff_remove` | `#8B4A4A` | `#A63D3D` | `#B85A45` | `#FF4444` | `#E0E0E0` |
 
-深海 Diff 行在可用颜色时，新增行文字可用 `#7EB89A`、删除行文字可用 `#D98989`，底仍用对应 Token。无色与高对比只使用表中值。Light 为同一深海青绿族的浅色纸面对照，正文与代码块须在浅底上保持可读，不得改回暖奶油或紫系默认审美。
+深海 Diff 行在可用颜色时，新增行文字可用 `#7EB89A`、删除行文字可用 `#D98989`，底仍用对应 Token。无色与高对比只使用表中值。Light 为同一深海青绿族的浅色纸面对照，保持冷色青绿，不得混入暖奶油或紫系。奶油（`cream`）为独立暖色浅底选项：奶油纸面 + 阳光琥珀强调，正文与代码块须在暖浅底上保持可读。
 
 状态不得只靠色相：批准/拒绝/取消用括号标签；工具用「完成」「失败」等文字；进度用短条与已用/上限数字。移除颜色后仍须可理解。
 
-内置主题名保持 `default`（深海）、`light`（Light）、`high-contrast`、`no-color`。`/theme Light` 与 `/theme light` 等价。`NO_COLOR`、`TERM=dumb` 走无色。不引入可执行主题文件或第三方主题市场。
+内置主题名保持 `default`（深海）、`light`（Light）、`cream`（奶油）、`high-contrast`、`no-color`。`/theme Light` 与 `/theme light` 等价；`/theme 奶油` 与 `/theme cream` 等价。`NO_COLOR`、`TERM=dumb` 走无色。不引入可执行主题文件或第三方主题市场。
 
-**修订（2026-09-24）：** 用户要求新增 Light；任务 [0076](../tasks/0076-cli-light-theme.md) 已落地。原「三套主题」表述同步为四套，默认仍为深海。
+**修订（2026-09-24）：** 用户要求新增 Light；任务 [0076](../tasks/0076-cli-light-theme.md) 已落地。同日再增奶油风；任务 [0077](../tasks/0077-cli-cream-theme.md) 已落地。内置主题为五套，默认仍为深海。
 ## Logo 三形态
 
 字标内容一律是拉丁字母 `VERA`，不使用 V 星点母形，不依赖 Nerd Font 或 Emoji。

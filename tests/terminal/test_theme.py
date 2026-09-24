@@ -20,6 +20,8 @@ def test_theme_is_session_only_and_named() -> None:
     assert normalize_theme("no-color") == "no-color"
     assert normalize_theme("light") == "light"
     assert normalize_theme("Light") == "light"
+    assert normalize_theme("cream") == "cream"
+    assert normalize_theme("奶油") == "cream"
     assert normalize_theme("executable.py") is None
     assert theme_class("default") == "theme-default"
 
@@ -27,7 +29,7 @@ def test_theme_is_session_only_and_named() -> None:
 def test_default_theme_uses_deep_sea_tokens() -> None:
     from vera.terminal.theme import SEMANTIC_TOKENS, TOKEN_NAMES
 
-    for name in ("default", "light", "high-contrast", "no-color"):
+    for name in ("default", "light", "cream", "high-contrast", "no-color"):
         tokens = SEMANTIC_TOKENS[name]
         assert tuple(tokens) == TOKEN_NAMES
     default = next(theme for theme in VERA_THEMES if theme.name == "default")
@@ -47,6 +49,13 @@ def test_default_theme_uses_deep_sea_tokens() -> None:
     assert light.foreground == "#1A2B36"
     assert light.variables["logo"] == "#2F6F82"
     assert light.dark is False
+    cream = next(theme for theme in VERA_THEMES if theme.name == "cream")
+    assert cream.background == "#FBF6EC"
+    assert cream.surface == "#FFFCF5"
+    assert cream.accent == "#C4843A"
+    assert cream.foreground == "#3D3429"
+    assert cream.variables["logo"] == "#C4843A"
+    assert cream.dark is False
     high_contrast = next(theme for theme in VERA_THEMES if theme.name == "high-contrast")
     assert high_contrast.accent == "#FFFF00"
     no_color = next(theme for theme in VERA_THEMES if theme.name == "no-color")
@@ -62,6 +71,7 @@ async def test_v4_logo_uses_theme_color_and_never_extra_bold(tmp_path: Path) -> 
         for name, expected_color in (
             ("default", "#548EA0"),
             ("light", "#2F6F82"),
+            ("cream", "#C4843A"),
             ("high-contrast", "#FFFF00"),
             ("no-color", "#B0B0B0"),
         ):
@@ -73,9 +83,12 @@ async def test_v4_logo_uses_theme_color_and_never_extra_bold(tmp_path: Path) -> 
             assert not wordmark.styles.text_style.bold
             header.set_wave_phase(0.5)
             visual = header._logo_visual(header.current_mark().lines)
-            if name != "default":
+            if name == "no-color":
                 assert not visual.spans
-
+            else:
+                assert visual.spans
+                colors = {str(span.style.color) for span in visual.spans if span.style.color}
+                assert len(colors) >= 2
 
 def test_unknown_theme_is_rejected() -> None:
     assert normalize_theme("neon") is None
@@ -127,6 +140,25 @@ def test_theme_status_text_is_human_readable() -> None:
     assert "no-color" in text
     assert "light" in text
     assert "Light" in text
+    assert "cream" in text
+    assert "奶油" in text
+
+
+@pytest.mark.asyncio
+async def test_cream_theme_command_switches_chrome(tmp_path: Path) -> None:
+    app = _make_app(tmp_path)
+    async with app.run_test(size=(80, 24)) as pilot:
+        app._apply_theme("default")
+        await pilot.pause()
+        for item in app.controller.dispatch(ExecuteSlashCommand(raw="/theme 奶油")):
+            app.on_runtime_output_received(RuntimeOutputReceived(item))
+        await pilot.pause()
+        assert app.theme == "cream"
+        assert "theme-cream" in app.classes
+        accent = app.get_css_variables().get("accent", "").lower()
+        assert accent in {"#c4843a", "#c3843a"}
+        border = str(app.query_one("#composer-bar").styles.border)
+        assert "196, 132, 58" in border or "195, 132, 58" in border
 
 
 @pytest.mark.asyncio

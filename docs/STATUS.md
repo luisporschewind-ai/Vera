@@ -49,16 +49,18 @@
 - [阶段九执行顺序](tasks/phase-9-execution-order.md)：任务 0067–0071 自动实现完成；0072 Ready for manual acceptance；0074 Skill 浮层 Done（主路径用户复验）；会话持久化 `37b1c30` 已合入。
 - [任务 0075：缩放闪动](tasks/0075-cli-resize-flicker.md)：Done；用户确认 Terminal.app 闪烁已解决。
 - [任务 0076：Light 主题](tasks/0076-cli-light-theme.md)：Done；`/theme light`。
+- [任务 0077：奶油风主题](tasks/0077-cli-cream-theme.md)：Done；`/theme cream` / `/theme 奶油`。
 - [阶段九自动验收记录](evals/phase-9-core-native-skills.md)：自动门禁与新增矩阵已记录；隔离 wheel 安装曾因 offline 缓存缺少 `openai` 阻断，须复核；Python/`VeraTestDemo` 真实 Provider 主路径已由用户 dogfood，Swift/Xcode 与封存确认仍待。
 - [阶段九：Core-native Skills](specs/2026-09-15-core-native-skills-system.md)与 [ADR-0020](decisions/ADR-0020-stage-core-native-skills.md)：Accepted；范围与安全边界不变。通常入口仍为阶段八 Complete；本次按用户明确授权并行实施，不改变阶段八状态。
 - [Skill 交互列表](specs/2026-09-24-skills-interactive-picker.md)：Accepted 且已实施；浮层框线与斜杠互斥经用户确认。
-- [视觉 Token](specs/2026-09-13-vera-cli-visual-tokens.md)：Accepted；2026-09-24 增补 Light，内置主题为深海 / Light / 高对比 / 无色四套。
+- [视觉 Token](specs/2026-09-13-vera-cli-visual-tokens.md)：Accepted；2026-09-24 增补 Light 与奶油，内置主题为深海 / Light / 奶油 / 高对比 / 无色五套。
 - [ADR-0013：首个桌面底版采用 Electron](decisions/ADR-0013-electron-desktop-baseline.md)：Accepted；当前实施编号由 ADR-0021 调整为阶段十，只固定未来方向，当前不引入 Electron 代码或依赖。
 - [阶段十：桌面 Agent 工作台与 UI](specs/2026-09-12-desktop-agent-workbench-ui.md)：Draft；不启动阶段十。
 - [不可信内容、提示词投毒与内容安全](specs/2026-09-12-untrusted-content-and-prompt-injection-defense.md)：Accepted；由任务 0030 与 ADR-0015 实施。
 
 ## 最近验证
 
+- 2026-09-24 任务 0077：新增奶油风会话主题；视觉 Token 规格增补奶油列；`/theme cream` 与 `/theme 奶油` 等价。
 - 2026-09-24 文档同步：将 Skill 持久化、0074 浮层（框线/斜杠互斥）、0075 缩放、0076 Light、以及用户 Terminal.app/`VeraTestDemo`/`deepseek-flash` 主路径 dogfood 写入任务与规格；阶段九仍非 Complete。
 - 2026-09-24 任务 0076：新增 Light 会话主题（`f32fb58`）；视觉 Token 规格增补 Light 列；`/theme light` 与 `/theme Light` 等价。
 - 2026-09-24 任务 0074 收口：用户确认浮层框线干净；确认 Skill 浮层与斜杠补全不再层级冲突（`77704e1`）。主路径：浮层选中 `interview-term-brief` → 提问生效 → Snapshot 绑定与一次性消费正确。

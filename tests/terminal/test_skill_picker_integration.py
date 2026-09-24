@@ -306,7 +306,7 @@ async def test_picker_disables_duplicate_ids_and_handles_bad_list_payload(tmp_pa
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("theme", ["default", "light", "high-contrast", "no-color"])
+@pytest.mark.parametrize("theme", ["default", "light", "cream", "high-contrast", "no-color"])
 async def test_picker_theme_and_resize_keep_text_cursor(tmp_path: Path, theme: str) -> None:
     controller = _controller_with_skill(tmp_path)
     app = VeraTerminalApp(controller, controller.workspace, "fake", animations=False)

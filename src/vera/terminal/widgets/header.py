@@ -12,10 +12,11 @@ from textual.widgets import Static
 
 from vera.session.models import SessionStatus
 from vera.terminal.brand import BrandMark, select_brand_mark
+from vera.terminal.theme import SEMANTIC_TOKENS
 from vera.terminal.widgets.welcome import brand_header_text, header_fact_lines
 
-_WAVE_CREST = Style(bold=False, color="#548EA0")
-_WAVE_TROUGH = Style(bold=False, color="#3D7A8C")
+_DEFAULT_WAVE_CREST = "#548EA0"
+_DEFAULT_WAVE_TROUGH = "#3D7A8C"
 
 
 def logo_wave_value(
@@ -29,10 +30,30 @@ def logo_wave_value(
     return exp(-(((along - center) / 5.2) ** 2))
 
 
-def wave_glyph_style(value: float) -> Style:
+def wave_glyph_style(
+    value: float,
+    *,
+    crest: str = _DEFAULT_WAVE_CREST,
+    trough: str = _DEFAULT_WAVE_TROUGH,
+) -> Style:
     """A narrow highlight without terminal `dim`, which paints braille as pale blocks."""
 
-    return _WAVE_CREST if value > 0.45 else _WAVE_TROUGH
+    return Style(bold=False, color=crest if value > 0.45 else trough)
+
+
+def wave_colors_for_theme(theme: str) -> tuple[str, str] | None:
+    """Crest/trough for the welcome-card wave. No-color stays static per visual tokens."""
+
+    if theme == "no-color":
+        return None
+    tokens = SEMANTIC_TOKENS[theme if theme in SEMANTIC_TOKENS else "default"]
+    crest = tokens["logo"]
+    trough = tokens["accent"]
+    if crest.lower() == trough.lower():
+        trough = tokens["text_muted"] if theme != "high-contrast" else tokens["text_primary"]
+    if crest.lower() == trough.lower():
+        trough = tokens["text_primary"]
+    return crest, trough
 
 
 class VeraHeader(Horizontal):
@@ -173,9 +194,12 @@ class VeraHeader(Horizontal):
 
     def _logo_visual(self, lines: tuple[str, ...]) -> Text:
         out = Text(style=Style(bold=False), no_wrap=True, overflow="crop")
-        if self._wave_phase is None or (self.is_mounted and self.app.theme != "default"):
+        theme = str(self.app.theme) if self.is_mounted else "default"
+        colors = wave_colors_for_theme(theme)
+        if self._wave_phase is None or colors is None:
             out.append("\n".join(lines))
             return out
+        crest, trough = colors
         columns = max((len(line) for line in lines), default=1)
         for row, line in enumerate(lines):
             if row:
@@ -191,5 +215,5 @@ class VeraHeader(Horizontal):
                     rows=len(lines),
                     columns=columns,
                 )
-                out.append(char, style=wave_glyph_style(value))
+                out.append(char, style=wave_glyph_style(value, crest=crest, trough=trough))
         return out
