@@ -5,6 +5,7 @@ from pathlib import Path
 
 from tests.skills.test_manifest import write_skill
 from vera.contracts.commands import StartRun
+from vera.contracts.conversation import ConversationMessage
 from vera.models.base import FakeModelAdapter, ModelTurn
 from vera.runtime.engine import VeraRuntime
 from vera.skills.discovery import SkillDiscovery
@@ -55,4 +56,36 @@ def test_no_skill_does_not_scan_or_add_skill_event(tmp_path: Path) -> None:
     )
 
     assert all(not event.type.startswith("skill.") for event in events)
+    assert not (tmp_path / "state" / "skills").exists()
+
+
+def test_compaction_keeps_selected_skill_for_next_task(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    user = tmp_path / "user"
+    workspace.mkdir()
+    user.mkdir()
+    write_skill(user)
+    selection = SkillSelectionService(
+        SkillRegistry(SkillDiscovery(builtin_root=tmp_path / "builtin", user_root=user))
+    )
+    selection.select("user:python-review", workspace)
+    adapter = FakeModelAdapter([ModelTurn(assistant_text="summary", finish_reason="stop")])
+    runtime = VeraRuntime(
+        adapter, ToolRegistry(), tmp_path / "state", skill_selection_service=selection
+    )
+
+    events = tuple(
+        runtime.handle(
+            StartRun(
+                goal="summarize",
+                workspace_root=workspace,
+                model_profile="fake",
+                mode="compact",
+                conversation=(ConversationMessage(role="user", content="hello"),),
+            )
+        )
+    )
+
+    assert selection.pending.skill_id == "user:python-review"
+    assert all(event.type != "skill.snapshot.bound" for event in events)
     assert not (tmp_path / "state" / "skills").exists()

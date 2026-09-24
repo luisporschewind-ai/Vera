@@ -1,6 +1,6 @@
 # Vera 状态
 
-**更新日期：** 2026-09-22
+**更新日期：** 2026-09-24
 **当前阶段：** 阶段 8——Core 工具集、Policy v2 与原生 Git（In progress）
 **仓库状态：** `main` 文档基线，阶段八实施使用隔离工作树；阶段五停在 Ready for manual acceptance，阶段六与阶段七已 Complete。用户于 2026-09-17 原文确认「CLI 版本达到预期，可以封存」，并于 2026-09-18 选择 Inline Execution，授权阶段八按 0059–0066 串行实施和创建计划内本地提交。用户于 2026-09-21 明确授权阶段九在阶段八完全收口前并行实施；阶段九自动实现现为 Ready for manual acceptance，仍不等于 Complete。
 
@@ -55,6 +55,7 @@
 
 ## 最近验证
 
+- 2026-09-24 Skill 生效修正：`/skills use` 的待用选择现随 Session Journal 恢复，`/model` 切换不丢失，`/compact` 不误消费；Run 绑定 Snapshot 后先落盘一次性消费，再向客户端交付绑定事件。用户安装的 `interview-term-brief` 已用 FakeModelAdapter 验证选择、绑定与模型上下文注入。聚焦 `8 passed`，排除两个既有 wheel 安装环境阻断文件后完整非 live `1172 passed, 2 deselected, 8 warnings`；Ruff、Mypy、diff 检查通过。真实 CLI 因本机未配置 Provider（`missing_provider_config`）未完成交互 dogfood；阶段九仍为 Ready for manual acceptance。
 - 2026-09-18 实施授权：用户选择方案 2（Inline Execution），授权阶段八按已接受计划串行实施并创建计划内本地提交；不包含 push、merge 或远程变更。
 - 2026-09-21 阶段九自动验收：新增矩阵 `5 passed`；全量非 live `1169 passed, 2 deselected, 8 warnings`，另有 1 error + 1 failed，均为 offline wheel 依赖缓存缺少 `openai`；排除该环境阻断后 `1165 passed, 2 deselected, 8 warnings`。任务 0067–0071 完成，0072 Ready for manual acceptance。
 - 2026-09-21 实施授权：用户明确允许阶段九不等待阶段八完全完成；阶段九使用独立分支/工作树 `codex/phase-9-skills`。当时不合并、不推送、不删除既有分支或工作树。

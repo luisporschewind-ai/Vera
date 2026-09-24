@@ -188,6 +188,19 @@ class SessionController:
             compaction_count=loaded.compaction_count,
         )
         self._bind_persistence(loaded, restore_history=restore_history)
+        self._skill_service().restore(loaded.skill_selection)
+
+    def _persist_skill_selection(self, selection: SkillSelection) -> Iterator[RuntimeOutput]:
+        try:
+            record = self.session_store.append_skill_selection(
+                self.conversation.stats().session_id, selection
+            )
+        except Exception as exc:
+            yield self._mark_unsaved(self._persistence_code(exc))
+            return
+        if self._persistence_state != "unsaved":
+            self._last_saved_sequence = record.sequence
+            self._last_error_code = None
 
     def _bind_persistence(
         self, loaded: LoadedConversationSession, *, restore_history: bool
@@ -525,7 +538,19 @@ class SessionController:
                     return
                 if output.type in _TERMINAL_TYPES:
                     produced_terminal = True
-            yield output
+            if isinstance(output, EventEnvelope) and output.type == "skill.snapshot.bound":
+                selection = self._skill_selection()
+                yield from self._persist_skill_selection(selection)
+                yield output
+                yield self._session_event(
+                    "skill.selection.changed",
+                    {
+                        "selection": selection.model_dump(mode="json"),
+                        "text": "Skill 已绑定当前 Run，下一次 Run 未选择 Skill。",
+                    },
+                )
+            else:
+                yield output
         if self._drive_epoch != epoch:
             return
         if produced_terminal or self._pending_approval is None:
@@ -664,6 +689,7 @@ class SessionController:
                 {"text": f"模型切换失败，已保留当前配置：{exc}"},
             )
             return
+        candidate.runtime.skill_selection_service = self._skill_service()
         self.dependencies = candidate
         self.model_profile = requested_profile
         self.store = RunStore(candidate.config.state_dir)
@@ -891,6 +917,7 @@ class SessionController:
             return
         if operation == "clear" and len(args) == 1:
             selection = service.clear()
+            yield from self._persist_skill_selection(selection)
             yield self._session_event(
                 "skill.selection.changed",
                 {
@@ -913,6 +940,7 @@ class SessionController:
             return
         if operation == "use":
             selection = service.select(selector, self.workspace)
+            yield from self._persist_skill_selection(selection)
             text = (
                 f"已选择 {selection.skill_id}，只对下一次 Run 生效。"
                 if selection.status == "selected" and selection.skill_id

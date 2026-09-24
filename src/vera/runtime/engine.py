@@ -1682,7 +1682,7 @@ class VeraRuntime:
             security_context_hash=EMPTY_SECURITY_CONTEXT_HASH,
         )
         try:
-            skill_bound = self._bind_skill_snapshot(context)
+            skill_bound = command.mode != "compact" and self._bind_skill_snapshot(context)
         except (SkillSnapshotError, SkillContextError) as exc:
             yield self._ephemeral_event(
                 run_id,

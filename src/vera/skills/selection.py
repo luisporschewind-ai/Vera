@@ -26,6 +26,9 @@ class SkillSelectionService:
         self._pending = SkillSelection()
         return self._pending
 
+    def restore(self, selection: SkillSelection) -> None:
+        self._pending = selection
+
     def consume_for_run(self, workspace_root: Path) -> SkillSelection:
         selection = self._pending
         if selection.status == "selected":
