@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from textual.containers import VerticalScroll
+from textual.widgets import Static
 
 from vera.presentation.projector import (
     AppendBlock,
@@ -29,8 +30,10 @@ class ConversationTimeline(VerticalScroll):
     }
     """
 
-    def __init__(self, *, id: str | None = None) -> None:
+    def __init__(self, *, id: str | None = None, paced: bool = True, unicode: bool = True) -> None:
         super().__init__(id=id)
+        self._paced = paced
+        self._unicode = unicode
         self.follow_tail = True
         self.pending_update_count = 0
         self._widgets: dict[str, TimelineBlockWidget] = {}
@@ -38,6 +41,10 @@ class ConversationTimeline(VerticalScroll):
         self._user_scrolled_away = False
         self._tail_retries = 0
         self._kind_group: EventGroupWidget | None = None
+        self._pending_reveal: set[str] = set()
+        self._pending_outcome: dict[str, str] = {}
+        self._outcomes: dict[str, Static] = {}
+        self._reveal_timer_scheduled = False
 
     def on_mount(self) -> None:
         self.can_focus = True
@@ -51,6 +58,9 @@ class ConversationTimeline(VerticalScroll):
         self._user_scrolled_away = False
         self._tail_retries = 0
         self._scheduler = bounded_scheduler()
+        self._pending_reveal.clear()
+        self._pending_outcome.clear()
+        self._outcomes.clear()
         self.remove_children()
         self.refresh_user_sticky()
 
@@ -94,6 +104,104 @@ class ConversationTimeline(VerticalScroll):
         should_flush = self._scheduler.submit(block.block_id, block)
         if should_flush:
             self.flush_scheduled()
+
+    @property
+    def has_pending_reveal(self) -> bool:
+        return bool(self._pending_reveal)
+
+    def queue_assistant(self, block: TimelineBlock) -> None:
+        """Keep the full answer in the block and pace only its visible rows."""
+        existing = self._widgets.get(block.block_id)
+        previous_lines = existing.visible_line_count if existing is not None else 1
+        if existing is None:
+            self._append(block)
+        else:
+            self._update(block)
+        widget = self._widgets[block.block_id]
+        if not self._paced:
+            widget.set_visible_lines(None)
+            self._pending_reveal.discard(block.block_id)
+            self._show_ready_outcomes()
+            return
+        widget.set_visible_lines(previous_lines)
+        if widget.visible_line_count < widget.assistant_line_count:
+            self._pending_reveal.add(block.block_id)
+            self._schedule_reveal()
+        else:
+            widget.set_visible_lines(None)
+            self._pending_reveal.discard(block.block_id)
+            self._show_ready_outcomes()
+        if self.follow_tail and not self._user_scrolled_away:
+            self._request_tail_scroll()
+
+    def advance_reveal(self) -> None:
+        for block_id in tuple(self._pending_reveal):
+            widget = self._widgets.get(block_id)
+            if widget is None:
+                self._pending_reveal.discard(block_id)
+                continue
+            remaining = widget.assistant_line_count - widget.visible_line_count
+            if remaining <= 0:
+                widget.set_visible_lines(None)
+                self._pending_reveal.discard(block_id)
+                continue
+            step = max(1, (remaining + 19) // 20)
+            widget.set_visible_lines(widget.visible_line_count + step)
+            if widget.visible_line_count >= widget.assistant_line_count:
+                widget.set_visible_lines(None)
+                self._pending_reveal.discard(block_id)
+        self._show_ready_outcomes()
+        if self.follow_tail and not self._user_scrolled_away:
+            self._request_tail_scroll()
+
+    def finish_reveal(self) -> None:
+        for block_id in self._pending_reveal:
+            widget = self._widgets.get(block_id)
+            if widget is not None:
+                widget.set_visible_lines(None)
+        self._pending_reveal.clear()
+        self._show_ready_outcomes()
+
+    def mark_outcome(self, run_id: str, outcome: str) -> None:
+        self._pending_outcome[run_id] = outcome
+        self._show_ready_outcomes()
+
+    def _show_ready_outcomes(self) -> None:
+        for run_id, outcome in tuple(self._pending_outcome.items()):
+            if any(
+                self._widgets.get(block_id) is not None
+                and self._widgets[block_id].block.run_id == run_id
+                for block_id in self._pending_reveal
+            ):
+                continue
+            del self._pending_outcome[run_id]
+            if run_id in self._outcomes:
+                continue
+            marker, label = {
+                "done": ("✓" if self._unicode else "+", "Done"),
+                "cancelled": ("×" if self._unicode else "x", "Cancelled"),
+                "failed": ("!", "Failed"),
+            }[outcome]
+            row = Static(f"{marker} {label}", classes=f"run-outcome run-outcome-{outcome}")
+            self._outcomes[run_id] = row
+            self._kind_group = None
+            self.mount(row)
+            if self.follow_tail and not self._user_scrolled_away:
+                self._request_tail_scroll()
+
+    def _schedule_reveal(self) -> None:
+        if self._reveal_timer_scheduled or not self.is_mounted:
+            return
+        self._reveal_timer_scheduled = True
+        self.set_timer(0.06, self._tick_reveal)
+
+    def _tick_reveal(self) -> None:
+        self._reveal_timer_scheduled = False
+        if not self._pending_reveal:
+            return
+        self.advance_reveal()
+        if self._pending_reveal:
+            self._schedule_reveal()
 
     def flush_scheduled(self) -> None:
         pending = self._scheduler.flush()
@@ -156,6 +264,9 @@ class ConversationTimeline(VerticalScroll):
 
     def block_widget(self, block_id: str) -> TimelineBlockWidget:
         return self._widgets[block_id]
+
+    def has_block(self, block_id: str) -> bool:
+        return block_id in self._widgets
 
     def on_resize(self) -> None:
         if self.follow_tail and not self._user_scrolled_away:
