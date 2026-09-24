@@ -154,10 +154,11 @@ class TimelineBlockWidget(Vertical):
             return
         if self.block.kind is BlockKind.ASSISTANT:
             width = self._assistant_content_width()
-            key = (body, width)
+            theme = str(getattr(self.app, "theme", "default"))
+            key = (body, width, theme)
             if self._markdown_render_key != key:
                 self._markdown_render_key = key
-                self._body.update(_assistant_markdown(body, width=width))
+                self._body.update(_assistant_markdown(body, width=width, theme=theme))
             return
         self._body.update(escape(body) if body else "")
 
@@ -314,7 +315,7 @@ def _wrap_assistant_text(text: Text, width: int) -> Text:
     return wrapped
 
 
-def _assistant_markdown(body: str, *, width: int = 80) -> Text:
+def _assistant_markdown(body: str, *, width: int = 80, theme: str = "default") -> Text:
     """Render Markdown to Rich Text so Textual can drag-select it.
 
     `Static.update(Markdown)` becomes a RichVisual. Widget.get_selection() only
@@ -330,20 +331,35 @@ def _assistant_markdown(body: str, *, width: int = 80) -> Text:
             if not chunk:
                 continue
             if kind in {"table", "fence"}:
-                rendered.append_text(_render_markdown_text(chunk, width=wrap_width, no_wrap=False))
+                rendered.append_text(
+                    _render_markdown_text(chunk, width=wrap_width, no_wrap=False, theme=theme)
+                )
             else:
-                prose = _render_markdown_text(chunk, width=max(wrap_width * 4, 256), no_wrap=True)
+                prose = _render_markdown_text(
+                    chunk, width=max(wrap_width * 4, 256), no_wrap=True, theme=theme
+                )
                 rendered.append_text(_wrap_assistant_text(prose, wrap_width))
         if not rendered.plain:
             return _wrap_assistant_text(Text(body), wrap_width)
-        rendered.stylize_before("#c8cdd3")
+        rendered.stylize_before(_assistant_body_color(theme))
         return rendered
     except Exception:
         return _wrap_assistant_text(Text(body), wrap_width)
 
 
-def _render_markdown_text(body: str, *, width: int, no_wrap: bool) -> Text:
-    markdown = Markdown(body, code_theme="ansi_dark", hyperlinks=False)
+def _assistant_body_color(theme: str) -> str:
+    if theme == "light":
+        return "#1A2B36"
+    if theme == "high-contrast":
+        return "#FFFFFF"
+    if theme == "no-color":
+        return "#E0E0E0"
+    return "#c8cdd3"
+
+
+def _render_markdown_text(body: str, *, width: int, no_wrap: bool, theme: str = "default") -> Text:
+    code_theme = "ansi_light" if theme == "light" else "ansi_dark"
+    markdown = Markdown(body, code_theme=code_theme, hyperlinks=False)
     console = Console(
         width=max(width, 8),
         force_terminal=True,

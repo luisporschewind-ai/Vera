@@ -6,10 +6,11 @@ from typing import Literal
 
 from textual.theme import Theme
 
-ThemeName = Literal["default", "high-contrast", "no-color"]
-THEME_NAMES: tuple[ThemeName, ...] = ("default", "high-contrast", "no-color")
+ThemeName = Literal["default", "light", "high-contrast", "no-color"]
+THEME_NAMES: tuple[ThemeName, ...] = ("default", "light", "high-contrast", "no-color")
 THEME_CHOICES: tuple[tuple[ThemeName, str], ...] = (
     ("default", "默认"),
+    ("light", "Light"),
     ("high-contrast", "高对比"),
     ("no-color", "无色"),
 )
@@ -45,6 +46,21 @@ SEMANTIC_TOKENS: dict[ThemeName, dict[str, str]] = {
         "focus": "#5B9BB0",
         "diff_add": "#3D6B55",
         "diff_remove": "#8B4A4A",
+    },
+    "light": {
+        "background": "#F3F6F9",
+        "surface": "#FFFFFF",
+        "surface_elevated": "#E7EEF3",
+        "text_primary": "#1A2B36",
+        "text_muted": "#5A7180",
+        "accent": "#2F6F82",
+        "logo": "#2F6F82",
+        "success": "#2F6B4F",
+        "warning": "#9A6B1F",
+        "danger": "#A63D3D",
+        "focus": "#2F6F82",
+        "diff_add": "#2F6B4F",
+        "diff_remove": "#A63D3D",
     },
     "high-contrast": {
         "background": "#000000",
@@ -94,13 +110,14 @@ def _theme(name: ThemeName) -> Theme:
         surface=tokens["surface"],
         panel=tokens["surface_elevated"],
         boost=tokens["surface_elevated"],
-        dark=True,
+        dark=name != "light",
         variables={"logo": tokens["logo"]},
     )
 
 
 VERA_THEMES: tuple[Theme, ...] = (
     _theme("default"),
+    _theme("light"),
     _theme("high-contrast"),
     _theme("no-color"),
 )
@@ -114,15 +131,19 @@ def normalize_theme(name: str | None, current: ThemeName = "default") -> ThemeNa
     if name is None or name == "":
         return current
     candidate = name.strip().lower()
-    for item in THEME_NAMES:
-        if candidate == item:
+    for item, label in THEME_CHOICES:
+        if candidate == item or candidate == label.lower():
             return item
     return None
 
 
 def matching_themes(prefix: str) -> tuple[tuple[ThemeName, str], ...]:
     needle = prefix.strip().lower()
-    return tuple((name, label) for name, label in THEME_CHOICES if name.startswith(needle))
+    return tuple(
+        (name, label)
+        for name, label in THEME_CHOICES
+        if name.startswith(needle) or label.lower().startswith(needle)
+    )
 
 
 def theme_class(name: ThemeName) -> str:

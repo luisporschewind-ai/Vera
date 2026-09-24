@@ -278,6 +278,101 @@ DiffBlockWidget {
     border: round $accent;
 }
 
+.theme-light,
+.theme-light #header,
+.theme-light #welcome,
+.theme-light #timeline,
+.theme-light #completions,
+.theme-light #skill-picker,
+.theme-light #composer-bar,
+.theme-light #work-rail,
+.theme-light #status-line,
+.theme-light #terminal-too-small,
+.-theme-light,
+.-theme-light #header,
+.-theme-light #welcome,
+.-theme-light #timeline,
+.-theme-light #completions,
+.-theme-light #skill-picker,
+.-theme-light #composer-bar,
+.-theme-light #work-rail,
+.-theme-light #status-line,
+.-theme-light #terminal-too-small {
+    background: #F3F6F9;
+    color: #1A2B36;
+}
+
+.theme-light #header,
+.-theme-light #header,
+.theme-light #completions,
+.-theme-light #completions,
+.theme-light #skill-picker,
+.-theme-light #skill-picker,
+.theme-light #work-rail,
+.-theme-light #work-rail,
+.theme-light #status-line,
+.-theme-light #status-line {
+    background: #E7EEF3;
+}
+
+.theme-light #header-wordmark,
+.-theme-light #header-wordmark {
+    background: #E7EEF3;
+    color: #2F6F82;
+}
+
+.theme-light #header-meta,
+.-theme-light #header-meta {
+    background: #E7EEF3;
+    color: #5A7180;
+}
+
+.theme-light #timeline,
+.-theme-light #timeline {
+    background: #F3F6F9;
+    border: none;
+    outline: none;
+}
+
+.theme-light #composer-bar,
+.theme-light #composer-bar:focus-within,
+.-theme-light #composer-bar,
+.-theme-light #composer-bar:focus-within {
+    background: #FFFFFF;
+    color: #1A2B36;
+    border: solid #2F6F82;
+}
+
+.theme-light #composer,
+.theme-light #composer:focus,
+.-theme-light #composer,
+.-theme-light #composer:focus,
+.theme-light #composer-prompt,
+.-theme-light #composer-prompt {
+    background: transparent;
+    color: #1A2B36;
+}
+
+.theme-light #user-sticky,
+.-theme-light #user-sticky,
+.theme-light UserBlockWidget,
+.-theme-light UserBlockWidget {
+    background: #E7EEF3;
+    color: #1A2B36;
+    border: none;
+}
+
+.theme-light #skill-picker,
+.-theme-light #skill-picker {
+    border: solid #2F6F82;
+}
+
+.theme-light #skill-picker-options,
+.-theme-light #skill-picker-options {
+    background: #E7EEF3;
+    color: #1A2B36;
+}
+
 .theme-high-contrast #composer-bar,
 .theme-high-contrast #composer-bar:focus-within,
 .-theme-high-contrast #composer-bar,

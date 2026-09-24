@@ -18,6 +18,8 @@ def test_theme_is_session_only_and_named() -> None:
     assert normalize_theme(None) == "default"
     assert normalize_theme("high-contrast") == "high-contrast"
     assert normalize_theme("no-color") == "no-color"
+    assert normalize_theme("light") == "light"
+    assert normalize_theme("Light") == "light"
     assert normalize_theme("executable.py") is None
     assert theme_class("default") == "theme-default"
 
@@ -25,7 +27,7 @@ def test_theme_is_session_only_and_named() -> None:
 def test_default_theme_uses_deep_sea_tokens() -> None:
     from vera.terminal.theme import SEMANTIC_TOKENS, TOKEN_NAMES
 
-    for name in ("default", "high-contrast", "no-color"):
+    for name in ("default", "light", "high-contrast", "no-color"):
         tokens = SEMANTIC_TOKENS[name]
         assert tuple(tokens) == TOKEN_NAMES
     default = next(theme for theme in VERA_THEMES if theme.name == "default")
@@ -37,6 +39,14 @@ def test_default_theme_uses_deep_sea_tokens() -> None:
     assert default.success == "#4A8B6F"
     assert default.foreground == "#D7E4EE"
     assert default.variables["logo"] == "#548EA0"
+    assert default.dark is True
+    light = next(theme for theme in VERA_THEMES if theme.name == "light")
+    assert light.background == "#F3F6F9"
+    assert light.surface == "#FFFFFF"
+    assert light.accent == "#2F6F82"
+    assert light.foreground == "#1A2B36"
+    assert light.variables["logo"] == "#2F6F82"
+    assert light.dark is False
     high_contrast = next(theme for theme in VERA_THEMES if theme.name == "high-contrast")
     assert high_contrast.accent == "#FFFF00"
     no_color = next(theme for theme in VERA_THEMES if theme.name == "no-color")
@@ -51,6 +61,7 @@ async def test_v4_logo_uses_theme_color_and_never_extra_bold(tmp_path: Path) -> 
     async with app.run_test(size=(80, 24)) as pilot:
         for name, expected_color in (
             ("default", "#548EA0"),
+            ("light", "#2F6F82"),
             ("high-contrast", "#FFFF00"),
             ("no-color", "#B0B0B0"),
         ):
@@ -114,6 +125,28 @@ def test_theme_status_text_is_human_readable() -> None:
     assert "当前主题：high-contrast" in text
     assert "高对比" in text
     assert "no-color" in text
+    assert "light" in text
+    assert "Light" in text
+
+
+@pytest.mark.asyncio
+async def test_light_theme_command_switches_chrome(tmp_path: Path) -> None:
+    app = _make_app(tmp_path)
+    async with app.run_test(size=(80, 24)) as pilot:
+        app._apply_theme("default")
+        await pilot.pause()
+        for item in app.controller.dispatch(ExecuteSlashCommand(raw="/theme Light")):
+            app.on_runtime_output_received(RuntimeOutputReceived(item))
+        await pilot.pause()
+        assert app.theme == "light"
+        assert "theme-light" in app.classes
+        assert "theme-light" in app.screen.classes
+        accent = app.get_css_variables().get("accent", "").lower()
+        assert accent == "#2f6f82"
+        background = str(app.query_one("#header").styles.background)
+        assert "231, 238, 243" in background or "243, 246, 249" in background
+        border = str(app.query_one("#composer-bar").styles.border)
+        assert "47, 111, 130" in border
 
 
 @pytest.mark.asyncio
