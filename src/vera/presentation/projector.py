@@ -482,6 +482,16 @@ class TimelineProjector:
     def _approval_required(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
         risk = str(event.payload.get("risk", "unknown"))
         kind = str(event.payload.get("kind", "changeset"))
+        risk_label = {
+            "low": "低",
+            "medium": "中",
+            "high": "高",
+            "critical": "严重",
+        }.get(risk, "未知" if risk == "unknown" else risk)
+        kind_label = {
+            "changeset": "文件变更",
+            "command": "验证命令",
+        }.get(kind, kind)
         approval_id = str(event.payload.get("approval_id", "unknown"))
         target = str(event.payload.get("target") or event.payload.get("target_id") or "")
         workspace = str(event.payload.get("workspace") or event.payload.get("workspace_root") or "")
@@ -502,15 +512,15 @@ class TimelineProjector:
         body = "\n".join(
             part
             for part in (
-                f"动作 {kind}",
-                f"命令 {command}" if command else "",
-                f"Profile {profile}" if profile else "",
-                f"产物根 {root}" if root else "",
-                f"工作目录 {cwd}" if cwd else "",
-                f"目标 {target}" if target and not command else "",
-                f"风险 {risk}",
-                f"工作区 {workspace}" if workspace else "",
-                f"效果 {effect}",
+                f"动作：{kind_label}",
+                f"命令：{command}" if command else "",
+                f"验证配置：{profile}" if profile else "",
+                f"产物根目录：{root}" if root else "",
+                f"工作目录：{cwd}" if cwd else "",
+                f"目标：{target}" if target and not command else "",
+                f"风险：{risk_label}",
+                f"工作区：{workspace}" if workspace else "",
+                f"影响：{effect}",
             )
             if part
         )
@@ -518,7 +528,7 @@ class TimelineProjector:
             block_id=f"{event.run_id}:{event.sequence}:approval",
             run_id=event.run_id,
             kind=BlockKind.APPROVAL,
-            title=f"Approval required · {kind} · {risk}",
+            title=f"! 需要审批 · {kind_label} · {risk_label}风险",
             body=sanitize_terminal_text(body),
             status=BlockStatus.PENDING,
             focus=True,

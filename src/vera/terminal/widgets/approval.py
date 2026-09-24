@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from rich.style import Style
+from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import Horizontal
 from textual.message import Message
@@ -15,6 +17,17 @@ _BUTTON_DECISIONS = (
     ("approval-reject", "reject"),
     ("approval-approve", "approve"),
 )
+_APPROVAL_LABELS = {
+    "动作",
+    "命令",
+    "验证配置",
+    "产物根目录",
+    "工作目录",
+    "目标",
+    "风险",
+    "工作区",
+    "影响",
+}
 
 
 class ApprovalSelected(Message):
@@ -37,6 +50,8 @@ class ApprovalBlockWidget(TimelineBlockWidget):
     ApprovalBlockWidget .block-title {
         padding: 0 1;
         height: auto;
+        color: $warning;
+        text-style: bold;
     }
     ApprovalBlockWidget .block-body {
         padding: 0 1;
@@ -46,7 +61,7 @@ class ApprovalBlockWidget(TimelineBlockWidget):
         height: auto;
         min-height: 1;
         padding: 0 1;
-        margin: 0;
+        margin: 1 0 0 0;
         width: 100%;
     }
     ApprovalBlockWidget Button {
@@ -76,10 +91,23 @@ class ApprovalBlockWidget(TimelineBlockWidget):
         self.approval_id = approval_id
         self.focused_decision = "cancel"
         self._locked = False
-        self._cancel = Button("Cancel", id="approval-cancel", variant="primary")
-        self._reject = Button("Reject", id="approval-reject")
-        self._approve = Button("Approve", id="approval-approve")
+        self._cancel = Button("取消", id="approval-cancel", variant="primary")
+        self._reject = Button("拒绝", id="approval-reject")
+        self._approve = Button("批准", id="approval-approve")
         self.can_focus = False
+
+    def _render_body(self) -> None:
+        rendered = Text()
+        for index, line in enumerate(self.block.body.splitlines()):
+            if index:
+                rendered.append("\n")
+            label, separator, value = line.partition("：")
+            if separator and label in _APPROVAL_LABELS:
+                rendered.append(f"{label}{separator}", Style(dim=True))
+                rendered.append(value)
+            else:
+                rendered.append(line)
+        self._body.update(rendered)
 
     def compose(self) -> ComposeResult:
         yield self._title
