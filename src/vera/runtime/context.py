@@ -256,5 +256,6 @@ class RunContext:
     project_instructions: ProjectInstructionSet | None = None
     empty_after_tools_nudge: bool = False
     claimed_changeset_nudge: bool = False
+    leaked_markup_nudge: bool = False
     skill_snapshot: SkillSnapshot | None = None
     skill_context: tuple[SkillContextPart, ...] = ()

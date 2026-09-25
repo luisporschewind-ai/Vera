@@ -15,6 +15,7 @@ _REASON_TEXT: dict[str, str] = {
     "max_context_bytes": "上下文超出预算，压缩后仍然超限",
     "max_tool_calls": "达到本次任务的工具调用上限",
     "empty_model_response": "模型返回了空响应",
+    "leaked_tool_call_markup": "模型把工具调用写进了正文，工具没有执行",
     "permission_denied": "没有写入权限",
     "invalid_compaction_response": "模型返回的压缩结果不可用",
     "repeated_tool_call": "模型重复了同一次工具调用",

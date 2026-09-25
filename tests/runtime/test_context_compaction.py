@@ -62,6 +62,38 @@ def test_compaction_empty_summary_fails(tmp_path: Path) -> None:
     assert events[-1].payload["reason"] == "empty_model_response"
 
 
+def test_compaction_drops_leaked_tool_markup(tmp_path: Path) -> None:
+    summaries = [
+        '保留结论：使用 Python。<｜DSML｜invoke name="read_file">',
+        '<｜DSML｜invoke name="read_file">',
+    ]
+    outcomes = []
+    for index, summary in enumerate(summaries):
+        adapter = FakeModelAdapter([ModelTurn(assistant_text=summary, finish_reason="stop")])
+        runtime = VeraRuntime(adapter, ToolRegistry(), tmp_path / f"state-{index}")
+        outcomes.append(
+            list(
+                runtime.handle(
+                    StartRun(
+                        goal="focus",
+                        workspace_root=tmp_path,
+                        model_profile="fake",
+                        mode="compact",
+                        conversation=(ConversationMessage(role="user", content="hello"),),
+                    )
+                )
+            )
+        )
+
+    kept, empty = outcomes
+    assert (
+        next(event for event in kept if event.type == "conversation.compacted").payload["summary"]
+        == "保留结论：使用 Python。"
+    )
+    assert empty[-1].type == "run.failed"
+    assert empty[-1].payload["reason"] == "empty_model_response"
+
+
 def test_compaction_rejects_tool_calls(tmp_path: Path) -> None:
     adapter = FakeModelAdapter(
         [

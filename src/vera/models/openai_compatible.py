@@ -25,6 +25,7 @@ from vera.models.base import (
 )
 from vera.models.capabilities import ModelCapabilities
 from vera.models.errors import ModelErrorCode, ModelProviderError
+from vera.models.leaked_markup import LeakedMarkupFilter
 from vera.models.streaming import (
     ModelStreamAccumulator,
     ModelStreamCompleted,
@@ -269,6 +270,7 @@ class OpenAICompatibleAdapter:
             yield ModelStreamCompleted(turn=self.complete(request))
             return
         accumulator = ModelStreamAccumulator()
+        visible = LeakedMarkupFilter()
         try:
             kwargs: dict[str, object] = {
                 "model": self.provider.model,
@@ -288,7 +290,9 @@ class OpenAICompatibleAdapter:
                 text = coerce_assistant_text(_get(delta, "content"))
                 if text:
                     accumulator.push_text(text)
-                    yield ModelTextDelta(text=text)
+                    shown = visible.push(text)
+                    if shown:
+                        yield ModelTextDelta(text=shown)
                 reasoning = (
                     _provider_attr(delta, "reasoning_content", "reasoning")
                     or _provider_attr(choice, "reasoning_content", "reasoning")
@@ -318,6 +322,9 @@ class OpenAICompatibleAdapter:
                 request_id = _get(chunk, "_request_id") or _get(chunk, "id")
                 if request_id:
                     accumulator.provider_request_id = str(request_id)
+            tail = visible.flush()
+            if tail:
+                yield ModelTextDelta(text=tail)
             turn = accumulator.finish(finish_reason=finish_reason)
             yield ModelStreamCompleted(turn=turn)
         except ModelProviderError:

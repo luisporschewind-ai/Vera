@@ -222,6 +222,88 @@ def test_claimed_changeset_nudge_then_honest_text(tmp_path: Path) -> None:
     assert not any(event.type == "approval.required" for event in events)
 
 
+_LEAKED = (
+    "现在提交提案：\n\n"
+    '<｜DSML｜function_calls><｜DSML｜invoke name="propose_changeset">'
+    '<｜DSML｜parameter name="summary" string="true">创建 VERA.md</｜DSML｜parameter>'
+    "</｜DSML｜invoke></｜DSML｜function_calls>"
+)
+_LEAK_NUDGE = "把工具调用写成了正文里的原始标记"
+
+
+def test_leaked_tool_markup_nudges_then_proposes(tmp_path: Path) -> None:
+    (tmp_path / "hello.txt").write_text("old\n", encoding="utf-8")
+    adapter = FakeModelAdapter(
+        [
+            ModelTurn(assistant_text=_LEAKED, finish_reason="stop", reasoning_content="写提案"),
+            ModelTurn(
+                finish_reason="tool_calls",
+                tool_calls=(
+                    ModelToolCall(
+                        call_id="1",
+                        name="propose_changeset",
+                        arguments={
+                            "summary": "update hello",
+                            "changes": [
+                                {
+                                    "operation": "update",
+                                    "path": "hello.txt",
+                                    "after_content": "new\n",
+                                }
+                            ],
+                        },
+                    ),
+                ),
+            ),
+        ]
+    )
+    runtime = VeraRuntime(adapter, ToolRegistry(), tmp_path / "state")
+    events = list(
+        runtime.handle(StartRun(goal="改文件", workspace_root=tmp_path, model_profile="fake"))
+    )
+    assert any(event.type == "approval.required" for event in events)
+    assert not any(event.type in {"assistant.message", "run.completed"} for event in events)
+    retry = adapter.requests[1].messages
+    assert retry[-1].role == "user" and _LEAK_NUDGE in retry[-1].content
+    assert retry[-2].role == "assistant"
+    assert retry[-2].content == "现在提交提案："
+    assert retry[-2].reasoning_content == "写提案"
+    assert not any("DSML" in message.content for message in retry)
+
+
+def test_leaked_tool_markup_twice_fails(tmp_path: Path) -> None:
+    adapter = FakeModelAdapter(
+        [
+            ModelTurn(assistant_text=_LEAKED, finish_reason="stop"),
+            ModelTurn(assistant_text=_LEAKED, finish_reason="stop"),
+        ]
+    )
+    runtime = VeraRuntime(adapter, ToolRegistry(), tmp_path / "state")
+    events = list(
+        runtime.handle(StartRun(goal="改文件", workspace_root=tmp_path, model_profile="fake"))
+    )
+    assert events[-1].type == "run.failed"
+    assert events[-1].payload["reason"] == "leaked_tool_call_markup"
+    assert not any(event.type == "assistant.message" for event in events)
+    assert len(adapter.requests) == 2
+
+
+def test_leaked_tool_markup_nudge_then_plain_answer(tmp_path: Path) -> None:
+    adapter = FakeModelAdapter(
+        [
+            ModelTurn(assistant_text=_LEAKED, finish_reason="stop"),
+            ModelTurn(assistant_text="目前还没有提出变更。", finish_reason="stop"),
+        ]
+    )
+    runtime = VeraRuntime(adapter, ToolRegistry(), tmp_path / "state")
+    events = list(
+        runtime.handle(StartRun(goal="改文件", workspace_root=tmp_path, model_profile="fake"))
+    )
+    assert events[-2].type == "assistant.message"
+    assert events[-2].payload["content"] == "目前还没有提出变更。"
+    assert events[-1].payload == {"state": "completed", "outcome": "responded"}
+
+
 def test_claimed_changeset_nudge_only_once(tmp_path: Path) -> None:
     claim = "已形成 Change Set，等待你审批。"
     adapter = FakeModelAdapter(

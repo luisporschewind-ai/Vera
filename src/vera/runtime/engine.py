@@ -47,6 +47,7 @@ from vera.contracts.streaming import RuntimeOutput, StreamFrame, StreamFrameType
 from vera.contracts.verification import VerificationCommand, VerificationResult
 from vera.models.base import ModelAdapter, ModelMessage, ModelRequest, ModelToolCall, ModelTurn
 from vera.models.errors import ModelErrorCode, ModelProviderError, safe_error_payload
+from vera.models.leaked_markup import find_leaked_tool_markup, strip_leaked_tool_markup
 from vera.models.retry import RetryPolicy
 from vera.models.streaming import ModelStreamCompleted, ModelTextDelta
 from vera.persistence.journal import EventJournal
@@ -111,6 +112,10 @@ _CLAIMED_CHANGESET_NUDGE = (
     "你还没有调用 propose_changeset。只有该工具才会出现审批卡和 Diff；"
     "不要声称已经形成 Change Set 或正在等待审批。"
     "若要改文件，现在就调用 propose_changeset；否则只说明结论，不要假装变更已提交。"
+)
+_LEAKED_MARKUP_NUDGE = (
+    "上一次回复把工具调用写成了正文里的原始标记，Vera 没有执行它，也没有产生审批卡。"
+    "需要调用工具时，请通过函数调用接口重新发起；不要在正文中输出任何工具调用标记。"
 )
 _CLAIMED_CHANGESET_MARKERS = (
     "已形成 change set",
@@ -1405,6 +1410,18 @@ class VeraRuntime:
                 yield from flagged
             if not turn.tool_calls:
                 text = (turn.assistant_text or "").strip()
+                if find_leaked_tool_markup(text) is not None:
+                    context.messages[-1] = ModelMessage(
+                        role="assistant",
+                        content=strip_leaked_tool_markup(text),
+                        reasoning_content=turn.reasoning_content,
+                    )
+                    if context.leaked_markup_nudge:
+                        yield from self._fail(context, "leaked_tool_call_markup")
+                        return
+                    context.leaked_markup_nudge = True
+                    context.messages.append(ModelMessage(role="user", content=_LEAKED_MARKUP_NUDGE))
+                    continue
                 if not text:
                     if context.tool_calls > 0 and not context.empty_after_tools_nudge:
                         context.empty_after_tools_nudge = True
@@ -1506,7 +1523,7 @@ class VeraRuntime:
         if turn is None or turn.tool_calls:
             yield from self._fail(context, "max_tool_calls")
             return
-        text = (turn.assistant_text or "").strip()
+        text = strip_leaked_tool_markup(turn.assistant_text)
         if not text:
             yield from self._fail(context, "max_tool_calls")
             return
@@ -1545,7 +1562,7 @@ class VeraRuntime:
         if turn.tool_calls:
             yield from self._fail(context, "invalid_compaction_response")
             return
-        text = (turn.assistant_text or "").strip()
+        text = strip_leaked_tool_markup(turn.assistant_text)
         if not text:
             yield from self._fail(context, "empty_model_response")
             return
