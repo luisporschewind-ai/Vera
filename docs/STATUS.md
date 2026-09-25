@@ -55,6 +55,7 @@
 - [任务 0080：主题回答与用户消息可读性](tasks/0080-cli-theme-readability.md)：Done；用户已在 Terminal.app 确认修改后无问题。
 - [任务 0081：Logo 右侧四行信息与视觉层级](tasks/0081-cli-header-four-line-facts.md)：Ready for manual acceptance；四行信息与层级已实现，35 项聚焦回归及原生终端截图检查通过，待用户视觉确认。
 - [任务 0082：DSML 工具调用标记泄漏](tasks/0082-leaked-tool-call-markup.md)：Done；用户已在 Terminal.app 复验确认。
+- [任务 0083：底栏 Skill 提示过时](tasks/0083-skill-footer-stale-selection.md)：Done；用户已在 Terminal.app 复验确认。
 - [阶段九自动验收记录](evals/phase-9-core-native-skills.md)：自动门禁与新增矩阵已记录；隔离 wheel 安装曾因 offline 缓存缺少 `openai` 阻断，须复核；Python/`VeraTestDemo` 真实 Provider 主路径已由用户 dogfood，Swift/Xcode 与封存确认仍待。
 - [阶段九：Core-native Skills](specs/2026-09-15-core-native-skills-system.md)与 [ADR-0020](decisions/ADR-0020-stage-core-native-skills.md)：Accepted；范围与安全边界不变。通常入口仍为阶段八 Complete；本次按用户明确授权并行实施，不改变阶段八状态。
 - [Skill 交互列表](specs/2026-09-24-skills-interactive-picker.md)：Accepted 且已实施；浮层框线与斜杠互斥经用户确认。
@@ -64,6 +65,10 @@
 - [不可信内容、提示词投毒与内容安全](specs/2026-09-12-untrusted-content-and-prompt-injection-defense.md)：Accepted；由任务 0030 与 ADR-0015 实施。
 
 ## 最近验证
+
+- 2026-09-25 原生 Terminal.app：用户确认任务 0082（DSML 标记泄漏）与 0083（底栏 Skill 提示）修正均已验证无问题，两项转 Done。
+
+- 2026-09-25 任务 0083：底栏"已选择 Skill · 等待下一次任务"在 Run 消费或 `/skills clear` 后不消失。现在 TUI 按每条 `skill.selection.changed` 同步底栏；`/skills use` 命令也会显示提示。聚焦 `49 passed`；终端与会话目录 `285 passed`，唯一失败为已知不稳定的缩放防抖计时测试（单独重跑 2 过 1 败）。Ruff、Mypy 通过；Terminal.app 待用户复验。
 
 - 2026-09-25 任务 0082：`deepseek-flash` 把 `propose_changeset` 调用以 `<｜DSML｜…>` 原始标记写进正文，Vera 当作回答显示并标 Done，工具实际未执行。现在适配器不再推送标记，Runtime 回写一次纠正，仍泄漏则以 `leaked_tool_call_markup` 失败。聚焦 `31 passed`，扩展回归 `416 passed`；Ruff、Mypy 通过。未运行全量测试，真实 Provider 待用户复验。
 

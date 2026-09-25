@@ -350,6 +350,42 @@ async def test_real_bridge_lists_and_selects_without_starting_run(tmp_path: Path
 
 
 @pytest.mark.asyncio
+async def test_footer_skill_notice_follows_core_selection(tmp_path: Path) -> None:
+    controller = _controller_with_skill(tmp_path)
+    app = VeraTerminalApp(controller, controller.workspace, "fake", animations=False)
+    async with app.run_test(size=(80, 24)):
+        status = app.query_one(VeraStatusLine)
+
+        def deliver(event: EventEnvelope) -> None:
+            app.on_runtime_output_received(RuntimeOutputReceived(event, request_id="typed"))
+
+        deliver(
+            _skill_event(controller, "/skills use user:python-review", "skill.selection.changed")
+        )
+        assert status.notice.startswith("已选择 user:python-review · 1.0.0")
+
+        deliver(_skill_event(controller, "/skills clear", "skill.selection.changed"))
+        assert status.notice == ""
+
+        deliver(
+            _skill_event(controller, "/skills use user:python-review", "skill.selection.changed")
+        )
+        prompt_outputs = tuple(controller.dispatch(SubmitPrompt(text="review")))
+        bound = next(
+            item
+            for item in prompt_outputs
+            if isinstance(item, EventEnvelope) and item.type == "skill.selection.changed"
+        )
+        assert bound.payload["selection"]["mode"] == "none"
+        deliver(bound)
+        assert status.notice == ""
+
+        status.set_status("已复制选中文本")
+        deliver(_skill_event(controller, "/skills clear", "skill.selection.changed"))
+        assert status.notice == "已复制选中文本"
+
+
+@pytest.mark.asyncio
 async def test_interleaved_list_events_open_only_latest_exact_request(tmp_path: Path) -> None:
     controller = _controller_with_skill(tmp_path)
     app = VeraTerminalApp(controller, controller.workspace, "fake", animations=False)

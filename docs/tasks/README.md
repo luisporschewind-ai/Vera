@@ -90,3 +90,4 @@
 - [任务 0080：CLI 主题回答与用户消息可读性修正](0080-cli-theme-readability.md)
 - [任务 0081：Logo 右侧四行信息与视觉层级](0081-cli-header-four-line-facts.md)
 - [任务 0082：模型把工具调用写进正文（DSML 标记泄漏）](0082-leaked-tool-call-markup.md)
+- [任务 0083：底栏"已选择 Skill"不随消费或清除更新](0083-skill-footer-stale-selection.md)

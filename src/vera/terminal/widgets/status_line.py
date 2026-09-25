@@ -19,6 +19,10 @@ class VeraStatusLine(Static):
         self._columns = 80
         self._unicode = True
 
+    @property
+    def notice(self) -> str:
+        return self._notice
+
     def set_status(self, text: str) -> None:
         self._notice = text.strip()
         self._refresh()

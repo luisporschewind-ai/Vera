@@ -67,6 +67,12 @@ _RESIZE_REPAIR_DELAY = 0.45
 # Synchronized-update brackets hide the clear+repaint pair as one frame when supported.
 _RESIZE_SYNC_BEGIN = "\x1b[?2026h"
 _RESIZE_SYNC_END = "\x1b[?2026l"
+_SKILL_NOTICE_PREFIX = "已选择 "
+
+
+def _skill_selected_notice(selection: SkillSelection) -> str:
+    version = selection.version or "版本未知"
+    return f"{_SKILL_NOTICE_PREFIX}{selection.skill_id} · {version}，等待下一次任务"
 
 
 class _AppleTerminalDriver(LinuxDriver):
@@ -492,6 +498,7 @@ class VeraTerminalApp(App[int]):
                 self._present_skill_list(output, request_id=message.request_id)
             elif output.type == "skill.selection.changed":
                 self._confirm_skill_selection(output, request_id=message.request_id)
+                self._sync_skill_notice(output)
 
     def _present_skill_list(self, output: EventEnvelope, *, request_id: str | None) -> None:
         if request_id is None or request_id != self._skill_list_request_id:
@@ -542,14 +549,23 @@ class VeraTerminalApp(App[int]):
         if selection.status == "selected" and selection.skill_id == picker.pending_skill_id:
             picker.close()
             self.query_one(PromptComposer).focus()
-            version = selection.version or "版本未知"
-            self.query_one(VeraStatusLine).set_status(
-                f"已选择 {selection.skill_id} · {version}，等待下一次任务"
-            )
             return
         picker.reject(
             selection.reason_codes[0] if selection.reason_codes else "skill_selection_mismatch"
         )
+
+    def _sync_skill_notice(self, output: EventEnvelope) -> None:
+        status = self._status_line()
+        if status is None:
+            return
+        try:
+            selection = SkillSelection.model_validate(output.payload["selection"])
+        except (KeyError, ValidationError):
+            return
+        if selection.status == "selected" and selection.skill_id:
+            status.set_status(_skill_selected_notice(selection))
+        elif status.notice.startswith(_SKILL_NOTICE_PREFIX):
+            status.set_status("")
 
     def on_skill_picker_chosen(self, message: SkillPicker.Chosen) -> None:
         self._skill_use_request_id = self.bridge.submit(

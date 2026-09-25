@@ -37,7 +37,8 @@
 2. 浮层获取键盘焦点。↑↓ 在可选行之间移动；组标题、无效、不兼容和重复 ID 行不可选。超出可视区域时滚动选中行，在 60×16 中仍保留标题、来源、选中行与 Esc/Enter 提示，不遮挡 Composer。Enter 以所选行完整 `skill_id` 发送现有会话动作，且仅发送一次；等待回应期间禁用重复 Enter 和 Esc，避免把已提交的选择误当作已取消。
 3. 只有收到结构化 `skill.selection.changed` 且 `status=selected`、`skill_id` 与所提交 ID 一致后，浮层才关闭并把焦点还给 Composer。原草稿与光标位置不变；不发送 `SubmitPrompt`，不启动 Run。下一次任务 Run 按上位规格消费该选择，`/status` 显示待用选择。
 4. 未提交选择时 Esc 关闭浮层，不改变原待用 Skill 或草稿。选择被 Core 拒绝或列表打开后来源失效时，保留列表并显示 Core 原因码；会话关闭或动作发送失败时关闭列表并显示错误，不显示虚假的成功。用户可重新打开 `/skills` 获取最新事实。如果同一 `skill_id` 的包内容在列出后改变但仍合法，最终选择以 Core 重新解析的版本为准，确认状态必须显示实际版本；不能自动回退到同名其他来源。
-5. 重新打开列表时获取最新 `skill.listed`，不依赖上次浮层缓存；已经待用的 Skill 以文字标记。用户在活动 Run 期间仍可按既有 `/skills use <skill_id>` 显式设置下一次任务 Run 的待用选择，不修改活动 Run 的 Snapshot。
+5. 底栏"已选择 … 等待下一次任务"提示必须跟随 Core 事实（2026-09-25 增补，任务 0083）：收到任何 `status=selected` 的 `skill.selection.changed`（浮层或 `/skills use`）时显示实际 `skill_id` 与版本；Run 绑定后一次性消费、`/skills clear` 或选择失败产生的未选择事件到达时移除该提示，不覆盖其他无关提示。
+6. 重新打开列表时获取最新 `skill.listed`，不依赖上次浮层缓存；已经待用的 Skill 以文字标记。用户在活动 Run 期间仍可按既有 `/skills use <skill_id>` 显式设置下一次任务 Run 的待用选择，不修改活动 Run 的 Snapshot。
 
 ## 客户端与控制边界
 
