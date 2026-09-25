@@ -53,11 +53,12 @@
 - [任务 0078：CLI 状态动效与回答逐行呈现](tasks/0078-cli-activity-and-paced-replies.md)：Ready for manual acceptance；含审批卡小调整、状态组初次展开。
 - [任务 0079：Apple Terminal 启动字符](tasks/0079-apple-terminal-startup-probe.md)：Done；用户确认启动时不再出现 `p`。
 - [任务 0080：主题回答与用户消息可读性](tasks/0080-cli-theme-readability.md)：Done；用户已在 Terminal.app 确认修改后无问题。
-- [任务 0081：Logo 右侧四行信息与视觉层级](tasks/0081-cli-header-four-line-facts.md)：Ready for manual acceptance；四行信息与层级已实现，35 项聚焦回归及原生终端截图检查通过，待用户视觉确认。
+- [任务 0081：Logo 右侧四行信息与视觉层级](tasks/0081-cli-header-four-line-facts.md)：Done；用户已在 Terminal.app 视觉验收通过。
 - [任务 0082：DSML 工具调用标记泄漏](tasks/0082-leaked-tool-call-markup.md)：Done；用户已在 Terminal.app 复验确认。
 - [任务 0083：底栏 Skill 提示过时](tasks/0083-skill-footer-stale-selection.md)：Done；用户已在 Terminal.app 复验确认。
 - [阶段九自动验收记录](evals/phase-9-core-native-skills.md)：自动门禁与新增矩阵已记录；隔离 wheel 安装曾因 offline 缓存缺少 `openai` 阻断，须复核；Python/`VeraTestDemo` 真实 Provider 主路径已由用户 dogfood，Swift/Xcode 与封存确认仍待。
 - [阶段九：Core-native Skills](specs/2026-09-15-core-native-skills-system.md)与 [ADR-0020](decisions/ADR-0020-stage-core-native-skills.md)：Accepted；范围与安全边界不变。通常入口仍为阶段八 Complete；本次按用户明确授权并行实施，不改变阶段八状态。
+- [三档权限与自动审核机制](specs/2026-09-25-approval-permission-profiles-and-auto-review.md)及[实施计划](tasks/approval-permission-profiles-implementation-plan.md)：Draft；用户确认“完全访问”对齐 OpenAI 的无沙盒、无审批边界，仅当前会话生效，新会话恢复默认。用户授权先写规格和计划；产品实施须等完整 Core/Runner 沙盒完成、冲突的 Accepted 文档修订并接受，以及另行实施授权。沙盒规格当前仍在独立工作树，尚未合入 `main`。
 - [Skill 交互列表](specs/2026-09-24-skills-interactive-picker.md)：Accepted 且已实施；浮层框线与斜杠互斥经用户确认。
 - [视觉 Token](specs/2026-09-13-vera-cli-visual-tokens.md)：Accepted；2026-09-24 增补 Light 与奶油，内置主题为深海 / Light / 奶油 / 高对比 / 无色五套。
 - [ADR-0013：首个桌面底版采用 Electron](decisions/ADR-0013-electron-desktop-baseline.md)：Accepted；当前实施编号由 ADR-0021 调整为阶段十，只固定未来方向，当前不引入 Electron 代码或依赖。
@@ -65,6 +66,8 @@
 - [不可信内容、提示词投毒与内容安全](specs/2026-09-12-untrusted-content-and-prompt-injection-defense.md)：Accepted；由任务 0030 与 ADR-0015 实施。
 
 ## 最近验证
+
+- 2026-09-25 原生 Terminal.app：用户按验收步骤检查 0081 四行信息对齐、层级、五套主题、窄窗裁切与未改动区域，原文确认「0081 通过」，任务转 Done。
 
 - 2026-09-25 本地分批提交（用户授权，未推送）：`fd10f4f` 主题可读性与 Logo 右侧四行信息（0076–0081）；`8ad463d` DSML 标记泄漏修复（0082）；`d215bcd` 底栏 Skill 提示同步（0083）。`main` 领先 `origin/main`。
 
