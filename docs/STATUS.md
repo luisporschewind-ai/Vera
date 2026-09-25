@@ -66,6 +66,8 @@
 
 ## 最近验证
 
+- 2026-09-25 本地分批提交（用户授权，未推送）：`fd10f4f` 主题可读性与 Logo 右侧四行信息（0076–0081）；`8ad463d` DSML 标记泄漏修复（0082）；`d215bcd` 底栏 Skill 提示同步（0083）。`main` 领先 `origin/main`。
+
 - 2026-09-25 原生 Terminal.app：用户确认任务 0082（DSML 标记泄漏）与 0083（底栏 Skill 提示）修正均已验证无问题，两项转 Done。
 
 - 2026-09-25 任务 0083：底栏"已选择 Skill · 等待下一次任务"在 Run 消费或 `/skills clear` 后不消失。现在 TUI 按每条 `skill.selection.changed` 同步底栏；`/skills use` 命令也会显示提示。聚焦 `49 passed`；终端与会话目录 `285 passed`，唯一失败为已知不稳定的缩放防抖计时测试（单独重跑 2 过 1 败）。Ruff、Mypy 通过；Terminal.app 待用户复验。

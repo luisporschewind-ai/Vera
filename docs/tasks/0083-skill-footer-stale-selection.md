@@ -40,6 +40,7 @@ git diff --check
 
 - 2026-09-25：`test_skill_picker_integration`、`test_skill_commands`、`test_app`、`test_status_line` 共 `49 passed`；`tests/terminal` 与 `tests/session` 共 `285 passed, 1 failed`，失败项 `test_layout.py::test_resize_burst_does_not_clear_each_frame` 为缩放防抖计时测试，单独重跑 3 次为 2 过 1 败，与本改动无关。`ruff check`、`ruff format --check`、`mypy src`、`git diff --check` 通过。未运行全量测试。
 - 2026-09-25：用户在 Terminal.app 复验选中、提问后消失与 `/skills clear` 后消失，确认"没问题，都已验证"，任务关闭。
+- 提交：`d215bcd`（未推送）。
 
 ## 未决
 

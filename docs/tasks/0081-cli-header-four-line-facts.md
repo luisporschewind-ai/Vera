@@ -58,3 +58,7 @@ Vera  0.1.0
 - 与任务开始前文件哈希对照，`app.py`、`theme.py`、`theme.tcss`、`blocks.py`、`user_prompt_anchor.py` 均未被 0081 改动。本次不改产品代码，也不覆盖这些文件中用户已有的修改。
 - 确认当前会话无运行任务且输入框为空后，仅在当前终端 shell 执行 `unset NO_COLOR`，退出并按原 Session ID 恢复。新截图确认 Logo 扫光、输入框边框、底栏恢复彩色，顶部四行保留；未修改持久 shell/Terminal 配置。
 - 恢复截图：`/private/tmp/vera-header-0081/color-restored.png`。先前截图只证明布局，未充分核对用户正常启动环境；该验收遗漏现已补充。修复范围是当前终端会话，不宣称已处理所有新窗口的环境来源。
+
+## 提交
+
+- 2026-09-25：`fd10f4f`（与 0080 一并提交，未推送）。任务状态仍为 Ready for manual acceptance，待用户视觉确认。

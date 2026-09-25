@@ -46,6 +46,7 @@ git diff --check
 
 - 2026-09-25：上述聚焦命令 `31 passed`；扩展到 `tests/models`、`tests/runtime`、`tests/presentation`、`tests/cli/test_session.py`、`tests/evals` 共 `416 passed`。`ruff check`、`ruff format --check`、`mypy src`（184 个源文件）通过。未运行全量测试，未用真实 Provider 复现。
 - 2026-09-25：用户在 Terminal.app 复验后确认"没问题，都已验证"，任务关闭。
+- 提交：`8ad463d`（未推送）。
 
 ## 未决
 
