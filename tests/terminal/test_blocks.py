@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 from rich.console import Console
 from rich.text import Text
+from textual.color import Color
 from textual.content import Content
 from textual.selection import SELECT_ALL
 from textual.widgets import Collapsible
@@ -182,6 +183,100 @@ def test_assistant_markdown_hides_markers() -> None:
     assert "AppDelegate" in text
     assert "**" not in text
     assert "# 项目结构" not in text
+
+
+@pytest.mark.parametrize(
+    "theme,foreground,background",
+    [
+        ("light", "#1a2b36", "#e7eef3"),
+        ("cream", "#3d3429", "#f3e8d4"),
+    ],
+)
+def test_light_assistant_inline_code_uses_readable_theme_colors(
+    theme: str, foreground: str, background: str
+) -> None:
+    rendered = _assistant_markdown("正文 `VeraTestDemo.xcodeproj` 后续", theme=theme)
+    console = Console(force_terminal=True, color_system="truecolor")
+    prose_style = rendered.get_style_at_offset(console, rendered.plain.index("正文"))
+    code_style = rendered.get_style_at_offset(console, rendered.plain.index("VeraTestDemo"))
+    assert prose_style.color is not None
+    assert code_style.color is not None
+    assert code_style.bgcolor is not None
+    assert prose_style.color.name == foreground
+    assert code_style.color.name == foreground
+    assert code_style.bgcolor.name == background
+
+
+def _background_separation(first: Color, second: Color) -> float:
+    def luminance(color: Color) -> float:
+        channels = (color.r, color.g, color.b)
+        linear = [
+            channel / 255 / 12.92
+            if channel / 255 <= 0.04045
+            else ((channel / 255 + 0.055) / 1.055) ** 2.4
+            for channel in channels
+        ]
+        return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+    lighter, darker = sorted((luminance(first), luminance(second)), reverse=True)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+@pytest.mark.asyncio
+async def test_user_message_fill_remains_visible_in_every_theme(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    async with app.run_test(size=(80, 24)) as pilot:
+        block = TimelineBlock(
+            block_id="user_theme",
+            run_id="run_1",
+            kind=BlockKind.USER,
+            title="用户",
+            body="请只读这个仓库",
+            status=BlockStatus.SUCCEEDED,
+            expanded=True,
+        )
+        app.query_one("#timeline").apply((AppendBlock(block=block),))
+        await pilot.pause()
+        for name in ("default", "light", "cream", "high-contrast", "no-color"):
+            app._apply_theme(name)
+            await pilot.pause()
+            user = app.block("user_theme")
+            sticky = app.query_one("#user-sticky")
+            assert (
+                _background_separation(user.styles.background, app.screen.styles.background) >= 1.5
+            ), name
+            assert user.styles.background == sticky.styles.background, name
+            if name == "high-contrast":
+                assert user._body.styles.color is not None
+                assert user._body.styles.color.hex == "#000000"
+                assert user._time.styles.color is not None
+                assert user._time.styles.color.hex == "#000000"
+                assert sticky.query_one("#user-sticky-body").styles.color.hex == "#000000"
+
+
+@pytest.mark.asyncio
+async def test_switching_to_cream_recolors_existing_assistant_answer(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    async with app.run_test(size=(80, 24)) as pilot:
+        block = TimelineBlock(
+            block_id="assistant_cream",
+            run_id="run_1",
+            kind=BlockKind.ASSISTANT,
+            title="Vera",
+            body="正文 `VeraTestDemo.xcodeproj` 后续",
+            status=BlockStatus.SUCCEEDED,
+            expanded=True,
+        )
+        app.query_one("#timeline").apply((AppendBlock(block=block),))
+        await pilot.pause()
+        widget = app.block("assistant_cream")
+        app._apply_theme("cream")
+        await pilot.pause()
+        rendered = widget._body.render()
+        assert isinstance(rendered, Content)
+        prose_style = rendered.get_style_at_offset(rendered.plain.index("正文"))
+        assert prose_style.foreground is not None
+        assert prose_style.foreground.hex == "#3D3429"
 
 
 def _assistant_lines(body: str, *, width: int) -> list[str]:

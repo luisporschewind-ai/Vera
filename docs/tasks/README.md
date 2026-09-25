@@ -87,3 +87,5 @@
 - [任务 0077：CLI 奶油风主题](0077-cli-cream-theme.md)
 - [任务 0078：CLI 状态动效与回答逐行呈现](0078-cli-activity-and-paced-replies.md)
 - [任务 0079：清除 Apple Terminal 启动前的 `p`](0079-apple-terminal-startup-probe.md)
+- [任务 0080：CLI 主题回答与用户消息可读性修正](0080-cli-theme-readability.md)
+- [任务 0081：Logo 右侧四行信息与视觉层级](0081-cli-header-four-line-facts.md)

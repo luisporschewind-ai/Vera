@@ -55,16 +55,15 @@ def sample_status(
     )
 
 
-def test_welcome_card_is_four_lines_with_three_facts() -> None:
+def test_welcome_card_is_four_lines_with_four_facts() -> None:
     mark = select_brand_mark(columns=80, rows=24, unicode=True, no_color=False)
     text = brand_header_text(mark, sample_status(dirty=True), columns=80, rows=24)
     lines = text.splitlines()
     assert len(lines) == 4
-    assert lines[3].rstrip() == mark.lines[3].rstrip()
     assert "Vera  0.1.0" in lines[0]
-    assert "demo" in lines[1]
-    assert "fake-model" in lines[2]
-    assert "推理 不可用" in lines[2]
+    assert "项目  demo" in lines[1]
+    assert "路径  /tmp/demo" in lines[2]
+    assert "模型  fake-model · 推理 不可用" in lines[3]
     assert "新会话" not in text
     assert "审批" not in text
     assert "10:24" not in text

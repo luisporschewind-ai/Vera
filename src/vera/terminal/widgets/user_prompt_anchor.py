@@ -26,7 +26,7 @@ class UserPromptAnchor(Horizontal):
         width: auto;
         height: 3;
         display: none;
-        background: $secondary;
+        background: $user-surface;
         border: none;
         margin: 0 2 0 2;
         padding: 1 1;

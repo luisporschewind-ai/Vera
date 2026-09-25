@@ -82,6 +82,8 @@ class VeraHeader(Horizontal):
     VeraHeader #header-meta {
         width: 1fr;
         height: auto;
+        text-wrap: nowrap;
+        text-overflow: clip;
         color: $text-muted;
         padding: 0;
         background: $boost;
@@ -187,10 +189,23 @@ class VeraHeader(Horizontal):
             meta.update("")
             meta.display = True
             return
-        facts = header_fact_lines(self._status)
         wordmark.update(self._logo_visual(self._mark.lines))
-        meta.update(Text("\n".join(facts), no_wrap=True, overflow="crop"))
+        meta.update(self._facts_visual(self._status))
         meta.display = True
+
+    def _facts_visual(self, status: SessionStatus) -> Text:
+        theme = str(self.app.theme) if self.is_mounted else "default"
+        tokens = SEMANTIC_TOKENS[theme if theme in SEMANTIC_TOKENS else "default"]
+        primary = Style(color=tokens["text_primary"])
+        emphasis = Style(color=tokens["text_primary"], bold=True)
+        lines = [
+            Text(line, style=Style(color=tokens["text_muted"]))
+            for line in header_fact_lines(status)
+        ]
+        lines[0].stylize(emphasis, 0, len("Vera"))
+        lines[1].stylize(emphasis, len("项目  "))
+        lines[3].stylize(primary, len("模型  "), len("模型  ") + len(status.model_name))
+        return Text("\n", no_wrap=True, overflow="crop").join(lines)
 
     def _logo_visual(self, lines: tuple[str, ...]) -> Text:
         out = Text(style=Style(bold=False), no_wrap=True, overflow="crop")

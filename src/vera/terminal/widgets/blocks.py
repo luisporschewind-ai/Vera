@@ -10,6 +10,7 @@ from rich.markdown import Markdown
 from rich.markup import escape
 from rich.style import Style
 from rich.text import Text
+from rich.theme import Theme as RichTheme
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Collapsible, Static
@@ -17,6 +18,7 @@ from textual.widgets import Collapsible, Static
 from vera.presentation.disclosure import DisclosurePolicy
 from vera.presentation.timeline import BlockKind, BlockStatus, TimelineBlock, format_block_clock
 from vera.presentation.timeline_time import block_occurred_at
+from vera.terminal.theme import SEMANTIC_TOKENS
 from vera.terminal.widgets.composer import COMPOSER_PROMPT, select_composer_prompt
 
 _SELECTABLE_OPEN_KINDS = {
@@ -222,7 +224,7 @@ class UserBlockWidget(TimelineBlockWidget):
         min-height: 3;
         margin: 1 2;
         padding: 1 1;
-        background: $secondary;
+        background: $user-surface;
         border: none;
         color: $text !important;
     }
@@ -383,10 +385,8 @@ def _assistant_markdown(body: str, *, width: int = 80, theme: str = "default") -
 
 
 def _assistant_body_color(theme: str) -> str:
-    if theme == "light":
-        return "#1A2B36"
-    if theme == "cream":
-        return "#3D3429"
+    if theme in {"light", "cream"}:
+        return SEMANTIC_TOKENS["light" if theme == "light" else "cream"]["text_primary"]
     if theme == "high-contrast":
         return "#FFFFFF"
     if theme == "no-color":
@@ -397,11 +397,24 @@ def _assistant_body_color(theme: str) -> str:
 def _render_markdown_text(body: str, *, width: int, no_wrap: bool, theme: str = "default") -> Text:
     code_theme = "ansi_light" if theme in {"light", "cream"} else "ansi_dark"
     markdown = Markdown(body, code_theme=code_theme, hyperlinks=False)
+    rich_theme = None
+    if theme in {"light", "cream"}:
+        tokens = SEMANTIC_TOKENS["light" if theme == "light" else "cream"]
+        rich_theme = RichTheme(
+            {
+                "markdown.code": Style(
+                    color=tokens["text_primary"],
+                    bgcolor=tokens["surface_elevated"],
+                    bold=True,
+                )
+            }
+        )
     console = Console(
         width=max(width, 8),
         force_terminal=True,
         color_system="standard",
         highlight=False,
+        theme=rich_theme,
     )
     rendered = Text()
     options = console.options.update(no_wrap=no_wrap, overflow="ignore")

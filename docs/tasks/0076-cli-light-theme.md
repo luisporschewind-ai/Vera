@@ -1,6 +1,6 @@
 # 任务 0076：CLI Light 主题
 
-**状态：** Done（2026-09-24）
+**状态：** Done（2026-09-25；可读性修正经用户复验通过）
 **来源：** 用户要求新增命名为 Light 的内置会话主题
 **规格：** [Vera CLI 视觉 Token 与标识](../specs/2026-09-13-vera-cli-visual-tokens.md)（同日增补 Light 列）
 **关联：** 任务 [0039](0039-cli-brand-theme-and-startup-chrome.md)、`/theme`
@@ -20,3 +20,5 @@
 ## 边界
 
 不改变默认深海主题、不改变 Core/审批语义、不启动阶段十。
+
+2026-09-25 用户确认 Light 的回答也有文件名青字黑底问题；修正及跨主题用户消息背景见 [0080](0080-cli-theme-readability.md)。

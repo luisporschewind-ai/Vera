@@ -701,6 +701,9 @@ class VeraTerminalApp(App[int]):
             self.set_class(active, theme_class(item))
             self.screen.set_class(active, theme_class(item))
         self.refresh_css(animate=False)
+        for widget in self.query(TimelineBlockWidget):
+            if widget.block.kind is BlockKind.ASSISTANT:
+                widget._render_body()
         self.refresh()
         self._sync_sticky_offset()
 

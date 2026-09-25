@@ -1,6 +1,6 @@
 # Vera 状态
 
-**更新日期：** 2026-09-24
+**更新日期：** 2026-09-25
 **当前阶段：** 阶段 8——Core 工具集、Policy v2 与原生 Git（In progress）
 **仓库状态：** `main` 文档基线，阶段八实施使用隔离工作树；阶段五停在 Ready for manual acceptance，阶段六与阶段七已 Complete。用户于 2026-09-17 原文确认「CLI 版本达到预期，可以封存」，并于 2026-09-18 选择 Inline Execution，授权阶段八按 0059–0066 串行实施和创建计划内本地提交。用户于 2026-09-21 明确授权阶段九在阶段八完全收口前并行实施；阶段九自动实现现为 Ready for manual acceptance，仍不等于 Complete。
 
@@ -48,10 +48,12 @@
 - [阶段八执行顺序](tasks/phase-8-execution-order.md)：Accepted；实现在隔离分支 `codex/phase-8-tooling-policy-git`，0059–0065 Done，0066 Ready for manual acceptance；尚未合入 `main`。
 - [阶段九执行顺序](tasks/phase-9-execution-order.md)：任务 0067–0071 自动实现完成；0072 Ready for manual acceptance；0074 Skill 浮层 Done（主路径用户复验）；会话持久化 `37b1c30` 已合入。
 - [任务 0075：缩放闪动](tasks/0075-cli-resize-flicker.md)：Done；用户确认 Terminal.app 闪烁已解决。
-- [任务 0076：Light 主题](tasks/0076-cli-light-theme.md)：Done；`/theme light`。
-- [任务 0077：奶油风主题](tasks/0077-cli-cream-theme.md)：Done；`/theme cream` / `/theme 奶油`。
+- [任务 0076：Light 主题](tasks/0076-cli-light-theme.md)：Done；行内代码可读性修正已复验。
+- [任务 0077：奶油风主题](tasks/0077-cli-cream-theme.md)：Done；正文与行内代码可读性修正已复验。
 - [任务 0078：CLI 状态动效与回答逐行呈现](tasks/0078-cli-activity-and-paced-replies.md)：Ready for manual acceptance；含审批卡小调整、状态组初次展开。
 - [任务 0079：Apple Terminal 启动字符](tasks/0079-apple-terminal-startup-probe.md)：Done；用户确认启动时不再出现 `p`。
+- [任务 0080：主题回答与用户消息可读性](tasks/0080-cli-theme-readability.md)：Done；用户已在 Terminal.app 确认修改后无问题。
+- [任务 0081：Logo 右侧四行信息与视觉层级](tasks/0081-cli-header-four-line-facts.md)：Ready for manual acceptance；四行信息与层级已实现，35 项聚焦回归及原生终端截图检查通过，待用户视觉确认。
 - [阶段九自动验收记录](evals/phase-9-core-native-skills.md)：自动门禁与新增矩阵已记录；隔离 wheel 安装曾因 offline 缓存缺少 `openai` 阻断，须复核；Python/`VeraTestDemo` 真实 Provider 主路径已由用户 dogfood，Swift/Xcode 与封存确认仍待。
 - [阶段九：Core-native Skills](specs/2026-09-15-core-native-skills-system.md)与 [ADR-0020](decisions/ADR-0020-stage-core-native-skills.md)：Accepted；范围与安全边界不变。通常入口仍为阶段八 Complete；本次按用户明确授权并行实施，不改变阶段八状态。
 - [Skill 交互列表](specs/2026-09-24-skills-interactive-picker.md)：Accepted 且已实施；浮层框线与斜杠互斥经用户确认。
@@ -62,6 +64,9 @@
 
 ## 最近验证
 
+- 2026-09-25 任务 0081：Logo 右侧品牌版本/项目名/路径/模型四行与文字层级落地，长内容裁切保持对齐。相关回归 `35 passed`；三尺寸五主题检查、Ruff、Mypy、差异检查通过；原生 Terminal.app 已截图查看，用户视觉验收待确认。未运行全量测试。
+
+- 2026-09-25 原生 Terminal.app：用户确认 0078 状态切换/Done、状态组展开、滚动/Resize，以及 0080 主题修正复验通过。Light/奶油回答可读性与五套主题用户消息底色已收口；相关终端测试 `77 passed`，Ruff check/format、Mypy 受影响源文件和差异检查通过。全量回归由用户执行。
 - 2026-09-24 任务 0078/0079 并入 `main`：状态工作轨动效、回答逐行呈现、审批卡间距与中文标签、状态组初次展开及 Apple Terminal 启动字符修正。合并前聚焦测试 `62 passed`；合并后聚焦测试 `105 passed`，Ruff check/format、Mypy `src` 与差异检查通过。按用户要求，本轮不运行全量测试，Terminal.app 合并结果由用户验收。
 - 2026-09-24 任务 0077：新增奶油风会话主题；视觉 Token 规格增补奶油列；`/theme cream` 与 `/theme 奶油` 等价。
 - 2026-09-24 文档同步：将 Skill 持久化、0074 浮层（框线/斜杠互斥）、0075 缩放、0076 Light、以及用户 Terminal.app/`VeraTestDemo`/`deepseek-flash` 主路径 dogfood 写入任务与规格；阶段九仍非 Complete。
@@ -130,7 +135,7 @@
 
 ## 下一检查点
 
-1. 用户在合并后的 `main` 上验证任务 0078 的状态动效、逐行回答、审批卡和状态组默认展开；按本轮要求执行全量测试。
+1. 按此前约定，由用户执行全量回归；0078 的四项人工验收与 0080 主题可读性复验均已通过。
 2. 阶段九：补齐 Swift/Xcode 副本与负例矩阵 dogfood，复核隔离 wheel；用户确认后才可标 Complete。
 3. 阶段八隔离分支完成 Node/TS 与 Terminal.app 人工验收后，用户确认再合入 `main`。
 4. 不自动删除、取消暂存或忽略 `VeraTestDemo` 索引里残留的 `AD build/`；未改 `.gitignore`。

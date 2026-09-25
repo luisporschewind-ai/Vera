@@ -40,12 +40,14 @@ def format_workspace_path(path: Path) -> str:
         return str(path)
 
 
-def header_fact_lines(status: SessionStatus) -> tuple[str, str, str]:
+def header_fact_lines(status: SessionStatus) -> tuple[str, str, str, str]:
     path = format_workspace_path(status.workspace)
+    project = status.workspace.name or str(status.workspace)
     return (
         f"Vera  {__version__}",
-        path,
-        f"{status.model_name}  推理 {status.reasoning.display_label()}",
+        f"项目  {project}",
+        f"路径  {path}",
+        f"模型  {status.model_name} · 推理 {status.reasoning.display_label()}",
     )
 
 

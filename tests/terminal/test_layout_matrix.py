@@ -66,3 +66,13 @@ async def test_layout_matrix_keeps_composer_and_cjk_visible(
         assert composer.region.bottom <= app.size.height
         footer = str(app.query_one("#status-line").render())
         assert "审批" in footer
+        assert app._session_status is not None
+        app._session_status = app._session_status.model_copy(
+            update={"workspace": Path("/tmp") / ("很长的项目[bold]" * 12)}
+        )
+        app.query_one(VeraHeader).set_session_status(app._session_status)
+        await pilot.pause()
+        meta = app.query_one("#header-meta")
+        assert meta.content_size.height == 4
+        assert meta.region.y == wordmark.region.y
+        assert meta.region.bottom == wordmark.region.bottom
