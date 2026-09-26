@@ -75,6 +75,8 @@ class EvalCodec:
         payload = report.model_dump(mode="json")
         metrics = payload.get("metrics") or {}
         usage = metrics.get("usage")
+        if isinstance(usage, dict):
+            usage = {key: value for key, value in usage.items() if value is not None}
         canonical = {
             "after_files": payload.get("after_files") or [],
             "before_files": payload.get("before_files") or [],

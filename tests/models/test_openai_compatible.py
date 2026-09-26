@@ -41,6 +41,22 @@ def test_openai_adapter_defaults_reasoning_to_provider_default() -> None:
     assert provider().capabilities.reasoning == "unavailable"
 
 
+def test_completion_uses_selected_output_token_parameter() -> None:
+    response = SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                message=SimpleNamespace(content="ok", tool_calls=[]), finish_reason="stop"
+            )
+        ],
+        usage=None,
+    )
+    client = FakeOpenAIClient(response)
+    selected = provider().model_copy(update={"output_token_parameter": "max_completion_tokens"})
+    OpenAICompatibleAdapter(selected, client=client).complete(request())
+    assert client.kwargs["max_completion_tokens"] == 100
+    assert "max_tokens" not in client.kwargs
+
+
 def test_adapter_normalizes_provider_tool_call() -> None:
     response = SimpleNamespace(
         choices=[

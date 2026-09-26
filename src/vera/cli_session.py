@@ -265,7 +265,10 @@ def _structured_plain(event_type: str, payload: dict[str, object]) -> str:
             f"calls {payload.get('calls')}\t"
             f"input {payload.get('input_tokens')}\t"
             f"output {payload.get('output_tokens')}\t"
-            f"total {payload.get('total_tokens')}"
+            f"total {payload.get('total_tokens')}\t"
+            f"cache_hit_input_tokens {payload.get('cache_hit_input_tokens')}\t"
+            f"cache_miss_input_tokens {payload.get('cache_miss_input_tokens')}\t"
+            f"cache_hit_percent {payload.get('cache_hit_percent')}"
         )
     if event_type == "session.theme":
         return f"theme {payload.get('theme')}"

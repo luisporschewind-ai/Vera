@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 import os
+import re
 import tomllib
 from collections.abc import Mapping
 from copy import deepcopy
 from datetime import datetime
+from ipaddress import ip_address
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from platformdirs import user_config_path, user_state_path
-from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field
+from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from vera.models.capabilities import ModelCapabilities
 from vera.redaction import DEFAULT_SECRET_POLICY
@@ -58,6 +60,37 @@ class ProviderConfig(BaseModel):
     model: str
     api_key_env: str
     capabilities: ModelCapabilities = Field(default_factory=lambda: ModelCapabilities())
+    output_token_parameter: Literal["max_tokens", "max_completion_tokens"] = "max_tokens"
+    stream_usage_mode: Literal["provider_default", "include_usage"] = "provider_default"
+
+    @field_validator("base_url")
+    @classmethod
+    def validate_endpoint(cls, value: AnyHttpUrl) -> AnyHttpUrl:
+        if value.username or value.password or value.query or value.fragment:
+            raise ValueError("provider endpoint cannot include credentials, query or fragment")
+        if value.scheme == "http":
+            host = value.host or ""
+            if host != "localhost":
+                try:
+                    if not ip_address(host).is_loopback:
+                        raise ValueError("remote provider endpoint must use HTTPS")
+                except ValueError as exc:
+                    raise ValueError("remote provider endpoint must use HTTPS") from exc
+        return value
+
+    @field_validator("api_key_env")
+    @classmethod
+    def validate_key_reference(cls, value: str) -> str:
+        if re.fullmatch(r"[A-Z][A-Z0-9_]*(?:_API_KEY|_TOKEN|_SECRET)", value) is None:
+            raise ValueError("provider key reference must be a secret environment name")
+        return value
+
+    @field_validator("model")
+    @classmethod
+    def validate_model_id(cls, value: str) -> str:
+        if re.fullmatch(r"\S{1,200}", value) is None:
+            raise ValueError("provider model identifier is invalid")
+        return value
 
 
 class UiConfig(BaseModel):
@@ -72,6 +105,8 @@ class VeraConfig(BaseModel):
     state_dir: Path
     limits: Limits
     providers: dict[str, ProviderConfig]
+    default_model_profile: str | None = None
+    enabled_model_profiles: tuple[str, ...] = ()
     user_allowed_command_prefixes: tuple[tuple[str, ...], ...] = ()
     ui: UiConfig = Field(default_factory=UiConfig)
     editor_argv: tuple[str, ...] = ()
@@ -99,6 +134,16 @@ _PROJECT_FORBIDDEN_KEYS = {
     "allowed_command_prefixes",
     "safe_commands",
     "editor_argv",
+    "providers",
+    "model",
+    "model_profile",
+    "api_key_env",
+    "base_url",
+    "model_catalog",
+    "model_profiles",
+    "default_profile",
+    "enabled_profiles",
+    "profile_order",
 }
 
 _PROVIDER_ENV_KEYS = frozenset(
@@ -115,36 +160,9 @@ _PROVIDER_ENV_KEYS = frozenset(
 
 def load_provider_environment(path: Path | None = None) -> None:
     """Load known provider values from a private key-value file without a shell."""
+    from vera.provider_credentials import read_provider_environment
 
-    source = path or Path(
-        os.environ.get(
-            "VERA_PROVIDER_ENV_FILE",
-            str(Path.home() / ".config" / "vera" / "deepseek.env"),
-        )
-    )
-    if not source.exists():
-        return
-    if not source.is_file():
-        raise UnsafeProviderEnvironment("provider environment path must be a file")
-    if os.name == "posix" and source.stat().st_mode & 0o077:
-        raise UnsafeProviderEnvironment("provider environment file must use mode 0600")
-
-    for line_number, raw in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
-        line = raw.strip()
-        if not line or line.startswith("#"):
-            continue
-        if line.startswith("export "):
-            line = line[7:].strip()
-        name, separator, raw_value = line.partition("=")
-        if not separator or name not in _PROVIDER_ENV_KEYS:
-            raise UnsafeProviderEnvironment(f"invalid provider setting at line {line_number}")
-        value = raw_value.strip()
-        if any(token in value for token in ("`", "$(", "${")):
-            raise UnsafeProviderEnvironment(f"shell syntax is forbidden at line {line_number}")
-        if value.startswith(("'", '"')) or value.endswith(("'", '"')):
-            if len(value) < 2 or value[0] != value[-1]:
-                raise UnsafeProviderEnvironment(f"unmatched quote at line {line_number}")
-            value = value[1:-1]
+    for name, value in read_provider_environment(_PROVIDER_ENV_KEYS, path).items():
         os.environ.setdefault(name, value)
 
 
@@ -154,6 +172,22 @@ def _read_toml(path: Path) -> dict[str, Any]:
     with path.open("rb") as handle:
         value = tomllib.load(handle)
     return value
+
+
+def load_user_providers() -> dict[str, ProviderConfig]:
+    """Read legacy user-owned profiles without consulting a project workspace."""
+    user_file = Path(
+        os.environ.get("VERA_USER_CONFIG_FILE", str(user_config_path("Vera") / "config.toml"))
+    )
+    try:
+        raw = _read_toml(user_file).get("providers", {})
+        if not isinstance(raw, dict):
+            raise ValueError("invalid providers")
+        return {name: ProviderConfig.model_validate(value) for name, value in raw.items()}
+    except (OSError, ValueError, TypeError, AttributeError):
+        raise ConfigurationError(
+            "invalid_user_provider", "user provider configuration is invalid"
+        ) from None
 
 
 def _merge(base: dict[str, Any], overlay: Mapping[str, Any]) -> dict[str, Any]:
@@ -191,21 +225,27 @@ def _env_limits() -> dict[str, object]:
     return values
 
 
-def _env_providers() -> dict[str, object]:
+def _env_providers(provider_values: Mapping[str, str] | None = None) -> dict[str, object]:
+    values = dict(provider_values or {})
+    values.update(os.environ)
     providers: dict[str, object] = {}
     if all(
-        os.environ.get(name)
+        values.get(name)
         for name in ("DEEPSEEK_API_KEY", "VERA_DEEPSEEK_BASE_URL", "VERA_DEEPSEEK_MODEL")
     ):
         providers["deepseek"] = {
-            "base_url": os.environ["VERA_DEEPSEEK_BASE_URL"],
-            "model": os.environ["VERA_DEEPSEEK_MODEL"],
+            "base_url": values["VERA_DEEPSEEK_BASE_URL"],
+            "model": values["VERA_DEEPSEEK_MODEL"],
             "api_key_env": "DEEPSEEK_API_KEY",
         }
     return providers
 
 
-def load_config(workspace: Path, cli_overrides: Mapping[str, object]) -> VeraConfig:
+def load_config(
+    workspace: Path,
+    cli_overrides: Mapping[str, object],
+    provider_values: Mapping[str, str] | None = None,
+) -> VeraConfig:
     """Load defaults, user config, project config, environment, then CLI overrides."""
 
     defaults: dict[str, Any] = {"limits": Limits().model_dump(), "providers": {}}
@@ -233,7 +273,22 @@ def load_config(workspace: Path, cli_overrides: Mapping[str, object]) -> VeraCon
 
     merged = _merge(defaults, user_config)
     merged = _merge(merged, project_config)
-    merged["providers"] = _merge(merged.get("providers", {}), _env_providers())
+    merged["providers"] = _merge(merged.get("providers", {}), _env_providers(provider_values))
+    from vera.provider_configuration import ProviderConfigurationService
+
+    profiles = ProviderConfigurationService()
+    try:
+        legacy_providers = {
+            name: ProviderConfig.model_validate(value)
+            for name, value in merged["providers"].items()
+        }
+    except (ValidationError, TypeError, AttributeError):
+        raise ConfigurationError(
+            "invalid_user_provider", "user provider configuration is invalid"
+        ) from None
+    merged["providers"] = profiles.effective_providers(legacy_providers)
+    merged["default_model_profile"] = profiles.default_profile()
+    merged["enabled_model_profiles"] = profiles.enabled_profiles()
     merged["limits"] = _merge(merged.get("limits", {}), _env_limits())
     merged = _merge(merged, cli_overrides)
     state_dir = os.environ.get("VERA_STATE_DIR")
@@ -243,4 +298,7 @@ def load_config(workspace: Path, cli_overrides: Mapping[str, object]) -> VeraCon
         merged.setdefault("state_dir", str(user_state_path("Vera")))
     merged.setdefault("user_allowed_command_prefixes", ())
     merged.setdefault("editor_argv", ())
-    return VeraConfig.model_validate(merged)
+    try:
+        return VeraConfig.model_validate(merged)
+    except ValidationError:
+        raise ConfigurationError("invalid_config", "configuration is invalid") from None

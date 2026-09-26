@@ -66,6 +66,81 @@ def test_deepseek_stream_reconstructs_final_text() -> None:
     assert items[-1].turn.assistant_text == "完成"
 
 
+def test_stream_usage_option_is_explicit_per_profile() -> None:
+    class Client:
+        def __init__(self) -> None:
+            self.calls: list[dict[str, object]] = []
+            self.chat = SimpleNamespace(completions=SimpleNamespace(create=self.create))
+
+        def create(self, **kwargs: object):
+            self.calls.append(kwargs)
+            return iter([SimpleNamespace(choices=[], usage=None, id="final")])
+
+    request = ModelRequest(
+        messages=(ModelMessage(role="user", content="hi"),), max_output_tokens=16
+    )
+    base = ProviderConfig(
+        base_url="https://example.test/v1",
+        model="test",
+        api_key_env="TEST_API_KEY",
+        capabilities=ModelCapabilities(streaming=True),
+    )
+    client = Client()
+    tuple(OpenAICompatibleAdapter(base, client=client).stream(request))
+    selected = base.model_copy(update={"stream_usage_mode": "include_usage"})
+    tuple(OpenAICompatibleAdapter(selected, client=client).stream(request))
+    assert "stream_options" not in client.calls[0]
+    assert client.calls[1]["stream_options"] == {"include_usage": True}
+
+
+def test_stream_reads_usage_only_final_chunk_with_cache_details() -> None:
+    class Client:
+        def __init__(self) -> None:
+            self.chat = SimpleNamespace(completions=SimpleNamespace(create=self.create))
+
+        def create(self, **_kwargs: object):
+            return iter(
+                [
+                    SimpleNamespace(
+                        choices=[
+                            SimpleNamespace(
+                                delta=SimpleNamespace(content="ok"), finish_reason="stop"
+                            )
+                        ],
+                        usage=None,
+                        id="s1",
+                    ),
+                    SimpleNamespace(
+                        choices=[],
+                        usage={
+                            "prompt_tokens": 100,
+                            "completion_tokens": 2,
+                            "total_tokens": 102,
+                            "prompt_tokens_details": {"cached_tokens": 60},
+                        },
+                        id="s1",
+                    ),
+                ]
+            )
+
+    provider = ProviderConfig(
+        base_url="https://example.test/v1",
+        model="gpt-4.1-mini",
+        api_key_env="OPENAI_API_KEY",
+        capabilities=ModelCapabilities(streaming=True),
+        stream_usage_mode="include_usage",
+    )
+    items = tuple(
+        OpenAICompatibleAdapter(provider, client=Client()).stream(
+            ModelRequest(messages=(ModelMessage(role="user", content="hi"),), max_output_tokens=16)
+        )
+    )
+    assert isinstance(items[-1], ModelStreamCompleted)
+    usage = items[-1].turn.usage
+    assert usage is not None
+    assert (usage.cache_hit_input_tokens, usage.cache_miss_input_tokens) == (60, 40)
+
+
 def test_stream_reads_reasoning_from_choice_message_when_delta_omits_it() -> None:
     class _StreamClient:
         def __init__(self) -> None:

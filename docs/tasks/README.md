@@ -87,3 +87,5 @@
 - [任务 0077：CLI 奶油风主题](0077-cli-cream-theme.md)
 - [任务 0078：CLI 状态动效与回答逐行呈现](0078-cli-activity-and-paced-replies.md)
 - [任务 0079：清除 Apple Terminal 启动前的 `p`](0079-apple-terminal-startup-probe.md)
+- [任务 0081：BYOK 多厂商模型配置实施计划](0081-byok-model-configuration.md)
+- [任务 0082：Provider 上下文缓存用量实施计划](0082-provider-cache-usage.md)

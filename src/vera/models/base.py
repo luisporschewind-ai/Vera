@@ -45,6 +45,8 @@ class ModelUsage(BaseModel):
     input_tokens: int | None = None
     output_tokens: int | None = None
     total_tokens: int | None = None
+    cache_hit_input_tokens: int | None = Field(default=None, strict=True, ge=0)
+    cache_miss_input_tokens: int | None = Field(default=None, strict=True, ge=0)
 
 
 class ModelTurn(BaseModel):

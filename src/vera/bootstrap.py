@@ -8,13 +8,20 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from uuid import uuid4
 
-from vera.config import ConfigurationError, VeraConfig, load_config, load_provider_environment
+from vera.config import ConfigurationError, VeraConfig, load_config
 from vera.models.base import ModelAdapter
 from vera.models.openai_compatible import OpenAICompatibleAdapter
 from vera.persistence.recovery_snapshot import RecoverySnapshotStore
 from vera.policy.engine import PolicyEngine
 from vera.policy.snapshot import EffectivePolicySnapshot
 from vera.project_instructions import ProjectInstructionService
+from vera.provider_catalog import MODEL_CATALOG
+from vera.provider_configuration import ProviderConfigurationService
+from vera.provider_credentials import (
+    provider_env_path,
+    read_provider_environment,
+    validate_key_name,
+)
 from vera.recovery.coordinator import RecoveryCoordinator
 from vera.recovery.probe import workspace_identity
 from vera.runtime.engine import VeraRuntime
@@ -74,8 +81,50 @@ def load_or_create_installation_id(state_dir: Path) -> str:
 
 
 def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeDependencies:
-    load_provider_environment()
-    config = load_config(workspace, {})
+    preliminary = load_config(workspace, {})
+    profiles = ProviderConfigurationService()
+    trusted_names = {provider.api_key_env for provider in preliminary.providers.values()}
+    trusted_names.update(item.api_key_env for item in MODEL_CATALOG)
+    trusted_names.update(item.api_key_env for item in profiles.list_profiles())
+    for name in trusted_names:
+        validate_key_name(name)
+    source = provider_env_path()
+    if source.is_symlink():
+        raise ConfigurationError("unsafe_provider_env", "provider key file is unsafe")
+    if source.exists() or source.is_symlink():
+        workspace_root = workspace.resolve(strict=True)
+        private_file = source.resolve(strict=True)
+        if private_file == workspace_root or workspace_root in private_file.parents:
+            raise ConfigurationError(
+                "provider_key_in_workspace", "provider key file is inside workspace"
+            )
+    values = read_provider_environment(
+        frozenset(
+            trusted_names
+            | {
+                "VERA_DEEPSEEK_BASE_URL",
+                "VERA_DEEPSEEK_MODEL",
+                "VERA_GLM_BASE_URL",
+                "VERA_GLM_MODEL",
+            }
+        ),
+        source,
+    )
+    config = load_config(workspace, {}, values)
+    if profiles.path.exists():
+        profile = model_profile or config.default_model_profile
+        if profile is None:
+            raise ConfigurationError("missing_provider_config", "select and enable a model profile")
+    else:
+        profile = (
+            model_profile or config.default_model_profile or next(iter(config.providers), None)
+        )
+    if profile is None or profile not in config.providers:
+        raise ConfigurationError("missing_provider_config", "no model provider configured")
+    provider = config.providers[profile]
+    api_key = os.environ.get(provider.api_key_env) or values.get(provider.api_key_env)
+    if not api_key:
+        raise ConfigurationError("missing_provider_key", "selected model API Key is not configured")
     try:
         installation_id = load_or_create_installation_id(config.state_dir)
     except OSError as exc:
@@ -83,11 +132,7 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
             "state_unwritable",
             f"private state directory is not writable: {config.state_dir}",
         ) from exc
-    profile = model_profile or next(iter(config.providers), None)
-    if profile is None or profile not in config.providers:
-        raise ConfigurationError("missing_provider_config", "no model provider configured")
-    provider = config.providers[profile]
-    adapter: ModelAdapter = OpenAICompatibleAdapter(provider)
+    adapter: ModelAdapter = OpenAICompatibleAdapter(provider, api_key=api_key)
     paths = WorkspacePaths(workspace)
     registry = ToolRegistry()
     registry.register(ReadFileTool(paths, config.limits.max_file_bytes))

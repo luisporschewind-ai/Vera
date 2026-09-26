@@ -15,7 +15,7 @@ def test_factory_uses_fake_adapter_and_never_provider_loader(
     loaded_and_isolated, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     loaded, isolated = loaded_and_isolated
-    monkeypatch.setattr("vera.bootstrap.load_provider_environment", forbidden_call)
+    monkeypatch.setattr("vera.bootstrap.read_provider_environment", forbidden_call)
     monkeypatch.setattr("vera.bootstrap.build_runtime", forbidden_call)
     runtime = EvalRuntimeFactory().create(loaded, isolated)
     assert isinstance(runtime.adapter, FakeModelAdapter)

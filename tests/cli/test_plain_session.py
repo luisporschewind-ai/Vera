@@ -2,7 +2,7 @@ from pathlib import Path
 
 from vera.bootstrap import RuntimeDependencies
 from vera.cli_plain_session import PlainSessionDriver
-from vera.cli_session import InteractiveSession
+from vera.cli_session import InteractiveSession, _structured_plain
 from vera.config import Limits, VeraConfig
 from vera.models.base import FakeModelAdapter
 from vera.runtime.engine import VeraRuntime
@@ -26,6 +26,24 @@ class ScriptedIO:
 
     def clear(self) -> None:
         return None
+
+
+def test_plain_usage_shows_cache_facts_without_changing_existing_totals() -> None:
+    line = _structured_plain(
+        "session.usage",
+        {
+            "calls": 1,
+            "input_tokens": 20,
+            "output_tokens": 2,
+            "total_tokens": 22,
+            "cache_hit_input_tokens": 10,
+            "cache_miss_input_tokens": 10,
+            "cache_hit_percent": 50.0,
+        },
+    )
+    assert "calls 1\tinput 20\toutput 2\ttotal 22" in line
+    assert "cache_hit_input_tokens 10" in line
+    assert "cache_hit_percent 50.0" in line
 
 
 def test_plain_driver_uses_session_controller(tmp_path: Path) -> None:

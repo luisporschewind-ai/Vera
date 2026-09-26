@@ -6,12 +6,14 @@ from pathlib import Path
 from tests.skills.test_manifest import write_skill
 from vera.contracts.commands import StartRun
 from vera.contracts.conversation import ConversationMessage
-from vera.models.base import FakeModelAdapter, ModelTurn
+from vera.models.base import FakeModelAdapter, ModelToolCall, ModelTurn
 from vera.runtime.engine import VeraRuntime
 from vera.skills.discovery import SkillDiscovery
 from vera.skills.registry import SkillRegistry
 from vera.skills.selection import SkillSelectionService
+from vera.tools.builtin import ReadFileTool
 from vera.tools.registry import ToolRegistry
+from vera.workspace.paths import WorkspacePaths
 
 
 def test_selected_skill_is_bound_before_model_request_and_snapshot_is_durable(
@@ -45,6 +47,50 @@ def test_selected_skill_is_bound_before_model_request_and_snapshot_is_durable(
     assert runtime.runs[run_id].skill_snapshot is not None
     assert any("# Skill" in message.content for message in adapter.requests[0].messages)
     assert "# Skill" not in json.dumps(bound.payload)
+
+
+def test_selected_skill_snapshot_keeps_same_prefix_across_tool_roundtrip(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    user = tmp_path / "user"
+    workspace.mkdir()
+    user.mkdir()
+    write_skill(user)
+    (workspace / "hello.txt").write_text("tool result\n")
+    selection = SkillSelectionService(
+        SkillRegistry(SkillDiscovery(builtin_root=tmp_path / "builtin", user_root=user))
+    )
+    selection.select("python-review", workspace)
+    adapter = FakeModelAdapter(
+        [
+            ModelTurn(
+                finish_reason="tool_calls",
+                tool_calls=(
+                    ModelToolCall(
+                        call_id="read-1", name="read_file", arguments={"path": "hello.txt"}
+                    ),
+                ),
+            ),
+            ModelTurn(assistant_text="done", finish_reason="stop"),
+        ]
+    )
+    registry = ToolRegistry()
+    registry.register(ReadFileTool(WorkspacePaths(workspace), 1_000_000))
+    runtime = VeraRuntime(adapter, registry, tmp_path / "state", skill_selection_service=selection)
+    list(
+        runtime.handle(
+            StartRun(
+                goal="inspect",
+                workspace_root=workspace,
+                model_profile="fake",
+                conversation=(ConversationMessage(role="user", content="earlier"),),
+            )
+        )
+    )
+    first, second = adapter.requests
+    assert any("# Skill" in message.content for message in first.messages)
+    assert second.messages[: len(first.messages)] == first.messages
 
 
 def test_no_skill_does_not_scan_or_add_skill_event(tmp_path: Path) -> None:
