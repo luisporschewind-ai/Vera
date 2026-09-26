@@ -169,6 +169,45 @@ def test_run_snapshot_keeps_hash_until_next_start(tmp_path: Path) -> None:
     assert loaded_again.payload["guidance_hash"] == second_hash
 
 
+def test_followup_model_request_keeps_identical_prefix(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / "VERA.md").write_text("stable project guidance\n", encoding="utf-8")
+    (workspace / "hello.txt").write_text("stable file\n", encoding="utf-8")
+    adapter = FakeModelAdapter(
+        [
+            ModelTurn(
+                finish_reason="tool_calls",
+                tool_calls=(
+                    ModelToolCall(
+                        call_id="read-1", name="read_file", arguments={"path": "hello.txt"}
+                    ),
+                ),
+            ),
+            ModelTurn(assistant_text="done", finish_reason="stop"),
+        ]
+    )
+    registry = ToolRegistry()
+    registry.register(ReadFileTool(WorkspacePaths(workspace), 1_000_000))
+    runtime = VeraRuntime(adapter, registry, tmp_path / "state")
+    list(
+        runtime.handle(
+            StartRun(
+                goal="inspect",
+                workspace_root=workspace,
+                model_profile="fake",
+                conversation=(ConversationMessage(role="user", content="earlier"),),
+            )
+        )
+    )
+    assert len(adapter.requests) == 2
+    first, second = adapter.requests
+    assert second.messages[: len(first.messages)] == first.messages
+    assert first.messages[0].content == SYSTEM_PROMPT
+    assert "stable project guidance" in first.messages[1].content
+    assert "stable file" not in "".join(message.content for message in first.messages)
+
+
 def test_poisoned_guidance_still_flags_and_does_not_bypass_approval(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()

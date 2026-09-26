@@ -6,7 +6,7 @@ from vera.bootstrap import RuntimeDependencies
 from vera.config import Limits, ProviderConfig, VeraConfig
 from vera.contracts.events import EventEnvelope
 from vera.contracts.sessions import ConversationTurn
-from vera.models.base import FakeModelAdapter, ModelToolCall, ModelTurn
+from vera.models.base import FakeModelAdapter, ModelToolCall, ModelTurn, ModelUsage
 from vera.persistence.session_store import ConversationSessionStore
 from vera.runtime.engine import VeraRuntime
 from vera.session.actions import (
@@ -98,6 +98,77 @@ def test_controller_submits_prompt_through_runtime(tmp_path: Path) -> None:
     )
     assert status.payload["context"]["context_bytes"] == stats.context_bytes
     assert status.payload["context"]["max_bytes"] == stats.max_bytes
+
+
+def test_model_command_lists_configured_profile_without_secret(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    controller = make_controller(workspace, [])
+    outputs = tuple(controller.dispatch(ExecuteSlashCommand(raw="/model")))
+    message = next(
+        item
+        for item in outputs
+        if isinstance(item, EventEnvelope) and item.type == "session.message"
+    )
+    assert "可用模型" in message.payload["text"]
+    assert "fake" in message.payload["text"]
+    assert "FAKE_API_KEY" not in message.payload["text"]
+
+
+def test_model_switch_error_does_not_echo_provider_secret(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    controller = make_controller(workspace, [])
+
+    def failing_builder(_workspace: Path, _profile: str | None) -> RuntimeDependencies:
+        raise ValueError("sk-private-in-provider-error")
+
+    controller.runtime_builder = failing_builder
+    outputs = tuple(controller.dispatch(ExecuteSlashCommand(raw="/model fake")))
+    message = next(
+        item
+        for item in outputs
+        if isinstance(item, EventEnvelope) and item.type == "session.message"
+    )
+    assert "sk-private-in-provider-error" not in message.payload["text"]
+
+
+def test_usage_command_reports_only_latest_workspace_run(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    controller = make_controller(
+        workspace,
+        [
+            ModelTurn(
+                assistant_text="first",
+                finish_reason="stop",
+                usage=ModelUsage(
+                    input_tokens=10,
+                    output_tokens=1,
+                    total_tokens=11,
+                    cache_hit_input_tokens=2,
+                    cache_miss_input_tokens=8,
+                ),
+            ),
+            ModelTurn(
+                assistant_text="second",
+                finish_reason="stop",
+                usage=ModelUsage(
+                    input_tokens=20,
+                    output_tokens=2,
+                    total_tokens=22,
+                    cache_hit_input_tokens=10,
+                    cache_miss_input_tokens=10,
+                ),
+            ),
+        ],
+    )
+    tuple(controller.dispatch(SubmitPrompt(text="first")))
+    tuple(controller.dispatch(SubmitPrompt(text="second")))
+    usage = tuple(controller.dispatch(ExecuteSlashCommand(raw="/usage")))[-1]
+    assert usage.payload["calls"] == 1
+    assert usage.payload["input_tokens"] == 20
+    assert usage.payload["cache_hit_percent"] == 50.0
 
 
 def test_controller_rejects_second_prompt_while_run_active(tmp_path: Path) -> None:

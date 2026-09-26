@@ -21,11 +21,11 @@ from vera.models.base import (
     ModelRequest,
     ModelToolCall,
     ModelTurn,
-    ModelUsage,
 )
 from vera.models.capabilities import ModelCapabilities
 from vera.models.errors import ModelErrorCode, ModelProviderError
 from vera.models.leaked_markup import LeakedMarkupFilter
+from vera.models.provider_usage import parse_provider_usage
 from vera.models.streaming import (
     ModelStreamAccumulator,
     ModelStreamCompleted,
@@ -100,14 +100,16 @@ def coerce_assistant_text(value: object) -> str | None:
 
 
 class OpenAICompatibleAdapter:
-    def __init__(self, provider: ProviderConfig, client: Any | None = None) -> None:
+    def __init__(
+        self, provider: ProviderConfig, client: Any | None = None, *, api_key: str | None = None
+    ) -> None:
         self.provider = provider
         caps = provider.capabilities
         if caps.reasoning == "unavailable":
             caps = caps.model_copy(update={"reasoning": "provider_default"})
         self._capabilities = caps
         self.client: Any = client or OpenAI(
-            api_key=os.environ.get(provider.api_key_env),
+            api_key=api_key if api_key is not None else os.environ.get(provider.api_key_env),
             base_url=str(provider.base_url),
             timeout=120.0,
             max_retries=0,
@@ -254,8 +256,8 @@ class OpenAICompatibleAdapter:
             kwargs: dict[str, object] = {
                 "model": self.provider.model,
                 "messages": self._messages(request),
-                "max_tokens": request.max_output_tokens,
             }
+            kwargs[self.provider.output_token_parameter] = request.max_output_tokens
             if request.tools:
                 kwargs["tools"] = self._tools(request)
             response = self.client.chat.completions.create(**kwargs)
@@ -275,14 +277,19 @@ class OpenAICompatibleAdapter:
             kwargs: dict[str, object] = {
                 "model": self.provider.model,
                 "messages": self._messages(request),
-                "max_tokens": request.max_output_tokens,
                 "stream": True,
             }
+            kwargs[self.provider.output_token_parameter] = request.max_output_tokens
+            if self.provider.stream_usage_mode == "include_usage":
+                kwargs["stream_options"] = {"include_usage": True}
             if request.tools:
                 kwargs["tools"] = self._tools(request)
             response = self.client.chat.completions.create(**kwargs)
             finish_reason = "stop"
             for chunk in response:
+                usage_value = _get(chunk, "usage")
+                if usage_value is not None:
+                    accumulator.usage = parse_provider_usage(usage_value)
                 choice = (_get(chunk, "choices") or [None])[0]
                 if choice is None:
                     continue
@@ -312,13 +319,6 @@ class OpenAICompatibleAdapter:
                 reason = _get(choice, "finish_reason")
                 if reason:
                     finish_reason = reason
-                usage_value = _get(chunk, "usage")
-                if usage_value is not None:
-                    accumulator.usage = ModelUsage(
-                        input_tokens=_get(usage_value, "prompt_tokens"),
-                        output_tokens=_get(usage_value, "completion_tokens"),
-                        total_tokens=_get(usage_value, "total_tokens"),
-                    )
                 request_id = _get(chunk, "_request_id") or _get(chunk, "id")
                 if request_id:
                     accumulator.provider_request_id = str(request_id)
@@ -365,11 +365,7 @@ class OpenAICompatibleAdapter:
         usage_value = _get(response, "usage")
         usage = None
         if usage_value is not None:
-            usage = ModelUsage(
-                input_tokens=_get(usage_value, "prompt_tokens"),
-                output_tokens=_get(usage_value, "completion_tokens"),
-                total_tokens=_get(usage_value, "total_tokens"),
-            )
+            usage = parse_provider_usage(usage_value)
         request_id = _get(response, "_request_id") or _get(response, "id")
         reasoning = _provider_attr(message, "reasoning_content", "reasoning")
         if not isinstance(reasoning, str) or not reasoning.strip():

@@ -12,6 +12,7 @@ from vera.bootstrap import RuntimeDependencies, build_runtime
 from vera.cli_driver import ApprovalDecision, drive_run
 from vera.cli_eval import eval_app
 from vera.cli_json_session import JsonSessionDriver
+from vera.cli_models import models_app
 from vera.cli_options import RESUME_PICKER_VALUE, normalize_resume_argv
 from vera.cli_plain_session import PlainSessionDriver
 from vera.cli_presenter import HumanPresenter
@@ -70,13 +71,14 @@ app.add_typer(recover_app, name="recover")
 app.add_typer(state_app, name="state")
 app.add_typer(eval_app, name="eval")
 app.add_typer(sessions_app, name="sessions")
+app.add_typer(models_app, name="models")
 
 
 def _fail_runtime_setup(exc: Exception) -> NoReturn:
     if isinstance(exc, ConfigurationError):
         typer.echo(str(exc), err=True)
         raise typer.Exit(exc.exit_code) from exc
-    typer.echo(str(exc), err=True)
+    typer.echo("configuration_failed: runtime configuration is invalid", err=True)
     raise typer.Exit(5) from exc
 
 
@@ -152,7 +154,9 @@ def main(
         deps = build_runtime(resolved, model)
     except Exception as exc:
         _fail_runtime_setup(exc)
-    selected_model = model or next(iter(deps.config.providers), "default")
+    selected_model = (
+        model or deps.config.default_model_profile or next(iter(deps.config.providers), "default")
+    )
     capabilities = detect_terminal_capabilities()
     try:
         mode = select_mode(plain=plain, json_output=json_output, capabilities=capabilities)
@@ -534,7 +538,10 @@ def rollback(run_id: str = typer.Argument(...)) -> None:
 
 @config_app.command("show")
 def config_show() -> None:
-    config = load_config(Path.cwd(), {})
+    try:
+        config = load_config(Path.cwd(), {})
+    except Exception as exc:
+        _fail_runtime_setup(exc)
     typer.echo(json.dumps(config.model_dump(mode="json"), ensure_ascii=False, indent=2))
 
 

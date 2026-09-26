@@ -6,7 +6,7 @@ from pathlib import Path
 from vera.bootstrap import RuntimeDependencies
 from vera.cli_json_session import JsonSessionDriver
 from vera.config import Limits, ProviderConfig, VeraConfig
-from vera.models.base import FakeModelAdapter, ModelTurn
+from vera.models.base import FakeModelAdapter, ModelTurn, ModelUsage
 from vera.runtime.engine import VeraRuntime
 from vera.session.actions import (
     CloseSession,
@@ -52,6 +52,47 @@ def test_json_session_round_trips_prompt_and_outputs_records(tmp_path: Path) -> 
     assert records[0]["record_type"] == "event"
     assert any(item.get("event") and item["event"]["type"] == "run.completed" for item in records)
     assert "\u001b" not in target.getvalue()
+
+
+def test_json_session_exposes_normalized_cache_facts_without_provider_payload(
+    tmp_path: Path,
+) -> None:
+    driver = make_driver(
+        tmp_path,
+        [
+            ModelTurn(
+                assistant_text="ok",
+                finish_reason="stop",
+                usage=ModelUsage(
+                    input_tokens=100,
+                    output_tokens=5,
+                    total_tokens=105,
+                    cache_hit_input_tokens=60,
+                    cache_miss_input_tokens=40,
+                ),
+            )
+        ],
+    )
+    source = StringIO(
+        encode_action(SubmitPrompt(text="hello"))
+        + "\n"
+        + encode_action(ExecuteSlashCommand(raw="/usage"))
+        + "\n"
+        + encode_action(CloseSession())
+        + "\n"
+    )
+    target = StringIO()
+    assert driver.run(source, target) == 0
+    events = [
+        json.loads(line)["event"]
+        for line in target.getvalue().splitlines()
+        if json.loads(line).get("event")
+    ]
+    model = next(event for event in events if event["type"] == "model.completed")
+    usage = next(event for event in events if event["type"] == "session.usage")
+    assert model["payload"]["usage"]["cache_hit_input_tokens"] == 60
+    assert usage["payload"]["cache_hit_percent"] == 60.0
+    assert "FAKE_API_KEY" not in target.getvalue()
 
 
 def test_invalid_line_emits_structured_error_and_continues(tmp_path: Path) -> None:

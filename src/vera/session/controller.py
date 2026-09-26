@@ -11,6 +11,7 @@ from typing import Literal
 from uuid import uuid4
 
 from vera.bootstrap import RuntimeBuilder, RuntimeDependencies, build_runtime
+from vera.config import ConfigurationError
 from vera.contracts.commands import (
     AbandonRun,
     CancelRun,
@@ -676,17 +677,39 @@ class SessionController:
 
     def _switch_model(self, requested_profile: str | None) -> Iterator[RuntimeOutput]:
         if requested_profile is None:
+            configured = self.dependencies.config.enabled_model_profiles
+            if configured:
+                from vera.provider_configuration import ProviderConfigurationService
+
+                try:
+                    summaries = ProviderConfigurationService().list_profiles_with_keys(
+                        self.dependencies.config.providers
+                    )
+                    candidates = [
+                        item.profile_id
+                        for item in summaries
+                        if item.enabled and item.valid and item.key_status != "missing"
+                    ]
+                except ConfigurationError:
+                    candidates = []
+            else:
+                candidates = list(self.dependencies.config.providers)
+            available = ", ".join(candidates) if candidates else "请先运行 vera models setup"
             yield self._session_event(
                 "session.message",
-                {"text": f"当前模型：{self.model_profile} / {self._model_name()}"},
+                {
+                    "text": f"当前模型：{self.model_profile} / {self._model_name()}\n"
+                    f"可用模型：{available}"
+                },
             )
             return
         try:
             candidate = self.runtime_builder(self.workspace, requested_profile)
         except Exception as exc:
+            reason = exc.code if isinstance(exc, ConfigurationError) else "configuration_failed"
             yield self._session_event(
                 "session.message",
-                {"text": f"模型切换失败，已保留当前配置：{exc}"},
+                {"text": f"模型切换失败，已保留当前配置：{reason}"},
             )
             return
         candidate.runtime.skill_selection_service = self._skill_service()
@@ -1189,9 +1212,17 @@ class SessionController:
     def _cmd_usage(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
         from vera.session.queries import usage_snapshot
 
-        events = tuple(self._events_for_active)
-        for summary in self.store.list_runs():
-            events = events + tuple(self.store.read_events(summary.run_id))
+        selected = self.active_run_id
+        if selected is None:
+            selected = next(
+                (
+                    summary.run_id
+                    for summary in self.store.list_runs()
+                    if summary.workspace_root.resolve() == self.workspace.resolve()
+                ),
+                None,
+            )
+        events = self._events_for_run(selected)
         yield self._session_event("session.usage", usage_snapshot(events))
 
     def _cmd_shortcuts(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:

@@ -91,3 +91,5 @@
 - [任务 0081：Logo 右侧四行信息与视觉层级](0081-cli-header-four-line-facts.md)
 - [任务 0082：模型把工具调用写进正文（DSML 标记泄漏）](0082-leaked-tool-call-markup.md)
 - [任务 0083：底栏"已选择 Skill"不随消费或清除更新](0083-skill-footer-stale-selection.md)
+- [任务 0084：BYOK 多厂商模型配置实施计划](0084-byok-model-configuration.md)
+- [任务 0085：Provider 上下文缓存用量实施计划](0085-provider-cache-usage.md)

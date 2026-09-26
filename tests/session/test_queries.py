@@ -28,6 +28,106 @@ def test_collect_diffs_and_missing_usage_are_unavailable() -> None:
     assert usage["calls"] == "unavailable"
     assert usage["total_tokens"] == "unavailable"
     assert 0 not in usage.values()
+    assert usage["cache_hit_input_tokens"] == "unavailable"
+
+
+def test_usage_snapshot_aggregates_complete_cache_detail() -> None:
+    events = (
+        _event(
+            "model.completed",
+            {
+                "usage": {
+                    "input_tokens": 100,
+                    "output_tokens": 10,
+                    "total_tokens": 110,
+                    "cache_hit_input_tokens": 40,
+                    "cache_miss_input_tokens": 60,
+                }
+            },
+        ),
+        _event(
+            "model.completed",
+            {
+                "usage": {
+                    "input_tokens": 50,
+                    "output_tokens": 5,
+                    "total_tokens": 55,
+                    "cache_hit_input_tokens": 30,
+                    "cache_miss_input_tokens": 20,
+                }
+            },
+        ),
+    )
+    usage = usage_snapshot(events)
+    assert usage["calls"] == 2
+    assert usage["input_tokens"] == 150
+    assert usage["cache_hit_input_tokens"] == 70
+    assert usage["cache_miss_input_tokens"] == 80
+    assert usage["cache_hit_percent"] == 46.7
+
+
+def test_old_journal_call_does_not_erase_known_total_usage() -> None:
+    events = (
+        _event(
+            "model.completed",
+            {"usage": {"input_tokens": 100, "output_tokens": 10, "total_tokens": 110}},
+        ),
+        _event(
+            "model.completed",
+            {
+                "usage": {
+                    "input_tokens": 50,
+                    "output_tokens": 5,
+                    "total_tokens": 55,
+                    "cache_hit_input_tokens": 30,
+                    "cache_miss_input_tokens": 20,
+                }
+            },
+        ),
+    )
+    usage = usage_snapshot(events)
+    assert usage["input_tokens"] == 150
+    assert usage["cache_hit_input_tokens"] == "unavailable"
+    assert usage["cache_hit_percent"] == "unavailable"
+
+
+def test_invalid_or_zero_cache_detail_never_creates_misleading_percent() -> None:
+    invalid = usage_snapshot(
+        (
+            _event(
+                "model.completed",
+                {
+                    "usage": {
+                        "input_tokens": 10,
+                        "output_tokens": 1,
+                        "total_tokens": 11,
+                        "cache_hit_input_tokens": True,
+                        "cache_miss_input_tokens": 9,
+                    }
+                },
+            ),
+        )
+    )
+    assert invalid["input_tokens"] == 10
+    assert invalid["cache_hit_input_tokens"] == "unavailable"
+    zero = usage_snapshot(
+        (
+            _event(
+                "model.completed",
+                {
+                    "usage": {
+                        "input_tokens": 0,
+                        "output_tokens": 0,
+                        "total_tokens": 0,
+                        "cache_hit_input_tokens": 0,
+                        "cache_miss_input_tokens": 0,
+                    }
+                },
+            ),
+        )
+    )
+    assert zero["cache_hit_input_tokens"] == 0
+    assert zero["cache_hit_percent"] == "unavailable"
 
 
 def test_resolve_run_id_falls_back_to_latest_store_run() -> None:

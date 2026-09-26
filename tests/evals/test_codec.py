@@ -136,6 +136,30 @@ def test_canonical_report_excludes_nondeterministic_fields() -> None:
     }
 
 
+def test_canonical_report_includes_reported_cache_facts() -> None:
+    report = _report()
+    metrics = report.metrics.model_copy(
+        update={
+            "usage": ModelUsage(
+                input_tokens=10,
+                output_tokens=2,
+                total_tokens=12,
+                cache_hit_input_tokens=6,
+                cache_miss_input_tokens=4,
+            )
+        }
+    )
+    report = report.model_copy(update={"metrics": metrics})
+    usage = EvalCodec.canonical_report(report)["metrics"]["usage"]
+    assert usage == {
+        "input_tokens": 10,
+        "output_tokens": 2,
+        "total_tokens": 12,
+        "cache_hit_input_tokens": 6,
+        "cache_miss_input_tokens": 4,
+    }
+
+
 def test_canonical_report_encodes_missing_usage_as_null() -> None:
     report = _report()
     report = report.model_copy(update={"metrics": EvalMetrics()})
