@@ -16,6 +16,7 @@ _GIT_EXPORTS = frozenset(
         "GitCommitTool",
         "GitDiffTool",
         "GitLogTool",
+        "GitRepositoryInitTool",
         "GitShowTool",
         "GitStatusTool",
     }
@@ -27,6 +28,7 @@ if TYPE_CHECKING:
         GitCommitTool,
         GitDiffTool,
         GitLogTool,
+        GitRepositoryInitTool,
         GitShowTool,
         GitStatusTool,
     )
@@ -48,6 +50,7 @@ __all__ = [
     "GitCommitTool",
     "GitDiffTool",
     "GitLogTool",
+    "GitRepositoryInitTool",
     "GitShowTool",
     "GitStatusTool",
     "DuplicateToolError",

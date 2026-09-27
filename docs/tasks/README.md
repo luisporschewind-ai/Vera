@@ -78,3 +78,4 @@
 - [任务 0064：GitCommitPlan 与精确提交](0064-native-git-commit.md)
 - [任务 0065：Git Hooks、恢复与分支](0065-git-hooks-recovery-and-branches.md)
 - [任务 0066：阶段八验收与真实 dogfood](0066-phase-8-tooling-git-acceptance.md)
+- [任务 0090：Core 受控 Git 仓库初始化](0090-core-owned-git-repository-initialization.md)

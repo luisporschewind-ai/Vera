@@ -20,6 +20,11 @@ from vera.contracts.tool_actions import (
 )
 from vera.git.branches import GitBranchError, GitBranchPlan
 from vera.git.commit_plan import GitCommitPlan, GitCommitPlanError
+from vera.git.initialize import (
+    GitRepositoryInitError,
+    GitRepositoryInitPlan,
+    GitRepositoryInitResult,
+)
 from vera.policy.engine import PolicyEngine
 from vera.policy.models import PolicyDecision, PolicyDecisionKind
 from vera.policy.permissions import WorkspacePermissionSnapshot
@@ -46,6 +51,7 @@ class PreparedToolAction:
     process_plan: CommandActionPlan | None = None
     git_commit_plan: GitCommitPlan | None = None
     git_branch_plan: GitBranchPlan | None = None
+    git_init_plan: GitRepositoryInitPlan | GitRepositoryInitResult | None = None
 
 
 class ToolExecutor:
@@ -79,7 +85,7 @@ class ToolExecutor:
         if definition is None:
             raise ToolPreparationError("unknown_tool")
         action_id = uuid4().hex
-        mutation, process_plan, git_commit_plan, git_branch_plan = self._plan_action(
+        mutation, process_plan, git_commit_plan, git_branch_plan, git_init_plan = self._plan_action(
             tool, run_id, parsed, action_id=action_id
         )
         facts = self._risk_facts(tool, parsed)
@@ -130,6 +136,7 @@ class ToolExecutor:
             process_plan=process_plan,
             git_commit_plan=git_commit_plan,
             git_branch_plan=git_branch_plan,
+            git_init_plan=git_init_plan,
         )
 
     def execute_allowed(
@@ -164,7 +171,7 @@ class ToolExecutor:
             or prepared.policy_decision.policy_hash != self.policy_engine.policy_hash
         ):
             return ToolResult(ok=False, error_code="stale_tool_action")
-        mutation, process_plan, git_commit_plan, git_branch_plan = self._plan_action(
+        mutation, process_plan, git_commit_plan, git_branch_plan, git_init_plan = self._plan_action(
             tool, prepared.action.run_id, parsed, action_id=prepared.action.action_id
         )
         facts = self._risk_facts(tool, parsed)
@@ -239,6 +246,20 @@ class ToolExecutor:
                 if execute_plan is None:
                     return ToolResult(ok=False, error_code="git_branch_executor_unbound")
                 result = execute_plan(git_branch_plan, parsed)
+            elif prepared.git_init_plan is not None:
+                if git_init_plan is None or type(git_init_plan) is not type(prepared.git_init_plan):
+                    return ToolResult(ok=False, error_code="stale_tool_action")
+                if isinstance(prepared.git_init_plan, GitRepositoryInitPlan):
+                    assert isinstance(git_init_plan, GitRepositoryInitPlan)
+                    git_init_plan = git_init_plan.model_copy(
+                        update={"plan_id": prepared.git_init_plan.plan_id}
+                    )
+                if git_init_plan != prepared.git_init_plan:
+                    return ToolResult(ok=False, error_code="stale_tool_action")
+                execute_plan = getattr(tool, "execute_plan", None)
+                if execute_plan is None:
+                    return ToolResult(ok=False, error_code="git_init_executor_unbound")
+                result = execute_plan(git_init_plan, parsed)
             elif prepared.process_plan is not None:
                 if process_plan is None:
                     return ToolResult(ok=False, error_code="stale_tool_action")
@@ -309,10 +330,11 @@ class ToolExecutor:
         CommandActionPlan | None,
         GitCommitPlan | None,
         GitBranchPlan | None,
+        GitRepositoryInitPlan | GitRepositoryInitResult | None,
     ]:
         planner = getattr(tool, "plan_action", None)
         if planner is None:
-            return None, None, None, None
+            return None, None, None, None, None
         if self.state_dir is not None:
             binder = getattr(tool, "bind_state", None)
             if binder is not None:
@@ -332,14 +354,18 @@ class ToolExecutor:
             raise ToolPreparationError(exc.code) from exc
         except GitBranchError as exc:
             raise ToolPreparationError(exc.code) from exc
+        except GitRepositoryInitError as exc:
+            raise ToolPreparationError(exc.code) from exc
         if isinstance(planned, PlannedFileMutation):
-            return planned, None, None, None
+            return planned, None, None, None, None
         if isinstance(planned, CommandActionPlan):
-            return None, planned, None, None
+            return None, planned, None, None, None
         if isinstance(planned, GitCommitPlan):
-            return None, None, planned, None
+            return None, None, planned, None, None
         if isinstance(planned, GitBranchPlan):
-            return None, None, None, planned
+            return None, None, None, planned, None
+        if isinstance(planned, (GitRepositoryInitPlan, GitRepositoryInitResult)):
+            return None, None, None, None, planned
         raise ToolPreparationError("invalid_action_plan")
 
     @staticmethod
