@@ -1,6 +1,6 @@
 # Vera 状态
 
-**更新日期：** 2026-09-22
+**更新日期：** 2026-09-24
 **当前阶段：** 阶段 8——Core 工具集、Policy v2 与原生 Git（In progress）
 **仓库状态：** `main` 文档基线，阶段八实施使用隔离工作树；阶段五停在 Ready for manual acceptance，阶段六与阶段七已 Complete。用户于 2026-09-17 原文确认「CLI 版本达到预期，可以封存」，并于 2026-09-18 选择 Inline Execution，授权阶段八按 0059–0066 串行实施和创建计划内本地提交。用户于 2026-09-21 明确授权阶段九在阶段八完全收口前并行实施；阶段九自动实现现为 Ready for manual acceptance，仍不等于 Complete。
 
@@ -49,6 +49,7 @@
 - [阶段九执行顺序](tasks/phase-9-execution-order.md)：任务 0067–0071 自动实现完成，任务 0072 为 Ready for manual acceptance；用户授权本阶段在阶段八仍 In progress 时使用独立工作树并行实施。
 - [阶段九自动验收记录](evals/phase-9-core-native-skills.md)：自动门禁与新增矩阵已记录；隔离 wheel 安装因 offline 缓存缺少 `openai` 阻断，Terminal.app 和真实工程 dogfood 待用户有电脑后执行。
 - [阶段九：Core-native Skills](specs/2026-09-15-core-native-skills-system.md)与 [ADR-0020](decisions/ADR-0020-stage-core-native-skills.md)：Accepted；范围与安全边界不变。通常入口仍为阶段八 Complete；本次按用户明确授权并行实施，不改变阶段八状态。
+- [Core 联网技术资料检索方案](specs/2026-09-24-core-web-research.md)：Accepted（方案方向）；用户于 2026-09-24 确认优先官方技术文档、依赖版本和公开报错。服务选型、审批细则及与阶段十的先后仍待决定；未授权实施或真实服务调用。
 - [ADR-0013：首个桌面底版采用 Electron](decisions/ADR-0013-electron-desktop-baseline.md)：Accepted；当前实施编号由 ADR-0021 调整为阶段十，只固定未来方向，当前不引入 Electron 代码或依赖。
 - [阶段十：桌面 Agent 工作台与 UI](specs/2026-09-12-desktop-agent-workbench-ui.md)：Draft；不启动阶段十。
 - [不可信内容、提示词投毒与内容安全](specs/2026-09-12-untrusted-content-and-prompt-injection-defense.md)：Accepted；由任务 0030 与 ADR-0015 实施。
@@ -120,3 +121,4 @@
 3. 阶段五仍缺 20 次真实 dogfood 与三类真实工程走查，不得把阶段五标为 Complete。
 4. 用户已确认「CLI 版本达到预期，可以封存」；该确认不自动授权下一阶段或 Electron 实施。
 5. 阶段九自动实现已达到 Ready for manual acceptance；待用户有电脑后完成 Terminal.app、Python/Swift 工程副本 dogfood 和用户确认。市场、远程安装、自动更新、Plugin、Hook 与可执行能力继续保持独立且不进入 v1。
+6. 联网技术资料检索的方案方向已确认；阶段八、九完成后再决定优先级、服务选择、审批细则与独立实施授权。
