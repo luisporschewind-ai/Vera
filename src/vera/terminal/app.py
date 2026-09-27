@@ -13,6 +13,7 @@ from textual.binding import Binding
 from textual.css.query import NoMatches
 from textual.events import Resize
 from textual.geometry import Size
+from textual.timer import Timer
 from textual.widgets import Static
 
 from vera.contracts.events import EventEnvelope
@@ -56,6 +57,7 @@ from vera.terminal.widgets.work_rail import VeraWorkRail
 install_alt_enter_mapping()
 
 _RESIZE_CLEAR = Control.clear().segment.text + Control.home().segment.text
+_RESIZE_REPAIR_DELAY = 0.4
 
 
 class VeraTerminalApp(App[int]):
@@ -109,6 +111,7 @@ class VeraTerminalApp(App[int]):
         self._editor_preview_pending = False
         self._welcome_expanded = True
         self._session_status: SessionStatus | None = None
+        self._resize_repair_timer: Timer | None = None
         self._too_small = Static(
             "终端太小：请调整到至少 60×16",
             id="terminal-too-small",
@@ -147,6 +150,11 @@ class VeraTerminalApp(App[int]):
 
     def on_resize(self, event: Resize) -> None:
         self._apply_size(event.size)
+        if self._resize_repair_timer is not None:
+            self._resize_repair_timer.stop()
+        self._resize_repair_timer = self.set_timer(
+            _RESIZE_REPAIR_DELAY, self._repair_terminal_after_resize
+        )
 
     def on_unmount(self) -> None:
         self.bridge.cancel_workers()
@@ -212,10 +220,24 @@ class VeraTerminalApp(App[int]):
                     widget.refresh(repaint=True)
         except NoMatches:
             pass
-        if self._driver is not None:
-            self._driver.write(_RESIZE_CLEAR)
-            self._driver.flush()
         self.screen.refresh(repaint=True)
+
+    def _repair_terminal_after_resize(self) -> None:
+        self._resize_repair_timer = None
+        if not self.is_running or self._driver is None:
+            return
+        # Terminal.app can retain old border cells after a shrink. Repair only
+        # once the drag settles, and send the clear with its replacement frame.
+        frame = self.screen._compositor.render_full_update()
+        cursor = self.screen.outer_size.clamp_offset(self.cursor_position)
+        output = _RESIZE_CLEAR + frame.render_segments(self.console)
+        output += Control.move_to(*cursor).segment.text
+        self._begin_update()
+        try:
+            self._driver.write(output)
+        finally:
+            self._end_update()
+        self._driver.flush()
 
     def _collapse_welcome(self) -> None:
         if not self._welcome_expanded:
