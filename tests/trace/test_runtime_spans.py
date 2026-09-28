@@ -9,10 +9,11 @@ import pytest
 from pydantic import BaseModel
 
 from vera.contracts.commands import ResolveApproval, StartRun
+from vera.contracts.tool_actions import ToolEffect, ToolRiskFacts
 from vera.contracts.verification import VerificationCommand, VerificationResult
 from vera.models.base import FakeModelAdapter, ModelToolCall, ModelTurn
 from vera.runtime.engine import VeraRuntime
-from vera.tools.definitions import ToolResult
+from vera.tools.definitions import ToolDefinitionV2, ToolResult
 from vera.tools.registry import ToolRegistry
 
 
@@ -23,9 +24,22 @@ class _ReadInput(BaseModel):
 class _ReadTool:
     name = "read_file"
     input_model = _ReadInput
+    definition = ToolDefinitionV2(
+        name=name,
+        description="read a workspace file",
+        input_schema=_ReadInput.model_json_schema(),
+        tool_version=1,
+        effects=(ToolEffect.WORKSPACE_READ,),
+        supports_cancellation=False,
+        supports_recovery=False,
+        max_output_bytes=100_000,
+    )
 
     def __init__(self, content: str = "private-file-body") -> None:
         self.content = content
+
+    def risk_facts(self, arguments: _ReadInput) -> ToolRiskFacts:
+        return ToolRiskFacts(normalized_paths=(arguments.path,), facts_complete=True)
 
     def execute(self, arguments: _ReadInput) -> ToolResult:
         return ToolResult(ok=True, content={"content": self.content})

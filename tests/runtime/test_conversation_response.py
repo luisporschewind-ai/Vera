@@ -195,7 +195,7 @@ def test_claimed_changeset_text_nudges_then_proposes(tmp_path: Path) -> None:
     assert any(event.type == "approval.required" for event in events)
     assert not any(event.type == "run.completed" for event in events)
     assert any(
-        "只有该工具才会出现审批卡" in message.content
+        "本次尚无 Core 审批请求记录" in message.content
         for request in adapter.requests
         for message in request.messages
         if message.role == "user"
@@ -322,6 +322,6 @@ def test_claimed_changeset_nudge_only_once(tmp_path: Path) -> None:
         1
         for request in adapter.requests
         for message in request.messages
-        if message.role == "user" and "只有该工具才会出现审批卡" in message.content
+        if message.role == "user" and "本次尚无 Core 审批请求记录" in message.content
     )
     assert nudge_count == 1

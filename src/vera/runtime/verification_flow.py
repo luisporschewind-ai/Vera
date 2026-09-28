@@ -264,4 +264,6 @@ class VerificationFlow:
     expected_artifact_root = staticmethod(expected_artifact_root)
     binding_matches = staticmethod(verification_binding_matches)
     event_payload = staticmethod(verification_event_payload)
+    start_span = staticmethod(start_verification_span)
+    finish_span = staticmethod(finish_verification_span)
     verify = staticmethod(verify)

@@ -18,18 +18,18 @@ if TYPE_CHECKING:
 
 
 def slash(host: SessionController, raw: str) -> Iterator[RuntimeOutput]:
-    if host._active_run_id is not None and host._pending_approval is None:
-        yield host._session_event(
-            "session.action_rejected",
-            {"reason_code": "run_active", "message": "当前有运行中的任务。"},
-        )
-        return
     try:
         parts = shlex.split(raw)
     except ValueError as exc:
         yield host._session_event("session.message", {"text": f"命令格式错误：{exc}"})
         return
     if not parts:
+        return
+    if host._active_run_id is not None and host._pending_approval is None and parts[0] != "/trace":
+        yield host._session_event(
+            "session.action_rejected",
+            {"reason_code": "run_active", "message": "当前有运行中的任务。"},
+        )
         return
     from vera.session.command_catalog import CommandCatalog
 

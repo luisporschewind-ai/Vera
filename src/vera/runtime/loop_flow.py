@@ -16,6 +16,7 @@ from vera.contracts.tool_actions import ToolEffect
 from vera.contracts.trace import TraceSpanStatus
 from vera.models.base import ModelMessage, ModelRequest, ModelToolCall, ModelTurn
 from vera.models.errors import ModelErrorCode, ModelProviderError, safe_error_payload
+from vera.models.leaked_markup import find_leaked_tool_markup, strip_leaked_tool_markup
 from vera.models.streaming import ModelStreamCompleted, ModelTextDelta
 from vera.recovery.models import PersistedToolAction
 from vera.runtime.approval import ApprovalKind
@@ -24,6 +25,7 @@ from vera.runtime.flow_protocols import LoopFlowHost
 from vera.runtime.intake import (
     _CLAIMED_CHANGESET_NUDGE,
     _EMPTY_AFTER_TOOLS_NUDGE,
+    _LEAKED_MARKUP_NUDGE,
     _TOOL_LIMIT_SKIPPED,
     _TOOL_LIMIT_WRAP_UP,
     claims_unissued_changeset,
@@ -400,6 +402,18 @@ def drive(host: LoopFlowHost, context: RunContext) -> Iterator[RuntimeOutput]:
             yield from flagged
         if not turn.tool_calls:
             text = (turn.assistant_text or "").strip()
+            if find_leaked_tool_markup(text) is not None:
+                context.messages[-1] = ModelMessage(
+                    role="assistant",
+                    content=strip_leaked_tool_markup(text),
+                    reasoning_content=turn.reasoning_content,
+                )
+                if context.leaked_markup_nudge:
+                    yield from host._fail(context, "leaked_tool_call_markup")
+                    return
+                context.leaked_markup_nudge = True
+                context.messages.append(ModelMessage(role="user", content=_LEAKED_MARKUP_NUDGE))
+                continue
             if not text:
                 if context.tool_calls > 0 and not context.empty_after_tools_nudge:
                     context.empty_after_tools_nudge = True
@@ -513,7 +527,7 @@ def finish_at_tool_limit(host: LoopFlowHost, context: RunContext) -> Iterator[Ru
     if turn is None or turn.tool_calls:
         yield from host._fail(context, "max_tool_calls")
         return
-    text = (turn.assistant_text or "").strip()
+    text = strip_leaked_tool_markup(turn.assistant_text)
     if not text:
         yield from host._fail(context, "max_tool_calls")
         return
@@ -553,7 +567,7 @@ def compact(host: LoopFlowHost, context: RunContext) -> Iterator[RuntimeOutput]:
     if turn.tool_calls:
         yield from host._fail(context, "invalid_compaction_response")
         return
-    text = (turn.assistant_text or "").strip()
+    text = strip_leaked_tool_markup(turn.assistant_text)
     if not text:
         yield from host._fail(context, "empty_model_response")
         return

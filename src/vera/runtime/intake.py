@@ -24,6 +24,10 @@ _CLAIMED_CHANGESET_NUDGE = (
     "修改文件使用当前已注册的 write/edit 等工具；审批卡和 Diff 由 Core 生成，"
     "不需要模型调用独立审批工具。只报告实际执行结果。"
 )
+_LEAKED_MARKUP_NUDGE = (
+    "上一次回复把工具调用写成了正文里的原始标记，Vera 没有执行它，也没有产生审批卡。"
+    "需要调用工具时，请通过函数调用接口重新发起；不要在正文中输出任何工具调用标记。"
+)
 _CLAIMED_CHANGESET_MARKERS = (
     "已形成 change set",
     "已形成 changeset",
@@ -98,6 +102,7 @@ __all__ = [
     "SnapshotPersistError",
     "_CLAIMED_CHANGESET_NUDGE",
     "_EMPTY_AFTER_TOOLS_NUDGE",
+    "_LEAKED_MARKUP_NUDGE",
     "_TOOL_LIMIT_SKIPPED",
     "_TOOL_LIMIT_WRAP_UP",
     "claims_unissued_changeset",

@@ -105,6 +105,7 @@ from vera.tools.command_policy import CommandPolicy
 from vera.tools.definitions import ToolDefinitionV2, ToolResult
 from vera.tools.executor import PreparedToolAction, ToolExecutor
 from vera.tools.registry import ToolRegistry
+from vera.trace.recorder import SpanHandle
 from vera.verification.artifacts import (
     VerificationArtifactPlanner,
 )
@@ -472,6 +473,16 @@ class VeraRuntime:
         self, context: RunContext, command: VerificationCommand, index: int
     ) -> bool:
         return VerificationFlow.binding_matches(self, context, command, index)
+
+    def _start_verification_span(
+        self, context: RunContext, index: int, command: VerificationCommand
+    ) -> SpanHandle:
+        return VerificationFlow.start_span(context, index, command)
+
+    def _finish_verification_span(
+        self, context: RunContext, span: SpanHandle, result: VerificationResult
+    ) -> None:
+        VerificationFlow.finish_span(context, span, result)
 
     def _verification_event_payload(
         self,
