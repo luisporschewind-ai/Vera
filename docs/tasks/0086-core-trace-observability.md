@@ -1,6 +1,6 @@
 # 任务 0086：Core Trace 与运行可观测性
 
-**状态：** In progress
+**状态：** In progress（自动门禁通过；原生终端人工可读性验收待用户执行）
 **所属阶段：** 阶段十——Core Trace 与运行可观测性
 **上游规格：** [Core Trace 与运行可观测性](../specs/2026-09-26-core-trace-observability.md)（Accepted）
 **阶段决策：** [ADR-0023](../decisions/ADR-0023-insert-core-observability-before-desktop.md)（Accepted）
@@ -48,3 +48,11 @@
 - 用户按规格完成本地真实 Run 的人工 Trace 可读性验收。
 - 确认现有 `/usage`、Runtime Event 顺序、Recovery、Policy、Approval、Workspace 写入、Verification 结果及 Run 终态无回归。
 - 只有全部证据齐备后，才能将任务与阶段转为相应验收状态；本任务与计划本身不代表阶段十已 Started 或 Complete。
+
+## 当前验证记录（2026-09-26）
+
+- Task 1–6 已按计划逐项完成；Task 7 的聚焦回归 `uv run --offline pytest tests/contracts/test_trace_contracts.py tests/trace tests/models/test_adapter_conformance.py tests/runtime/test_model_resilience.py tests/runtime/test_context_compaction.py tests/runtime/test_streaming_output.py tests/tools/test_registry.py tests/tools/test_builtin.py tests/tools/test_command_policy.py tests/runtime/test_policy_approval.py tests/runtime/test_safe_editing_flow.py tests/runtime/test_recovery_resume.py tests/verification/test_runner.py tests/session/test_queries.py tests/session/test_controller.py tests/cli/test_plain_session.py tests/cli/test_json_session.py tests/presentation/test_projector.py -q` → 177 passed（最终活跃 Run 只读入口修正后重跑）。
+- 全量离线测试（最终活跃 Run 只读入口修正前）：1360 passed、2 skipped、1 failed、1 error。失败与错误均为既有 wheel 安装 smoke，因离线缓存缺少 `openai>=2,<3` 无法安装；实施前基线为 1317 passed、2 skipped、同一 1 failed/1 error。最后一处入口修正后，重新运行了上述 177 项聚焦套件及全部静态门禁。
+- `uv run --offline ruff check src/vera tests`、`uv run --offline ruff format --check src/vera tests`、`uv run --offline mypy src`、`git diff --check` 均通过。
+- Plain、JSON、Timeline 的自动回归覆盖 `/trace`；真实 Terminal.app/TUI 可读性与非敏感本地 Run 人工检查仍待用户完成，故本任务及阶段十保持 In progress。
+- 阶段八/九仍由用户自行验证；本记录未改变其阶段、任务或验收状态。

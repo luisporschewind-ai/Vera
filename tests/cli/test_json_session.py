@@ -78,6 +78,8 @@ def test_json_session_exposes_normalized_cache_facts_without_provider_payload(
         + "\n"
         + encode_action(ExecuteSlashCommand(raw="/usage"))
         + "\n"
+        + encode_action(ExecuteSlashCommand(raw="/trace"))
+        + "\n"
         + encode_action(CloseSession())
         + "\n"
     )
@@ -90,8 +92,13 @@ def test_json_session_exposes_normalized_cache_facts_without_provider_payload(
     ]
     model = next(event for event in events if event["type"] == "model.completed")
     usage = next(event for event in events if event["type"] == "session.usage")
+    trace = next(event for event in events if event["type"] == "session.trace")
     assert model["payload"]["usage"]["cache_hit_input_tokens"] == 60
     assert usage["payload"]["cache_hit_percent"] == 60.0
+    assert trace["payload"]["trace"]["run_id"]
+    assert trace["payload"]["trace"]["status"] == "completed"
+    assert "Run ID" in trace["payload"]["text"]
+    assert "hello" not in json.dumps(trace["payload"], ensure_ascii=False)
     assert "FAKE_API_KEY" not in target.getvalue()
 
 

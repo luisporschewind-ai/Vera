@@ -59,6 +59,7 @@ _TITLES: dict[str, str] = {
     "session.shortcuts": "快捷键",
     "session.config": "配置",
     "session.usage": "用量",
+    "session.trace": "执行轨迹",
     "session.permissions": "权限",
     "session.review": "审查",
     "session.diff": "Diff",
