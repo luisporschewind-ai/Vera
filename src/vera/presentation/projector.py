@@ -176,6 +176,11 @@ class TimelineProjector:
             "run.completed": self._terminal_status,
             "run.failed": self._run_failed,
             "run.cancelled": self._run_cancelled,
+            "git.operation.started": self._git_operation_event,
+            "git.operation.completed": self._git_operation_event,
+            "git.operation.recovered": self._git_operation_event,
+            "git.operation.manual_required": self._git_operation_event,
+            "git.operation.failed": self._git_operation_event,
             "recovery.detected": self._recovery_event,
             "recovery.manual_required": self._recovery_event,
             "conversation.compacted": self._status_event,
@@ -501,14 +506,16 @@ class TimelineProjector:
             or "批准后才会执行该动作"
         )
         argv = event.payload.get("argv", [])
-        command = (
-            shlex.join(str(part) for part in argv)
-            if kind == "command" and isinstance(argv, list) and argv
-            else ""
-        )
+        command = shlex.join(str(part) for part in argv) if isinstance(argv, list) and argv else ""
         profile = event.payload.get("artifact_profile") if kind == "command" else None
         root = event.payload.get("artifact_root") if kind == "command" else None
-        cwd = event.payload.get("cwd") if kind == "command" else None
+        cwd = event.payload.get("cwd")
+        available_scopes = event.payload.get("available_scopes", [])
+        scopes = (
+            ", ".join(str(scope) for scope in available_scopes)
+            if isinstance(available_scopes, list) and available_scopes
+            else ""
+        )
         body = "\n".join(
             part
             for part in (
@@ -519,6 +526,7 @@ class TimelineProjector:
                 f"工作目录：{cwd}" if cwd else "",
                 f"目标：{target}" if target and not command else "",
                 f"风险：{risk_label}",
+                f"授权范围：{scopes}" if scopes else "",
                 f"工作区：{workspace}" if workspace else "",
                 f"影响：{effect}",
             )
@@ -648,6 +656,17 @@ class TimelineProjector:
             title=event_title(event.type),
             body=format_recovery_inspection(event.run_id, event.payload),
             status=BlockStatus.SUCCEEDED,
+        )
+
+    def _git_operation_event(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
+        failed = event.type in {"git.operation.failed", "git.operation.manual_required"}
+        return self._append(
+            block_id=f"{event.run_id}:{event.sequence}:git",
+            run_id=event.run_id,
+            kind=BlockKind.ERROR if failed else BlockKind.STATUS,
+            title=event_title(event.type),
+            body=sanitize_terminal_text(event_summary(event.payload)),
+            status=BlockStatus.FAILED if failed else BlockStatus.SUCCEEDED,
         )
 
     def _error_event(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:

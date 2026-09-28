@@ -1,6 +1,6 @@
 """Read-only filesystem tools constrained to a workspace."""
 
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from pydantic import Field
 
@@ -26,6 +26,10 @@ class SearchMatch(ToolResult):
 
 class SearchResult(ToolResult):
     matches: list[SearchMatch] = Field(default_factory=list)
+
+
+class FindResult(ToolResult):
+    paths: list[str] = Field(default_factory=list)
 
 
 def read_file(paths: WorkspacePaths, path: str, max_bytes: int = 100_000) -> ReadFileResult:
@@ -81,6 +85,40 @@ def search_text(paths: WorkspacePaths, query: str, path: str = ".") -> SearchRes
     return SearchResult(ok=True, matches=matches)
 
 
+def find_files(paths: WorkspacePaths, pattern: str = "*", path: str = ".") -> FindResult:
+    """Discover regular files using a workspace-relative glob, in stable order."""
+
+    normalized_pattern = pattern.replace("\\", "/")
+    pattern_path = PurePosixPath(normalized_pattern)
+    if pattern_path.is_absolute() or ".." in pattern_path.parts:
+        return FindResult(ok=False, error_code="workspace_boundary")
+    try:
+        root = paths.resolve_read(path)
+    except WorkspaceBoundaryError:
+        return FindResult(ok=False, error_code="workspace_boundary")
+    if root.is_file():
+        relative = root.relative_to(paths.root)
+        return FindResult(
+            ok=True,
+            paths=[relative.as_posix()] if root.match(normalized_pattern) else [],
+        )
+    if not root.is_dir():
+        return FindResult(ok=False, error_code="not_found")
+    found: list[str] = []
+    for file_path in sorted(root.rglob(normalized_pattern)):
+        relative = file_path.relative_to(paths.root)
+        if (
+            file_path.is_symlink()
+            or not file_path.is_file()
+            or any(part in _IGNORED_DIRECTORIES for part in relative.parts)
+        ):
+            continue
+        if paths.protected.is_protected(relative):
+            continue
+        found.append(relative.as_posix())
+    return FindResult(ok=True, paths=found)
+
+
 def _collect_search_matches(
     paths: WorkspacePaths,
     file_path: Path,
@@ -88,7 +126,11 @@ def _collect_search_matches(
     matches: list[SearchMatch],
 ) -> None:
     relative = file_path.relative_to(paths.root)
-    if not file_path.is_file() or any(part in _IGNORED_DIRECTORIES for part in relative.parts):
+    if (
+        file_path.is_symlink()
+        or not file_path.is_file()
+        or any(part in _IGNORED_DIRECTORIES for part in relative.parts)
+    ):
         return
     if paths.protected.is_protected(relative):
         return

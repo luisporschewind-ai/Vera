@@ -12,8 +12,12 @@ from vera.config import ConfigurationError, VeraConfig, load_config
 from vera.models.base import ModelAdapter
 from vera.models.openai_compatible import OpenAICompatibleAdapter
 from vera.persistence.recovery_snapshot import RecoverySnapshotStore
+from vera.persistence.workspace_permissions import (
+    WorkspacePermissionStore,
+    WorkspacePermissionStoreError,
+)
 from vera.policy.engine import PolicyEngine
-from vera.policy.snapshot import EffectivePolicySnapshot
+from vera.policy.snapshot import EffectivePolicySnapshotV2
 from vera.project_instructions import ProjectInstructionService
 from vera.provider_catalog import MODEL_CATALOG
 from vera.provider_configuration import ProviderConfigurationService
@@ -29,8 +33,20 @@ from vera.skills.discovery import SkillDiscovery
 from vera.skills.registry import SkillRegistry
 from vera.skills.selection import SkillSelectionService
 from vera.skills.snapshot_store import SkillSnapshotStore
-from vera.tools.builtin import ListDirectoryTool, ReadFileTool, SearchTextTool
+from vera.tools.bash import BashTool
+from vera.tools.builtin import FindTool, GrepTool, LsTool, ReadTool
 from vera.tools.command_policy import CommandPolicy
+from vera.tools.file_mutation import EditTool, WriteTool
+from vera.tools.git import (
+    GitBranchCreateTool,
+    GitBranchListTool,
+    GitBranchSwitchTool,
+    GitCommitTool,
+    GitDiffTool,
+    GitLogTool,
+    GitShowTool,
+    GitStatusTool,
+)
 from vera.tools.registry import ToolRegistry
 from vera.workspace.paths import WorkspacePaths
 
@@ -135,17 +151,37 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
     adapter: ModelAdapter = OpenAICompatibleAdapter(provider, api_key=api_key)
     paths = WorkspacePaths(workspace)
     registry = ToolRegistry()
-    registry.register(ReadFileTool(paths, config.limits.max_file_bytes))
-    registry.register(ListDirectoryTool(paths))
-    registry.register(SearchTextTool(paths))
+    registry.register(ReadTool(paths, config.limits.max_file_bytes))
+    registry.register(WriteTool(workspace, config.state_dir))
+    registry.register(EditTool(workspace, config.state_dir))
+    registry.register(GrepTool(paths))
+    registry.register(FindTool(paths))
+    registry.register(LsTool(paths))
+    registry.register(BashTool(workspace))
+    registry.register(GitCommitTool(workspace))
+    registry.register(GitStatusTool(workspace))
+    registry.register(GitDiffTool(workspace))
+    registry.register(GitLogTool(workspace))
+    registry.register(GitShowTool(workspace))
+    registry.register(GitBranchListTool(workspace))
+    registry.register(GitBranchCreateTool(workspace))
+    registry.register(GitBranchSwitchTool(workspace))
     policy_prefixes = config.user_allowed_command_prefixes
     identity = workspace_identity(workspace, installation_id)
-    engine = PolicyEngine(
-        EffectivePolicySnapshot(
-            workspace_identity=identity,
-            user_allowed_command_prefixes=policy_prefixes,
-        )
+    effective_snapshot = EffectivePolicySnapshotV2(
+        workspace_identity=identity,
+        user_allowed_command_prefixes=policy_prefixes,
     )
+    permission_store = WorkspacePermissionStore(
+        config.state_dir,
+        policy_major_version=effective_snapshot.builtin_policy_version,
+        protected_roots_hash=effective_snapshot.protected_roots_hash,
+    )
+    try:
+        workspace_permissions = permission_store.load(identity)
+    except WorkspacePermissionStoreError as exc:
+        raise ConfigurationError("permissions_unavailable", "无法读取工作区权限状态") from exc
+    engine = PolicyEngine(effective_snapshot)
     policy = CommandPolicy(
         policy_prefixes,
         policy_engine=engine,
@@ -172,6 +208,7 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
         project_instructions=project_instructions,
         skill_selection_service=skill_selection_service,
         skill_snapshot_store=SkillSnapshotStore(),
+        workspace_permissions=workspace_permissions,
     )
     return RuntimeDependencies(
         runtime=runtime,

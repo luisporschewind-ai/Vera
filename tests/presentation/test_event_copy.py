@@ -49,6 +49,11 @@ EMITTED_EVENT_TYPES = (
     "rollback.conflicted",
     "state.inspected",
     "state.migration_completed",
+    "git.operation.started",
+    "git.operation.completed",
+    "git.operation.recovered",
+    "git.operation.manual_required",
+    "git.operation.failed",
 )
 
 

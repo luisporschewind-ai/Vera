@@ -32,6 +32,9 @@ class SessionPresenter:
 
     def write_permissions(self, status: PermissionStatus) -> None:
         self._write(f"Approval mode     {status.approval_mode}")
+        self._write(f"Policy mode       {status.policy_mode}")
+        self._write(f"Workspace trust   {'trusted' if status.trusted else 'untrusted'}")
+        self._write(f"Approval scopes   {', '.join(status.approval_scopes)}")
         self._write(f"Change Set        {status.changeset_approval}")
         self._write(f"Command policy    {status.command_policy}")
         self._write(f"Policy version    {status.policy_version}")

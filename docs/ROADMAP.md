@@ -105,7 +105,7 @@
 **状态：** In progress
 **入口条件：** 阶段七 Complete，用户已确认「CLI 版本达到预期，可以封存」，[ADR-0021](decisions/ADR-0021-core-tools-before-desktop.md)为 Accepted，且 [Core 工具集与风险分级 Policy v2](specs/2026-09-17-core-tooling-and-risk-tiered-policy.md)与 [Vera 原生 Git 能力](specs/2026-09-17-native-git-capability.md)均转为 Accepted。规格接受和独立实施授权前不建立实施任务、不修改产品代码。
 
-**实施计划：** [阶段八执行顺序](tasks/phase-8-execution-order.md)拆分任务 0059–0066；用户于 2026-09-18 选择 Inline Execution，当前从任务 0059 串行实施。
+**实施计划：** [阶段八执行顺序](tasks/phase-8-execution-order.md)拆分任务 0059–0066；用户于 2026-09-18 选择 Inline Execution，0059–0065 已完成，0066 自动验收已进入 `Ready for manual acceptance`。
 
 - 默认模型工具对齐 `read/write/edit/bash`，保留 `grep/find/ls` 辅助只读能力；所有动作统一经过 Core ToolExecutor。
 - `bash` v1 只接受结构化 argv、受限 cwd、超时和输出预算，不解释原生 Shell 字符串。

@@ -29,6 +29,11 @@ from vera.contracts.streaming import RuntimeOutput
 from vera.persistence.errors import PersistenceFault
 from vera.persistence.run_store import RunStore
 from vera.persistence.session_store import ConversationSessionStore, LoadedConversationSession
+from vera.persistence.workspace_permissions import (
+    WorkspacePermissionStore,
+    WorkspacePermissionStoreError,
+)
+from vera.policy.snapshot import EffectivePolicySnapshotV2
 from vera.project_instructions import (
     format_instruction_status,
     public_instruction_facts,
@@ -858,7 +863,10 @@ class SessionController:
             model_profile=self.model_profile,
             model_name=self._model_name(),
             conversation=self.conversation_stats(),
-            permissions=permission_status(self.dependencies.runtime.command_policy),
+            permissions=permission_status(
+                self.dependencies.runtime.command_policy,
+                workspace_permissions=self.dependencies.runtime.workspace_permissions,
+            ),
             reasoning=self._reasoning_status(),
             skill_selection=self._skill_selection(),
             active_skill_snapshot=self._active_skill_snapshot(),
@@ -1016,8 +1024,65 @@ class SessionController:
             stats.model_dump(mode="json"),
         )
 
-    def _cmd_permissions(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
-        status = permission_status(self.dependencies.runtime.command_policy)
+    def _cmd_permissions(self, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        if args:
+            requested = args[0].casefold()
+            current = self.dependencies.runtime.workspace_permissions
+            if current is None:
+                yield self._session_event(
+                    "session.action_rejected",
+                    {
+                        "reason_code": "permissions_unavailable",
+                        "message": "当前没有工作区权限快照。",
+                    },
+                )
+                return
+            if requested not in {"trust", "revoke"}:
+                yield self._session_event(
+                    "session.message",
+                    {"text": "用法：/permissions [trust|revoke]"},
+                )
+                return
+            snapshot = self.dependencies.runtime.policy_engine.snapshot
+            if not isinstance(snapshot, EffectivePolicySnapshotV2):
+                yield self._session_event(
+                    "session.action_rejected",
+                    {
+                        "reason_code": "permissions_unavailable",
+                        "message": "当前策略版本不支持工作区权限持久化。",
+                    },
+                )
+                return
+            store = WorkspacePermissionStore(
+                self.dependencies.config.state_dir,
+                policy_major_version=snapshot.builtin_policy_version,
+                protected_roots_hash=snapshot.protected_roots_hash,
+            )
+            updated = current.model_copy(
+                update={
+                    "trusted": requested == "trust",
+                    "grants": current.grants if requested == "trust" else (),
+                }
+            )
+            try:
+                if requested == "trust":
+                    store.save(updated)
+                else:
+                    store.revoke(current.workspace_identity)
+            except WorkspacePermissionStoreError as exc:
+                yield self._session_event(
+                    "session.action_rejected",
+                    {
+                        "reason_code": exc.code,
+                        "message": "工作区权限状态未更新，请检查私有状态目录。",
+                    },
+                )
+                return
+            self.dependencies.runtime.workspace_permissions = updated
+        status = permission_status(
+            self.dependencies.runtime.command_policy,
+            workspace_permissions=self.dependencies.runtime.workspace_permissions,
+        )
         yield self._session_event("session.permissions", status.model_dump(mode="json"))
 
     def _cmd_instructions(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:

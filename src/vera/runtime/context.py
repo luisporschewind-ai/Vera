@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 from vera.content.envelope import ContentFinding
@@ -15,6 +15,7 @@ from vera.contracts.verification import VerificationCommand
 from vera.models.base import ModelMessage, ModelToolCall
 from vera.persistence.journal import EventJournal
 from vera.project_instructions import ProjectInstructionSet
+from vera.recovery.models import PendingGitOperation, PersistedToolAction
 from vera.redaction import Redactor
 from vera.runtime.approval import ApprovalGate
 from vera.runtime.state import RunStateMachine
@@ -242,8 +243,12 @@ class RunContext:
     built_change_set: BuiltChangeSet | None = None
     pending_command: VerificationCommand | None = None
     """Planned VerificationCommand waiting for command approval; never a second derived copy."""
+    pending_tool_action: PersistedToolAction | None = None
+    pending_git_operation: PendingGitOperation | None = None
+    applied_file_mutations: list[dict[str, str]] = field(default_factory=list)
     verification_index: int = 0
     verification_failed: bool = False
+    process_in_flight: bool = False
     last_tool_signature: str | None = None
     repeated_tool_streak: int = 0
     checkpoint_manifest: CheckpointManifest | None = None

@@ -6,10 +6,31 @@ import json
 from typing import Literal
 
 from vera.contracts import ContractModel
+from vera.contracts.changes import ChangeSet
 from vera.contracts.codec import _COMMAND_DECODERS, CommandType
 from vera.contracts.errors import CoreErrorCode
 from vera.contracts.events import EventEnvelope
+from vera.contracts.file_mutations import FileMutationPlan
 from vera.contracts.recovery import RecoveryClassification
+from vera.contracts.tool_actions import ToolAction
+from vera.git.branches import GitBranchPlan, GitBranchResult
+from vera.git.commit import GitCommitResult
+from vera.git.commit_plan import GitCommitPlan
+from vera.git.hooks import GitHookEntry, GitHookFacts, GitSigningFacts
+from vera.git.models import (
+    GitBranchSummary,
+    GitCommitSummary,
+    GitDiffRequest,
+    GitDiffResult,
+    GitLogRequest,
+    GitRepositoryInfo,
+    GitRepositorySnapshot,
+    GitShowRequest,
+    GitShowResult,
+    GitStatusEntry,
+)
+from vera.policy.models import PolicyAction
+from vera.policy.permissions import WorkspacePermissionSummary
 from vera.runtime.approval import ApprovalKind
 from vera.session.actions import (
     CancelActiveRun,
@@ -22,6 +43,7 @@ from vera.session.actions import (
     ResolveSessionApproval,
     SubmitPrompt,
 )
+from vera.tools.definitions import ToolDefinition, ToolDefinitionV2
 
 CURRENT_PROTOCOL_VERSION = 1
 
@@ -32,7 +54,8 @@ COMPATIBILITY_RULES: dict[str, str] = {
         "StartRun.mode=project_init and project.instructions.loaded/skipped/status "
         "are additive at schema_version 1; default mode remains agent. Core-native "
         "Skill summaries, selections, snapshots, errors, and events are optional "
-        "additive facts; NoSkill remains the default."
+        "additive facts; NoSkill remains the default. ToolDefinition v2, ToolAction, "
+        "and public permission summaries are additive tooling contracts."
     ),
     "deprecated": (
         "Deprecated fields remain readable at the current schema_version but must "
@@ -76,6 +99,7 @@ class CompatibilityManifest(ContractModel):
     recovery_classifications: tuple[str, ...]
     session_records: tuple[NamedContract, ...]
     session_actions: tuple[NamedContract, ...]
+    tooling_contracts: tuple[NamedContract, ...] = ()
     compatibility_rules: dict[str, str]
 
 
@@ -116,6 +140,39 @@ def current_compatibility_manifest() -> CompatibilityManifest:
         )
         for model in _SESSION_ACTIONS
     )
+    tooling_contracts = tuple(
+        NamedContract(
+            name=model.__name__,
+            schema_version=version,
+            required_fields=required_fields_for(model),
+        )
+        for model, version in (
+            (ToolDefinition, 1),
+            (ToolDefinitionV2, 2),
+            (ToolAction, 1),
+            (WorkspacePermissionSummary, 1),
+            (PolicyAction, 1),
+            (ChangeSet, 1),
+            (FileMutationPlan, 1),
+            (GitRepositoryInfo, 1),
+            (GitStatusEntry, 1),
+            (GitRepositorySnapshot, 1),
+            (GitDiffResult, 1),
+            (GitCommitSummary, 1),
+            (GitShowResult, 1),
+            (GitBranchSummary, 1),
+            (GitDiffRequest, 1),
+            (GitLogRequest, 1),
+            (GitShowRequest, 1),
+            (GitCommitPlan, 1),
+            (GitCommitResult, 1),
+            (GitBranchPlan, 1),
+            (GitBranchResult, 1),
+            (GitHookEntry, 1),
+            (GitHookFacts, 1),
+            (GitSigningFacts, 1),
+        )
+    )
     return CompatibilityManifest(
         commands=tuple(commands),
         event_envelope=NamedContract(
@@ -129,6 +186,7 @@ def current_compatibility_manifest() -> CompatibilityManifest:
         recovery_classifications=tuple(sorted(item.value for item in RecoveryClassification)),
         session_records=session_records,
         session_actions=session_actions,
+        tooling_contracts=tooling_contracts,
         compatibility_rules=dict(COMPATIBILITY_RULES),
     )
 

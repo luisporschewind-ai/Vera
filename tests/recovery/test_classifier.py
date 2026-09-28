@@ -190,3 +190,19 @@ def test_rollback_in_flight_is_manual(tmp_path: Path) -> None:
     report = RecoveryClassifier().classify(snapshot, evidence, checkpoint_available=True)
     assert report.classification is RecoveryClassification.MANUAL_REQUIRED
     assert report.reason_code == "rollback_in_flight"
+
+
+def test_process_in_flight_is_manual_without_automatic_rerun(tmp_path: Path) -> None:
+    snapshot = make_snapshot(
+        tmp_path,
+        files=(),
+        stage=RecoveryStage.STARTED,
+        pending=False,
+        process_in_flight=True,
+    )
+
+    report = RecoveryClassifier().classify(snapshot, ())
+
+    assert report.classification is RecoveryClassification.MANUAL_REQUIRED
+    assert report.reason_code == "process_in_flight"
+    assert report.allowed_actions == ("inspect",)

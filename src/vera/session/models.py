@@ -38,6 +38,9 @@ class PermissionStatus(BaseModel):
     policy_version: int = 1
     policy_hash_prefix: str = ""
     hard_denies: tuple[str, ...] = ()
+    policy_mode: Literal["review", "balanced", "autonomous"] = "balanced"
+    trusted: bool = False
+    approval_scopes: tuple[str, ...] = ("once", "run", "workspace")
 
 
 class GitStatus(BaseModel):

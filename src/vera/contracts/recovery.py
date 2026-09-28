@@ -29,6 +29,7 @@ class FileRecoveryState(StrEnum):
 class RecoveryStage(StrEnum):
     STARTED = "started"
     AWAITING_CHANGESET_APPROVAL = "awaiting_changeset_approval"
+    AWAITING_TOOL_APPROVAL = "awaiting_tool_approval"
     CHECKPOINT_READY = "checkpoint_ready"
     AWAITING_VERIFICATION_APPROVAL = "awaiting_verification_approval"
     VERIFYING = "verifying"

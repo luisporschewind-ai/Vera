@@ -14,6 +14,7 @@ from vera.workspace.checkpoint import CheckpointStore
 _APPROVAL_STAGES = frozenset(
     {
         RecoveryStage.AWAITING_CHANGESET_APPROVAL,
+        RecoveryStage.AWAITING_TOOL_APPROVAL,
         RecoveryStage.CHECKPOINT_READY,
     }
 )
@@ -76,8 +77,12 @@ class RecoveryHydrator:
             approval_gate=approval_gate,
             built_change_set=built,
             pending_command=pending_command,
+            pending_tool_action=snapshot.pending_tool_action,
+            pending_git_operation=snapshot.pending_git_operation,
+            applied_file_mutations=list(snapshot.applied_file_mutations),
             verification_index=snapshot.verification_index,
             verification_failed=snapshot.verification_failed,
+            process_in_flight=snapshot.process_in_flight,
             checkpoint_manifest=checkpoint_manifest,
             workspace_write_started=snapshot.workspace_write_started,
             snapshot_created_at=snapshot.created_at,

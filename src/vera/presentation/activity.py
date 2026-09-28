@@ -9,6 +9,12 @@ from vera.contracts import JsonValue
 from vera.contracts.streaming import RuntimeOutput, StreamFrame, StreamFrameType
 
 _STEP_LABELS = {
+    "read": "读取",
+    "ls": "列出",
+    "grep": "搜索",
+    "find": "发现",
+    "write": "写入",
+    "edit": "编辑",
     "read_file": "读取",
     "list_directory": "列出",
     "search_text": "搜索",
@@ -43,6 +49,11 @@ class ActivityPresenter:
         "recovery.resumed": ("已续跑", "recovery", False, "info"),
         "recovery.abandoned": ("已放弃中断任务", "recovery", False, "warning"),
         "recovery.manual_required": ("需要人工恢复", "recovery", False, "warning"),
+        "git.operation.started": ("正在执行 Git 操作", "git", True, "warning"),
+        "git.operation.completed": ("Git 操作已完成", "git", False, "info"),
+        "git.operation.recovered": ("Git 操作已恢复", "git", False, "warning"),
+        "git.operation.manual_required": ("Git 操作需要人工恢复", "git", False, "error"),
+        "git.operation.failed": ("Git 操作失败", "git", False, "error"),
         "run.completed": ("已完成", "done", False, "info"),
         "run.cancelled": ("已取消", "cancelled", False, "warning"),
         "run.failed": ("失败", "failed", False, "error"),
@@ -115,8 +126,10 @@ class ActivityPresenter:
             self._target = ""
         if event.type == "tool.started":
             name = str(event.payload.get("name", ""))
-            if name in {"read_file", "list_directory", "search_text"}:
+            if name in {"read", "read_file", "ls", "grep", "find", "list_directory", "search_text"}:
                 label = "正在读取"
+            elif name in {"write", "edit"}:
+                label = "正在修改"
             elif name == "propose_changeset":
                 label = "正在规划修改"
         if not active and event.type in {"run.completed", "run.cancelled"}:

@@ -43,6 +43,7 @@ def make_snapshot(
     checkpoint_id: str | None = None,
     pending: bool = True,
     verification_in_flight: bool = False,
+    process_in_flight: bool = False,
     workspace_write_started: bool = False,
     verification_index: int = 0,
 ) -> RecoverySnapshot:
@@ -93,6 +94,7 @@ def make_snapshot(
         pending_approval=approval,
         verification_index=verification_index,
         verification_in_flight=verification_in_flight,
+        process_in_flight=process_in_flight,
         workspace_write_started=workspace_write_started,
         created_at=now,
         updated_at=now,

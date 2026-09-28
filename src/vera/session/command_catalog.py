@@ -120,10 +120,11 @@ DEFAULT_COMMANDS: tuple[CommandDescriptor, ...] = (
     CommandDescriptor("/context", "/context", "显示上下文统计", "会话", "context"),
     CommandDescriptor(
         "/permissions",
-        "/permissions",
-        "显示有效权限边界",
+        "/permissions [trust|revoke]",
+        "显示、信任或撤销当前工作区权限",
         "安全",
         "permissions",
+        args="optional",
     ),
     CommandDescriptor("/init", "/init", "提议创建或更新 VERA.md", "开始", "init"),
     CommandDescriptor("/new", "/new", "清屏并开始新会话", "会话", "new"),

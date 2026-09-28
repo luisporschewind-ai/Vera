@@ -5,6 +5,7 @@ import json
 import pytest
 
 from vera.contracts.approvals import ApprovalRequest
+from vera.contracts.changes import ChangeSet
 from vera.contracts.codec import CommandType
 from vera.contracts.commands import StartRun
 from vera.contracts.compatibility import (
@@ -15,9 +16,30 @@ from vera.contracts.compatibility import (
 )
 from vera.contracts.errors import CoreErrorCode
 from vera.contracts.events import EventEnvelope
+from vera.contracts.file_mutations import FileMutationPlan
 from vera.contracts.recovery import RecoveryClassification
+from vera.contracts.tool_actions import ToolAction
+from vera.git.branches import GitBranchPlan, GitBranchResult
+from vera.git.commit import GitCommitResult
+from vera.git.commit_plan import GitCommitPlan
+from vera.git.hooks import GitHookEntry, GitHookFacts, GitSigningFacts
+from vera.git.models import (
+    GitBranchSummary,
+    GitCommitSummary,
+    GitDiffRequest,
+    GitDiffResult,
+    GitLogRequest,
+    GitRepositoryInfo,
+    GitRepositorySnapshot,
+    GitShowRequest,
+    GitShowResult,
+    GitStatusEntry,
+)
+from vera.policy.models import PolicyAction
+from vera.policy.permissions import WorkspacePermissionSummary
 from vera.runtime.approval import ApprovalKind
 from vera.session.protocol import SessionRecord
+from vera.tools.definitions import ToolDefinition, ToolDefinitionV2
 
 
 def test_compatibility_manifest_is_missing_until_implemented() -> None:
@@ -59,6 +81,33 @@ def test_manifest_snapshots_public_contract_names_and_required_fields() -> None:
         "prompt.queue.clear",
         "editor.confirm",
         "editor.open",
+    }
+    tooling = {(item.name, item.schema_version) for item in manifest.tooling_contracts}
+    assert tooling == {
+        (ToolDefinition.__name__, 1),
+        (ToolDefinitionV2.__name__, 2),
+        (ToolAction.__name__, 1),
+        (WorkspacePermissionSummary.__name__, 1),
+        (PolicyAction.__name__, 1),
+        (ChangeSet.__name__, 1),
+        (FileMutationPlan.__name__, 1),
+        (GitRepositoryInfo.__name__, 1),
+        (GitStatusEntry.__name__, 1),
+        (GitRepositorySnapshot.__name__, 1),
+        (GitDiffResult.__name__, 1),
+        (GitCommitSummary.__name__, 1),
+        (GitShowResult.__name__, 1),
+        (GitBranchSummary.__name__, 1),
+        (GitDiffRequest.__name__, 1),
+        (GitLogRequest.__name__, 1),
+        (GitShowRequest.__name__, 1),
+        (GitCommitPlan.__name__, 1),
+        (GitCommitResult.__name__, 1),
+        (GitBranchPlan.__name__, 1),
+        (GitBranchResult.__name__, 1),
+        (GitHookEntry.__name__, 1),
+        (GitHookFacts.__name__, 1),
+        (GitSigningFacts.__name__, 1),
     }
 
 
