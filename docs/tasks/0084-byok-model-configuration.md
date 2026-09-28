@@ -8,6 +8,10 @@
 **Tech Stack:** Python 3.12（以 `pyproject.toml` 声明为准）、Pydantic、Typer、OpenAI Python Client、platformdirs、pytest、Ruff、Mypy。
 **Spec:** [BYOK 多厂商模型配置](../specs/2026-09-25-byok-model-configuration.md)、[ADR-0022](../decisions/ADR-0022-user-owned-byok-provider-configuration.md)。
 
+## 2026-09-28 集成校准
+
+阶段八拆分合入后，Bootstrap 曾回退到旧的 Provider 装配路径，使默认 Profile、私有 Key 文件和 `/model` 列表入口与本规格不一致。本次隔离分支恢复已验收的 Core 配置服务接线，并保留阶段八新增工具注册。原用户手工验收属于 2026-09-26 基线；集成版由用户在 `main` 复验，本轮不运行回归。
+
 ## 当前交付与证据口径（2026-09-26）
 
 实现提交 `d616283` 已通过 `9354bb3` 合入 `main`，原隔离 worktree 已不在当前注册列表。用户 GLM/DeepSeek 请求与手工验收已通过。可运行非 live 套件记录为 `1297 passed, 2 deselected`；4 个打包/安装 smoke 用例因无法获取 `hatchling` 未启动，因此不写成全量门禁全部通过。

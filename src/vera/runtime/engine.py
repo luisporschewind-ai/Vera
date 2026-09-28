@@ -16,6 +16,7 @@ from vera.content.detector import (
 from vera.content.envelope import (
     EMPTY_SECURITY_CONTEXT_HASH,
 )
+from vera.content.trust import ContentTrustLevel
 from vera.contracts.approvals import ApprovalRequest
 from vera.contracts.commands import (
     AbandonRun,
@@ -74,6 +75,7 @@ from vera.runtime.recovery_flow import RecoveryFlow
 from vera.runtime.security import (
     collected_risk_labels,
 )
+from vera.runtime.skills_flow import SkillsFlow
 from vera.runtime.snapshot_flow import SnapshotFlow
 from vera.runtime.state import RunState
 from vera.runtime.tool_flow import (
@@ -96,6 +98,9 @@ from vera.runtime.tool_flow import (
 )
 from vera.runtime.verification_flow import VerificationFlow
 from vera.sandbox.access import AccessSession
+from vera.skills.context import SkillContextAssembler
+from vera.skills.selection import SkillSelectionService
+from vera.skills.snapshot_store import SkillSnapshotStore
 from vera.tools.command_policy import CommandPolicy
 from vera.tools.definitions import ToolDefinitionV2, ToolResult
 from vera.tools.executor import PreparedToolAction, ToolExecutor
@@ -129,6 +134,9 @@ class VeraRuntime:
         workspace_permissions: WorkspacePermissionSnapshot | None = None,
         access_session: AccessSession | None = None,
         process_supervisor: ProcessSupervisor | None = None,
+        skill_selection_service: SkillSelectionService | None = None,
+        skill_snapshot_store: SkillSnapshotStore | None = None,
+        skill_context_assembler: SkillContextAssembler | None = None,
     ) -> None:
         self.adapter = adapter
         self.registry = registry
@@ -159,6 +167,9 @@ class VeraRuntime:
         self.workspace_permissions = workspace_permissions
         self.access_session = access_session
         self.process_supervisor = process_supervisor
+        self.skill_selection_service = skill_selection_service
+        self.skill_snapshot_store = skill_snapshot_store or SkillSnapshotStore()
+        self.skill_context_assembler = skill_context_assembler or SkillContextAssembler()
         self.runs: dict[str, RunContext] = {}
         self.snapshot_store = snapshot_store or RecoverySnapshotStore(state_dir)
         self.receipts = OperationReceiptStore(state_dir)
@@ -243,6 +254,7 @@ class VeraRuntime:
         source_kind: str | None,
         origin: str,
         truncated: bool = False,
+        trust_level: ContentTrustLevel | None = None,
     ) -> tuple[Any, str, list[EventEnvelope]]:
         return prepare_content_flow(
             self,
@@ -251,6 +263,7 @@ class VeraRuntime:
             source_kind=source_kind,
             origin=origin,
             truncated=truncated,
+            trust_level=trust_level,
         )
 
     def _record_finding(
@@ -260,6 +273,17 @@ class VeraRuntime:
 
     def _seed_context(self, context: RunContext) -> Iterator[EventEnvelope]:
         yield from seed_context_flow(self, context)
+
+    def _bind_skill_snapshot(self, context: RunContext) -> bool:
+        return SkillsFlow.bind(self, context)
+
+    def _seed_skill_context(self, context: RunContext) -> Iterator[EventEnvelope]:
+        yield from SkillsFlow.seed(self, context)
+
+    def _restore_skill_snapshot(
+        self, context: RunContext, snapshot: RecoverySnapshot
+    ) -> RunContext:
+        return SkillsFlow.restore(self, context, snapshot)
 
     def _seed_project_instructions(self, context: RunContext) -> Iterator[EventEnvelope]:
         yield from seed_project_instructions_flow(self, context)
@@ -462,6 +486,8 @@ class VeraRuntime:
         self, context: RunContext, call: ModelToolCall, payload: dict[str, Any]
     ) -> Iterator[EventEnvelope]:
         failed = {"name": call.name, "call_id": call.call_id, "ok": False, **payload}
+        if context.active_tool_span_id is not None:
+            failed["span_id"] = context.active_tool_span_id
         target = tool_call_target(call)
         if target:
             failed["target"] = target

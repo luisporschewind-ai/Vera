@@ -47,7 +47,11 @@ def execute_run(
             raise typer.BadParameter("必须明确输入 approve、reject 或 cancel")
         return cast(ApprovalDecision, decision)
 
-    selected = model_profile or next(iter(deps.config.providers), "default")
+    selected = (
+        model_profile
+        or deps.config.default_model_profile
+        or next(iter(deps.config.providers), "default")
+    )
     events = drive_run_fn(
         deps.runtime,
         StartRun(

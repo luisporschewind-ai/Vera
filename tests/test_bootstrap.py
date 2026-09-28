@@ -18,7 +18,9 @@ def test_runtime_and_session_store_share_installation_id(
     source.chmod(0o600)
     monkeypatch.setenv("VERA_PROVIDER_ENV_FILE", str(source))
     monkeypatch.setenv("VERA_STATE_DIR", str(tmp_path / "state"))
-    dependencies = build_runtime(tmp_path)
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    dependencies = build_runtime(workspace)
     assert dependencies.installation_id
     assert dependencies.installation_id == dependencies.runtime.installation_id
     tool_names = {definition.name for definition in dependencies.runtime.registry.definitions()}

@@ -6,6 +6,10 @@
 
 **规格：** `docs/specs/2026-09-15-core-native-skills-system.md`
 
+## 2026-09-28 集成校准
+
+阶段八拆分合入后，`/skills` 命令目录与 CLI 文案保留，但 SessionController 分发、选择持久化、状态投影与模型切换时的 Skill 选择承接丢失。本次隔离分支恢复结构化入口；历史测试记录不作为该集成版的通过证据，用户将在 `main` 验收。
+
 ## 实现内容
 
 - 新增 `/skills`、`/skills show <name|skill_id>`、`/skills use <name|skill_id>` 和 `/skills clear` 命令，复用 Core `SkillRegistry` 与 `SkillSelectionService`。

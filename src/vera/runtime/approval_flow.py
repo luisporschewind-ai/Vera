@@ -19,6 +19,11 @@ from vera.runtime.context import RunContext
 from vera.runtime.flow_protocols import ApprovalFlowHost
 from vera.runtime.intake import ProposalInput
 from vera.runtime.state import RunState
+from vera.runtime.verification_flow import (
+    finish_verification_span,
+    start_verification_span,
+    verification_span_error,
+)
 from vera.sandbox.files import PermissionPaths
 from vera.tools.definitions import ToolResult
 from vera.tools.executor import PreparedToolAction
@@ -365,14 +370,22 @@ def resolve_approval(host: ApprovalFlowHost, command: ResolveApproval) -> Iterat
         elif context.pending_command is not None:
             pending = context.pending_command
             index = context.verification_index
-            result = host._verification_runner(context).run(pending)
+            span = start_verification_span(context, index, pending)
+            try:
+                result = host._verification_runner(context).run(pending)
+            except Exception:
+                verification_span_error(context, span)
+                raise
+            finish_verification_span(context, span, result)
             context.verification_failed = context.verification_failed or result.status != "passed"
             context.pending_command = None
             context.verification_index += 1
+            completed_payload = host._verification_event_payload(index, pending, result)
+            completed_payload["span_id"] = span.span_id
             yield host._stable_event(
                 context,
                 "verification.completed",
-                host._verification_event_payload(index, pending, result),
+                completed_payload,
                 RecoveryStage.VERIFYING,
             )
         yield from host._verify(context)
@@ -405,10 +418,20 @@ def resolve_approval(host: ApprovalFlowHost, command: ResolveApproval) -> Iterat
             "source": "core_approval_gate",
         }
         if decision == "reject":
+            span = context.trace_recorder.start_span(
+                "tool",
+                call.name[:128],
+                attributes={"tool_name": call.name[:128], "tool_call_id": call.call_id[:128]},
+            )
+            context.active_tool_span_id = span.span_id
             yield from host._emit_tool_result(
                 context,
                 call,
                 ToolResult(ok=False, error_code="approval_rejected"),
+            )
+            context.active_tool_span_id = None
+            context.trace_recorder.finish_span(
+                span, "rejected", attributes={"error_code": "approval_rejected"}
             )
             context.machine.transition(RunState.DISCOVERING)
             yield host._stable_event(
@@ -488,8 +511,35 @@ def resolve_approval(host: ApprovalFlowHost, command: ResolveApproval) -> Iterat
                 approval_id=request.approval_id,
             )
             return
-        tool_result, tool_events = host._execute_prepared_tool(
-            context, call, executor, prepared, approved=True
+        span = context.trace_recorder.start_span(
+            "tool",
+            call.name[:128],
+            attributes={
+                "tool_name": call.name[:128],
+                "tool_call_id": call.call_id[:128],
+                "input_content_hash": pending_tool.action.input_hash,
+                "approved": True,
+            },
+        )
+        context.active_tool_span_id = span.span_id
+        try:
+            tool_result, tool_events = host._execute_prepared_tool(
+                context, call, executor, prepared, approved=True
+            )
+        except Exception:
+            context.trace_recorder.finish_span(
+                span, "error", attributes={"error_code": "tool_execution_error"}
+            )
+            raise
+        finally:
+            context.active_tool_span_id = None
+        context.trace_recorder.finish_span(
+            span,
+            "ok" if tool_result.ok else "error",
+            attributes={
+                "error_code": tool_result.error_code,
+                "truncated": tool_result.truncated,
+            },
         )
         yield from tool_events
         context.machine.transition(RunState.DISCOVERING)

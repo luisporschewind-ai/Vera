@@ -1,6 +1,6 @@
 # 任务 0086：Core Trace 与运行可观测性
 
-**状态：** In progress（自动门禁通过；原生终端人工可读性验收待用户执行）
+**状态：** In progress（Trace 已按阶段八 Core 拆分适配并合入 `main`；集成后测试与原生终端人工可读性验收待用户在 `main` 执行）
 **所属阶段：** 阶段十——Core Trace 与运行可观测性
 **上游规格：** [Core Trace 与运行可观测性](../specs/2026-09-26-core-trace-observability.md)（Accepted）
 **阶段决策：** [ADR-0023](../decisions/ADR-0023-insert-core-observability-before-desktop.md)（Accepted）
@@ -49,10 +49,16 @@
 - 确认现有 `/usage`、Runtime Event 顺序、Recovery、Policy、Approval、Workspace 写入、Verification 结果及 Run 终态无回归。
 - 只有全部证据齐备后，才能将任务与阶段转为相应验收状态；本任务与计划本身不代表阶段十已 Started 或 Complete。
 
-## 当前验证记录（2026-09-26）
+## 历史验证记录（2026-09-26，Trace 原分支）
 
 - Task 1–6 已按计划逐项完成；Task 7 的聚焦回归 `uv run --offline pytest tests/contracts/test_trace_contracts.py tests/trace tests/models/test_adapter_conformance.py tests/runtime/test_model_resilience.py tests/runtime/test_context_compaction.py tests/runtime/test_streaming_output.py tests/tools/test_registry.py tests/tools/test_builtin.py tests/tools/test_command_policy.py tests/runtime/test_policy_approval.py tests/runtime/test_safe_editing_flow.py tests/runtime/test_recovery_resume.py tests/verification/test_runner.py tests/session/test_queries.py tests/session/test_controller.py tests/cli/test_plain_session.py tests/cli/test_json_session.py tests/presentation/test_projector.py -q` → 177 passed（最终活跃 Run 只读入口修正后重跑）。
 - 全量离线测试（最终活跃 Run 只读入口修正前）：1360 passed、2 skipped、1 failed、1 error。失败与错误均为既有 wheel 安装 smoke，因离线缓存缺少 `openai>=2,<3` 无法安装；实施前基线为 1317 passed、2 skipped、同一 1 failed/1 error。最后一处入口修正后，重新运行了上述 177 项聚焦套件及全部静态门禁。
 - `uv run --offline ruff check src/vera tests`、`uv run --offline ruff format --check src/vera tests`、`uv run --offline mypy src`、`git diff --check` 均通过。
 - Plain、JSON、Timeline 的自动回归覆盖 `/trace`；真实 Terminal.app/TUI 可读性与非敏感本地 Run 人工检查仍待用户完成，故本任务及阶段十保持 In progress。
 - 阶段八/九仍由用户自行验证；本记录未改变其阶段、任务或验收状态。
+
+## 2026-09-28 集成记录
+
+- 用户要求本次只提交代码，不运行回归；因此上方 2026-09-26 的自动测试结果仅对应 Trace 原分支，不作为与阶段八 Core 拆分、Git 初始化和沙盒集成后的通过证据。
+- Trace 保留 Run Journal 为事实来源，模型、工具、验证埋点迁入拆分后的 Runtime 流程；`/trace` 继续通过 SessionController 消费结构化投影。阶段状态保持 In progress，用户将在 `main` 做产品验收。
+- `codex/trace-on-main`（`6ccf6b2`）已合入 `main`：Runtime/Bootstrap 同时保留 0089 沙盒（`AccessSession`、`SandboxedSupervisor`、`PermissionFileWriter`）与 Skills/BYOK 接线；切换模型时先移交 Skill 选择服务再关闭旧沙盒会话。`main` 早先经 Trace 原分支合并复活的单体 `tests/runtime/test_safe_editing_flow.py` 已删除，其 Trace 断言保留在 `test_safe_editing_proposal.py`。

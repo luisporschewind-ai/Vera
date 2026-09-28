@@ -6,6 +6,7 @@ import shlex
 from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
+from vera.config import ConfigurationError
 from vera.contracts.commands import AbandonRun, InspectRecovery, ResumeRun, RollbackRun, StartRun
 from vera.contracts.events import EventEnvelope
 from vera.contracts.streaming import RuntimeOutput
@@ -58,7 +59,7 @@ def slash(host: SessionController, raw: str) -> Iterator[RuntimeOutput]:
     if (
         descriptor is not None
         and descriptor.args == "optional"
-        and parsed.handler not in {"compact"}
+        and parsed.handler not in {"compact", "skills"}
         and len(parsed.args) > 1
         and not (
             parsed.handler == "permissions"
@@ -127,19 +128,43 @@ def compact(host: SessionController, focus: str) -> Iterator[RuntimeOutput]:
 
 def switch_model(host: SessionController, requested_profile: str | None) -> Iterator[RuntimeOutput]:
     if requested_profile is None:
+        configured = host.dependencies.config.enabled_model_profiles
+        if configured:
+            from vera.provider_configuration import ProviderConfigurationService
+
+            try:
+                summaries = ProviderConfigurationService().list_profiles_with_keys(
+                    host.dependencies.config.providers
+                )
+                candidates = [
+                    item.profile_id
+                    for item in summaries
+                    if item.enabled and item.valid and item.key_status != "missing"
+                ]
+            except ConfigurationError:
+                candidates = []
+        else:
+            candidates = list(host.dependencies.config.providers)
+        available = ", ".join(candidates) if candidates else "请先运行 vera models setup"
         yield host._session_event(
             "session.message",
-            {"text": f"当前模型：{host.model_profile} / {host._model_name()}"},
+            {
+                "text": f"当前模型：{host.model_profile} / {host._model_name()}\n"
+                f"可用模型：{available}"
+            },
         )
         return
     try:
         candidate = host.runtime_builder(host.workspace, requested_profile)
     except Exception as exc:
+        reason = exc.code if isinstance(exc, ConfigurationError) else "configuration_failed"
         yield host._session_event(
             "session.message",
-            {"text": f"模型切换失败，已保留当前配置：{exc}"},
+            {"text": f"模型切换失败，已保留当前配置：{reason}"},
         )
         return
+    service = host._skill_service()
+    candidate.runtime.skill_selection_service = service
     if host.dependencies.runtime.access_session is not None:
         host.dependencies.runtime.access_session.close()
     host.dependencies = candidate

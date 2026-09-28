@@ -59,6 +59,7 @@ class SnapshotFlow:
             process_in_flight=context.process_in_flight,
             workspace_write_started=context.workspace_write_started,
             recovery_plan=context.pending_recovery_plan,
+            skill_snapshot=context.skill_snapshot,
             security_findings=context.security_findings,
             security_context_hash=context.security_context_hash,
             created_at=created_at,

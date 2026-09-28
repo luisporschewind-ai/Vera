@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import Iterator
 from datetime import UTC, datetime
@@ -12,6 +13,7 @@ from vera.contracts.events import EventEnvelope
 from vera.contracts.recovery import RecoveryStage
 from vera.contracts.streaming import RuntimeOutput, StreamFrame, StreamFrameType
 from vera.contracts.tool_actions import ToolEffect
+from vera.contracts.trace import TraceSpanStatus
 from vera.models.base import ModelMessage, ModelRequest, ModelToolCall, ModelTurn
 from vera.models.errors import ModelErrorCode, ModelProviderError, safe_error_payload
 from vera.models.streaming import ModelStreamCompleted, ModelTextDelta
@@ -30,9 +32,10 @@ from vera.runtime.intake import (
 from vera.runtime.read_progress import READ_ONLY_TOOLS
 from vera.runtime.state import RunState
 from vera.tools.executor import ToolPreparationError
+from vera.trace.context_inventory import ContextInventory
 
 
-def execute_tool(
+def _execute_tool_inner(
     host: LoopFlowHost, context: RunContext, call: ModelToolCall
 ) -> Iterator[EventEnvelope]:
     signature = f"{call.name}:{call.arguments}"
@@ -44,7 +47,11 @@ def execute_tool(
     if context.repeated_tool_streak >= 3 and call.name not in READ_ONLY_TOOLS:
         yield from host._fail(context, "repeated_tool_call")
         return
-    started: dict[str, Any] = {"name": call.name, "call_id": call.call_id}
+    started: dict[str, Any] = {
+        "name": call.name,
+        "call_id": call.call_id,
+        "span_id": context.active_tool_span_id,
+    }
     target = tool_call_target(call)
     if target:
         started["target"] = target
@@ -130,12 +137,72 @@ def execute_tool(
         yield from host._fail(context, "read_loop_no_progress")
 
 
+def execute_tool(
+    host: LoopFlowHost, context: RunContext, call: ModelToolCall
+) -> Iterator[EventEnvelope]:
+    input_body = json.dumps(
+        call.arguments, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
+    ).encode("utf-8")
+    attributes: dict[str, Any] = {
+        "tool_name": call.name[:128],
+        "tool_call_id": call.call_id[:128],
+        "input_byte_count": len(input_body),
+        "input_content_hash": hashlib.sha256(input_body).hexdigest(),
+    }
+    span = context.trace_recorder.start_span("tool", call.name[:128], attributes=attributes)
+    before = len(context.messages)
+    status: TraceSpanStatus = "ok"
+    error_code: str | None = None
+    truncated = False
+    completed = False
+    context.active_tool_span_id = span.span_id
+    try:
+        for event in _execute_tool_inner(host, context, call):
+            if event.type == "tool.completed":
+                if not event.payload.get("ok", False):
+                    status = "rejected" if call.parse_error else "error"
+                    raw = event.payload.get("reason_code") or event.payload.get("error_code")
+                    error_code = str(raw)[:128] if raw else None
+                truncated = bool(event.payload.get("truncated", False))
+            elif event.type == "approval.required":
+                status = "unknown"
+            elif event.type == "run.failed":
+                status = "rejected"
+                error_code = "repeated_tool_call"
+            yield event
+        completed = True
+    except GeneratorExit:
+        status = "interrupted"
+        raise
+    except Exception:
+        status = "error"
+        error_code = "tool_execution_error"
+        raise
+    finally:
+        context.active_tool_span_id = None
+        if not completed and status == "ok":
+            status = "interrupted"
+        messages = [
+            message
+            for message in context.messages[before:]
+            if message.role == "tool" and message.tool_call_id == call.call_id
+        ]
+        output = messages[-1].content.encode("utf-8") if messages else b""
+        finished = {
+            **attributes,
+            "output_byte_count": len(output),
+            "output_content_hash": hashlib.sha256(output).hexdigest(),
+            "truncated": truncated,
+        }
+        if error_code is not None:
+            finished["error_code"] = error_code
+        context.trace_recorder.finish_span(span, status, attributes=finished)
+
+
 def complete_with_retry(
     host: LoopFlowHost, context: RunContext, request: ModelRequest
 ) -> Iterator[EventEnvelope | StreamFrame | ModelTurn | None]:
-    # The Runtime protocol remains tool-capable even while a compatibility
-    # fixture has an empty registry; providers must reject that mismatch
-    # before receiving a request.
+    # The Runtime protocol remains tool-capable with an empty compatibility registry.
     has_tools = True
     if not host.adapter.capabilities.supports_request(has_tools=has_tools):
         error = ModelProviderError(
@@ -146,11 +213,34 @@ def complete_with_retry(
         yield None
         return
     stream_id = f"stream_{uuid4().hex}"
+    previous_span_id: str | None = None
     for attempt in range(1, host.retry_policy.max_attempts + 1):
+        context.request_index += 1
+        snapshot = ContextInventory.build(
+            request,
+            context,
+            request_index=context.request_index,
+            context_budget_bytes=host.limits.max_context_bytes,
+        )
+        identity = getattr(host.adapter, "identity", None)
+        span_attributes: dict[str, Any] = {"attempt": attempt}
+        if identity is not None:
+            span_attributes.update(identity.model_dump(mode="json", exclude_none=True))
+        if previous_span_id is not None:
+            span_attributes["retry_of_span_id"] = previous_span_id
+        span = context.trace_recorder.start_span(
+            "llm", "provider attempt", attributes=span_attributes
+        )
+        context.trace_recorder.record_context(span, snapshot)
         yield host._event(
             context,
             "model.requested",
-            {"turn": context.model_turns, "attempt": attempt},
+            {
+                "turn": context.model_turns,
+                "attempt": attempt,
+                "span_id": span.span_id,
+                "snapshot_id": snapshot.snapshot_id,
+            },
         )
         started = datetime.now(UTC)
         frame_index = 0
@@ -174,9 +264,20 @@ def complete_with_retry(
                     "provider stream missing completion",
                 )
         except ModelProviderError as provider_error:
+            context.trace_recorder.finish_span(
+                span,
+                "error",
+                attributes={"error_code": provider_error.code.value},
+            )
+            previous_span_id = span.span_id
             if not host.retry_policy.should_retry(provider_error, attempt):
                 yield host._event(
-                    context, "model.failed", safe_error_payload(provider_error, attempt)
+                    context,
+                    "model.failed",
+                    {
+                        **safe_error_payload(provider_error, attempt),
+                        "span_id": span.span_id,
+                    },
                 )
                 yield None
                 return
@@ -188,19 +289,43 @@ def complete_with_retry(
                     "attempt": attempt,
                     "delay": delay,
                     "code": provider_error.code.value,
+                    "span_id": span.span_id,
                 },
             )
             host.sleep(delay)
             continue
         except Exception:
             mapped = ModelProviderError(ModelErrorCode.SERVICE, "provider request failed")
-            yield host._event(context, "model.failed", safe_error_payload(mapped, attempt))
+            context.trace_recorder.finish_span(
+                span, "error", attributes={"error_code": mapped.code.value}
+            )
+            yield host._event(
+                context,
+                "model.failed",
+                {**safe_error_payload(mapped, attempt), "span_id": span.span_id},
+            )
             yield None
             return
+        except GeneratorExit:
+            context.trace_recorder.finish_span(span, "interrupted")
+            raise
         duration_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
         usage = None
         if turn.usage is not None:
             usage = turn.usage.model_dump(mode="json")
+        span_usage = (
+            {key: value for key, value in usage.items() if value is not None}
+            if usage is not None
+            else {}
+        )
+        completed_attributes: dict[str, Any] = {
+            "finish_reason": turn.finish_reason[:200],
+            "tool_call_count": len(turn.tool_calls),
+            **span_usage,
+        }
+        if turn.provider_request_id:
+            completed_attributes["request_id"] = turn.provider_request_id[:200]
+        context.trace_recorder.finish_span(span, "ok", attributes=completed_attributes)
         yield host._event(
             context,
             "model.completed",
@@ -212,6 +337,8 @@ def complete_with_retry(
                 "request_id": turn.provider_request_id,
                 "duration_ms": duration_ms,
                 "stream_id": stream_id,
+                "span_id": span.span_id,
+                "snapshot_id": snapshot.snapshot_id,
             },
         )
         yield turn

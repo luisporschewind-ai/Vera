@@ -8,6 +8,7 @@ from typing import Any
 
 from vera.contracts.events import EventEnvelope
 from vera.contracts.recovery import RecoveryStage
+from vera.contracts.trace import TraceSpanStatus
 from vera.contracts.verification import VerificationCommand, VerificationResult
 from vera.runtime.approval import ApprovalKind
 from vera.runtime.context import RunContext
@@ -15,6 +16,7 @@ from vera.runtime.flow_protocols import VerificationFlowHost
 from vera.runtime.security import collected_risk_labels, worst_disposition
 from vera.runtime.state import RunState
 from vera.tools.command_policy import CommandDecisionKind
+from vera.trace.recorder import SpanHandle
 from vera.verification.artifacts import VerificationArtifactPlanner, artifact_root
 from vera.verification.runner import VerificationRunner
 
@@ -104,6 +106,53 @@ def verification_event_payload(
     return payload
 
 
+def start_verification_span(
+    context: RunContext, index: int, command: VerificationCommand
+) -> SpanHandle:
+    profile = command.artifact_plan.profile if command.artifact_plan is not None else None
+    return context.trace_recorder.start_span(
+        "verification",
+        "verification command",
+        attributes={"index": index, "artifact_profile": profile},
+    )
+
+
+def finish_verification_span(
+    context: RunContext, span: SpanHandle, result: VerificationResult
+) -> None:
+    status: TraceSpanStatus
+    if result.status == "passed":
+        status = "ok"
+    elif result.status == "cancelled":
+        status = "cancelled"
+    elif result.status == "rejected":
+        status = "rejected"
+    else:
+        status = "error"
+    attributes: dict[str, Any] = {
+        "status": result.status,
+        "reported_duration_ms": result.duration_seconds * 1000,
+        "exit_code": result.exit_code,
+        "stdout_byte_count": len(result.stdout.encode("utf-8")),
+        "stderr_byte_count": len(result.stderr.encode("utf-8")),
+        "stdout_truncated": result.stdout_truncated,
+        "stderr_truncated": result.stderr_truncated,
+        "artifact_cleanup_status": result.artifact_cleanup_status,
+        "workspace_mutation_count": len(result.workspace_mutations),
+    }
+    if result.reason_code is not None:
+        attributes["reason_code"] = result.reason_code[:128]
+    context.trace_recorder.finish_span(
+        span, status, attributes=attributes, duration_ms=result.duration_seconds * 1000
+    )
+
+
+def verification_span_error(context: RunContext, span: SpanHandle) -> None:
+    context.trace_recorder.finish_span(
+        span, "error", attributes={"error_code": "verification_runner_error"}
+    )
+
+
 def verify(host: VerificationFlowHost, context: RunContext) -> Iterator[EventEnvelope]:
     built = context.built_change_set
     if built is None:
@@ -171,19 +220,29 @@ def verify(host: VerificationFlowHost, context: RunContext) -> Iterator[EventEnv
                 RecoveryStage.AWAITING_VERIFICATION_APPROVAL,
             )
             return
+        span = start_verification_span(context, index, command)
+        started_payload = host._verification_event_payload(index, command)
+        started_payload["span_id"] = span.span_id
         yield host._stable_event(
             context,
             "verification.started",
-            host._verification_event_payload(index, command),
+            started_payload,
             RecoveryStage.VERIFYING,
         )
-        result = runner.run(command)
+        try:
+            result = runner.run(command)
+        except Exception:
+            verification_span_error(context, span)
+            raise
+        finish_verification_span(context, span, result)
         context.verification_failed = context.verification_failed or result.status != "passed"
         context.verification_index += 1
+        completed_payload = host._verification_event_payload(index, command, result)
+        completed_payload["span_id"] = span.span_id
         yield host._stable_event(
             context,
             "verification.completed",
-            host._verification_event_payload(index, command, result),
+            completed_payload,
             RecoveryStage.VERIFYING,
         )
     terminal = RunState.VERIFICATION_FAILED if context.verification_failed else RunState.COMPLETED

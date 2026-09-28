@@ -340,6 +340,8 @@ def emit_tool_result(
         "trust_level": envelope.trust_level.value,
         "content_hash": envelope.content_hash,
     }
+    if context.active_tool_span_id is not None:
+        payload["span_id"] = context.active_tool_span_id
     if target:
         payload["target"] = target
     if call.name == "request_file_access" and result.ok and isinstance(result.content, dict):

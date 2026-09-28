@@ -163,7 +163,9 @@ def main(
         deps = build_runtime(resolved, model)
     except Exception as exc:
         _fail_runtime_setup(exc)
-    selected_model = model or next(iter(deps.config.providers), "default")
+    selected_model = (
+        model or deps.config.default_model_profile or next(iter(deps.config.providers), "default")
+    )
     capabilities = detect_terminal_capabilities()
     try:
         mode = select_mode(plain=plain, json_output=json_output, capabilities=capabilities)

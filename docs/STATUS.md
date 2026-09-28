@@ -2,11 +2,25 @@
 
 **更新日期：** 2026-09-28
 **当前阶段：** 阶段 8——Core 工具集、Policy v2 与原生 Git（In progress）
-**仓库状态：** `main` 文档基线，阶段八实施使用隔离工作树；阶段五停在 Ready for manual acceptance，阶段六与阶段七已 Complete。用户于 2026-09-17 原文确认「CLI 版本达到预期，可以封存」，并于 2026-09-18 选择 Inline Execution，授权阶段八按 0059–0066 串行实施和创建计划内本地提交。
+**仓库状态：** 2026-09-28 所有工作树与分支代码已汇入 `main`：阶段八工具/Policy/Git 与大文件拆分（`d7e75c1`）、Git 仓库初始化（`8db4c6e`）、0089 工作区权限沙盒、Trace（经 `codex/trace-on-main` 适配拆分后的 Core，并恢复阶段九 Skills 的 Runtime/Session 接线与 BYOK 启动入口）、Skill 浮层、CLI 活动/审批卡与 Logo/缩放修正。阶段五停在 Ready for manual acceptance，阶段六与阶段七已 Complete；阶段八、九、十均不因代码合入自动变成 Complete。用户确认 CLI 封存的历史授权保持有效。2026-09-28 用户要求以阶段十一为里程碑，之前的任务与规格须对齐并落实，dogfood 统一在 `main` 由用户执行。
 
 ## 当前独立实施
 
 - 2026-09-28 Apple iOS 阻塞已定位并在最终生产 SRT backend 假工程路径通过：真实 Xcode unsigned generic iOS build exit 0，Storyboard 成功，Core APFS 产物卷卸载/删除、`cleanup_error=null`，外部读取仍被拒。审批展示回归 7 passed（Intel 六个服务、once、临时卷/容量/销毁、后代及模拟器风险）；FakeModel 拒绝审批时执行调用数 0。Ruff、diff-check 通过。未跑全量、取消/超时或 CLI 人工交互；VerificationRunner Apple 服务路径未接通，故 0089 仍 In progress。ARM 实机延期，iOS/Swift 产品目标保留。证据见[任务记录](tasks/0089-apple-toolchain-repair.md)。
+
+| 工作 | 当前结论 | 剩余事项 |
+| --- | --- | --- |
+| 阶段五 | Ready for manual acceptance | 20 次真实 dogfood、三类工程人工矩阵 |
+| 阶段六、七 | Complete；CLI 已封存 | 不因此自动启动桌面 |
+| 阶段八 0059–0066 | 代码已合入 `main`；阶段 In progress | 用户在 `main` 验收、遗留问题复核与状态确认 |
+| 阶段九 0067–0072、0074 | 代码与拆分后的接线已合入 `main`；Ready for manual acceptance | 用户在 `main` 验收两类工程完整流程、负例/恢复矩阵、隔离 wheel 与状态确认 |
+| CLI 0073、0075–0083 | Done；含 0078 人工复验闭环 | 后续发现另建问题，不重开已确认视觉项 |
+| BYOK / 缓存 0084、0085 | 原版已获用户手工验收；阶段八合并后的启动入口已恢复并合入 `main`；In progress | 用户在 `main` 复验，4 个打包/安装 smoke 环境阻断 |
+| 联网检索 | 方向 Accepted，未实施 | 服务选型、审批细则、排序和实施授权 |
+| 三档权限 / 自动审核 | 设计与计划 Accepted，未实施 | 沙盒前置、冲突规格/ADR 修订和独立实施授权 |
+| 0089 工作区权限沙盒 | 代码已合入 `main`；In progress | Apple 服务经 VerificationRunner、CLI 取消/运行中撤权收口 |
+| 阶段十 Core Trace | In progress；规格 Accepted、任务 0086 已适配拆分后的 Core 并合入 `main` | 用户在 `main` 验收；历史测试结果不能代替本次集成验证 |
+| 阶段十一 Electron | Not started；UI 规格 Draft | 阶段八、九、十 Complete 后再进入 |
 
 - 2026-09-28 正式验证执行链最小验收通过：生产 Planner→Runner→真实 SRT 使用临时工作区内 Ruff，成功、预期失败、越界读取拒绝均符合预期；报告真实生成后清理，工作区指纹不变。同时修复 Ctrl+C/异常出口跳过产物清理，两项回归先失败后通过，验证器 16 passed。完整 Runtime/CLI 验证交互及 Xcode/SwiftPM 仍未据此通过，见 [正式验证记录](tasks/0089-formal-verification-acceptance.md)。
 
@@ -21,11 +35,11 @@
 - 2026-09-27 Swift 最小构建验收通过：用户补充批准 llbuild 精确库文件只读后，swift-build-h8kot57j 下真实 Core/SRT 编译 exit 0、两项断言通过、预期失败 exit 7、产物越界读写均 EPERM；专用模块缓存生成 26 个文件。临时工具链/SDK/库权限未保存到普通配置；Xcode 工程、VerificationRunner 和 CLI 全流程仍未据此验收，证据见任务 0089。
 - 2026-09-27 Git 生命周期修正后通过：初始化被拒来自 SRT 对 Git 配置/Hook 祖先的保护，git init 不属于现有原生 Git 工具范围；采用已有假仓库元数据准备夹具，所有提交和分支命令仍在真实 SRT 内执行。修复 Core 提交消息读取私有状态目录的问题，改为校验后单独 argv 传递。最终夹具 git-lifecycle-8puvp3rk 验证提交、重复计划幂等、分支创建/切换、log/show 及外部/私有状态/Git 配置/Hook 拒绝通过；59 项回归通过。未扩权或修改普通配置，不代表支持 git init 或所有 Git 场景，详见原生 Git 验收记录。
 - 2026-09-27 原生 Git 最小复验通过：经用户批准，仅临时开放 Xcode 内实际 Git 文件的读取，真实 Core/SRT 状态、工作区 Diff、版本查询成功，外部读取仍 EPERM。已修复发现错误分类及子 Git 的固定 PATH 选择，相关回归 58 passed；普通配置未保存新授权，未改宿主设置。详见 [0089 原生 Git 验收](tasks/0089-native-git-acceptance.md)。不外推完整 Git 生命周期或用户 CLI 验收。
-- 2026-09-27：任务 0089 在隔离工作树 `/Users/admin/.codex/worktrees/workspace-permission-sandbox/Vera` 实施，采用 Accepted 工作区权限规格。当前代码覆盖 Core 文件读写授权、会话/单次 Grant、禁网 SRT 命令树、Bash/Git/验证统一受限执行、显式 CLI 沙盒设置和失败关闭。该任务未合并，不改变阶段八状态。
+- 2026-09-27：任务 0089 在隔离工作树 `/Users/admin/.codex/worktrees/workspace-permission-sandbox/Vera` 实施，采用 Accepted 工作区权限规格。当前代码覆盖 Core 文件读写授权、会话/单次 Grant、禁网 SRT 命令树、Bash/Git/验证统一受限执行、显式 CLI 沙盒设置和失败关闭。代码已于 2026-09-28 合入 `main`，不改变阶段八状态。
 - Intel macOS 假数据边界及后续人工验收已通过工作区/单文件读写、目录只读/读写含子目录、Bash 单次参数/工具绑定与消费、授权撤销、审批展示及模型事实修复。IPv4/IPv6 loopback 网络被拒；工作区假 AF_UNIX stream 连接拒绝补验通过，前后对照均成功且服务未收到沙盒连接；不外推所有 IPC。具体证据及唯一活动验收清单见任务 0089 的“当前验收对齐”，不再沿用历史待验措辞。
 - 后端 runtime 缺失/版本错误、真实 SRT 正常结束/超时/超时后继续执行、同进程组父子超时清理实际验收通过，其他初始化异常及逃离进程组不据此外推。独立 Core+SRT 主动取消、运行中撤销及父子清理通过（不代表 CLI 取消/运行中撤销交互通过）。基础 Core/SRT Git 生命周期已通过，仍待 Xcode/Swift 构建/测试及最终回归；CLI/特殊 Git 场景不据此外推。Apple Silicon 已由用户延期封存，不阻塞本轮 Intel 收口；Linux/Windows、联网授权不在本轮范围。
 - 本机共享 Python 可执行文件检查为 0 字节，尚未修复；验收临时使用同版本完整 Python.app 解释器加载原虚拟环境。该环境问题与沙盒验收分开记录；没有重装/升级共享 Python。已执行的后端故障测试使用独立临时配置，正常沙盒配置保持不变。
-- 相关聚焦回归、Ruff、格式检查和 Mypy 结果见 [任务 0089](tasks/0089-workspace-permission-sandbox.md)。该实现留在独立工作树，尚未合并。
+- 相关聚焦回归、Ruff、格式检查和 Mypy 结果见 [任务 0089](tasks/0089-workspace-permission-sandbox.md)。该实现已合入 `main`，待用户统一验收。
 
 ## 已完成
 
@@ -142,8 +156,12 @@
 
 ## 下一检查点
 
-1. 收口任务 0089：复验 Xcode C 工程新清理路径，完成 Apple 构建的真实 CLI 审批/运行及 APFS 卷取消/超时清理检查，并决定 C++/Go/Rust/Java 代表样例是否属于本轮验收必需项。Intel iOS 假工程生产后端已通过。Apple Silicon 实机按用户决定延期封存，保留支持目标，不阻塞 Intel 验收。0089 不代替 0066 的真实 Terminal.app/TypeScript 验收；用户明确确认阶段八后，才可把阶段八标为 Complete。
-2. 不自动删除、取消暂存或忽略 `VeraTestDemo` 索引里残留的 `AD build/`；未改 `.gitignore`。
-3. 阶段五仍缺 20 次真实 dogfood 与三类真实工程走查，不得把阶段五标为 Complete。
-4. 用户已确认「CLI 版本达到预期，可以封存」；该确认不自动授权下一阶段或 Electron 实施。
-5. Skills 当前只有 Accepted 规划、无实现，且必须等待阶段八完成；市场、远程安装、自动更新、Plugin、Hook 与可执行能力继续保持独立且不进入 v1。
+1. 用户在 `main` 统一验收本轮汇入的全部代码；验收前不得把阶段八、九、十或 0089 标为 Complete。
+2. 收口任务 0089：复验 Xcode C 工程新清理路径，完成 Apple 构建的真实 CLI 审批/运行及 APFS 卷取消/超时清理检查，并决定 C++/Go/Rust/Java 代表样例是否属于本轮验收必需项。Intel iOS 假工程生产后端已通过。Apple Silicon 实机按用户决定延期封存，保留支持目标，不阻塞 Intel 验收。0089 不代替 0066 的真实 Terminal.app/TypeScript 验收。
+3. 复核当前 main 的打包/隔离安装 smoke：0084/0085 仍有 4 个用例受 `hatchling` 获取失败阻断；阶段九旧 `openai` 缓存阻断也须在相应安装流程中关闭。
+4. 阶段八：复核重构记录中的 Bash classifier、Git 全局配置读取、branch receipt recovery 问题及安装态，补齐可用 Node/TS runner/compiler 与 Terminal.app 全流程；用户明确确认后才可标 Complete。
+5. 阶段九：补齐 Python、Swift/Xcode 安全副本完整 Skill 流程及人工负例/恢复矩阵，用户确认后才可标 Complete；市场、远程安装、自动更新、Plugin、Hook 与可执行能力继续不进入 v1。
+6. 阶段五：补齐 20 次真实 dogfood 与三类工程人工矩阵；阶段七已接受的量化样本转移不自动关闭阶段五。
+7. 核对阶段一 0002 的历史验收证据差异。未取得证据前不将原人工批准/验证/回滚写成已执行。
+8. 已确认的 0078、0080–0083 人工项无需继续列为待验收。不自动删除、取消暂存或忽略 `VeraTestDemo` 索引里残留的 `AD build/`；未改 `.gitignore`。
+9. 用户已确认「CLI 版本达到预期，可以封存」；该确认不自动授权 Electron 实施。三档权限/自动审核仅保留前置门禁；阶段十一桌面和阶段十二私有预览继续遵循新的前置门禁。

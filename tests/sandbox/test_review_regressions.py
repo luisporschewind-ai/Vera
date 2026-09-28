@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from vera.config import ConfigurationError
 from vera.process.supervisor import ProcessRequest
 from vera.sandbox.access import AccessSession
 from vera.sandbox.backend import build_payload
@@ -37,6 +38,10 @@ def test_provider_source_is_never_grantable(
     monkeypatch.setattr("vera.bootstrap.load_backend", UnavailableBackend)
     work = source.parent if workspace_contains else tmp_path / "work"
     work.mkdir(exist_ok=True)
+    if workspace_contains:
+        with pytest.raises(ConfigurationError, match="provider_key_in_workspace"):
+            build_runtime(work)
+        return
     runtime = build_runtime(work).runtime
     session = runtime.access_session
     assert session is not None

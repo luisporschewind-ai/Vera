@@ -6,6 +6,10 @@
 
 **规格：** `docs/specs/2026-09-15-core-native-skills-system.md`
 
+## 2026-09-28 集成校准
+
+阶段八拆分合入 `main` 后，原有 Skill 文件和契约仍在，但 Bootstrap、Runtime Run 绑定、Context 装配及 Recovery 接线被旧分支覆盖。本次隔离分支将这些入口迁入拆分后的流程，保留 Stage 8 Tool/Policy 路径。此前验收证据只对应原实现；用户要求本轮不运行回归，将在 `main` 做实际验收。
+
 ## 实现内容
 
 - 新增 `SkillSelectionService`：显式选择、清除、冲突/失效选择保留 selector，成功选择只消费一次，不向其他来源静默回退。

@@ -16,6 +16,7 @@ from vera.contracts.approvals import ApprovalRequest
 from vera.contracts.changes import ChangeSet
 from vera.contracts.commands import StartRun
 from vera.contracts.recovery import RecoveryPlan, RecoveryStage
+from vera.contracts.skills import SkillSnapshot
 from vera.contracts.tool_actions import ToolAction
 from vera.policy.models import PolicyDecision
 from vera.tools.definitions import ToolDefinitionV2
@@ -161,6 +162,7 @@ class RecoverySnapshot(FrozenPrivateModel):
     workspace_write_started: bool = False
     rollback_in_flight: bool = False
     recovery_plan: RecoveryPlan | None = None
+    skill_snapshot: SkillSnapshot | None = None
     security_findings: tuple[ContentFinding, ...] = ()
     security_context_hash: str | None = None
     created_at: datetime

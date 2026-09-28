@@ -8,6 +8,10 @@
 **Tech Stack:** Python 3.12（以 `pyproject.toml` 声明为准）、Pydantic、OpenAI Python Client、pytest、Ruff、Mypy。
 **Spec:** [Provider 上下文缓存用量](../specs/2026-09-25-provider-context-cache-usage.md)；前置 [0084](0084-byok-model-configuration.md)。
 
+## 2026-09-28 集成校准
+
+阶段八拆分后，`/usage` 曾改为汇总所有 Run，与本规格的单 Run 口径冲突。本次隔离分支恢复当前工作区的活跃或最近 Run 选择；历史用量与用户验收记录保留，集成版待用户在 `main` 复验，本轮不运行回归。
+
 ## 当前交付与证据口径（2026-09-26）
 
 实现提交 `d616283` 已通过 `9354bb3` 合入 `main`，原隔离 worktree 已不在当前注册列表。用户 GLM/DeepSeek 请求与手工验收已通过。可运行非 live 套件记录为 `1297 passed, 2 deselected`；4 个打包/安装 smoke 用例因无法获取 `hatchling` 未启动，因此不写成全量门禁全部通过。

@@ -459,9 +459,9 @@ def context_from_snapshot(host: RecoveryFlowHost, run_id: str) -> RunContext:
     snapshot = host.snapshot_store.load(run_id)
     journal = EventJournal(host.state_dir, run_id, Redactor([]))
     try:
-        return RecoveryHydrator().hydrate(snapshot, journal)
+        return host._restore_skill_snapshot(RecoveryHydrator().hydrate(snapshot, journal), snapshot)
     except RecoveryHydrationError:
-        return RunContext(
+        context = RunContext(
             run_id=snapshot.run_id,
             command=snapshot.command,
             machine=RunStateMachine(),
@@ -475,6 +475,7 @@ def context_from_snapshot(host: RecoveryFlowHost, run_id: str) -> RunContext:
             ),
             snapshot_created_at=snapshot.created_at,
         )
+        return host._restore_skill_snapshot(context, snapshot)
 
 
 def abandon(host: RecoveryFlowHost, command: AbandonRun) -> Iterator[EventEnvelope]:

@@ -324,6 +324,7 @@ class RunContext:
     approval_gate: ApprovalGate
     trace_recorder: TraceRecorder = field(init=False)
     request_index: int = 0
+    active_tool_span_id: str | None = None
     model_turns: int = 0
     tool_calls: int = 0
     tool_approval_outcomes: dict[str, dict[str, str]] = field(default_factory=dict)
