@@ -13,9 +13,11 @@ from typing import Annotated, Literal
 from pydantic import Field, field_validator, model_validator
 
 from vera.contracts import ContractModel
+from vera.contracts.skills import SkillSelection
 
 SessionRecordType = Literal[
     "session.created",
+    "skill.selection.changed",
     "turn.committed",
     "context.compacted",
     "session.renamed",
@@ -97,6 +99,11 @@ class TurnCommittedPayload(ContractModel):
     turn: ConversationTurn
 
 
+class SkillSelectionChangedSessionPayload(ContractModel):
+    type: Literal["skill.selection.changed"] = "skill.selection.changed"
+    selection: SkillSelection
+
+
 class ContextCompactedPayload(ContractModel):
     type: Literal["context.compacted"] = "context.compacted"
     summary: str
@@ -125,6 +132,7 @@ class SessionClosedPayload(ContractModel):
 
 SessionPayload = Annotated[
     SessionCreatedPayload
+    | SkillSelectionChangedSessionPayload
     | TurnCommittedPayload
     | ContextCompactedPayload
     | SessionRenamedPayload

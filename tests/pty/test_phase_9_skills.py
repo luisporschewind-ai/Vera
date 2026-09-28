@@ -53,5 +53,7 @@ def test_phase_9_skills_plain_pty_is_readable_at_supported_sizes(
 
     assert result.exit_code == 0
     assert "pty-review" in result.output
+    assert "已选择 workspace:pty-review" in result.output
+    assert "Skill 选择" in result.output
     assert "# Skill" not in result.output
     assert "\x1b" not in result.output

@@ -16,8 +16,10 @@ from vera.contracts.sessions import (
     SessionClosedPayload,
     SessionCreatedPayload,
     SessionRenamedPayload,
+    SkillSelectionChangedSessionPayload,
     TurnCommittedPayload,
 )
+from vera.contracts.skills import SkillSelection
 from vera.persistence.errors import JournalCorrupt, StateVersionError
 from vera.persistence.session_journal import SessionJournal
 from vera.recovery.probe import workspace_identity
@@ -35,6 +37,7 @@ class LoadedConversationSession(ContractModel):
     model_messages: tuple[ConversationMessage, ...]
     history_messages: tuple[ConversationMessage, ...]
     compaction_count: int
+    skill_selection: SkillSelection
     updated_at: datetime
 
 
@@ -77,6 +80,15 @@ def _record_title(records: tuple[ConversationSessionRecord, ...]) -> str:
         if record.type == "session.renamed" and isinstance(record.payload, SessionRenamedPayload):
             title = record.payload.title
     return title
+
+
+def _selection_from_records(records: tuple[ConversationSessionRecord, ...]) -> SkillSelection:
+    for record in reversed(records):
+        if record.type == "skill.selection.changed" and isinstance(
+            record.payload, SkillSelectionChangedSessionPayload
+        ):
+            return record.payload.selection
+    return SkillSelection()
 
 
 def _messages_from_records(
@@ -196,7 +208,22 @@ class ConversationSessionStore:
             model_messages=model,
             history_messages=history,
             compaction_count=compact_count,
+            skill_selection=_selection_from_records(records),
             updated_at=records[-1].timestamp,
+        )
+
+    def append_skill_selection(
+        self, session_id: str, selection: SkillSelection
+    ) -> ConversationSessionRecord:
+        journal = self._journal(session_id)
+        records = journal.read_all()
+        return journal.append(
+            self._next_record(
+                session_id,
+                "skill.selection.changed",
+                SkillSelectionChangedSessionPayload(selection=selection),
+                (records[-1].sequence if records else 0) + 1,
+            )
         )
 
     def create(self, workspace: Path) -> LoadedConversationSession:

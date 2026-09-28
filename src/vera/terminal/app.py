@@ -7,6 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from pydantic import ValidationError
 from rich.control import Control
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -16,6 +17,7 @@ from textual.geometry import Size
 from textual.widgets import Static
 
 from vera.contracts.events import EventEnvelope
+from vera.contracts.skills import SkillSelection, SkillSummary
 from vera.contracts.streaming import RuntimeOutput
 from vera.presentation.activity import ActivityPresenter
 from vera.presentation.projector import TimelineProjector, UpdateBlock
@@ -47,6 +49,7 @@ from vera.terminal.widgets.composer import (
     select_composer_prompt,
 )
 from vera.terminal.widgets.header import VeraHeader
+from vera.terminal.widgets.skill_picker import SkillPicker, build_skill_picker_rows
 from vera.terminal.widgets.status_line import VeraStatusLine
 from vera.terminal.widgets.timeline import ConversationTimeline
 from vera.terminal.widgets.user_sticky import UserStickyBar
@@ -109,6 +112,9 @@ class VeraTerminalApp(App[int]):
         self._editor_preview_pending = False
         self._welcome_expanded = True
         self._session_status: SessionStatus | None = None
+        self._skill_list_request_id: str | None = None
+        self._open_skill_list_request_id: str | None = None
+        self._skill_use_request_id: str | None = None
         self._too_small = Static(
             "终端太小：请调整到至少 60×16",
             id="terminal-too-small",
@@ -124,6 +130,7 @@ class VeraTerminalApp(App[int]):
         yield UserStickyBar(id="user-sticky")
         yield ConversationTimeline(id="timeline")
         yield CompletionList(id="completions")
+        yield SkillPicker(id="skill-picker")
         yield VeraWorkRail(id="work-rail")
         yield ComposerBar(id="composer-bar")
         yield VeraStatusLine(id="status-line")
@@ -181,7 +188,11 @@ class VeraTerminalApp(App[int]):
             except NoMatches:
                 composer = None
             if composer is not None:
-                composer.focus()
+                picker = self.query_one(SkillPicker)
+                if picker.display:
+                    picker.query_one("#skill-picker-options").focus()
+                else:
+                    composer.focus()
         self.refresh(repaint=True, layout=True)
         self.call_after_refresh(self._repaint_after_resize)
 
@@ -270,7 +281,9 @@ class VeraTerminalApp(App[int]):
         text = message.text
         self.submitted.append(text)
         if text.startswith("/"):
-            self.bridge.submit(ExecuteSlashCommand(raw=text))
+            request_id = self.bridge.submit(ExecuteSlashCommand(raw=text))
+            if text.startswith("/skills"):
+                self._skill_list_request_id = request_id if text == "/skills" else None
             return
         composer = self.query_one(PromptComposer)
         if self.controller.pending_approval_id is not None:
@@ -369,6 +382,74 @@ class VeraTerminalApp(App[int]):
                 if timeline.follow_tail:
                     timeline.return_to_tail()
                 self._focus_composer_unless_approval()
+        if isinstance(output, EventEnvelope):
+            if output.type == "skill.listed":
+                self._present_skill_list(output, request_id=message.request_id)
+            elif output.type == "skill.selection.changed":
+                self._confirm_skill_selection(output, request_id=message.request_id)
+
+    def _present_skill_list(self, output: EventEnvelope, *, request_id: str | None) -> None:
+        if request_id is None or request_id != self._skill_list_request_id:
+            return
+        self._skill_list_request_id = None
+        if (
+            self.controller.active_run_id is not None
+            or self.controller.pending_approval_id is not None
+        ):
+            return
+        picker = self.query_one(SkillPicker)
+        items = output.payload.get("items")
+        if not isinstance(items, list):
+            picker.close()
+            self.query_one(VeraStatusLine).set_status("Skill 列表数据无效")
+            return
+        try:
+            summaries = tuple(SkillSummary.model_validate(item) for item in items)
+        except ValidationError:
+            picker.close()
+            self.query_one(VeraStatusLine).set_status("Skill 列表数据无效")
+            return
+        rows = build_skill_picker_rows(
+            summaries,
+            selected_skill_id=self.controller.snapshot().skill_selection.skill_id,
+        )
+        self.query_one(CompletionList).hide()
+        picker.open(rows)
+        self._open_skill_list_request_id = request_id
+
+    def _confirm_skill_selection(self, output: EventEnvelope, *, request_id: str | None) -> None:
+        picker = self.query_one(SkillPicker)
+        if (
+            not picker.display
+            or picker.pending_skill_id is None
+            or request_id is None
+            or request_id != self._skill_use_request_id
+        ):
+            return
+        self._skill_use_request_id = None
+        try:
+            selection = SkillSelection.model_validate(output.payload["selection"])
+        except (KeyError, ValidationError):
+            picker.close()
+            self.query_one(VeraStatusLine).set_status("Skill 选择结果无效")
+            self.query_one(PromptComposer).focus()
+            return
+        if selection.status == "selected" and selection.skill_id == picker.pending_skill_id:
+            picker.close()
+            self.query_one(PromptComposer).focus()
+            version = selection.version or "版本未知"
+            self.query_one(VeraStatusLine).set_status(
+                f"已选择 {selection.skill_id} · {version}，等待下一次任务"
+            )
+            return
+        picker.reject(
+            selection.reason_codes[0] if selection.reason_codes else "skill_selection_mismatch"
+        )
+
+    def on_skill_picker_chosen(self, message: SkillPicker.Chosen) -> None:
+        self._skill_use_request_id = self.bridge.submit(
+            ExecuteSlashCommand(raw=f"/skills use {message.skill_id}")
+        )
 
     def block(self, block_id: str) -> TimelineBlockWidget:
         return self.query_one(ConversationTimeline).block_widget(block_id)
@@ -378,6 +459,32 @@ class VeraTerminalApp(App[int]):
         self.query_one(ConversationTimeline).apply(mutations)
 
     def on_worker_stopped(self, message: WorkerStopped) -> None:
+        picker = self.query_one(SkillPicker)
+        if (
+            picker.display
+            and self._skill_use_request_id is not None
+            and message.request_id == self._skill_use_request_id
+        ):
+            self._skill_use_request_id = None
+            if message.reason_code.startswith("worker_failed"):
+                picker.close()
+                self.query_one(VeraStatusLine).set_status("Skill 操作失败，请重新运行 /skills")
+            elif message.reason_code == "completed":
+                picker.close()
+                self.query_one(VeraStatusLine).set_status("Skill 选择确认缺失，请重新运行 /skills")
+        elif (
+            picker.display
+            and self._open_skill_list_request_id is not None
+            and message.request_id == self._open_skill_list_request_id
+            and message.reason_code.startswith("worker_failed")
+        ):
+            picker.close()
+            self.query_one(VeraStatusLine).set_status("Skill 操作失败，请重新运行 /skills")
+        if (
+            self._open_skill_list_request_id is not None
+            and message.request_id == self._open_skill_list_request_id
+        ):
+            self._open_skill_list_request_id = None
         if message.reason_code.startswith("worker_failed"):
             label = "Worker 失败；可使用 /help 或 --plain"
             self.activity.set_failed(label)
@@ -389,6 +496,12 @@ class VeraTerminalApp(App[int]):
         self._focus_composer_unless_approval()
 
     def action_escape(self) -> None:
+        picker = self.query_one(SkillPicker)
+        if picker.display:
+            if picker.pending_skill_id is None:
+                picker.close()
+                self.query_one(PromptComposer).focus()
+            return
         if self.controller.active_run_id is not None:
             self.action_cancel_or_clear()
             return
@@ -537,6 +650,8 @@ class VeraTerminalApp(App[int]):
         self.query_one(ConversationTimeline).return_to_tail()
 
     def on_key(self, event) -> None:  # type: ignore[no-untyped-def]
+        if self.query_one(SkillPicker).display:
+            return
         if event.key in {"tab", "shift+tab"} and self._cycle_approval_focus(
             reverse=event.key == "shift+tab"
         ):
@@ -585,6 +700,10 @@ class VeraTerminalApp(App[int]):
         timeline.pin_home()
 
     def _focus_composer_unless_approval(self) -> None:
+        picker = self.query_one(SkillPicker)
+        if picker.display:
+            picker.query_one("#skill-picker-options").focus()
+            return
         widget = self._active_approval_widget()
         if widget is not None:
             widget.focus_default_action()

@@ -1,13 +1,18 @@
+import shutil
 from pathlib import Path
 
 from tests.session.test_controller import make_controller
 from tests.skills.test_manifest import write_skill
+from vera.bootstrap import RuntimeDependencies
 from vera.contracts.events import EventEnvelope
-from vera.models.base import FakeModelAdapter
-from vera.session.actions import ExecuteSlashCommand
+from vera.models.base import FakeModelAdapter, ModelTurn
+from vera.runtime.engine import VeraRuntime
+from vera.session.actions import ExecuteSlashCommand, SubmitPrompt
+from vera.session.controller import SessionController
 from vera.skills.discovery import SkillDiscovery
 from vera.skills.registry import SkillRegistry
 from vera.skills.selection import SkillSelectionService
+from vera.tools.registry import ToolRegistry
 
 
 def _controller(tmp_path: Path):
@@ -70,3 +75,89 @@ def test_skills_conflict_and_unknown_command_keep_reason_codes(tmp_path: Path) -
     assert event.payload["selection"]["status"] == "invalid"
     assert event.payload["selection"]["reason_codes"] == ["skill_name_conflict"]
     assert workspace.exists()
+
+
+def test_skills_use_rejects_duplicate_full_id_in_one_source(tmp_path: Path) -> None:
+    controller = _controller(tmp_path)
+    shutil.copytree(tmp_path / "user" / "python-review", tmp_path / "user" / "duplicate")
+
+    outputs = tuple(controller.dispatch(ExecuteSlashCommand(raw="/skills use user:python-review")))
+    event = next(item for item in outputs if item.type == "skill.selection.changed")
+    assert event.payload["selection"]["status"] == "invalid"
+    assert event.payload["selection"]["reason_codes"] == ["skill_name_conflict"]
+    assert controller.snapshot().skill_selection.status == "invalid"
+
+
+def test_selected_skill_survives_session_resume_and_is_consumed_once(tmp_path: Path) -> None:
+    first = _controller(tmp_path)
+    tuple(first.dispatch(ExecuteSlashCommand(raw="/skills use user:python-review")))
+    session_id = first.snapshot().session_id
+    loaded = first.session_store.load(session_id, first.workspace)
+
+    adapter = FakeModelAdapter([ModelTurn(assistant_text="done", finish_reason="stop")])
+    selection = SkillSelectionService(
+        SkillRegistry(
+            SkillDiscovery(builtin_root=tmp_path / "builtin", user_root=tmp_path / "user")
+        )
+    )
+    runtime = VeraRuntime(
+        adapter,
+        ToolRegistry(),
+        first.dependencies.config.state_dir,
+        skill_selection_service=selection,
+    )
+    resumed = SessionController(
+        RuntimeDependencies(runtime=runtime, config=first.dependencies.config),
+        first.workspace,
+        "fake",
+        session_store=first.session_store,
+        loaded_session=loaded,
+    )
+
+    assert resumed.snapshot().skill_selection.skill_id == "user:python-review"
+    events = tuple(resumed.dispatch(SubmitPrompt(text="review")))
+    assert any(event.type == "skill.snapshot.bound" for event in events)
+    assert any("# Skill" in message.content for message in adapter.requests[0].messages)
+    assert first.session_store.load(session_id, first.workspace).skill_selection.mode == "none"
+
+
+def test_selected_skill_survives_model_switch(tmp_path: Path) -> None:
+    controller = _controller(tmp_path)
+    tuple(controller.dispatch(ExecuteSlashCommand(raw="/skills use user:python-review")))
+    adapter = FakeModelAdapter([ModelTurn(assistant_text="done", finish_reason="stop")])
+    replacement = VeraRuntime(
+        adapter,
+        ToolRegistry(),
+        controller.dependencies.config.state_dir,
+        skill_selection_service=SkillSelectionService(
+            SkillRegistry(
+                SkillDiscovery(builtin_root=tmp_path / "builtin", user_root=tmp_path / "user")
+            )
+        ),
+    )
+    controller.runtime_builder = lambda _workspace, _profile: RuntimeDependencies(
+        runtime=replacement, config=controller.dependencies.config
+    )
+
+    tuple(controller.dispatch(ExecuteSlashCommand(raw="/model fake")))
+
+    assert controller.snapshot().skill_selection.skill_id == "user:python-review"
+    events = tuple(controller.dispatch(SubmitPrompt(text="review")))
+    assert any(event.type == "skill.snapshot.bound" for event in events)
+    assert any("# Skill" in message.content for message in adapter.requests[0].messages)
+
+
+def test_bound_skill_consumption_is_saved_before_event_is_delivered(tmp_path: Path) -> None:
+    controller = _controller(tmp_path)
+    tuple(controller.dispatch(ExecuteSlashCommand(raw="/skills use user:python-review")))
+
+    output = controller.dispatch(SubmitPrompt(text="review"))
+    for event in output:
+        if isinstance(event, EventEnvelope) and event.type == "skill.snapshot.bound":
+            break
+    else:
+        raise AssertionError("selected Skill was not bound")
+
+    loaded = controller.session_store.load(controller.snapshot().session_id, controller.workspace)
+    output.close()
+    assert loaded.skill_selection.mode == "none"

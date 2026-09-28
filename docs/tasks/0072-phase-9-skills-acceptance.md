@@ -41,3 +41,11 @@ Not run：
 ## 阶段结论
 
 阶段九自动实现已达到 `Ready for manual acceptance`。阶段八仍为 `In progress`；本任务依据用户明确授权在阶段八完全收口前并行实施阶段九，不改变阶段八状态，也不启动阶段十或引入桌面代码。
+
+## 2026-09-24：用户 Skill 生效修正
+
+用户安装 `interview-term-brief` 后要求使 Skill 真正生效。核查发现 `/skills use` 原本只保存在进程内，`-c/-r` 恢复会话后选择丢失，违反已接受规格中的“选择随持久化会话恢复”。现将选择变更写入 Session Journal 并在恢复时重放；Snapshot 绑定后在向客户端交付绑定事件前持久化一次性消费结果。`/model` 切换保留待用选择；`/compact` 不消耗仅供下一次任务 Run 使用的选择。
+
+新增会话恢复、模型切换、绑定事件写入时序和压缩路径回归。已用用户安装包与 FakeModelAdapter 验证 `user:interview-term-brief` 可被选择、绑定 Snapshot，且正文进入模型请求；未调用真实 Provider。真实 CLI 启动目前因本机没有配置 Provider 而返回 `missing_provider_config`，因此未声称真实 Provider dogfood 或完成阶段九人工验收。
+
+本次门禁：聚焦 `8 passed`；排除两个已记录的旧 wheel 安装环境阻断文件后，完整非 live `1172 passed, 2 deselected, 8 warnings`；Ruff check、format、Mypy（182 个源文件）和 `git diff --check` 均通过。阶段九仍为 `Ready for manual acceptance`。
