@@ -1,11 +1,13 @@
 # Vera Product Definition
 
 **Status:** Accepted baseline
-**Updated:** 2026-09-18
+**Updated:** 2026-09-25
+**Core 边界确认：** 2026-09-25 用户确认 Core 为成熟能力中心、CLI/桌面为产品形态，以及受支持平台沙盒行为一致的文档
+**平台支持优先级：** 2026-09-25 用户确认 macOS 优先、Linux 其次；Windows 条件性评估，若难以实现或无合适方案，可以不支持。macOS 首发支持 Intel（x86_64）和 Apple Silicon（arm64），须分别在真机验收。
 
 ## Purpose
 
-Vera is a local desktop Coding Agent that helps a user safely understand and change a codebase. Its value is not merely generating code: it makes the execution chain inspectable, requires approval at meaningful boundaries, verifies results, and provides a recovery path.
+Vera is a local Coding Agent that helps a user safely understand and change a codebase. Its current delivery target is a desktop product, built on a Core shared by CLI and desktop clients. Its value is not merely generating code: it makes the execution chain inspectable, requires approval at meaningful boundaries, verifies results, and provides a recovery path.
 
 Vera is also a long-term learning and portfolio product. It should become maintainable enough for trusted users, interview demonstrations, public learning material, and eventually a real GitHub release.
 
@@ -28,6 +30,16 @@ Vera is also a long-term learning and portfolio product. It should become mainta
 - **Untrusted by default:** repository content, tool results, model output, and future external data cannot grant authority; deterministic policy and parameter-bound approval govern actions.
 - **Core-first:** product behavior lives outside any specific CLI or desktop shell.
 - **Incremental:** specifications, code, tests, and documentation evolve in small accepted slices.
+
+## Core 能力与产品形态
+
+Vera 首先是一个能独立完成 Coding Agent 工作流的 Core。CLI 和桌面端是访问同一能力的不同产品形态：入口、呈现和交互可以不同，执行事实与安全判断必须一致。当前路线仍以桌面端为最终交付目标、CLI 为 Core 开发和验收入口；是否将 CLI 作为独立公开产品，留给后续发布决策。这一区分不改变现有阶段门禁。
+
+Core 必须拥有跨形态稳定的任务与 Run 生命周期、模型适配、上下文管理、工具执行、Workspace、Policy、Approval、沙盒授权、Diff、验证、Checkpoint、恢复和结构化证据。一次操作的允许范围、批准事实、执行结果与失败原因，由 Core 及其受限平台服务给出，不能因用户从 CLI 或桌面端发起而改变。
+
+客户端负责采集意图、呈现事实和承载各自的交互能力。CLI 可以提供终端命令、TUI、Plain 和 JSON；桌面端可以提供可视化时间线、Diff、通知和系统交互。客户端通过版本化 Command/Event 契约调用 Core，不解析另一客户端的人类可读输出，也不复制 Policy、审批、沙盒、恢复或验证逻辑。平台 Broker 可以持有凭据并实施 OS 资源授权，但只提供经过校验的窄服务，不成为第二套 Agent 决策中心。
+
+Core 的成熟度由完整任务和失败路径证明：在受支持的任意软件工程中，能够调查、修改、运行、验证并恢复；权限、沙盒状态、拒绝和副作用可核查；安装态、升级、异常中断和不同客户端得到一致的 Core 事实。沙盒支持顺序为 macOS、Linux，Windows 仅在方案可行且可维护时继续。macOS 的 Intel 与 Apple Silicon 均须满足同一安全基线；当前 Intel 实测不能代替 Apple Silicon 验收。各已支持平台的实现可以不同，但相同授权必须有相同的范围、默认限制、拒绝、取消与恢复语义；做不到共同安全基线的平台明确报不支持，不能静默放宽权限。界面完成度不能替代这些证据，Core 的自动测试也不能替代真实 CLI 与桌面交互验收。开源发布时，用户应能复现主要安全与可靠性声明，并清楚看到尚未支持的能力。
 
 ## First-stage capability scope
 

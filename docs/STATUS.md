@@ -1,6 +1,6 @@
 # Vera 状态
 
-**更新日期：** 2026-09-24
+**更新日期：** 2026-09-26
 **当前阶段：** 阶段 8——Core 工具集、Policy v2 与原生 Git（In progress）
 **仓库状态：** `main` 文档基线，阶段八实施使用隔离工作树；阶段五停在 Ready for manual acceptance，阶段六与阶段七已 Complete。用户于 2026-09-17 原文确认「CLI 版本达到预期，可以封存」，并于 2026-09-18 选择 Inline Execution，授权阶段八按 0059–0066 串行实施和创建计划内本地提交。用户于 2026-09-21 明确授权阶段九在阶段八完全收口前并行实施；阶段九自动实现现为 Ready for manual acceptance，仍不等于 Complete。
 
@@ -54,6 +54,9 @@
 - [任务 0079：Apple Terminal 启动字符](tasks/0079-apple-terminal-startup-probe.md)：Done；用户确认启动时不再出现 `p`。
 - [阶段九自动验收记录](evals/phase-9-core-native-skills.md)：自动门禁与新增矩阵已记录；隔离 wheel 安装曾因 offline 缓存缺少 `openai` 阻断，须复核；Python/`VeraTestDemo` 真实 Provider 主路径已由用户 dogfood，Swift/Xcode 与封存确认仍待。
 - [阶段九：Core-native Skills](specs/2026-09-15-core-native-skills-system.md)与 [ADR-0020](decisions/ADR-0020-stage-core-native-skills.md)：Accepted；范围与安全边界不变。通常入口仍为阶段八 Complete；本次按用户明确授权并行实施，不改变阶段八状态。
+- [Core 执行沙盒与通用项目能力边界](specs/2026-09-24-core-execution-sandbox.md)：Accepted（2026-09-25 用户确认命令树优先修订）；配套 [ADR-0022](decisions/ADR-0022-runner-first-sandbox-staging.md) 与[0086 命令树优先实施计划](tasks/0086-core-sandbox-runner-first-execution-plan.md)均已接受。先验证覆盖 Agent 发起的 Bash、Git、验证、构建、Hook 及后代的 OS 隔离，再完成 Core/Broker 隔离；Runner 阶段不得宣称整个 Core 已隔离。macOS 优先且须分别支持 Intel（x86_64）与 Apple Silicon（arm64），Linux 其次，Windows 条件性评估且可放弃。2026-09-25 测试延期已解除；动态临时路径 Seatbelt 预探针仅证明局部文件负例和 artifacts 正例，loopback OS 归因仍 `Not run`。完整 macOS 候选、Apple Silicon/Linux/Windows `Not run`；产品 Runner 仍待 0085 后端决策门和独立实现工作树。
+- [任务 0084：Core 执行沙盒 macOS 可行性验证计划](tasks/0084-core-sandbox-feasibility.md)：Blocked；用户于 2026-09-25 选择 Native 执行本机临时原型。固定路径 App Sandbox 下，真实 Vera wheel 的 Fake Model 用例与文件拒绝通过，但系统 `xcrun`/`git` 包装路径在 Runner 中失败；任意项目、动态授权、窄 Broker IPC 与第二台 Intel Mac 均未通过。证据见[本机记录](evals/core-sandbox-macos-feasibility.md)，不选定后端或启动产品实现。
+- [任务 0085：Core 沙盒替代后端可行性实验计划](tasks/0085-core-sandbox-alternative-backend-probes.md)：用户已批准并执行首轮最小试验：受限 Shell 启动通过，系统 Git/xcrun 工具链发现和缓存访问 `Blocked`；已停止并清理，剩余矩阵 `Not run`。用户明确选择“优先原生体验，允许重新评估现成 Seatbelt runtime”，覆盖此前评估排除。首选验证候选为固定版本 Anthropic Sandbox Runtime 加 Vera 适配层；独立 UID/ACL 不作完整后端，XPC + App Sandbox 不作通用原生 Runner，VM 保留独立环境选项。固定包已在临时目录安装并运行，随后删除；未选产品后端。实际结果见[最小试验记录](evals/core-sandbox-srt-minimal-probe-2026-09-26.md)。版本、证据、适配缺口和最小试验范围见[选型审阅](evals/core-sandbox-selection-review-2026-09-26.md)；[共同矩阵](evals/core-sandbox-backend-matrix.md)与[预检记录](evals/core-sandbox-alternative-preflight.md)保留历史证据。
 - [Skill 交互列表](specs/2026-09-24-skills-interactive-picker.md)：Accepted 且已实施；浮层框线与斜杠互斥经用户确认。
 - [视觉 Token](specs/2026-09-13-vera-cli-visual-tokens.md)：Accepted；2026-09-24 增补 Light 与奶油，内置主题为深海 / Light / 奶油 / 高对比 / 无色五套。
 - [ADR-0013：首个桌面底版采用 Electron](decisions/ADR-0013-electron-desktop-baseline.md)：Accepted；当前实施编号由 ADR-0021 调整为阶段十，只固定未来方向，当前不引入 Electron 代码或依赖。
@@ -62,6 +65,7 @@
 
 ## 最近验证
 
+- 2026-09-25 沙盒可行性：Intel macOS 15.7.9 本机签名 App Sandbox 探针分别验证 Core 与更窄 Runner 的临时路径文件/网络拒绝；仓库外 wheel 的 `plain-answer`、`create-file`、`forbidden-command` Fake Model 用例均 `pass`。`/usr/bin/xcrun` 与 `/usr/bin/git` 在 Runner 中返回 `xcrun: error: cannot be used within an App Sandbox.`；当前后端不能声明支持通用工程。第二台机器与替代后端 `Not run`/`Blocked`。另以仓库外假工程验证临时 `runner-v5.sb` 对脚本后代的文件/网络拒绝与 artifact 写入允许（SBX-12，见 0082 预检）；这只是同 UID 控制，不代表产品后端或完整 Core 验收。
 - 2026-09-24 任务 0078/0079 并入 `main`：状态工作轨动效、回答逐行呈现、审批卡间距与中文标签、状态组初次展开及 Apple Terminal 启动字符修正。合并前聚焦测试 `62 passed`；合并后聚焦测试 `105 passed`，Ruff check/format、Mypy `src` 与差异检查通过。按用户要求，本轮不运行全量测试，Terminal.app 合并结果由用户验收。
 - 2026-09-24 任务 0077：新增奶油风会话主题；视觉 Token 规格增补奶油列；`/theme cream` 与 `/theme 奶油` 等价。
 - 2026-09-24 文档同步：将 Skill 持久化、0074 浮层（框线/斜杠互斥）、0075 缩放、0076 Light、以及用户 Terminal.app/`VeraTestDemo`/`deepseek-flash` 主路径 dogfood 写入任务与规格；阶段九仍非 Complete。
@@ -130,9 +134,12 @@
 
 ## 下一检查点
 
-1. 用户在合并后的 `main` 上验证任务 0078 的状态动效、逐行回答、审批卡和状态组默认展开；按本轮要求执行全量测试。
-2. 阶段九：补齐 Swift/Xcode 副本与负例矩阵 dogfood，复核隔离 wheel；用户确认后才可标 Complete。
-3. 阶段八隔离分支完成 Node/TS 与 Terminal.app 人工验收后，用户确认再合入 `main`。
-4. 不自动删除、取消暂存或忽略 `VeraTestDemo` 索引里残留的 `AD build/`；未改 `.gitignore`。
-5. 阶段五仍缺 20 次真实 dogfood 与三类真实工程走查，不得把阶段五标为 Complete。
-6. 用户已确认「CLI 版本达到预期，可以封存」；该确认不自动授权 Electron 或阶段十。市场、远程安装、自动更新、Plugin、Hook 与可执行 Skill 继续不进入 v1。
+**沙盒最新方向（2026-09-26）：** 用户明确要求“工作区内工作，越界访问、联网和额外系统权限先审批”，已形成[工作区权限沙盒首版方案](specs/2026-09-26-workspace-permission-sandbox.md)（Draft）供审阅。当前优先审阅该方案，接受后同步原规格、ADR-0022 和 0085/0086；下面记录的工具链复验安排须按新方案调整。本轮仅写文档，没有新增试验或产品实现。
+
+1. 任务 0085：按用户重新开放现成 Seatbelt runtime 的决定，首轮[最小试验](evals/core-sandbox-srt-minimal-probe-2026-09-26.md)已执行并清理，工具链门槛 Blocked。下一步先核对 Git/xcrun 的工具链发现、系统元数据与缓存最小映射，准备精确复验配置；暂不扩大文件/网络及后代矩阵；本轮不再排查旧 XPC 夹具，不创建账户/VM或改主机安全设置。通过后扩大共同矩阵；后端与阶段位置 ADR-0023 等待充分证据，阶段八/九/十状态不变。
+2. 用户在合并后的 `main` 上验证任务 0078 的状态动效、逐行回答、审批卡和状态组默认展开；按本轮要求执行全量测试。
+3. 阶段九：补齐 Swift/Xcode 副本与负例矩阵 dogfood，复核隔离 wheel；用户确认后才可标 Complete。
+4. 阶段八隔离分支完成 Node/TS 与 Terminal.app 人工验收后，用户确认再合入 `main`。
+5. 不自动删除、取消暂存或忽略 `VeraTestDemo` 索引里残留的 `AD build/`；未改 `.gitignore`。
+6. 阶段五仍缺 20 次真实 dogfood 与三类真实工程走查，不得把阶段五标为 Complete。
+7. 用户已确认「CLI 版本达到预期，可以封存」；该确认不自动授权 Electron 或阶段十。市场、远程安装、自动更新、Plugin、Hook 与可执行 Skill 继续不进入 v1。

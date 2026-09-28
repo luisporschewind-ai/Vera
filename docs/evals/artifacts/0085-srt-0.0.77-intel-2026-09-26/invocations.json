@@ -1,0 +1,29 @@
+[
+  {
+    "id": "developer-dir-diagnostic",
+    "sandbox": "/usr/bin/sandbox-exec",
+    "argv_after_profile": [
+      "/bin/bash",
+      "-c",
+      "/usr/bin/git --version && /usr/bin/xcrun --find clang"
+    ]
+  },
+  {
+    "id": "native-tools",
+    "sandbox": "/usr/bin/sandbox-exec",
+    "argv_after_profile": [
+      "/bin/bash",
+      "-c",
+      "/bin/echo shell-ok; /usr/bin/git --version && /usr/bin/xcrun --find clang"
+    ]
+  },
+  {
+    "id": "preview",
+    "sandbox": "/usr/bin/sandbox-exec",
+    "argv_after_profile": [
+      "/bin/bash",
+      "-c",
+      "/usr/bin/true"
+    ]
+  }
+]

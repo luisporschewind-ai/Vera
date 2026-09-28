@@ -87,3 +87,6 @@
 - [任务 0077：CLI 奶油风主题](0077-cli-cream-theme.md)
 - [任务 0078：CLI 状态动效与回答逐行呈现](0078-cli-activity-and-paced-replies.md)
 - [任务 0079：清除 Apple Terminal 启动前的 `p`](0079-apple-terminal-startup-probe.md)
+- [任务 0084：Core 执行沙盒 macOS 可行性验证计划](0084-core-sandbox-feasibility.md)
+- [任务 0085：Core 沙盒替代后端可行性实验计划](0085-core-sandbox-alternative-backend-probes.md)
+- [任务 0086：Core 沙盒 Runner 优先实施计划](0086-core-sandbox-runner-first-execution-plan.md)

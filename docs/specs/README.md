@@ -31,4 +31,6 @@
 - [阶段八：Core 工具集与风险分级 Policy v2（Accepted）](2026-09-17-core-tooling-and-risk-tiered-policy.md)
 - [阶段八：Vera 原生 Git 能力（Accepted）](2026-09-17-native-git-capability.md)
 - [阶段九：Core 原生 Skills 系统（Accepted）](2026-09-15-core-native-skills-system.md)
+- [Vera Core 执行沙盒与通用项目能力边界（Accepted，Runner 优先修订已确认）](2026-09-24-core-execution-sandbox.md)
+- [Vera 工作区权限沙盒：首版收敛方案（Draft，按最新用户目标修订）](2026-09-26-workspace-permission-sandbox.md)
 - [阶段十：桌面 Agent 工作台与 UI（Draft）](2026-09-12-desktop-agent-workbench-ui.md)
