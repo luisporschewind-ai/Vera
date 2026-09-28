@@ -215,9 +215,7 @@ class GitRepositoryInitService:
             )
         if result.status != "exited" or result.exit_code != 0:
             code = (
-                "git_init_sandbox_denied"
-                if result.status == "error"
-                else "git_init_process_failed"
+                "git_init_sandbox_denied" if result.status == "error" else "git_init_process_failed"
             )
             if self._git_marker_present():
                 raise GitRepositoryInitError("git_init_partial_metadata")

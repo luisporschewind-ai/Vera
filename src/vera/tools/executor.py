@@ -438,6 +438,7 @@ class ToolExecutor:
         CommandActionPlan | None,
         GitCommitPlan | None,
         GitBranchPlan | None,
+        GitRepositoryInitPlan | GitRepositoryInitResult | None,
     ]:
         planner = getattr(tool, "plan_action", None)
         if planner is None:
