@@ -14,15 +14,18 @@ from vera.session.models import SessionStatus
 from vera.terminal.brand import BrandMark, select_brand_mark
 from vera.terminal.widgets.welcome import brand_header_text, header_fact_lines
 
-_WAVE_CREST = Style(bold=True, color="#548EA0")
+_WAVE_CREST = Style(bold=False, color="#548EA0")
 _WAVE_TROUGH = Style(bold=False, color="#3D7A8C")
 
 
-def logo_wave_value(*, row: int, column: int, phase: float) -> float:
+def logo_wave_value(
+    *, row: int, column: int, phase: float, rows: int = 4, columns: int = 27
+) -> float:
     """One soft crest travels bottom-left → top-right as phase increases."""
 
-    along = column + (2 - row) * 3.2
-    center = phase * 34.0
+    diagonal = (rows - 1) * 3.2
+    along = column + (rows - 1 - row) * 3.2
+    center = phase * (columns - 1 + diagonal + 5.2)
     return exp(-(((along - center) / 5.2) ** 2))
 
 
@@ -165,13 +168,15 @@ class VeraHeader(Horizontal):
             return
         facts = header_fact_lines(self._status)
         wordmark.update(self._logo_visual(self._mark.lines))
-        meta.update("\n".join(facts))
+        meta.update(Text("\n".join(facts), no_wrap=True, overflow="crop"))
         meta.display = True
 
-    def _logo_visual(self, lines: tuple[str, ...]) -> str | Text:
-        if self._wave_phase is None:
-            return "\n".join(lines)
-        out = Text()
+    def _logo_visual(self, lines: tuple[str, ...]) -> Text:
+        out = Text(style=Style(bold=False), no_wrap=True, overflow="crop")
+        if self._wave_phase is None or (self.is_mounted and self.app.theme != "default"):
+            out.append("\n".join(lines))
+            return out
+        columns = max((len(line) for line in lines), default=1)
         for row, line in enumerate(lines):
             if row:
                 out.append("\n")
@@ -179,6 +184,12 @@ class VeraHeader(Horizontal):
                 if char == " ":
                     out.append(" ")
                     continue
-                value = logo_wave_value(row=row, column=index, phase=self._wave_phase)
+                value = logo_wave_value(
+                    row=row,
+                    column=index,
+                    phase=self._wave_phase,
+                    rows=len(lines),
+                    columns=columns,
+                )
                 out.append(char, style=wave_glyph_style(value))
         return out

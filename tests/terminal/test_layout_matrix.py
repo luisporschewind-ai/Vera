@@ -59,5 +59,10 @@ async def test_layout_matrix_keeps_composer_and_cjk_visible(
         assert app.query_one("#welcome").display is False
         assert app.query_one("#work-rail").display is False
         assert "\n" in app.query_one(VeraHeader).visible_text()
+        wordmark = app.query_one("#header-wordmark")
+        assert wordmark.content_size.height == 4
+        assert wordmark.region.width == 27
+        assert wordmark.region.bottom <= app.query_one("#composer-bar").region.y
+        assert composer.region.bottom <= app.size.height
         footer = str(app.query_one("#status-line").render())
         assert "审批" in footer

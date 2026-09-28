@@ -36,10 +36,34 @@ def test_default_theme_uses_deep_sea_tokens() -> None:
     assert default.error == "#A85A5A"
     assert default.success == "#4A8B6F"
     assert default.foreground == "#D7E4EE"
+    assert default.variables["logo"] == "#548EA0"
     high_contrast = next(theme for theme in VERA_THEMES if theme.name == "high-contrast")
     assert high_contrast.accent == "#FFFF00"
     no_color = next(theme for theme in VERA_THEMES if theme.name == "no-color")
     assert no_color.accent == "#B0B0B0"
+
+
+@pytest.mark.asyncio
+async def test_v4_logo_uses_theme_color_and_never_extra_bold(tmp_path: Path) -> None:
+    from vera.terminal.widgets.header import VeraHeader
+
+    app = _make_app(tmp_path)
+    async with app.run_test(size=(80, 24)) as pilot:
+        for name, expected_color in (
+            ("default", "#548EA0"),
+            ("high-contrast", "#FFFF00"),
+            ("no-color", "#B0B0B0"),
+        ):
+            app._apply_theme(name)
+            await pilot.pause()
+            header = app.query_one(VeraHeader)
+            wordmark = app.query_one("#header-wordmark")
+            assert wordmark.styles.color.hex == expected_color
+            assert not wordmark.styles.text_style.bold
+            header.set_wave_phase(0.5)
+            visual = header._logo_visual(header.current_mark().lines)
+            if name != "default":
+                assert not visual.spans
 
 
 def test_unknown_theme_is_rejected() -> None:

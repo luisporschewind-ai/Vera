@@ -21,6 +21,7 @@ TOKEN_NAMES: tuple[str, ...] = (
     "text_primary",
     "text_muted",
     "accent",
+    "logo",
     "success",
     "warning",
     "danger",
@@ -37,6 +38,7 @@ SEMANTIC_TOKENS: dict[ThemeName, dict[str, str]] = {
         "text_primary": "#D7E4EE",
         "text_muted": "#7E96A8",
         "accent": "#3D7A8C",
+        "logo": "#548EA0",
         "success": "#4A8B6F",
         "warning": "#B08A4A",
         "danger": "#A85A5A",
@@ -51,6 +53,7 @@ SEMANTIC_TOKENS: dict[ThemeName, dict[str, str]] = {
         "text_primary": "#FFFFFF",
         "text_muted": "#FFFFFF",
         "accent": "#FFFF00",
+        "logo": "#FFFF00",
         "success": "#00FF00",
         "warning": "#FFFF00",
         "danger": "#FF4444",
@@ -65,6 +68,7 @@ SEMANTIC_TOKENS: dict[ThemeName, dict[str, str]] = {
         "text_primary": "#E0E0E0",
         "text_muted": "#B0B0B0",
         "accent": "#B0B0B0",
+        "logo": "#B0B0B0",
         "success": "#C8C8C8",
         "warning": "#D0D0D0",
         "danger": "#E0E0E0",
@@ -91,6 +95,7 @@ def _theme(name: ThemeName) -> Theme:
         panel=tokens["surface_elevated"],
         boost=tokens["surface_elevated"],
         dark=True,
+        variables={"logo": tokens["logo"]},
     )
 
 

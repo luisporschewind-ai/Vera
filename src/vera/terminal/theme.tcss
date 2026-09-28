@@ -29,6 +29,11 @@ Screen {
     background: $boost;
 }
 
+#header.-welcome #header-wordmark {
+    color: $logo;
+    text-style: none;
+}
+
 #header-meta {
     background: $boost;
 }
