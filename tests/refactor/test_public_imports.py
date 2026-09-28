@@ -63,6 +63,9 @@ def test_public_constructor_and_method_parameter_names_are_stable() -> None:
         "workspace_permissions",
         "access_session",
         "process_supervisor",
+        "skill_selection_service",
+        "skill_snapshot_store",
+        "skill_context_assembler",
     )
     assert _parameter_names(SessionController.__init__) == (
         "self",

@@ -2,7 +2,7 @@
 
 **更新日期：** 2026-09-28
 **当前阶段：** 阶段 8——Core 工具集、Policy v2 与原生 Git（In progress）
-**仓库状态：** 2026-09-28 所有工作树与分支代码已汇入 `main`：阶段八工具/Policy/Git 与大文件拆分（`d7e75c1`）、Git 仓库初始化（`8db4c6e`）、0089 工作区权限沙盒、Trace（经 `codex/trace-on-main` 适配拆分后的 Core，并恢复阶段九 Skills 的 Runtime/Session 接线与 BYOK 启动入口）、Core 联网检索首版（默认关闭）、Skill 浮层、CLI 活动/审批卡与 Logo/缩放修正。阶段五停在 Ready for manual acceptance，阶段六与阶段七已 Complete；阶段八、九、十均不因代码合入自动变成 Complete。用户确认 CLI 封存的历史授权保持有效。2026-09-28 用户要求以阶段十一为里程碑，之前的任务与规格须对齐并落实，dogfood 统一在 `main` 由用户执行。
+**仓库状态：** 2026-09-28 所有工作树与分支代码已汇入 `main`：阶段八工具/Policy/Git 与大文件拆分（`d7e75c1`）、Git 仓库初始化（`8db4c6e`）、0089 工作区权限沙盒、Trace（经 `codex/trace-on-main` 适配拆分后的 Core，并恢复阶段九 Skills 的 Runtime/Session 接线与 BYOK 启动入口）、Core 联网检索首版（默认关闭）、Skill 浮层、CLI 活动/审批卡与 Logo/缩放修正。合并后又恢复了阶段八拆分合并（`d7e75c1`）丢失的接线：TUI Skill 浮层、逐行回答与缩放修复（`653afaa`）；Trace 验证 span 委托、活跃 Run 期间的 `/trace`、0082 工具标记泄漏处理（`e33da10`）；mypy/格式遗留（`ac7239c`）。沙箱外聚焦回归通过；剩余已知失败只有 wheel 安装 e2e（离线 uv 缓存缺 `openai`，属环境问题）和 PTY 测试（Cursor 沙箱无 pty 设备，未验证）。阶段五停在 Ready for manual acceptance，阶段六与阶段七已 Complete；阶段八、九、十均不因代码合入自动变成 Complete。用户确认 CLI 封存的历史授权保持有效。2026-09-28 用户要求以阶段十一为里程碑，之前的任务与规格须对齐并落实，dogfood 统一在 `main` 由用户执行。
 
 ## 当前独立实施
 
