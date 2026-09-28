@@ -28,6 +28,8 @@ def event(event_type: str, payload: dict | None = None) -> EventEnvelope:
         ("recovery.detected", "已列出待恢复任务"),
         ("recovery.resume_started", "正在恢复"),
         ("run.failed", "失败"),
+        ("git.operation.started", "正在执行 Git 操作"),
+        ("git.operation.recovered", "Git 操作已恢复"),
     ],
 )
 def test_activity_labels_are_derived_from_events(event_type: str, label: str) -> None:
@@ -40,6 +42,12 @@ def test_recovery_inspection_is_not_an_active_run() -> None:
     state = ActivityPresenter().apply(event("recovery.detected"))
     assert state.active is False
     assert state.label == "已列出待恢复任务"
+
+
+def test_write_tool_is_presented_as_a_modification() -> None:
+    state = ActivityPresenter().apply(event("tool.started", {"name": "write", "path": "a.py"}))
+    assert state.label == "正在修改"
+    assert state.steps == ("写入",)
 
 
 def test_resume_started_keeps_recovery_active() -> None:

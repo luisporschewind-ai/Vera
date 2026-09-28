@@ -9,23 +9,29 @@ import typer
 from typer.core import TyperGroup
 
 from vera.bootstrap import RuntimeDependencies, build_runtime
-from vera.cli_driver import ApprovalDecision, drive_run
+from vera.cli_commands import config_show as _config_show_impl
+from vera.cli_commands import execute_run as _execute_run_impl
+from vera.cli_commands import list_runs as _list_runs_impl
+from vera.cli_commands import rollback as _rollback_impl
+from vera.cli_commands import show_run as _show_run_impl
+from vera.cli_driver import drive_run
 from vera.cli_eval import eval_app
+from vera.cli_inspection import sessions_inspect as _sessions_inspect_impl
+from vera.cli_inspection import sessions_repair as _sessions_repair_impl
+from vera.cli_inspection import state_inspect as _state_inspect_impl
+from vera.cli_inspection import state_migrate as _state_migrate_impl
 from vera.cli_json_session import JsonSessionDriver
 from vera.cli_models import models_app
 from vera.cli_options import RESUME_PICKER_VALUE, normalize_resume_argv
 from vera.cli_plain_session import PlainSessionDriver
 from vera.cli_presenter import HumanPresenter
+from vera.cli_recovery import drive_recovery as _drive_recovery_impl
+from vera.cli_recovery import inspect_recovery as _inspect_recovery_impl
 from vera.config import ConfigurationError, load_config
 from vera.contracts.commands import (
     AbandonRun,
-    ApplyStateMigration,
     InspectRecovery,
-    InspectState,
-    PlanStateMigration,
     ResumeRun,
-    RollbackRun,
-    StartRun,
 )
 from vera.contracts.events import EventEnvelope
 from vera.persistence.run_store import RunStore
@@ -67,18 +73,18 @@ state_app = typer.Typer(help="inspect and migrate private run state formats")
 sessions_app = typer.Typer(help="inspect and repair conversation sessions")
 app.add_typer(runs_app, name="runs")
 app.add_typer(config_app, name="config")
+app.add_typer(models_app, name="models")
 app.add_typer(recover_app, name="recover")
 app.add_typer(state_app, name="state")
 app.add_typer(eval_app, name="eval")
 app.add_typer(sessions_app, name="sessions")
-app.add_typer(models_app, name="models")
 
 
 def _fail_runtime_setup(exc: Exception) -> NoReturn:
     if isinstance(exc, ConfigurationError):
         typer.echo(str(exc), err=True)
         raise typer.Exit(exc.exit_code) from exc
-    typer.echo("configuration_failed: runtime configuration is invalid", err=True)
+    typer.echo(str(exc), err=True)
     raise typer.Exit(5) from exc
 
 
@@ -154,9 +160,7 @@ def main(
         deps = build_runtime(resolved, model)
     except Exception as exc:
         _fail_runtime_setup(exc)
-    selected_model = (
-        model or deps.config.default_model_profile or next(iter(deps.config.providers), "default")
-    )
+    selected_model = model or next(iter(deps.config.providers), "default")
     capabilities = detect_terminal_capabilities()
     try:
         mode = select_mode(plain=plain, json_output=json_output, capabilities=capabilities)
@@ -332,33 +336,23 @@ def execute_run(
     *,
     mode: Literal["agent", "project_init"] = "agent",
 ) -> int:
-    try:
-        deps = dependencies or build_runtime(workspace, model_profile)
-    except Exception as exc:
-        _fail_runtime_setup(exc)
-    presenter = HumanPresenter(typer.echo)
-
-    def decide(request: EventEnvelope) -> ApprovalDecision:
-        if json_output or not sys.stdin.isatty():
-            return "cancel"
-        decision = typer.prompt(presenter.approval_prompt(request))
-        if decision not in {"approve", "reject", "cancel"}:
-            raise typer.BadParameter("必须明确输入 approve、reject 或 cancel")
-        return cast(ApprovalDecision, decision)
-
-    selected = model_profile or next(iter(deps.config.providers), "default")
-    events = drive_run(
-        deps.runtime,
-        StartRun(
-            goal=goal,
-            workspace_root=workspace,
-            model_profile=selected,
-            mode=mode,
-        ),
-        decide,
-        lambda batch: _render(list(batch), json_output),
+    return _execute_run_impl(
+        goal,
+        workspace,
+        model_profile,
+        json_output,
+        dependencies,
+        mode=mode,
+        build_runtime_fn=build_runtime,
+        fail_runtime_setup=_fail_runtime_setup,
+        presenter_cls=HumanPresenter,
+        drive_run_fn=drive_run,
+        render=_render,
+        exit_code=_exit_code,
+        echo=typer.echo,
+        prompt=typer.prompt,
+        stdin_isatty=sys.stdin.isatty,
     )
-    return _exit_code(list(events))
 
 
 @app.command()
@@ -392,33 +386,35 @@ def init(
 
 @runs_app.command("list")
 def list_runs() -> None:
-    config = load_config(Path.cwd(), {})
-    for summary in RunStore(config.state_dir).list_runs():
-        typer.echo(f"{summary.run_id}\t{summary.workspace_root}\t{summary.terminal_state}")
+    _list_runs_impl(
+        cwd=Path.cwd(),
+        load_config_fn=load_config,
+        run_store_cls=RunStore,
+        echo=typer.echo,
+    )
 
 
 @runs_app.command("show")
 def show_run(run_id: str) -> None:
-    config = load_config(Path.cwd(), {})
-    for event in RunStore(config.state_dir).read_events(run_id):
-        typer.echo(Redactor().redact_event(event).model_dump_json())
+    _show_run_impl(
+        run_id,
+        cwd=Path.cwd(),
+        load_config_fn=load_config,
+        run_store_cls=RunStore,
+        redactor_cls=Redactor,
+        echo=typer.echo,
+    )
 
 
 def _inspect_recovery(run_id: str | None, json_output: bool) -> None:
-    try:
-        deps = build_runtime(Path.cwd())
-    except Exception as exc:
-        _fail_runtime_setup(exc)
-    events = list(deps.runtime.handle(InspectRecovery(run_id=run_id)))
-    if json_output:
-        _render(events, True)
-        raise typer.Exit(0)
-    if not events:
-        message = "暂无待恢复任务。" if run_id is None else f"未找到待恢复 run：{run_id}"
-        typer.echo(message)
-        raise typer.Exit(0)
-    _render(events, False)
-    raise typer.Exit(0)
+    _inspect_recovery_impl(
+        run_id,
+        json_output,
+        build_runtime_fn=build_runtime,
+        fail_runtime_setup=_fail_runtime_setup,
+        render=_render,
+        echo=typer.echo,
+    )
 
 
 @recover_app.command("list")
@@ -435,29 +431,19 @@ def recover_show(
 
 
 def _drive_recovery(command: InspectRecovery | ResumeRun | AbandonRun, json_output: bool) -> None:
-    try:
-        deps = build_runtime(Path.cwd())
-    except Exception as exc:
-        _fail_runtime_setup(exc)
-    presenter = HumanPresenter(typer.echo)
-
-    def decide(request: EventEnvelope) -> ApprovalDecision:
-        if json_output or not sys.stdin.isatty():
-            return "cancel"
-        decision = typer.prompt(presenter.approval_prompt(request))
-        if decision not in {"approve", "reject", "cancel"}:
-            raise typer.BadParameter("必须明确输入 approve、reject 或 cancel")
-        return cast(ApprovalDecision, decision)
-
-    events = list(
-        drive_run(
-            deps.runtime,
-            command,
-            decide,
-            lambda batch: _render(list(batch), json_output),
-        )
+    _drive_recovery_impl(
+        command,
+        json_output,
+        build_runtime_fn=build_runtime,
+        fail_runtime_setup=_fail_runtime_setup,
+        presenter_cls=HumanPresenter,
+        drive_run_fn=drive_run,
+        render=_render,
+        exit_code=_exit_code,
+        echo=typer.echo,
+        prompt=typer.prompt,
+        stdin_isatty=sys.stdin.isatty,
     )
-    raise typer.Exit(_exit_code(events) if events else 5)
 
 
 @recover_app.command("resume")
@@ -481,13 +467,13 @@ def state_inspect(
     run_id: Annotated[str | None, typer.Argument()] = None,
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
-    try:
-        deps = build_runtime(Path.cwd())
-    except Exception as exc:
-        _fail_runtime_setup(exc)
-    events = list(deps.runtime.handle(InspectState(run_id=run_id)))
-    _render(events, json_output)
-    raise typer.Exit(0 if events else 5)
+    _state_inspect_impl(
+        run_id,
+        json_output,
+        build_runtime_fn=build_runtime,
+        fail_runtime_setup=_fail_runtime_setup,
+        render=_render,
+    )
 
 
 @state_app.command("migrate")
@@ -498,51 +484,34 @@ def state_migrate(
     migration_hash: Annotated[str | None, typer.Option("--migration-hash")] = None,
     migration_id: Annotated[str | None, typer.Option("--migration-id")] = None,
 ) -> None:
-    try:
-        deps = build_runtime(Path.cwd())
-    except Exception as exc:
-        _fail_runtime_setup(exc)
-    if not apply:
-        events = list(deps.runtime.handle(PlanStateMigration(run_id=run_id)))
-        _render(events, json_output)
-        raise typer.Exit(0 if events and events[-1].type == "state.migration_planned" else 5)
-    if not migration_hash or not migration_id:
-        typer.echo("--apply 需要同时提供 --migration-id 与 --migration-hash", err=True)
-        raise typer.Exit(5)
-    events = list(
-        deps.runtime.handle(
-            ApplyStateMigration(
-                run_id=run_id,
-                migration_id=migration_id,
-                migration_hash=migration_hash,
-            )
-        )
+    _state_migrate_impl(
+        run_id,
+        json_output,
+        apply,
+        migration_hash,
+        migration_id,
+        build_runtime_fn=build_runtime,
+        fail_runtime_setup=_fail_runtime_setup,
+        render=_render,
+        echo=typer.echo,
     )
-    _render(events, json_output)
-    raise typer.Exit(0 if events and events[-1].type == "state.migration_completed" else 5)
 
 
 @app.command()
 def rollback(run_id: str = typer.Argument(...)) -> None:
-    try:
-        deps = build_runtime(Path.cwd())
-    except Exception as exc:
-        _fail_runtime_setup(exc)
-    events = list(deps.runtime.handle(RollbackRun(run_id=run_id)))
-    if not events:
-        typer.echo(f"未找到可回滚的 Checkpoint：{run_id}")
-        raise typer.Exit(5)
-    _render(events, False)
-    raise typer.Exit(_exit_code(events))
+    _rollback_impl(
+        run_id,
+        build_runtime_fn=build_runtime,
+        fail_runtime_setup=_fail_runtime_setup,
+        render=_render,
+        exit_code=_exit_code,
+        echo=typer.echo,
+    )
 
 
 @config_app.command("show")
 def config_show() -> None:
-    try:
-        config = load_config(Path.cwd(), {})
-    except Exception as exc:
-        _fail_runtime_setup(exc)
-    typer.echo(json.dumps(config.model_dump(mode="json"), ensure_ascii=False, indent=2))
+    _config_show_impl(cwd=Path.cwd(), load_config_fn=load_config, echo=typer.echo)
 
 
 @sessions_app.command("inspect")
@@ -551,37 +520,14 @@ def sessions_inspect(
     workspace: Annotated[Path, typer.Option()] = Path("."),
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
-    try:
-        deps = build_runtime(workspace)
-    except Exception as exc:
-        _fail_runtime_setup(exc)
-    store = ConversationSessionStore(deps.config.state_dir, deps.installation_id)
-    try:
-        plan = store.inspect_repair(session_id, workspace.resolve())
-    except Exception as exc:
-        message = str(exc)
-        code = getattr(exc, "code", "invalid_session_record")
-        if json_output:
-            typer.echo(
-                json.dumps(
-                    {"error_code": code, "message": message},
-                    ensure_ascii=False,
-                    sort_keys=True,
-                )
-            )
-        else:
-            typer.echo(message, err=True)
-        raise typer.Exit(2) from exc
-    payload = plan.model_dump(mode="json")
-    if json_output:
-        typer.echo(json.dumps(payload, ensure_ascii=False, sort_keys=True))
-    else:
-        typer.echo(
-            f"{plan.source_session_id}\t{plan.failure_code}\t"
-            f"through={plan.valid_through_sequence}\t"
-            f"repairable={plan.repairable_tail_only}"
-        )
-    raise typer.Exit(0)
+    _sessions_inspect_impl(
+        session_id,
+        workspace,
+        json_output,
+        build_runtime_fn=build_runtime,
+        fail_runtime_setup=_fail_runtime_setup,
+        echo=typer.echo,
+    )
 
 
 @sessions_app.command("repair")
@@ -591,55 +537,12 @@ def sessions_repair(
     json_output: Annotated[bool, typer.Option("--json")] = False,
     apply: Annotated[bool, typer.Option("--apply")] = False,
 ) -> None:
-    try:
-        deps = build_runtime(workspace)
-    except Exception as exc:
-        _fail_runtime_setup(exc)
-    store = ConversationSessionStore(deps.config.state_dir, deps.installation_id)
-    root = workspace.resolve()
-    try:
-        plan = store.inspect_repair(session_id, root)
-        if not apply:
-            payload = plan.model_dump(mode="json")
-            payload["applied"] = False
-            if json_output:
-                typer.echo(json.dumps(payload, ensure_ascii=False, sort_keys=True))
-            else:
-                typer.echo("未应用修复。使用 --apply 才会创建新副本。")
-                typer.echo(
-                    f"{plan.source_session_id}\t{plan.failure_code}\t"
-                    f"through={plan.valid_through_sequence}"
-                )
-            raise typer.Exit(0)
-        original = (deps.config.state_dir / "sessions" / session_id / "session.jsonl").read_bytes()
-        loaded = store.create_repaired_copy(plan, root)
-        unchanged = (
-            deps.config.state_dir / "sessions" / session_id / "session.jsonl"
-        ).read_bytes() == original
-        payload = {
-            "source_session_id": session_id,
-            "new_session_id": loaded.session_id,
-            "source_unchanged": unchanged,
-            "applied": True,
-        }
-        if json_output:
-            typer.echo(json.dumps(payload, ensure_ascii=False, sort_keys=True))
-        else:
-            typer.echo(f"新会话 {loaded.session_id}；原文件未改：{unchanged}")
-        raise typer.Exit(0 if unchanged else 2)
-    except typer.Exit:
-        raise
-    except Exception as exc:
-        message = str(exc)
-        code = getattr(exc, "code", "invalid_session_record")
-        if json_output:
-            typer.echo(
-                json.dumps(
-                    {"error_code": code, "message": message},
-                    ensure_ascii=False,
-                    sort_keys=True,
-                )
-            )
-        else:
-            typer.echo(message, err=True)
-        raise typer.Exit(2) from exc
+    _sessions_repair_impl(
+        session_id,
+        workspace,
+        json_output,
+        apply,
+        build_runtime_fn=build_runtime,
+        fail_runtime_setup=_fail_runtime_setup,
+        echo=typer.echo,
+    )

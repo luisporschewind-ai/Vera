@@ -1,7 +1,5 @@
 # 任务 0065：Git Hooks、恢复与分支实施计划
 
-> 2026-09-26 文档对齐：本记录来自 `codex/phase-8-tooling-policy-git`（核对时 HEAD `5b6d789`）。实现及验证属于该隔离分支，尚未合入 `main`；同步文档不代表代码集成或本轮重新测试。下文提交/推送表述保留各任务完成时的历史边界，当前分支状态见阶段八执行计划。
-
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **状态：** Done；已完成本地切片提交 `6d0e37f`、`aeec20e`、`494b095`，依赖 0064 已满足
@@ -79,4 +77,4 @@ class GitBranchPlan(ContractModel):
 - 崩溃恢复不重复 Commit，无法证明时停止。
 - branch create/switch 精确、可审阅，不包含 delete/revert/remote/history rewrite。
 
-0065 已完成。后续 0066 已推进至 Ready for manual acceptance；重构记录另提到 branch receipt recovery 等待复核问题，见阶段八执行计划，不据本任务旧门禁宣称这些问题已关闭。
+0065 已完成并封存。0066 尚未启动，需另行按执行顺序推进。

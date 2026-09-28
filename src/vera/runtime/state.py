@@ -30,11 +30,17 @@ ALLOWED_TRANSITIONS: dict[RunState, frozenset[RunState]] = {
         {RunState.GENERATING, RunState.COMPLETED, RunState.FAILED, RunState.CANCELLED}
     ),
     RunState.GENERATING: frozenset(
-        {RunState.DISCOVERING, RunState.CHANGESET_PROPOSED, RunState.FAILED, RunState.CANCELLED}
+        {
+            RunState.DISCOVERING,
+            RunState.CHANGESET_PROPOSED,
+            RunState.AWAITING_APPROVAL,
+            RunState.FAILED,
+            RunState.CANCELLED,
+        }
     ),
     RunState.CHANGESET_PROPOSED: frozenset({RunState.AWAITING_APPROVAL, RunState.FAILED}),
     RunState.AWAITING_APPROVAL: frozenset(
-        {RunState.CHECKPOINTING, RunState.CANCELLED, RunState.STALE}
+        {RunState.CHECKPOINTING, RunState.DISCOVERING, RunState.CANCELLED, RunState.STALE}
     ),
     RunState.CHECKPOINTING: frozenset({RunState.APPLYING, RunState.STALE, RunState.FAILED}),
     RunState.APPLYING: frozenset({RunState.VERIFYING, RunState.FAILED, RunState.RECOVERY_REQUIRED}),

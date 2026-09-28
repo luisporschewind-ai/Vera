@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from vera.policy.models import PolicyAction, PolicyActionKind, PolicyDecisionKind
-from vera.policy.snapshot import EffectivePolicySnapshot
+from vera.contracts.tool_actions import ToolEffect
+from vera.policy.models import PolicyAction, PolicyActionKind, PolicyDecisionKind, RiskLevel
+from vera.policy.snapshot import EffectivePolicySnapshot, EffectivePolicySnapshotV2
 
 _SHELLS = frozenset({"sh", "bash", "zsh", "fish", "dash", "cmd", "powershell", "pwsh"})
 _DESTRUCTIVE = frozenset({"rm", "rmdir", "unlink", "del"})
@@ -17,6 +18,18 @@ _SAFE_COMMANDS = {
 }
 
 
+def risk_level_for_effect(effect: ToolEffect, *, trusted: bool) -> RiskLevel:
+    if effect is ToolEffect.SECRET_ACCESS:
+        return RiskLevel.FORBIDDEN
+    if effect in {ToolEffect.NETWORK_ACCESS, ToolEffect.EXTERNAL_SERVICE}:
+        return RiskLevel.HIGH
+    if effect is ToolEffect.PROCESS_EXECUTE:
+        return RiskLevel.MODERATE
+    if effect is ToolEffect.WORKSPACE_WRITE and not trusted:
+        return RiskLevel.MODERATE
+    return RiskLevel.LOW
+
+
 def _match(kind: PolicyDecisionKind, reason_code: str, reason: str, rule: str) -> dict[str, str]:
     return {
         "decision": kind.value,
@@ -26,7 +39,10 @@ def _match(kind: PolicyDecisionKind, reason_code: str, reason: str, rule: str) -
     }
 
 
-def evaluate_rule(snapshot: EffectivePolicySnapshot, action: PolicyAction) -> dict[str, str] | None:
+def evaluate_rule(
+    snapshot: EffectivePolicySnapshot | EffectivePolicySnapshotV2,
+    action: PolicyAction,
+) -> dict[str, str] | None:
     if action.kind is PolicyActionKind.COMMAND_EXECUTE:
         return _command_rule(snapshot, action)
     if action.kind in {PolicyActionKind.PATH_READ, PolicyActionKind.PATH_WRITE}:
@@ -79,7 +95,10 @@ def evaluate_rule(snapshot: EffectivePolicySnapshot, action: PolicyAction) -> di
     )
 
 
-def _command_rule(snapshot: EffectivePolicySnapshot, action: PolicyAction) -> dict[str, str] | None:
+def _command_rule(
+    snapshot: EffectivePolicySnapshot | EffectivePolicySnapshotV2,
+    action: PolicyAction,
+) -> dict[str, str] | None:
     argv = action.argv
     cwd = str(action.metadata.get("cwd", "."))
     if not argv or any("\x00" in item for item in argv) or "\x00" in cwd:
@@ -170,7 +189,10 @@ def _cwd_forbidden(cwd: str) -> bool:
     return any(part == ".." for part in candidate.parts)
 
 
-def _path_rule(snapshot: EffectivePolicySnapshot, action: PolicyAction) -> dict[str, str] | None:
+def _path_rule(
+    snapshot: EffectivePolicySnapshot | EffectivePolicySnapshotV2,
+    action: PolicyAction,
+) -> dict[str, str] | None:
     name = Path(action.resource).name
     for pattern in snapshot.protected_path_globs + snapshot.project_denied_path_globs:
         if Path(name).match(pattern) or Path(action.resource).match(pattern):

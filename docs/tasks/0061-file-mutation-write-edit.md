@@ -1,7 +1,5 @@
 # 任务 0061：write/edit 与多动作文件变更实施计划
 
-> 2026-09-26 文档对齐：本记录来自 `codex/phase-8-tooling-policy-git`（核对时 HEAD `5b6d789`）。实现及验证属于该隔离分支，尚未合入 `main`；同步文档不代表代码集成或本轮重新测试。下文提交/推送表述保留各任务完成时的历史边界，当前分支状态见阶段八执行计划。
-
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **状态：** Done；用户已明确要求直接推进，使用同一隔离工作树串行实施
@@ -70,7 +68,7 @@ class ExactEditInput(BaseModel):
 - 每个动作可独立检查、撤销和恢复；累计 Diff 不丢失动作身份。
 - 新旧恢复格式并存，崩溃不会重复文件副作用。
 
-## 本任务完成时的证据与边界
+## 当前证据与待完成项
 
 - 2026-09-19：Planner、Checkpoint-before-effect Applier、动作级 Receipt、Runtime `write/edit`、审批恢复、累计 Diff 与兼容清单已接入；补齐落盘前输出上限、Checkpoint 绑定回滚和父目录竞态保护；相关 workspace/runtime/recovery/persistence/contracts/tools/CLI/presentation 分组 `555 passed`；Ruff、格式、Mypy 与 `git diff --check` 通过。
-- 实现与本地审查修复已提交；真实 Terminal.app 独立 `VERA_STATE_DIR` 下完成首屏与窄窗口视觉走查，品牌、工作区/模型信息、输入框和状态栏无裁切；最新共同 non-live 为 `1208 passed, 2 deselected, 6 warnings`，Ruff、格式、Mypy、wheel/sdist 与 `git diff --check` 均通过；当时 0062 尚未启动；该任务后来已完成，当前剩余事项见阶段八执行计划。
+- 实现与本地审查修复已提交；真实 Terminal.app 独立 `VERA_STATE_DIR` 下完成首屏与窄窗口视觉走查，品牌、工作区/模型信息、输入框和状态栏无裁切；最新共同 non-live 为 `1208 passed, 2 deselected, 6 warnings`，Ruff、格式、Mypy、wheel/sdist 与 `git diff --check` 均通过；0062 仍未启动，等待用户重新授权。

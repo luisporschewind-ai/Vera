@@ -4,41 +4,16 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
-import re
 import subprocess
 import sys
 from pathlib import Path
 
+from smoke_support.cli_checks import run_cli_checks, with_placeholder_provider
+from smoke_support.core_payload import _CORE_SMOKE
+from smoke_support.session_checks import run_instruction_checks, run_session_checks
+
 from vera.evals.corpus import sha256_tree
-
-CLOSE_SESSION = '{"schema_version":1,"type":"session.close"}\n'
-PLACEHOLDER_KEY = "vera-test-placeholder-not-a-secret"
-_ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
-
-
-def _write_smoke_skill(root: Path, name: str) -> Path:
-    package = root / name
-    package.mkdir(parents=True, exist_ok=True)
-    (package / "skill.toml").write_text(
-        "\n".join(
-            (
-                "format_version = 1",
-                f'name = "{name}"',
-                'version = "1.0.0"',
-                'description = "Installed wheel smoke Skill"',
-                "",
-                "[compatibility]",
-                'min_vera_core = "0.1.0"',
-                'max_vera_core_exclusive = "1.0.0"',
-                "",
-            )
-        ),
-        encoding="utf-8",
-    )
-    (package / "SKILL.md").write_text("# Smoke Skill\n", encoding="utf-8")
-    return package
 
 
 def _run(
@@ -87,57 +62,6 @@ def _isolated_env(home: Path) -> dict[str, str]:
     return env
 
 
-def _with_placeholder_provider(env: dict[str, str]) -> dict[str, str]:
-    updated = env.copy()
-    updated["DEEPSEEK_API_KEY"] = PLACEHOLDER_KEY
-    updated["VERA_DEEPSEEK_BASE_URL"] = "https://example.invalid/v1"
-    updated["VERA_DEEPSEEK_MODEL"] = "fake-model"
-    return updated
-
-
-def _installed_skill_checks(workspace: Path, state_dir: Path, user_skill: Path) -> str:
-    return f"""
-from pathlib import Path
-
-from vera.contracts.commands import StartRun
-from vera.models.base import FakeModelAdapter, ModelTurn
-from vera.runtime.engine import VeraRuntime
-from vera.skills.manifest import ManifestLoader
-from vera.skills.snapshot_store import SkillSnapshotError, SkillSnapshotStore
-from vera.tools.registry import ToolRegistry
-
-workspace = Path({str(workspace)!r})
-state_dir = Path({str(state_dir)!r})
-user_skill = Path({str(user_skill)!r})
-no_skill_state = state_dir / "no-skill-runtime"
-runtime = VeraRuntime(
-    FakeModelAdapter([ModelTurn(assistant_text="done", finish_reason="stop")]),
-    ToolRegistry(),
-    no_skill_state,
-)
-events = tuple(
-    runtime.handle(StartRun(goal="hello", workspace_root=workspace, model_profile="fake"))
-)
-assert all(not event.type.startswith("skill.") for event in events)
-assert not (no_skill_state / "skills").exists()
-
-package = ManifestLoader().load(user_skill, source_kind="user")
-store = SkillSnapshotStore()
-frozen = store.freeze(package, state_dir=state_dir)
-snapshot_id = frozen.snapshot.snapshot_id
-user_skill.joinpath("SKILL.md").write_text("changed source\\n", encoding="utf-8")
-restored = store.load(snapshot_id, state_dir=state_dir)
-assert restored.files[0].content == b"# Smoke Skill\\n"
-(state_dir / "skills" / "snapshots" / "sha256" / snapshot_id / "snapshot.json").unlink()
-try:
-    store.load(snapshot_id, state_dir=state_dir)
-except SkillSnapshotError as exc:
-    assert exc.code == "skill_snapshot_missing"
-else:
-    raise AssertionError("missing Skill Snapshot was accepted")
-"""
-
-
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dist", type=Path, required=True)
@@ -156,10 +80,6 @@ def main(argv: list[str]) -> int:
     state_dir = home / "vera-state"
     state_dir.mkdir(parents=True, exist_ok=True)
     env["VERA_STATE_DIR"] = str(state_dir)
-    user_skill_root = home / "xdg-config" / "Vera" / "skills"
-    workspace_skill_root = workspace / ".vera" / "skills"
-    user_skill = _write_smoke_skill(user_skill_root, "user-smoke")
-    _write_smoke_skill(workspace_skill_root, "workspace-smoke")
     before = sha256_tree(workspace)
 
     created = _run(
@@ -180,6 +100,14 @@ def main(argv: list[str]) -> int:
     if install.returncode != 0:
         sys.stderr.write(install.stderr)
         return install.returncode or 1
+    core_smoke = _run(
+        [str(python), "-c", _CORE_SMOKE, str(dist / "installed-core-smoke")],
+        cwd=workspace,
+        env=env,
+    )
+    if core_smoke.returncode != 0:
+        sys.stderr.write(core_smoke.stdout + core_smoke.stderr)
+        return core_smoke.returncode or 1
     repeat = _run(
         ["uv", "pip", "install", "--python", str(python), "--offline", str(wheel)],
         cwd=workspace,
@@ -189,421 +117,33 @@ def main(argv: list[str]) -> int:
         sys.stderr.write(repeat.stderr)
         return repeat.returncode or 1
 
-    help_proc = _run([str(vera), "--help"], cwd=workspace, env=env)
-    help_text = _ANSI.sub("", help_proc.stdout)
-    help_ok = help_proc.returncode == 0 and ("Usage" in help_text or "usage" in help_text)
-    if not help_ok or "--version" not in help_text:
-        sys.stderr.write(help_proc.stdout + help_proc.stderr)
-        return help_proc.returncode or 1
-
-    version_proc = _run([str(vera), "--version"], cwd=workspace, env=env)
-    if version_proc.returncode != 0 or "vera 0.1.0" not in version_proc.stdout:
-        sys.stderr.write(version_proc.stdout + version_proc.stderr)
-        return version_proc.returncode or 1
-    json_version = _run([str(vera), "--json", "--version"], cwd=workspace, env=env)
-    if json_version.returncode != 0:
-        sys.stderr.write(json_version.stdout + json_version.stderr)
-        return json_version.returncode or 1
-    version_payload = json.loads(json_version.stdout)
-    if (
-        version_payload.get("name") != "vera"
-        or version_payload.get("version") != "0.1.0"
-        or version_payload.get("install") != "wheel"
-        or "site-packages" not in str(version_payload.get("location", ""))
-        or "git" in version_payload
-    ):
-        sys.stderr.write(json_version.stdout)
-        return 1
-
-    for args_cli in (["eval", "validate", "--json"], ["eval", "list", "--json"]):
-        proc = _run([str(vera), *args_cli], cwd=workspace, env=env)
-        if proc.returncode != 0:
-            sys.stderr.write(proc.stderr)
-            return proc.returncode or 1
-        payload = json.loads(proc.stdout)
-        if payload.get("schema_version") != 1:
-            sys.stderr.write("eval json schema_version mismatch\n")
-            return 1
-
-    missing = _run([str(vera), "--plain"], cwd=workspace, env=env, input_text="/exit\n")
-    missing_text = missing.stderr + missing.stdout
-    if missing.returncode != 5 or "missing_provider_config" not in missing_text:
-        sys.stderr.write(missing.stdout + missing.stderr)
-        return missing.returncode or 1
-
-    ready = _with_placeholder_provider(env)
-    default_mode = _run([str(vera)], cwd=workspace, env=ready)
-    if default_mode.returncode != 2:
-        sys.stderr.write(default_mode.stdout + default_mode.stderr)
-        return default_mode.returncode or 1
-
-    no_continue = _run([str(vera), "--json", "-c"], cwd=workspace, env=ready)
-    if no_continue.returncode != 2:
-        sys.stderr.write(no_continue.stdout + no_continue.stderr)
-        return no_continue.returncode or 1
-    if "\u001b" in no_continue.stdout:
-        sys.stderr.write("continue json emitted ANSI\n")
-        return 1
-
-    json_session = _run(
-        [str(vera), "--json"],
-        cwd=workspace,
-        env=ready,
-        input_text=CLOSE_SESSION,
-    )
-    if json_session.returncode != 0:
-        sys.stderr.write(json_session.stderr)
-        return json_session.returncode or 1
-
-    skills_input = (
-        '{"schema_version":1,"type":"session.command","raw":"/skills"}\n'
-        '{"schema_version":1,"type":"session.command","raw":"/skills show user-smoke"}\n'
-        '{"schema_version":1,"type":"session.command","raw":"/skills use user-smoke"}\n'
-        '{"schema_version":1,"type":"session.command","raw":"/status"}\n'
-        '{"schema_version":1,"type":"session.command","raw":"/skills clear"}\n' + CLOSE_SESSION
-    )
-    skills_session = _run(
-        [str(vera), "--json"],
-        cwd=workspace,
-        env=ready,
-        input_text=skills_input,
-    )
-    if skills_session.returncode != 0 or "\u001b" in skills_session.stdout:
-        sys.stderr.write(skills_session.stdout + skills_session.stderr)
-        return skills_session.returncode or 1
-    skill_events = [
-        json.loads(line).get("event") or {}
-        for line in skills_session.stdout.splitlines()
-        if line.strip()
-    ]
-    listed_event = next(
-        (event for event in skill_events if event.get("type") == "skill.listed"), None
-    )
-    if listed_event is None:
-        sys.stderr.write(skills_session.stdout)
-        return 1
-    skill_ids = {item.get("skill_id") for item in listed_event.get("payload", {}).get("items", [])}
-    if skill_ids != {"user:user-smoke", "workspace:workspace-smoke"}:
-        sys.stderr.write(skills_session.stdout)
-        return 1
-    if (
-        str(workspace_skill_root) in skills_session.stdout
-        or "# Smoke Skill" in skills_session.stdout
-    ):
-        sys.stderr.write("Skill public output leaked source path or body\n")
-        return 1
-    status_event = next(
-        (event for event in skill_events if event.get("type") == "session.status"), None
-    )
-    if (
-        status_event is None
-        or status_event.get("payload", {}).get("skill_selection", {}).get("skill_id")
-        != "user:user-smoke"
-    ):
-        sys.stderr.write(skills_session.stdout)
-        return 1
-    selection_events = [
-        event for event in skill_events if event.get("type") == "skill.selection.changed"
-    ]
-    clear_event = selection_events[-1] if selection_events else None
-    if (
-        clear_event is None
-        or clear_event.get("payload", {}).get("selection", {}).get("mode") != "none"
-    ):
-        sys.stderr.write(skills_session.stdout)
-        return 1
-
-    installed_checks = _run(
-        [str(python), "-c", _installed_skill_checks(workspace, state_dir, user_skill)],
-        cwd=workspace,
+    ready = with_placeholder_provider(env)
+    code = run_cli_checks(vera, workspace=workspace, env=env, ready=ready, run=_run)
+    if code:
+        return code
+    code = run_session_checks(
+        vera,
+        workspace=workspace,
         env=env,
+        ready=ready,
+        state_dir=state_dir,
+        home=home,
+        run=_run,
     )
-    if installed_checks.returncode != 0:
-        sys.stderr.write(installed_checks.stdout + installed_checks.stderr)
-        return installed_checks.returncode or 1
-
-    picker = _run(
-        [str(vera), "--json", "-r"],
-        cwd=workspace,
-        env=ready,
-        input_text="should-not-be-id\n",
-    )
-    if picker.returncode != 2 or "\u001b" in picker.stdout:
-        sys.stderr.write(picker.stdout + picker.stderr)
-        return picker.returncode or 1
-
-    missing_resume = _run(
-        [str(vera), "--json", "-r", "session_missing"],
-        cwd=workspace,
-        env=ready,
-    )
-    if missing_resume.returncode != 2:
-        sys.stderr.write(missing_resume.stdout + missing_resume.stderr)
-        return missing_resume.returncode or 1
-
-    listed = _run(
-        [str(vera), "--json"],
-        cwd=workspace,
-        env=ready,
-        input_text='{"schema_version":1,"type":"session.command","raw":"/sessions"}\n'
-        + CLOSE_SESSION,
-    )
-    if listed.returncode != 0:
-        sys.stderr.write(listed.stderr)
-        return listed.returncode or 1
-    if not any(
-        (json.loads(line).get("event") or {}).get("type") == "session.listed"
-        for line in listed.stdout.splitlines()
-        if line.strip()
-    ):
-        sys.stderr.write(listed.stdout)
-        return 1
-
-    session_dirs = [path for path in (state_dir / "sessions").iterdir() if path.is_dir()]
-    if not session_dirs:
-        sys.stderr.write("json session did not create VERA_STATE_DIR sessions\n")
-        return 1
-    session_id = session_dirs[0].name
-    journal_path = session_dirs[0] / "session.jsonl"
-    v1_bytes = journal_path.read_bytes()
-    if b'"session_format_version":1' not in v1_bytes.replace(b" ", b""):
-        sys.stderr.write("created session journal is not v1\n")
-        return 1
-
-    continued = _run(
-        [str(vera), "--json", "-c"],
-        cwd=workspace,
-        env=ready,
-        input_text=CLOSE_SESSION,
-    )
-    if continued.returncode != 0 or "\u001b" in continued.stdout:
-        sys.stderr.write(continued.stdout + continued.stderr)
-        return continued.returncode or 1
-    if "session.loaded" not in continued.stdout:
-        sys.stderr.write("continue did not emit session.loaded\n")
-        sys.stderr.write(continued.stdout)
-        return 1
-
-    healthy = _run(
-        [
-            str(vera),
-            "sessions",
-            "inspect",
-            session_id,
-            "--workspace",
-            str(workspace),
-            "--json",
-        ],
-        cwd=workspace,
-        env=ready,
-    )
-    if healthy.returncode != 2:
-        sys.stderr.write(healthy.stdout + healthy.stderr)
-        return healthy.returncode or 1
-
-    journal_path.write_bytes(v1_bytes + b'{"session_format_version":1')
-    inspect_trunc = _run(
-        [
-            str(vera),
-            "sessions",
-            "inspect",
-            session_id,
-            "--workspace",
-            str(workspace),
-            "--json",
-        ],
-        cwd=workspace,
-        env=ready,
-    )
-    if inspect_trunc.returncode != 0:
-        sys.stderr.write(inspect_trunc.stdout + inspect_trunc.stderr)
-        return inspect_trunc.returncode or 1
-    inspect_payload = json.loads(inspect_trunc.stdout.strip().splitlines()[-1])
-    if inspect_payload.get("failure_code") != "truncated_tail":
-        sys.stderr.write(inspect_trunc.stdout)
-        return 1
-    repair = _run(
-        [
-            str(vera),
-            "sessions",
-            "repair",
-            session_id,
-            "--workspace",
-            str(workspace),
-            "--json",
-        ],
-        cwd=workspace,
-        env=ready,
-    )
-    if repair.returncode != 0:
-        sys.stderr.write(repair.stdout + repair.stderr)
-        return repair.returncode or 1
-    repair_payload = json.loads(repair.stdout.strip().splitlines()[-1])
-    if repair_payload.get("applied") is not False:
-        sys.stderr.write(repair.stdout)
-        return 1
-    truncated = v1_bytes + b'{"session_format_version":1'
-    if journal_path.read_bytes() != truncated:
-        sys.stderr.write("repair dry-run mutated session journal\n")
-        return 1
-    journal_path.write_bytes(v1_bytes)
-
-    relisted = _run(
-        [str(vera), "--json"],
-        cwd=workspace,
-        env=ready,
-        input_text='{"schema_version":1,"type":"session.command","raw":"/sessions"}\n'
-        + CLOSE_SESSION,
-    )
-    if relisted.returncode != 0:
-        sys.stderr.write(relisted.stderr)
-        return relisted.returncode or 1
-    listed_ids: list[str] = []
-    for line in relisted.stdout.splitlines():
-        if not line.strip():
-            continue
-        event = json.loads(line).get("event") or {}
-        if event.get("type") == "session.listed":
-            listed_ids = [
-                str(item.get("session_id")) for item in event.get("payload", {}).get("items", [])
-            ]
-    if session_id not in listed_ids:
-        sys.stderr.write("v1 session disappeared from rebuilt list\n")
-        sys.stderr.write(relisted.stdout)
-        return 1
-
-    doctor_input = '{"schema_version":1,"type":"session.command","raw":"/doctor"}\n' + CLOSE_SESSION
-    doctor = _run([str(vera), "--json"], cwd=workspace, env=ready, input_text=doctor_input)
-    if doctor.returncode != 0:
-        sys.stderr.write(doctor.stderr)
-        return doctor.returncode or 1
-    doctor_types = []
-    for line in doctor.stdout.splitlines():
-        if not line.strip():
-            continue
-        record = json.loads(line)
-        event = record.get("event") or {}
-        doctor_types.append(event.get("type"))
-        if event.get("type") == "session.doctor":
-            names = [item.get("name") for item in event.get("payload", {}).get("items", [])]
-            if names != ["version", "python", "terminal", "config", "state_dir", "git"]:
-                sys.stderr.write(doctor.stdout)
-                return 1
-    if "session.doctor" not in doctor_types or "\u001b" in doctor.stdout:
-        sys.stderr.write(doctor.stdout + doctor.stderr)
-        return 1
-
-    run_missing = _run([str(vera), "run", "hello"], cwd=workspace, env=env)
-    if run_missing.returncode != 5 or "missing_provider_config" not in (
-        run_missing.stderr + run_missing.stdout
-    ):
-        sys.stderr.write(run_missing.stdout + run_missing.stderr)
-        return run_missing.returncode or 1
-
-    plain = _run(
-        [str(vera), "--plain"],
-        cwd=workspace,
-        env=ready,
-        input_text="/doctor\n/exit\n",
-    )
-    if plain.returncode != 0 or "version" not in (plain.stdout + plain.stderr):
-        sys.stderr.write(plain.stdout + plain.stderr)
-        return plain.returncode or 1
-
-    blocked_parent = home / "blocked-parent"
-    blocked_parent.mkdir(parents=True, exist_ok=True)
-    blocked_parent.chmod(0o500)
-    blocked_env = ready.copy()
-    blocked_env["VERA_STATE_DIR"] = str(blocked_parent / "vera-state")
-    unwritable = _run([str(vera), "--plain"], cwd=workspace, env=blocked_env, input_text="/exit\n")
-    blocked_parent.chmod(0o700)
-    if unwritable.returncode != 5 or "state_unwritable" not in (
-        unwritable.stderr + unwritable.stdout
-    ):
-        sys.stderr.write(unwritable.stdout + unwritable.stderr)
-        return unwritable.returncode or 1
-
-    future_home = home / "future-state"
-    future_run = future_home / "runs" / "run_future"
-    future_run.mkdir(parents=True, exist_ok=True)
-    manifest = (
-        '{"manifest_version":99,"journal_format_version":1,"run_id":"run_future",'
-        '"created_at":"2026-09-11T00:00:00Z"}'
-    )
-    (future_run / "manifest.json").write_text(manifest, encoding="utf-8")
-    (future_run / "events.jsonl").write_text("", encoding="utf-8")
-    future_env = ready.copy()
-    future_env["VERA_STATE_DIR"] = str(future_home)
-    inspected = _run(
-        [str(vera), "state", "inspect", "run_future", "--json"],
-        cwd=workspace,
-        env=future_env,
-    )
-    if inspected.returncode != 0:
-        sys.stderr.write(inspected.stderr)
-        return inspected.returncode or 1
-    record = json.loads(inspected.stdout.strip().splitlines()[-1])
-    if record.get("payload", {}).get("format_status") != "unsupported":
-        sys.stderr.write(inspected.stdout)
-        return 1
-    if (future_run / "manifest.json").read_text(encoding="utf-8") != manifest:
-        sys.stderr.write("unknown schema overwritten\n")
-        return 1
-
-    after = sha256_tree(workspace)
-    if after != before:
+    if code:
+        return code
+    if sha256_tree(workspace) != before:
         sys.stderr.write("workspace hash changed during wheel smoke\n")
         return 1
-
-    extra = home / "instruction-workspace"
-    extra.mkdir(parents=True)
-    (extra / "AGENTS.md").write_text("agents base\n", encoding="utf-8")
-    (extra / "VERA.md").write_text("vera extra\n", encoding="utf-8")
-    snap = sha256_tree(extra)
-    instruction_input = (
-        '{"schema_version":1,"type":"session.command","raw":"/instructions"}\n' + CLOSE_SESSION
+    return run_instruction_checks(
+        vera,
+        workspace=workspace,
+        env=env,
+        ready=ready,
+        home=home,
+        workspace_before=before,
+        run=_run,
     )
-    instructions = _run(
-        [str(vera), "--workspace", str(extra), "--json"],
-        cwd=extra,
-        env=ready,
-        input_text=instruction_input,
-    )
-    if instructions.returncode != 0:
-        sys.stderr.write(instructions.stdout + instructions.stderr)
-        return instructions.returncode or 1
-    if "agents base" in instructions.stdout or "vera extra" in instructions.stdout:
-        sys.stderr.write("project instruction body leaked\n")
-        return 1
-    status_types = []
-    for line in instructions.stdout.splitlines():
-        if not line.strip():
-            continue
-        event = json.loads(line).get("event") or {}
-        status_types.append(event.get("type"))
-    if "project.instructions.status" not in status_types:
-        sys.stderr.write("missing project.instructions.status\n")
-        sys.stderr.write(instructions.stdout)
-        return 1
-    init_help = _run([str(vera), "init", "--help"], cwd=extra, env=env)
-    if init_help.returncode != 0 or "只提议 VERA.md" not in _ANSI.sub("", init_help.stdout):
-        sys.stderr.write(init_help.stdout + init_help.stderr)
-        return init_help.returncode or 1
-    init_json = _run(
-        [str(vera), "init", "--workspace", str(extra), "--json"],
-        cwd=extra,
-        env=ready,
-    )
-    if sha256_tree(extra) != snap:
-        sys.stderr.write("vera init wrote the workspace without approval\n")
-        return 1
-    if "agents base" in init_json.stdout:
-        sys.stderr.write("init output leaked project instruction body\n")
-        return 1
-    if sha256_tree(workspace) != before:
-        sys.stderr.write("instruction smoke mutated the primary workspace\n")
-        return 1
-    return 0
 
 
 if __name__ == "__main__":

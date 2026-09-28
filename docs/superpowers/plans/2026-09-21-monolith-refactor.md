@@ -1,7 +1,5 @@
 # Vera 大单体文件纯结构拆分 Implementation Plan
 
-> 2026-09-26 文档对齐：本记录来自 `codex/phase-8-tooling-policy-git`（核对时 HEAD `5b6d789`）。实现及验证属于该隔离分支，尚未合入 `main`；同步文档不代表代码集成或本轮重新测试。
-
 **实施状态：** 已完成（2026-09-21）。代码已提交于 `dd201e7`；本次文档提交只补齐本计划的执行状态与验证证据，不改变阶段八产品验收状态。
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from vera.tools.filesystem import list_directory, read_file, search_text
+from vera.tools.filesystem import find_files, list_directory, read_file, search_text
 from vera.workspace.paths import WorkspacePaths
 
 
@@ -50,3 +50,22 @@ def test_search_text_missing_path_is_not_found(tmp_path: Path) -> None:
     result = search_text(WorkspacePaths(tmp_path), "needle", "missing.txt")
     assert result.ok is False
     assert result.error_code == "not_found"
+
+
+def test_find_rejects_patterns_that_escape_workspace(tmp_path: Path) -> None:
+    (tmp_path / "inside.txt").write_text("inside", encoding="utf-8")
+    result = find_files(WorkspacePaths(tmp_path), "../*")
+    assert result.ok is False
+    assert result.error_code == "workspace_boundary"
+
+
+def test_search_text_skips_symlinks_to_external_files(tmp_path: Path) -> None:
+    outside = tmp_path.parent / "outside-secret.txt"
+    outside.write_text("unique-external-marker", encoding="utf-8")
+    try:
+        (tmp_path / "link.txt").symlink_to(outside)
+    except OSError:
+        return
+    result = search_text(WorkspacePaths(tmp_path), "unique-external-marker")
+    assert result.ok is True
+    assert result.matches == []

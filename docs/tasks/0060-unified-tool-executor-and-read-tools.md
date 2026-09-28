@@ -1,7 +1,5 @@
 # 任务 0060：统一 ToolExecutor 与只读工具迁移实施计划
 
-> 2026-09-26 文档对齐：本记录来自 `codex/phase-8-tooling-policy-git`（核对时 HEAD `5b6d789`）。实现及验证属于该隔离分支，尚未合入 `main`；同步文档不代表代码集成或本轮重新测试。下文提交/推送表述保留各任务完成时的历史边界，当前分支状态见阶段八执行计划。
-
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **状态：** Done；已授权串行实施，依赖 0059 完成
@@ -62,8 +60,8 @@ class ToolExecutor:
 - 新模型只看到 canonical 工具，旧记录仍可恢复。
 - 四个只读工具的边界、截断和错误码稳定。
 
-## 本任务完成时的证据与边界
+## 当前证据与待完成项
 
 - 2026-09-19：Executor 红测已确认；审批暂停、快照恢复、批准后复验及 action resolved 持久化已接入；最新审查修复覆盖 `find` glob 越界、`grep/find` 外部 symlink、执行阶段 definition/input binding stale、显式 V2 policy 不被重绑定，以及 `approved=True` 不得绕过 `DENY`，并补充对应回归。工具/Runtime/Recovery/Contract/Policy/Persistence/Workspace 分组 `386 passed`，CLI/Presentation 分组 `213 passed`；共同 non-live `1208 passed, 2 deselected, 6 warnings`，Ruff、格式、Mypy、`git diff --check` 与 wheel/sdist 构建全部通过。
 - canonical `read/grep/find/ls` 已由 bootstrap 注册；旧 `read_file/list_directory/search_text` 仅保留历史 fixture/decoder 类，不进入新 bootstrap。
-- 0060 完成时要求后续任务另获授权；0062 后来已实施完成，当前阶段八剩余事项见执行计划。
+- 0060 的共同门禁已完成；不得因该门禁通过而自动启动 0062，后续任务仍需用户重新授权。

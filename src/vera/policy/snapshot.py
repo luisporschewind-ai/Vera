@@ -8,11 +8,21 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from vera.policy.models import PolicyMode
 
-class EffectivePolicySnapshot(BaseModel):
+
+def protected_roots_hash(globs: tuple[str, ...]) -> str:
+    encoded = json.dumps(
+        sorted(globs),
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+class _EffectivePolicyFields(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    builtin_policy_version: Literal[1] = 1
     workspace_identity: str
     protected_path_globs: tuple[str, ...] = (
         ".env",
@@ -29,7 +39,20 @@ class EffectivePolicySnapshot(BaseModel):
     project_denied_tools: tuple[str, ...] = ()
 
 
-def policy_hash(snapshot: EffectivePolicySnapshot) -> str:
+class EffectivePolicySnapshot(_EffectivePolicyFields):
+    builtin_policy_version: Literal[1] = 1
+
+
+class EffectivePolicySnapshotV2(_EffectivePolicyFields):
+    builtin_policy_version: Literal[2] = 2
+    policy_mode: PolicyMode = PolicyMode.BALANCED
+
+    @property
+    def protected_roots_hash(self) -> str:
+        return protected_roots_hash(self.protected_path_globs)
+
+
+def policy_hash(snapshot: EffectivePolicySnapshot | EffectivePolicySnapshotV2) -> str:
     encoded = json.dumps(
         snapshot.model_dump(mode="json"),
         ensure_ascii=False,

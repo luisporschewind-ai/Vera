@@ -14,6 +14,26 @@ class PolicyDecisionKind(StrEnum):
     DENY = "deny"
 
 
+class PolicyMode(StrEnum):
+    REVIEW = "review"
+    BALANCED = "balanced"
+    AUTONOMOUS = "autonomous"
+
+
+class RiskLevel(StrEnum):
+    LOW = "low"
+    MODERATE = "moderate"
+    HIGH = "high"
+    FORBIDDEN = "forbidden"
+
+
+class RiskAssessment(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    level: RiskLevel
+    reason_codes: tuple[str, ...]
+
+
 class PolicyActionKind(StrEnum):
     PATH_READ = "path_read"
     PATH_WRITE = "path_write"

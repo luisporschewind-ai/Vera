@@ -52,7 +52,7 @@ def is_forbidden_environment_name(name: str) -> bool:
 
 
 def _allowlist_for(purpose: str) -> frozenset[str]:
-    if purpose == "eval_worker":
+    if purpose in {"eval_worker", "bash"}:
         return _LOCALE_AND_TERM | _EVAL_TASK_VARS
     return _LOCALE_AND_TERM
 

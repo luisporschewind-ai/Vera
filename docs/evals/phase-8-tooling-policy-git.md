@@ -1,7 +1,5 @@
 # 阶段八工具、Policy v2 与原生 Git 验收证据
 
-> 2026-09-26 文档对齐：本记录来自 `codex/phase-8-tooling-policy-git`（核对时 HEAD `5b6d789`）。实现及验证属于该隔离分支，尚未合入 `main`；同步文档不代表代码集成或本轮重新测试。
-
 **任务：** [0066 阶段八验收与真实 dogfood](../tasks/0066-phase-8-tooling-git-acceptance.md)
 **记录日期：** 2026-09-20
 **结论：** 自动验收通过，任务进入 `Ready for manual acceptance`；这不是阶段八 `Complete`。
@@ -95,4 +93,4 @@ All checks passed!
 - 该 Terminal.app 前置测试没有改变隔离工作树；当前新增的 `.pytest_cache`/`__pycache__` 均为既有 ignored cache，`git status --short --branch` 仍干净。
 - 未运行真实 Provider、真实 API Key、网络依赖安装和 `git push`；这些不是本任务的离线自动门禁，且 `bash` 的远程 Git 写操作仍保持拒绝边界。
 - 未完成真实 Terminal.app 的本轮人工全流程验收；PTY 只能证明文本/无 ANSI 契约，不能替代原生 Terminal.app 视觉和交互验收。
-- 因此本证据只允许将 0066 和阶段八推进到 `Ready for manual acceptance`。只有用户明确确认阶段八结果后，才可将任务/阶段标为 Done/Complete；阶段九后来已于 2026-09-21 获得单独并行实施授权，不关闭本阶段门禁。
+- 因此本证据只允许将 0066 和阶段八推进到 `Ready for manual acceptance`。只有用户明确确认阶段八结果后，才可将任务/阶段标为 Done/Complete；阶段九仍需独立授权。

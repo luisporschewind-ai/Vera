@@ -137,6 +137,16 @@ class HumanPresenter:
             self._write(f"任务失败：{event.run_id}（{payload.get('reason', 'unknown')}）")
         elif event.type == "run.cancelled":
             self._write(f"任务已取消：{event.run_id}")
+        elif event.type == "git.operation.started":
+            self._write(f"Git 操作开始：{payload.get('operation', 'unknown')}")
+        elif event.type == "git.operation.completed":
+            self._write("Git 操作完成")
+        elif event.type == "git.operation.recovered":
+            self._write("Git 操作已恢复")
+        elif event.type == "git.operation.manual_required":
+            self._write(f"Git 操作需要人工处理：{payload.get('error_code', 'manual_required')}")
+        elif event.type == "git.operation.failed":
+            self._write(f"Git 操作失败：{payload.get('error_code', 'unknown')}")
         elif event.type == "rollback.completed":
             self._write(f"回滚完成：{event.run_id}")
         elif event.type == "rollback.conflicted":

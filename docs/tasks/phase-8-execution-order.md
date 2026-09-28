@@ -33,14 +33,14 @@
 
 | 顺序 | 任务 | 独立交付 | 进入下一项的门禁 |
 |---|---|---|---|
-| 1 | [0059 ToolAction、Policy v2 与 workspace trust](0059-tool-action-policy-v2-contracts.md) | v2 契约、风险/模式、私有 trust/grant store | 契约、Codec、权限矩阵和损坏存储测试通过 |
-| 2 | [0060 统一 ToolExecutor 与只读工具迁移](0060-unified-tool-executor-and-read-tools.md) | 所有普通工具统一准备/执行，canonical read/grep/find/ls | Runtime 不再直接 `registry.execute`；旧记录可读 |
-| 3 | [0061 write/edit 与多动作文件变更](0061-file-mutation-write-edit.md) | FileMutationPlan、动作级 Checkpoint/Receipt、累计 Diff | stale/恢复/旧 Change Set 兼容矩阵通过 |
-| 4 | [0062 结构化 bash、授权作用域与 CLI](0062-structured-bash-and-permissions.md) | argv 命令、风险分类、trust/permissions UI | shell/提权/秘密/Git 绕过负例和三客户端对照通过 |
-| 5 | [0063 原生 Git 只读能力](0063-native-git-read-tools.md) | repository discovery、status/diff/log/show/branch-list | 稳定机器格式和特殊仓库矩阵通过 |
-| 6 | [0064 GitCommitPlan 与精确提交](0064-native-git-commit.md) | path-scoped Commit、index 保全、结果反向验证 | 混合 index、新文件、特殊路径、stale 矩阵通过 |
-| 7 | [0065 Git Hooks、恢复与分支](0065-git-hooks-recovery-and-branches.md) | Hook 授权、签名失败、幂等恢复、branch create/switch | 崩溃恢复不重复 Commit，分支门禁通过 |
-| 8 | [0066 阶段八验收与真实 dogfood](0066-phase-8-tooling-git-acceptance.md) | 完整门禁、wheel、PTY、三类工程 Terminal.app 证据 | 用户确认后才可把阶段八标为 Complete |
+| 1 | [0059 ToolAction、Policy v2 与 workspace trust](0059-tool-action-policy-v2-contracts.md) | Done：v2 契约、风险/模式、私有 trust/grant store | 已通过契约、Codec、权限矩阵和损坏存储测试；进入 0060 |
+| 2 | [0060 统一 ToolExecutor 与只读工具迁移](0060-unified-tool-executor-and-read-tools.md) | Done：统一 prepare/execute、canonical 只读工具和可恢复审批已落地；共同门禁通过 | 不自动进入 0062，等待用户重新授权 |
+| 3 | [0061 write/edit 与多动作文件变更](0061-file-mutation-write-edit.md) | Done：实现与审查修复已提交（`f35b2e1`、`3b1fe2f`），相关分组 `555 passed`，共同门禁通过 | 不自动进入 0062，等待用户重新授权 |
+| 4 | [0062 结构化 bash、授权作用域与 CLI](0062-structured-bash-and-permissions.md) | Done：`7cbdfd9` 与 `a27ba4d`，结构化 bash、权限与 CLI 摘要已落地 | 0062 已完成，进入 0063 |
+| 5 | [0063 原生 Git 只读能力](0063-native-git-read-tools.md) | Done：`c37af18`，repository discovery、status/diff/log/show/branch-list 已实现；共同 wheel/sdist 受 DNS/PyPI 阻塞 | 本地提交已完成；0064 可开始，但必须保留 DNS 阻塞证据 |
+| 6 | [0064 GitCommitPlan 与精确提交](0064-native-git-commit.md) | Done：`de93fb2`、`781e756`，path-scoped Commit、index 保全、结果反向验证 | 0064 已完成，进入 0065 |
+| 7 | [0065 Git Hooks、恢复与分支](0065-git-hooks-recovery-and-branches.md) | Done：`6d0e37f`、`aeec20e`、`494b095`；Hook/签名、Commit 恢复、branch create/switch、Run 级事件/快照与客户端对照均完成 | 下一步仅评估 0066，需单独授权 |
+| 8 | [0066 阶段八验收与真实 dogfood](0066-phase-8-tooling-git-acceptance.md) | Ready for manual acceptance：自动门禁、wheel、PTY、Python/Swift 副本证据已记录；Node/TypeScript 与 Terminal.app 待复验 | 用户确认后才可把阶段八标为 Complete |
 
 任务严格按 0059 → 0060 → 0061 → 0062 → 0063 → 0064 → 0065 → 0066 执行。0059–0062 冻结工具与 Policy 基座后才允许接入 Git；0064 不得与 0065 并行修改 GitService、Receipt 或恢复逻辑。
 

@@ -8,29 +8,34 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from uuid import uuid4
 
-from vera.config import ConfigurationError, VeraConfig, load_config
+from vera.config import ConfigurationError, VeraConfig, load_config, load_provider_environment
 from vera.models.base import ModelAdapter
 from vera.models.openai_compatible import OpenAICompatibleAdapter
 from vera.persistence.recovery_snapshot import RecoverySnapshotStore
-from vera.policy.engine import PolicyEngine
-from vera.policy.snapshot import EffectivePolicySnapshot
-from vera.project_instructions import ProjectInstructionService
-from vera.provider_catalog import MODEL_CATALOG
-from vera.provider_configuration import ProviderConfigurationService
-from vera.provider_credentials import (
-    provider_env_path,
-    read_provider_environment,
-    validate_key_name,
+from vera.persistence.workspace_permissions import (
+    WorkspacePermissionStore,
+    WorkspacePermissionStoreError,
 )
+from vera.policy.engine import PolicyEngine
+from vera.policy.snapshot import EffectivePolicySnapshotV2
+from vera.project_instructions import ProjectInstructionService
 from vera.recovery.coordinator import RecoveryCoordinator
 from vera.recovery.probe import workspace_identity
 from vera.runtime.engine import VeraRuntime
-from vera.skills.discovery import SkillDiscovery
-from vera.skills.registry import SkillRegistry
-from vera.skills.selection import SkillSelectionService
-from vera.skills.snapshot_store import SkillSnapshotStore
-from vera.tools.builtin import ListDirectoryTool, ReadFileTool, SearchTextTool
+from vera.tools.bash import BashTool
+from vera.tools.builtin import FindTool, GrepTool, LsTool, ReadTool
 from vera.tools.command_policy import CommandPolicy
+from vera.tools.file_mutation import EditTool, WriteTool
+from vera.tools.git import (
+    GitBranchCreateTool,
+    GitBranchListTool,
+    GitBranchSwitchTool,
+    GitCommitTool,
+    GitDiffTool,
+    GitLogTool,
+    GitShowTool,
+    GitStatusTool,
+)
 from vera.tools.registry import ToolRegistry
 from vera.workspace.paths import WorkspacePaths
 
@@ -81,50 +86,8 @@ def load_or_create_installation_id(state_dir: Path) -> str:
 
 
 def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeDependencies:
-    preliminary = load_config(workspace, {})
-    profiles = ProviderConfigurationService()
-    trusted_names = {provider.api_key_env for provider in preliminary.providers.values()}
-    trusted_names.update(item.api_key_env for item in MODEL_CATALOG)
-    trusted_names.update(item.api_key_env for item in profiles.list_profiles())
-    for name in trusted_names:
-        validate_key_name(name)
-    source = provider_env_path()
-    if source.is_symlink():
-        raise ConfigurationError("unsafe_provider_env", "provider key file is unsafe")
-    if source.exists() or source.is_symlink():
-        workspace_root = workspace.resolve(strict=True)
-        private_file = source.resolve(strict=True)
-        if private_file == workspace_root or workspace_root in private_file.parents:
-            raise ConfigurationError(
-                "provider_key_in_workspace", "provider key file is inside workspace"
-            )
-    values = read_provider_environment(
-        frozenset(
-            trusted_names
-            | {
-                "VERA_DEEPSEEK_BASE_URL",
-                "VERA_DEEPSEEK_MODEL",
-                "VERA_GLM_BASE_URL",
-                "VERA_GLM_MODEL",
-            }
-        ),
-        source,
-    )
-    config = load_config(workspace, {}, values)
-    if profiles.path.exists():
-        profile = model_profile or config.default_model_profile
-        if profile is None:
-            raise ConfigurationError("missing_provider_config", "select and enable a model profile")
-    else:
-        profile = (
-            model_profile or config.default_model_profile or next(iter(config.providers), None)
-        )
-    if profile is None or profile not in config.providers:
-        raise ConfigurationError("missing_provider_config", "no model provider configured")
-    provider = config.providers[profile]
-    api_key = os.environ.get(provider.api_key_env) or values.get(provider.api_key_env)
-    if not api_key:
-        raise ConfigurationError("missing_provider_key", "selected model API Key is not configured")
+    load_provider_environment()
+    config = load_config(workspace, {})
     try:
         installation_id = load_or_create_installation_id(config.state_dir)
     except OSError as exc:
@@ -132,20 +95,44 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
             "state_unwritable",
             f"private state directory is not writable: {config.state_dir}",
         ) from exc
-    adapter: ModelAdapter = OpenAICompatibleAdapter(provider, api_key=api_key)
+    profile = model_profile or next(iter(config.providers), None)
+    if profile is None or profile not in config.providers:
+        raise ConfigurationError("missing_provider_config", "no model provider configured")
+    provider = config.providers[profile]
+    adapter: ModelAdapter = OpenAICompatibleAdapter(provider)
     paths = WorkspacePaths(workspace)
     registry = ToolRegistry()
-    registry.register(ReadFileTool(paths, config.limits.max_file_bytes))
-    registry.register(ListDirectoryTool(paths))
-    registry.register(SearchTextTool(paths))
+    registry.register(ReadTool(paths, config.limits.max_file_bytes))
+    registry.register(WriteTool(workspace, config.state_dir))
+    registry.register(EditTool(workspace, config.state_dir))
+    registry.register(GrepTool(paths))
+    registry.register(FindTool(paths))
+    registry.register(LsTool(paths))
+    registry.register(BashTool(workspace))
+    registry.register(GitCommitTool(workspace))
+    registry.register(GitStatusTool(workspace))
+    registry.register(GitDiffTool(workspace))
+    registry.register(GitLogTool(workspace))
+    registry.register(GitShowTool(workspace))
+    registry.register(GitBranchListTool(workspace))
+    registry.register(GitBranchCreateTool(workspace))
+    registry.register(GitBranchSwitchTool(workspace))
     policy_prefixes = config.user_allowed_command_prefixes
     identity = workspace_identity(workspace, installation_id)
-    engine = PolicyEngine(
-        EffectivePolicySnapshot(
-            workspace_identity=identity,
-            user_allowed_command_prefixes=policy_prefixes,
-        )
+    effective_snapshot = EffectivePolicySnapshotV2(
+        workspace_identity=identity,
+        user_allowed_command_prefixes=policy_prefixes,
     )
+    permission_store = WorkspacePermissionStore(
+        config.state_dir,
+        policy_major_version=effective_snapshot.builtin_policy_version,
+        protected_roots_hash=effective_snapshot.protected_roots_hash,
+    )
+    try:
+        workspace_permissions = permission_store.load(identity)
+    except WorkspacePermissionStoreError as exc:
+        raise ConfigurationError("permissions_unavailable", "无法读取工作区权限状态") from exc
+    engine = PolicyEngine(effective_snapshot)
     policy = CommandPolicy(
         policy_prefixes,
         policy_engine=engine,
@@ -158,7 +145,6 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
         snapshot_store=snapshot_store,
     )
     project_instructions = ProjectInstructionService()
-    skill_selection_service = SkillSelectionService(SkillRegistry(SkillDiscovery()))
     runtime = VeraRuntime(
         adapter,
         registry,
@@ -170,8 +156,7 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
         recovery_coordinator=coordinator,
         policy_engine=engine,
         project_instructions=project_instructions,
-        skill_selection_service=skill_selection_service,
-        skill_snapshot_store=SkillSnapshotStore(),
+        workspace_permissions=workspace_permissions,
     )
     return RuntimeDependencies(
         runtime=runtime,
