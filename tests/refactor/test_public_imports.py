@@ -61,6 +61,8 @@ def test_public_constructor_and_method_parameter_names_are_stable() -> None:
         "content_detector",
         "project_instructions",
         "workspace_permissions",
+        "access_session",
+        "process_supervisor",
     )
     assert _parameter_names(SessionController.__init__) == (
         "self",

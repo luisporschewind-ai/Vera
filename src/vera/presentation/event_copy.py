@@ -23,6 +23,8 @@ SILENT_EVENT_TYPES = frozenset(
 )
 
 _TITLES: dict[str, str] = {
+    "tool.repetition_detected": "多次读取未获得新信息，正在检查是否重复调查",
+    "tool.policy_decided": "工具策略判定",
     "run.started": "任务已开始",
     "checkpoint.created": "已创建检查点",
     "checkpoint.restored": "已恢复检查点",

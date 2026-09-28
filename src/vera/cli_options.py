@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from vera.session.startup import SessionOpenRequest, SessionStartupError
 
 ROOT_SUBCOMMANDS = frozenset(
-    {"run", "runs", "eval", "config", "recover", "state", "rollback", "sessions"}
+    {"run", "runs", "eval", "config", "recover", "state", "rollback", "sessions", "sandbox"}
 )
 _VALUE_OPTIONS = frozenset({"--workspace", "--model"})
 _FLAG_OPTIONS = frozenset({"--plain", "--json", "--version", "-V", "--help", "-h"})

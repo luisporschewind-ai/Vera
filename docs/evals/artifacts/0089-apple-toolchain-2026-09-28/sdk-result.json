@@ -1,0 +1,28 @@
+{
+  "root": "/private/tmp/vera-0089-acceptance.psEsZR/apple-toolchain-v7z7rhn1",
+  "extra_readonly": [
+    "/usr/share/firmlinks",
+    "/Library/Developer/PrivateFrameworks",
+    "/Library/Apple/System/Library/PrivateFrameworks",
+    "/Applications/Xcode.app",
+    "/Library/Preferences/com.apple.dt.Xcode.plist"
+  ],
+  "version": {
+    "status": "exited",
+    "exit_code": 0,
+    "stdout": "Xcode 26.0.1\nBuild version 17A400\n",
+    "stderr": ""
+  },
+  "sdks": {
+    "status": "exited",
+    "exit_code": 0,
+    "stdout": "DriverKit SDKs:\n\tDriverKit 25.0                \t-sdk driverkit25.0\n\niOS SDKs:\n\tiOS 26.0                      \t-sdk iphoneos26.0\n\niOS Simulator SDKs:\n\tSimulator - iOS 26.0          \t-sdk iphonesimulator26.0\n\nmacOS SDKs:\n\tmacOS 26.0                    \t-sdk macosx26.0\n\tmacOS 26.0                    \t-sdk macosx26.0\n\ntvOS SDKs:\n\ttvOS 26.0                     \t-sdk appletvos26.0\n\ntvOS Simulator SDKs:\n\tSimulator - tvOS 26.0         \t-sdk appletvsimulator26.0\n\nvisionOS SDKs:\n\tvisionOS 26.0                 \t-sdk xros26.0\n\nvisionOS Simulator SDKs:\n\tSimulator - visionOS 26.0     \t-sdk xrsimulator26.0\n\nwatchOS SDKs:\n\twatchOS 26.0                  \t-sdk watchos26.0\n\nwatchOS Simulator SDKs:\n\tSimulator - watchOS 26.0      \t-sdk watchsimulator26.0\n\n",
+    "stderr": "2026-09-27 16:55:27.055 xcodebuild[23783:1637495]  DVTFilePathFSEvents: Failed to start fs event stream.\n"
+  },
+  "sdk": {
+    "status": "exited",
+    "exit_code": 0,
+    "stdout": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk\n",
+    "stderr": "2026-09-27 16:55:31.972 xcodebuild[23790:1637555]  DVTFilePathFSEvents: Failed to start fs event stream.\n"
+  }
+}

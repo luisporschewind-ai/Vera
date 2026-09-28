@@ -13,6 +13,7 @@ from vera.contracts.streaming import StreamFrame
 from vera.presentation.diagnostics_copy import format_config_body, format_doctor_body
 from vera.presentation.event_copy import format_skill_event
 from vera.session.actions import (
+    CancelActiveRun,
     CloseSession,
     ExecuteSlashCommand,
     QueuePrompt,
@@ -49,7 +50,7 @@ class InteractiveSession:
         controller: SessionController | None = None,
     ) -> None:
         self.io = io
-        self.presenter = HumanPresenter(io.write)
+        self.presenter = HumanPresenter(io.write, details_hint="/tools 查看本轮详情")
         self.session_presenter = SessionPresenter(io.write)
         self.controller = controller or SessionController(
             dependencies,
@@ -94,6 +95,9 @@ class InteractiveSession:
         while not self.controller.exit_requested:
             try:
                 value = self.io.read("Vera > ").strip()
+                pasted = value == "/paste"
+                if pasted:
+                    value = self._read_paste()
             except EOFError:
                 return 0
             except KeyboardInterrupt:
@@ -101,7 +105,10 @@ class InteractiveSession:
                 continue
             if not value:
                 continue
-            if value.startswith("/"):
+            if not pasted and value == "/tools":
+                self.presenter.write_tool_details()
+                continue
+            if not pasted and value.startswith("/"):
                 self._consume(self.controller.dispatch(ExecuteSlashCommand(raw=value)))
             elif (
                 self.controller.pending_approval_id is not None
@@ -117,7 +124,28 @@ class InteractiveSession:
                 return 0
         return 0
 
+    def _read_paste(self) -> str:
+        self.io.write("多行输入：单独一行 /end 提交，/cancel 或 Ctrl+C 丢弃；收集期间不会执行。")
+        lines: list[str] = []
+        while True:
+            line = self.io.read("… ")
+            if line.strip() == "/end":
+                return "\n".join(lines)
+            if line.strip() == "/cancel":
+                self.io.write("已丢弃多行输入。")
+                return ""
+            lines.append(line)
+
     def _consume(self, outputs: object) -> None:
+        try:
+            self._consume_outputs(outputs)
+        except KeyboardInterrupt:
+            run_id = self.controller.active_run_id
+            if run_id is not None:
+                self._consume_outputs(self.controller.dispatch(CancelActiveRun(run_id=run_id)))
+            self.io.write("当前任务已取消。")
+
+    def _consume_outputs(self, outputs: object) -> None:
         from collections.abc import Iterable
 
         assert isinstance(outputs, Iterable)
@@ -133,7 +161,7 @@ class InteractiveSession:
                     pending_events = []
                 self._present_session_event(item)
                 continue
-            pending_events.append(item)
+            self.presenter.write_events((item,))
             if item.type == "approval.required":
                 self.presenter.write_events(tuple(pending_events))
                 pending_events = []
@@ -187,6 +215,8 @@ class InteractiveSession:
             text = event.payload.get("text")
             if isinstance(text, str) and text:
                 self.io.write(text)
+                if event.type == "session.help":
+                    self.io.write("/paste 多行输入（/end 提交，/cancel 丢弃）；/tools 本轮工具详情")
                 return
             self.io.write(_structured_plain(event.type, event.payload))
             return

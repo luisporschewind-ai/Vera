@@ -20,9 +20,9 @@ _EMPTY_AFTER_TOOLS_NUDGE = (
     "或调用 propose_changeset；不要返回空响应。"
 )
 _CLAIMED_CHANGESET_NUDGE = (
-    "你还没有调用 propose_changeset。只有该工具才会出现审批卡和 Diff；"
-    "不要声称已经形成 Change Set 或正在等待审批。"
-    "若要改文件，现在就调用 propose_changeset；否则只说明结论，不要假装变更已提交。"
+    "本次尚无 Core 审批请求记录，不要声称正在等待审批或已经提交变更计划。"
+    "修改文件使用当前已注册的 write/edit 等工具；审批卡和 Diff 由 Core 生成，"
+    "不需要模型调用独立审批工具。只报告实际执行结果。"
 )
 _CLAIMED_CHANGESET_MARKERS = (
     "已形成 change set",

@@ -1,0 +1,56 @@
+{
+  "python3": {
+    "entry": "/usr/local/bin/python3",
+    "resolved": "/usr/local/Cellar/python@3.12/3.12.2_1/Frameworks/Python.framework/Versions/3.12/bin/python3.12",
+    "size": 0,
+    "executed": false
+  },
+  "node": {
+    "entry": "/Users/admin/.local/bin/node",
+    "resolved": "/Users/admin/.hermes/node/bin/node",
+    "size": 147010000,
+    "executed": false
+  },
+  "go": {
+    "entry": "/usr/local/bin/go",
+    "resolved": "/usr/local/Cellar/go/1.27.1/libexec/bin/go",
+    "size": 17341248,
+    "executed": false
+  },
+  "rustc": {
+    "entry": "/usr/local/bin/rustc",
+    "resolved": "/usr/local/Cellar/rust/1.98.0/bin/rustc",
+    "size": 306056,
+    "executed": false
+  },
+  "cargo": {
+    "entry": "/usr/local/bin/cargo",
+    "resolved": "/usr/local/Cellar/rust/1.98.0/bin/cargo",
+    "size": 32794528,
+    "executed": false
+  },
+  "java": {
+    "entry": "/usr/bin/java",
+    "resolved": "/usr/bin/java",
+    "size": 135664,
+    "executed": false
+  },
+  "javac": {
+    "entry": "/usr/bin/javac",
+    "resolved": "/usr/bin/javac",
+    "size": 135664,
+    "executed": false
+  },
+  "clang": {
+    "entry": "/usr/bin/clang",
+    "resolved": "/usr/bin/clang",
+    "size": 118864,
+    "executed": false
+  },
+  "swift": {
+    "entry": "/usr/bin/swift",
+    "resolved": "/usr/bin/swift",
+    "size": 118864,
+    "executed": false
+  }
+}

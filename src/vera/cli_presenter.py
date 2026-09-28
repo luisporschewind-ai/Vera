@@ -7,6 +7,8 @@ from collections.abc import Callable, Sequence
 
 from vera.contracts.events import EventEnvelope
 from vera.presentation.event_copy import event_title, format_skill_event, is_silent
+from vera.presentation.sanitize import sanitize_terminal_text
+from vera.presentation.tool_activity import READ_LABELS, ToolActivity
 from vera.project_instructions import format_instruction_status
 from vera.redaction import Redactor
 
@@ -14,13 +16,30 @@ from vera.redaction import Redactor
 class HumanPresenter:
     """Render authoritative Runtime events without inspecting the workspace."""
 
-    def __init__(self, write: Callable[[str], None], redactor: Redactor | None = None) -> None:
+    def __init__(
+        self,
+        write: Callable[[str], None],
+        redactor: Redactor | None = None,
+        *,
+        details_hint: str = "详情见运行日志",
+    ) -> None:
         self._write = write
+        self._details_hint = details_hint
         self._redactor = redactor or Redactor()
+        self._activity: ToolActivity | None = None
+        self._tool_details: list[str] = []
 
     def write_events(self, events: Sequence[EventEnvelope]) -> None:
         for event in events:
             self._write_event(event)
+
+    def flush_activity(self) -> None:
+        if self._activity is not None:
+            self._write(self._activity.summary + f"（{self._details_hint}）")
+            self._activity = None
+
+    def write_tool_details(self) -> None:
+        self._write("\n".join(self._tool_details) or "本轮暂无工具记录。")
 
     def approval_prompt(self, event: EventEnvelope) -> str:
         payload = self._redactor.redact(event.payload)
@@ -30,6 +49,12 @@ class HumanPresenter:
             return "批准这条验证命令？输入 approve、reject 或 cancel"
         if payload.get("kind") == "recovery":
             return "批准这个恢复计划？输入 approve、reject 或 cancel"
+        if payload.get("kind") == "tool":
+            if payload.get("tool_name") == "request_file_access":
+                return "批准上述文件访问授权？输入 approve、reject 或 cancel"
+            if payload.get("tool_name") == "bash":
+                return "批准执行上述命令？输入 approve、reject 或 cancel"
+            return "批准上述工具操作？输入 approve、reject 或 cancel"
         return "批准这个 Change Set？输入 approve、reject 或 cancel"
 
     def _write_event(self, event: EventEnvelope) -> None:
@@ -37,6 +62,43 @@ class HumanPresenter:
             return
         raw = self._redactor.redact(event.payload)
         payload = raw if isinstance(raw, dict) else {}
+        if event.type == "run.started":
+            self.flush_activity()
+            self._tool_details.clear()
+        if event.type in {"tool.started", "tool.completed"}:
+            name = str(payload.get("name", "tool"))
+            error = str(payload.get("error_code") or payload.get("error") or "")
+            if event.type == "tool.completed":
+                self._tool_details.append(
+                    sanitize_terminal_text(
+                        f"{name} · {payload.get('target', '')} · "
+                        f"{'成功' if payload.get('ok') else '失败'}"
+                        + (f" · {error}" if error else "")
+                    )
+                )
+                self._tool_details = self._tool_details[-200:]
+            if name in READ_LABELS:
+                if self._activity is None:
+                    self._activity = ToolActivity()
+                    self._write("正在检查项目…")
+                self._activity.apply(event.model_copy(update={"payload": payload}))
+                if event.type == "tool.completed" and not payload.get("ok"):
+                    self.flush_activity()
+                    self._write(
+                        sanitize_terminal_text(
+                            f"{name}：失败 · {payload.get('target', '')} · "
+                            f"{error or '请查看工具结果'}"
+                        )
+                    )
+                return
+        if event.type == "tool.action_prepared":
+            return
+        if event.type == "tool.policy_decided":
+            if payload.get("decision") == "deny":
+                self.flush_activity()
+                self._write("策略拒绝：" + str(payload.get("name", "tool")))
+            return
+        self.flush_activity()
         if event.type == "run.started":
             self._write(f"任务开始：{event.run_id}")
         elif event.type == "tool.started":
@@ -78,7 +140,38 @@ class HumanPresenter:
                 if root:
                     self._write(f"产物根：{root}")
                 self._write(f"风险：{payload.get('risk', 'unknown')}")
-                self._write("该进程以当前系统用户权限运行，Vera 第一版不提供 OS 沙箱。")
+                self._write("批准仅适用于本次验证计划，执行边界由 Core 检查。")
+            elif payload.get("kind") == "tool":
+                tool = str(payload.get("tool_name", "unknown"))
+                title = (
+                    "文件访问授权"
+                    if tool == "request_file_access"
+                    else "命令"
+                    if tool == "bash"
+                    else f"工具操作：{tool}"
+                )
+                self._write(sanitize_terminal_text(f"待批准的{title}"))
+                description = payload.get("description")
+                if isinstance(description, str) and description:
+                    self._write(sanitize_terminal_text(description))
+                grant = payload.get("system_service_grant")
+                if isinstance(grant, dict):
+                    self._write("系统服务范围：仅本次；命令及全部后代继承")
+                    services = grant.get("services", [])
+                    if isinstance(services, list):
+                        for service in services:
+                            self._write(sanitize_terminal_text(f"  {service}"))
+                    if grant.get("may_access_current_user_simulator_state"):
+                        self._write("风险：服务可能访问当前用户的模拟器状态")
+                argv = payload.get("argv")
+                if isinstance(argv, list) and argv:
+                    self._write(
+                        sanitize_terminal_text(f"命令：{shlex.join(str(part) for part in argv)}")
+                    )
+                    self._write(sanitize_terminal_text(f"工作目录：{payload.get('cwd', '.')}"))
+                    if payload.get("timeout_seconds") is not None:
+                        self._write(f"超时：{payload['timeout_seconds']} 秒")
+                self._write(f"风险：{payload.get('risk', 'unknown')}")
             elif payload.get("kind") == "recovery":
                 self._write(
                     f"待批准的恢复计划：{payload.get('target_hash', '')}"

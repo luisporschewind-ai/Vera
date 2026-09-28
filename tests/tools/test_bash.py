@@ -184,3 +184,16 @@ def test_bash_workspace_grant_does_not_relax_forbidden_shell(tmp_path: Path) -> 
 
     assert prepared.policy_decision.decision.value == "deny"
     assert prepared.policy_decision.reason_code == "risk_forbidden"
+
+
+def test_bash_reports_cleanup_failure_without_hiding_execution(tmp_path: Path) -> None:
+    completed = ProcessResult(
+        "error", 0, b"build passed", b"cleanup failed", cleanup_error="sandbox_cleanup_failed"
+    )
+    result = BashTool(tmp_path, supervisor=FakeSupervisor(completed)).execute(
+        BashInput(argv=("/bin/echo", "fixture"))
+    )
+    assert not result.ok
+    assert result.error_code == "sandbox_cleanup_failed"
+    assert result.content["exit_code"] == 0
+    assert result.content["stdout"] == "build passed"

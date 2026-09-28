@@ -1,0 +1,28 @@
+{
+  "inside": {
+    "status": "exited",
+    "exit_code": 0,
+    "stdout": "INSIDE_ONLY\n",
+    "stderr": ""
+  },
+  "outside": {
+    "status": "exited",
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "cat: ../outside.txt: Operation not permitted\n"
+  },
+  "write": {
+    "status": "exited",
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "cp: ../denied.txt: Operation not permitted\n"
+  },
+  "child": {
+    "status": "exited",
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": "cat: ../outside.txt: Operation not permitted\n"
+  },
+  "outside_unchanged": true,
+  "write_absent": true
+}

@@ -124,7 +124,7 @@ class ChangeApplier:
                 fd = os.open(target, flags)
                 try:
                     self.paths.revalidate_fd(fact, fd)
-                    if sha256_bytes(target.read_bytes()) != record.content_hash:
+                    if sha256_bytes(self.paths.read_bytes(change.path)) != record.content_hash:
                         raise ValueError(f"before hash changed: {change.path}")
                 finally:
                     os.close(fd)
@@ -205,7 +205,9 @@ class ChangeApplier:
             for relative in paths:
                 target = self.paths.resolve_mutation(relative)
                 current_hash = (
-                    ABSENT_HASH if not target.exists() else sha256_bytes(target.read_bytes())
+                    ABSENT_HASH
+                    if not target.exists()
+                    else sha256_bytes(self.paths.read_bytes(relative))
                 )
                 if current_hash != manifest.after_hashes[relative]:
                     return RollbackResult(
@@ -277,7 +279,11 @@ class ChangeApplier:
             if item.path not in manifest.before:
                 raise ValueError(f"checkpoint missing path: {item.path}")
             target = self.paths.resolve_mutation(item.path)
-            current_hash = ABSENT_HASH if not target.exists() else sha256_bytes(target.read_bytes())
+            current_hash = (
+                ABSENT_HASH
+                if not target.exists()
+                else sha256_bytes(self.paths.read_bytes(item.path))
+            )
             if current_hash != item.current_hash:
                 raise ValueError(f"current hash changed: {item.path}")
             if item.action == "keep_before" and current_hash != item.before_hash:

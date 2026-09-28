@@ -20,9 +20,11 @@ from vera.models.retry import RetryPolicy
 from vera.persistence.operation_receipt import OperationReceiptStore
 from vera.persistence.recovery_snapshot import RecoverySnapshotStore
 from vera.policy.engine import PolicyEngine
+from vera.process.supervisor import ProcessSupervisor
 from vera.project_instructions import ProjectInstructionService
 from vera.recovery.coordinator import RecoveryCoordinator
 from vera.runtime.context import RunContext
+from vera.sandbox.access import AccessSession
 from vera.tools.command_policy import CommandPolicy
 from vera.tools.definitions import ToolResult
 from vera.tools.executor import PreparedToolAction, ToolExecutor
@@ -77,6 +79,7 @@ class VerificationFlowHost(Protocol):
     """Runtime state and callbacks required by verification flows."""
 
     artifact_prefix: Path | None
+    process_supervisor: ProcessSupervisor | None
     installation_id: str
     command_policy: CommandPolicy
     policy_engine: PolicyEngine
@@ -122,6 +125,7 @@ class ApprovalFlowHost(Protocol):
     """Runtime state and callbacks required by proposal/approval flows."""
 
     runs: dict[str, RunContext]
+    access_session: AccessSession | None
     state_dir: Path
     file_writer: FileWriter | None
     project_instructions: ProjectInstructionService
@@ -364,6 +368,7 @@ class RecoveryFlowHost(Protocol):
     """Runtime state and callbacks required by recovery flows."""
 
     runs: dict[str, RunContext]
+    access_session: AccessSession | None
     state_dir: Path
     snapshot_store: Any
     coordinator: RecoveryCoordinator

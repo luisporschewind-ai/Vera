@@ -1,0 +1,8 @@
+{
+  "name": "vera-sandbox-adapter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pinned profile generation dependency; never installed automatically",
+  "dependencies": { "@anthropic-ai/sandbox-runtime": "0.0.77" },
+  "engines": { "node": ">=20.11.0" }
+}

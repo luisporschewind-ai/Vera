@@ -30,16 +30,7 @@
 - [不可信内容、提示词投毒与内容安全](2026-09-12-untrusted-content-and-prompt-injection-defense.md)
 - [阶段八：Core 工具集与风险分级 Policy v2（Accepted）](2026-09-17-core-tooling-and-risk-tiered-policy.md)
 - [阶段八：Vera 原生 Git 能力（Accepted）](2026-09-17-native-git-capability.md)
-- [Core 受控 Git 仓库初始化（Accepted）](2026-09-27-core-owned-git-repository-initialization.md)
 - [阶段九：Core 原生 Skills 系统（Accepted）](2026-09-15-core-native-skills-system.md)
-- [三档权限与自动审核机制（Accepted；沙盒完成后实施）](2026-09-25-approval-permission-profiles-and-auto-review.md)
 - [阶段十：桌面 Agent 工作台与 UI（Draft）](2026-09-12-desktop-agent-workbench-ui.md)
-
-## 补充索引（2026-09-26 对齐）
-
-- [Vera CLI 活动状态与回答呈现](2026-09-24-cli-activity-and-paced-replies.md)
-- [Core 联网技术资料检索方案](2026-09-24-core-web-research.md)
-- [Vera CLI Skill 列表与交互选择](2026-09-24-skills-interactive-picker.md)
-- [BYOK 多厂商模型配置](2026-09-25-byok-model-configuration.md)
-- [Provider 上下文缓存用量与稳定前缀](2026-09-25-provider-context-cache-usage.md)
-- [Core Trace 与运行可观测性（Accepted）](2026-09-26-core-trace-observability.md)
+- [工作区权限沙盒（Accepted）](2026-09-26-workspace-permission-sandbox.md)
+- [Apple iOS 构建系统服务授权边界（Accepted；实施验证中）](2026-09-28-apple-ios-build-service-boundary.md)

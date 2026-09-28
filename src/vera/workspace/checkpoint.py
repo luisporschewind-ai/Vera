@@ -44,7 +44,7 @@ class CheckpointStore:
                         f"checkpoint requires a regular file: {change.path}",
                         code="not_regular_file",
                     )
-                data = target.read_bytes()
+                data = self.paths.read_bytes(change.path)
                 content_hash = sha256_bytes(data)
                 if change.before_hash != content_hash:
                     raise ValueError(f"before hash changed: {change.path}")

@@ -1,0 +1,17 @@
+{
+  "/private/var/select/developer_dir": {
+    "errno": 2,
+    "error": "No such file or directory"
+  },
+  "/private/var/db/xcode_select_link": {
+    "errno": 2,
+    "error": "No such file or directory"
+  },
+  "/Applications/Xcode.app/Contents/Developer": {
+    "exists": true,
+    "mode": "0o40755"
+  },
+  "remaining_probe_processes": [],
+  "proxy_port": 56334,
+  "proxy_connect_errno": 61
+}

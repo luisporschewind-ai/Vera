@@ -40,12 +40,12 @@ def read_file(paths: WorkspacePaths, path: str, max_bytes: int = 100_000) -> Rea
     if not target.is_file():
         return ReadFileResult(ok=False, error_code="not_a_file")
     try:
-        data = target.read_bytes()
+        data = paths.read_bytes(path, max_bytes + 1)
         truncated = len(data) > max_bytes
         text = data[:max_bytes].decode("utf-8")
         if "\x00" in text:
             raise UnicodeDecodeError("utf-8", data, 0, 1, "binary content")
-    except (OSError, UnicodeDecodeError):
+    except (OSError, UnicodeDecodeError, WorkspaceBoundaryError):
         return ReadFileResult(ok=False, error_code="binary_or_non_utf8")
     return ReadFileResult(ok=True, content=text, truncated=truncated)
 
@@ -59,10 +59,10 @@ def list_directory(paths: WorkspacePaths, path: str = ".") -> DirectoryResult:
         return DirectoryResult(ok=False, error_code="not_a_directory")
     try:
         entries = sorted(
-            (item.name for item in target.iterdir()),
+            paths.list_names(path),
             key=lambda name: (name.startswith("."), name),
         )
-    except OSError:
+    except (OSError, WorkspaceBoundaryError):
         return DirectoryResult(ok=False, error_code="io_error")
     return DirectoryResult(ok=True, entries=entries)
 
@@ -80,7 +80,7 @@ def search_text(paths: WorkspacePaths, query: str, path: str = ".") -> SearchRes
         return SearchResult(ok=True, matches=matches)
     if not root.is_dir():
         return SearchResult(ok=False, error_code="not_found")
-    for file_path in sorted(root.rglob("*")):
+    for file_path in sorted(paths.iter_files(path)):
         _collect_search_matches(paths, file_path, query, matches)
     return SearchResult(ok=True, matches=matches)
 
@@ -97,7 +97,7 @@ def find_files(paths: WorkspacePaths, pattern: str = "*", path: str = ".") -> Fi
     except WorkspaceBoundaryError:
         return FindResult(ok=False, error_code="workspace_boundary")
     if root.is_file():
-        relative = root.relative_to(paths.root)
+        relative = display_path(paths, root)
         return FindResult(
             ok=True,
             paths=[relative.as_posix()] if root.match(normalized_pattern) else [],
@@ -105,8 +105,8 @@ def find_files(paths: WorkspacePaths, pattern: str = "*", path: str = ".") -> Fi
     if not root.is_dir():
         return FindResult(ok=False, error_code="not_found")
     found: list[str] = []
-    for file_path in sorted(root.rglob(normalized_pattern)):
-        relative = file_path.relative_to(paths.root)
+    for file_path in sorted(paths.iter_files(path, normalized_pattern)):
+        relative = display_path(paths, file_path)
         if (
             file_path.is_symlink()
             or not file_path.is_file()
@@ -125,7 +125,7 @@ def _collect_search_matches(
     query: str,
     matches: list[SearchMatch],
 ) -> None:
-    relative = file_path.relative_to(paths.root)
+    relative = display_path(paths, file_path)
     if (
         file_path.is_symlink()
         or not file_path.is_file()
@@ -135,8 +135,8 @@ def _collect_search_matches(
     if paths.protected.is_protected(relative):
         return
     try:
-        lines = file_path.read_text(encoding="utf-8").splitlines()
-    except (OSError, UnicodeDecodeError):
+        lines = paths.read_bytes(str(relative)).decode("utf-8").splitlines()
+    except (OSError, UnicodeDecodeError, WorkspaceBoundaryError):
         return
     for line_number, line in enumerate(lines, start=1):
         if query in line:
@@ -148,3 +148,10 @@ def _collect_search_matches(
                     text=line,
                 )
             )
+
+
+def display_path(paths: WorkspacePaths, target: Path) -> Path:
+    try:
+        return target.relative_to(paths.root)
+    except ValueError:
+        return target

@@ -1,0 +1,21 @@
+{
+  "exact_node_granted": true,
+  "compile": {
+    "status": "exited",
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "probe": {
+    "status": "exited",
+    "exit_code": 0,
+    "stdout": "stat result=0 errno=0\naccess mode=0 result=0 errno=0\naccess mode=4 result=0 errno=0\naccess mode=1 result=0 errno=0\nungranted_child_open=false errno=1\n",
+    "stderr": ""
+  },
+  "xcrun": {
+    "status": "exited",
+    "exit_code": 71,
+    "stdout": "",
+    "stderr": "*** Terminating app due to uncaught exception 'NSInternalInconsistencyException', reason: 'Invalid parameter not satisfying: bundledLicenseInfoPath'\n*** First throw call stack:\n(\n\t0   CoreFoundation                      0x00007ff8182ffe6a __exceptionPreprocess + 242\n\t1   libobjc.A.dylib                     0x00007ff817dca24b objc_exception_throw + 62\n\t2   Foundation                          0x00007ff81949587a -[NSCalendarDate initWithCoder:] + 0\n\t3   DVTSystemPrerequisites              0x000000010abd8605 -[DVTLicenseAgreement initWithBundledLicenseInfoPath:currentMarketingVersion:acceptedLicensePlistPath:].cold.1 + 102\n\t4   DVTSystemPrerequisites              0x000000010abd4086 -[DVTLicenseAgreement initWithBundledLicenseInfoPath:currentMarketingVersion:acceptedLicensePlistPath:] + 841\n\t5   DVTSystemPrerequisites              0x000000010abd4c75 +[DVTLicenseAgreementCLI instanceWithDefaultPaths] + 266\n\t6   xcodebuild                          0x000000010ab6d380 -[XcodebuildPreIDEHandler _createLicenseAgreementCLI] + 41\n\t7   xcodebuild                          0x000000010ab6d4c7 -[XcodebuildPreIDEHandler handleLicenseWithArguments:] + 149\n\t8   xcodebuild                          0x000000010ab6c6c7 -[XcodebuildPreIDEHandler runWithArguments:] + 450\n\t9   xcodebuild                          0x000000010ab6c113 main + 627\n\t10  dyld                                0x00007ff817e02530 start + 3056\n)\nlibc++abi: terminating due to uncaught exception of type NSException\nxcrun: error: unable to locate xcodebuild, please make sure the path to the Xcode folder is set correctly!\nxcrun: error: You can set the path to the Xcode folder using /usr/bin/xcode-select -switch\n"
+  }
+}

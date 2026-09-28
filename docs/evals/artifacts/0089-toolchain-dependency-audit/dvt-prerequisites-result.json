@@ -1,0 +1,21 @@
+{
+  "exact_node_granted": true,
+  "compile": {
+    "status": "exited",
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "probe": {
+    "status": "exited",
+    "exit_code": 0,
+    "stdout": "stat result=0 errno=0\naccess mode=0 result=0 errno=0\naccess mode=4 result=0 errno=0\naccess mode=1 result=0 errno=0\nungranted_child_open=false errno=1\n",
+    "stderr": ""
+  },
+  "xcrun": {
+    "status": "exited",
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "Unable to open executable info dictionary; xcodebuild may be corrupt and should be reinstalled.\n"
+  }
+}

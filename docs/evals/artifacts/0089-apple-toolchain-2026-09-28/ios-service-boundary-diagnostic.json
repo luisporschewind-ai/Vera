@@ -1,0 +1,43 @@
+{
+  "host": "Intel macOS",
+  "fixture": "/private/tmp/vera-0089-acceptance.psEsZR/verification-ios-generic-z3m9v1au",
+  "command_scope": "generic/platform=iOS; fake VeraTestDemo copy; no signing",
+  "verification_status": "failed",
+  "exit_code": 65,
+  "process_cleanup_error": null,
+  "artifact_cleanup_status": "cleaned",
+  "workspace_mutations": [],
+  "observed_log_markers": {
+    "CoreSimulatorService": 37,
+    "real_user_CoreSimulator_Devices_path": 6,
+    "Platform Not Installed": 2,
+    "CompileStoryboard": 4,
+    "BUILD FAILED": 1,
+    "couldNotFindTmpDir": 0
+  },
+  "bounded_process_log_observations": [
+    "com.apple.CoreSimulator.simdiskimaged connection attempted",
+    "com.apple.FileCoordination lookup blocked by sandbox",
+    "FSEvents and coreservicesd access blocked in separate read-only simctl diagnostic"
+  ],
+  "two_exact_mach_service_diagnostic": {
+    "services": [
+      "com.apple.CoreSimulator.CoreSimulatorService",
+      "com.apple.CoreSimulator.simdiskimaged"
+    ],
+    "operation": "simctl --set <empty fake device-set> list runtimes",
+    "exit_code": -11,
+    "stdout_bytes": 0,
+    "device_set_children": 0,
+    "cleanup_error": null
+  },
+  "scheme_variant_diagnostic": {
+    "invocation": "-scheme VeraTestDemo -destination generic/platform=iOS; fake copy; signing off",
+    "exit_code": 65,
+    "process_cleanup_error": null,
+    "artifact_cleanup_status": "cleaned",
+    "failure_stage": "supported platforms empty before Storyboard compilation",
+    "real_user_CoreSimulator_Devices_path_mentions": 2
+  },
+  "interpretation": "Two exact Mach grants are insufficient; this does not prove additional grants would be safe or sufficient."
+}

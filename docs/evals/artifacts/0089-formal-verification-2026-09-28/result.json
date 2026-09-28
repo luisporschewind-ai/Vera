@@ -1,0 +1,225 @@
+{
+  "fixture": "/private/tmp/vera-0089-acceptance.psEsZR/formal-verification-bufl1dzv",
+  "cases": [
+    {
+      "case": "success",
+      "command": {
+        "argv": [
+          "/private/tmp/vera-0089-acceptance.psEsZR/formal-verification-bufl1dzv/workspace/bin/ruff",
+          "check",
+          "--isolated",
+          "--output-format",
+          "json",
+          "good.py",
+          "--output-file",
+          "/private/tmp/vera-0089-acceptance.psEsZR/formal-verification-bufl1dzv/artifacts/692e86dab81e/success/000/report.json",
+          "--no-cache"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 15,
+        "required": true,
+        "artifact_plan": {
+          "schema_version": 1,
+          "profile": "ruff_no_cache",
+          "root": "/private/tmp/vera-0089-acceptance.psEsZR/formal-verification-bufl1dzv/artifacts/692e86dab81e/success/000",
+          "cleanup": "always"
+        }
+      },
+      "result": {
+        "schema_version": 1,
+        "argv": [
+          "/private/tmp/vera-0089-acceptance.psEsZR/formal-verification-bufl1dzv/workspace/bin/ruff",
+          "check",
+          "--isolated",
+          "--output-format",
+          "json",
+          "good.py",
+          "--output-file",
+          "/private/tmp/vera-0089-acceptance.psEsZR/formal-verification-bufl1dzv/artifacts/692e86dab81e/success/000/report.json",
+          "--no-cache"
+        ],
+        "cwd": ".",
+        "started_at": "2026-09-27T16:04:30.993029Z",
+        "completed_at": "2026-09-27T16:04:31.656975Z",
+        "duration_seconds": 0.6634879630000796,
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": "",
+        "stdout_truncated": false,
+        "stderr_truncated": false,
+        "status": "passed",
+        "artifact_profile": "ruff_no_cache",
+        "artifact_root": "/private/tmp/vera-0089-acceptance.psEsZR/formal-verification-bufl1dzv/artifacts/692e86dab81e/success/000",
+        "artifact_cleanup_status": "cleaned",
+        "workspace_mutations": [],
+        "reason_code": null
+      },
+      "report_existed_before_cleanup": true,
+      "report": [],
+      "artifact_removed": true,
+      "workspace_unchanged": true
+    },
+    {
+      "case": "failure",
+      "command": {
+        "argv": [
+          "/private/tmp/vera-0089-acceptance.psEsZR/formal-verification-bufl1dzv/workspace/bin/ruff",
+          "check",
+          "--isolated",
+          "--output-format",
+          "json",
+          "bad.py",
+          "--output-file",
+          "/private/tmp/vera-0089-acceptance.psEsZR/formal-verification-bufl1dzv/artifacts/692e86dab81e/failure/001/report.json",
+          "--no-cache"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 15,
+        "required": true,
+        "artifact_plan": {
+          "schema_version": 1,
+          "profile": "ruff_no_cache",
+          "root": "/private/tmp/vera-0089-acceptance.psEsZR/formal-verification-bufl1dzv/artifacts/692e86dab81e/failure/001",
+          "cleanup": "always"
+        }
+      },
+      "result": {
+        "schema_version": 1,
+        "argv": [
+          "/private/tmp/vera-0089-acceptance.psEsZR/formal-verification-bufl1dzv/workspace/bin/ruff",
+          "check",
+          "--isolated",
+          "--output-format",
+          "json",
+          "bad.py",
+          "--output-file",
+          "/private/tmp/vera-0089-acceptance.psEsZR/formal-verification-bufl1dzv/artifacts/692e86dab81e/failure/001/report.json",
+          "--no-cache"
+        ],
+        "cwd": ".",
+        "started_at": "2026-09-27T16:04:31.780127Z",
+        "completed_at": "2026-09-27T16:04:32.430611Z",
+        "duration_seconds": 0.6504738369985716,
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "",
+        "stdout_truncated": false,
+        "stderr_truncated": false,
+        "status": "failed",
+        "artifact_profile": "ruff_no_cache",
+        "artifact_root": "/private/tmp/vera-0089-acceptance.psEsZR/formal-verification-bufl1dzv/artifacts/692e86dab81e/failure/001",
+        "artifact_cleanup_status": "cleaned",
+        "workspace_mutations": [],
+        "reason_code": null
+      },
+      "report_existed_before_cleanup": true,
+      "report": [
+        {
+          "cell": null,
+          "code": "F821",
+          "end_location": {
+            "column": 28,
+            "row": 1
+          },
+          "filename": "/private/tmp/vera-0089-acceptance.psEsZR/formal-verification-bufl1dzv/workspace/bad.py",
+          "fix": null,
+          "location": {
+            "column": 7,
+            "row": 1
+          },
+          "message": "Undefined name `UNDEFINED_INSIDE_ONLY`",
+          "name": "undefined-name",
+          "noqa_row": 1,
+          "severity": "error",
+          "url": "https://docs.astral.sh/ruff/rules/undefined-name"
+        }
+      ],
+      "artifact_removed": true,
+      "workspace_unchanged": true
+    },
+    {
+      "case": "outside_read_denied",
+      "command": {
+        "argv": [
+          "/private/tmp/vera-0089-acceptance.psEsZR/formal-verification-bufl1dzv/workspace/bin/ruff",
+          "check",
+          "--isolated",
+          "--output-format",
+          "json",
+          "/private/tmp/vera-0089-acceptance.psEsZR/formal-verification-bufl1dzv/outside.py",
+          "--output-file",
+          "/private/tmp/vera-0089-acceptance.psEsZR/formal-verification-bufl1dzv/artifacts/692e86dab81e/outside_read_denied/002/report.json",
+          "--no-cache"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 15,
+        "required": true,
+        "artifact_plan": {
+          "schema_version": 1,
+          "profile": "ruff_no_cache",
+          "root": "/private/tmp/vera-0089-acceptance.psEsZR/formal-verification-bufl1dzv/artifacts/692e86dab81e/outside_read_denied/002",
+          "cleanup": "always"
+        }
+      },
+      "result": {
+        "schema_version": 1,
+        "argv": [
+          "/private/tmp/vera-0089-acceptance.psEsZR/formal-verification-bufl1dzv/workspace/bin/ruff",
+          "check",
+          "--isolated",
+          "--output-format",
+          "json",
+          "/private/tmp/vera-0089-acceptance.psEsZR/formal-verification-bufl1dzv/outside.py",
+          "--output-file",
+          "/private/tmp/vera-0089-acceptance.psEsZR/formal-verification-bufl1dzv/artifacts/692e86dab81e/outside_read_denied/002/report.json",
+          "--no-cache"
+        ],
+        "cwd": ".",
+        "started_at": "2026-09-27T16:04:32.544904Z",
+        "completed_at": "2026-09-27T16:04:33.179137Z",
+        "duration_seconds": 0.6342249499866739,
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "",
+        "stdout_truncated": false,
+        "stderr_truncated": false,
+        "status": "failed",
+        "artifact_profile": "ruff_no_cache",
+        "artifact_root": "/private/tmp/vera-0089-acceptance.psEsZR/formal-verification-bufl1dzv/artifacts/692e86dab81e/outside_read_denied/002",
+        "artifact_cleanup_status": "cleaned",
+        "workspace_mutations": [],
+        "reason_code": null
+      },
+      "report_existed_before_cleanup": true,
+      "report": [
+        {
+          "cell": null,
+          "code": "E902",
+          "end_location": {
+            "column": 1,
+            "row": 1
+          },
+          "filename": "/private/tmp/vera-0089-acceptance.psEsZR/formal-verification-bufl1dzv/outside.py",
+          "fix": null,
+          "location": {
+            "column": 1,
+            "row": 1
+          },
+          "message": "Operation not permitted (os error 1)",
+          "name": "io-error",
+          "noqa_row": null,
+          "severity": "error",
+          "url": "https://docs.astral.sh/ruff/rules/io-error"
+        }
+      ],
+      "artifact_removed": true,
+      "workspace_unchanged": true
+    }
+  ],
+  "tool_sha256": "4dedb4a56626954d8e1887459beafc18249e9db30972804f29cc09492ddcd241",
+  "outside_baseline": {
+    "exit_code": 1,
+    "contains_marker": true
+  },
+  "passed": true
+}

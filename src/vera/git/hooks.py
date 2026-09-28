@@ -46,7 +46,7 @@ class GitHookInspector:
                 candidate = hooks_path / name
                 try:
                     details = candidate.lstat()
-                    content = candidate.read_bytes()
+                    content = self.service.read_file(candidate)
                 except OSError:
                     continue
                 if not stat.S_ISREG(details.st_mode) and not stat.S_ISLNK(details.st_mode):

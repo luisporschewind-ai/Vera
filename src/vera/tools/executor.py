@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -28,6 +29,9 @@ from vera.git.initialize import (
 from vera.policy.engine import PolicyEngine
 from vera.policy.models import PolicyDecision, PolicyDecisionKind
 from vera.policy.permissions import WorkspacePermissionSnapshot
+from vera.sandbox.access import AccessDenied, AccessSession
+from vera.sandbox.files import file_operation
+from vera.sandbox.tools import FileAccessInput, RequestFileAccessTool
 from vera.tools.definitions import ToolDefinitionV2, ToolResult
 from vera.tools.registry import ToolRegistry
 from vera.workspace.mutation import FileMutationPlanningError, PlannedFileMutation
@@ -63,12 +67,42 @@ class ToolExecutor:
         *,
         goal_authorized: bool = False,
         state_dir: Path | None = None,
+        access_session: AccessSession | None = None,
     ) -> None:
         self.registry = registry
         self.policy_engine = policy_engine
         self.permissions = permissions
         self.goal_authorized = goal_authorized
         self.state_dir = state_dir
+        self.access_session = access_session
+
+    def access_context(
+        self, name: str, arguments: BaseModel, *, consume: bool = False
+    ) -> AbstractContextManager[None]:
+        if self.access_session is None:
+            return nullcontext()
+        return file_operation(
+            self.access_session, name, arguments.model_dump(mode="json"), consume=consume
+        )
+
+    def approval_description(self, prepared: PreparedToolAction) -> str:
+        if ToolEffect.APPLE_IOS_BUILD_SERVICES in prepared.action.effects:
+            return (
+                "Apple 构建系统服务已请求。"
+                "\n范围：仅本次命令；该权限由命令及全部后代继承。"
+                "\n产物：Core 为本次命令追加 -derivedDataPath，使用容量上限 8 GiB 的临时 APFS 卷；"
+                "构建结束卸载并删除产物，不保留增量缓存。"
+                + "\n风险：服务可能访问当前用户的模拟器状态，文件沙盒无法约束服务内部副作用。"
+            )
+        if prepared.mutation is not None:
+            plan = prepared.mutation.plan
+            return f"文件：{plan.path}\n操作：{plan.operation}\n计划变更：\n{plan.unified_diff}"
+        tool = self.registry.implementation(prepared.definition.name)
+        if isinstance(tool, RequestFileAccessTool):
+            return tool.approval_description(
+                FileAccessInput.model_validate(prepared.parsed_arguments.model_dump())
+            )
+        return f"execute tool {prepared.action.tool_name}"
 
     def prepare(self, *, run_id: str, name: str, arguments: dict[str, Any]) -> PreparedToolAction:
         tool = self.registry.implementation(name)
@@ -93,6 +127,8 @@ class ToolExecutor:
             facts = facts.model_copy(update={"target_facts_hash": mutation.plan.target_facts_hash})
         normalized = parsed.model_dump(mode="json")
         effects = self._effects(tool, parsed, definition)
+        if self.access_session is not None and ToolEffect.NETWORK_ACCESS in effects:
+            raise ToolPreparationError("sandbox_network_unsupported")
         action = ToolAction(
             action_id=action_id,
             run_id=run_id,
@@ -140,6 +176,24 @@ class ToolExecutor:
         )
 
     def execute_allowed(
+        self, prepared: PreparedToolAction, *, approved: bool = False
+    ) -> ToolResult:
+        if prepared.policy_decision.decision is PolicyDecisionKind.DENY:
+            return ToolResult(ok=False, error_code="policy_denied")
+        if (
+            not approved
+            and prepared.policy_decision.decision is PolicyDecisionKind.APPROVAL_REQUIRED
+        ):
+            return ToolResult(ok=False, error_code="approval_required")
+        try:
+            with self.access_context(
+                prepared.definition.name, prepared.parsed_arguments, consume=True
+            ):
+                return self._execute_allowed(prepared, approved=approved)
+        except (AccessDenied, WorkspaceBoundaryError) as exc:
+            return ToolResult(ok=False, error_code=str(exc))
+
+    def _execute_allowed(
         self, prepared: PreparedToolAction, *, approved: bool = False
     ) -> ToolResult:
         decision = prepared.policy_decision.decision
@@ -268,9 +322,22 @@ class ToolExecutor:
                 )
                 if process_plan != prepared.process_plan:
                     return ToolResult(ok=False, error_code="stale_tool_action")
-                result = tool.execute(parsed)
+                if ToolEffect.APPLE_IOS_BUILD_SERVICES in prepared.action.effects:
+                    execute_approved = getattr(tool, "execute_approved", None)
+                    if execute_approved is None or not approved:
+                        return ToolResult(
+                            ok=False, error_code="sandbox_apple_build_service_unsupported"
+                        )
+                    result = execute_approved(parsed, apple_ios_build_services=True)
+                else:
+                    result = tool.execute(parsed)
             else:
-                result = tool.execute(parsed)
+                if isinstance(tool, RequestFileAccessTool):
+                    if not approved:
+                        return ToolResult(ok=False, error_code="approval_required")
+                    result = tool.execute_approved(parsed)
+                else:
+                    result = tool.execute(parsed)
         normalized = result if isinstance(result, ToolResult) else ToolResult.model_validate(result)
         if normalized.content is not None:
             rendered = json.dumps(
@@ -280,8 +347,15 @@ class ToolExecutor:
                 return ToolResult(ok=False, truncated=True, error_code="output_limit_exceeded")
         return normalized
 
+    def _risk_facts(self, tool: Any, arguments: BaseModel) -> ToolRiskFacts:
+        try:
+            with self.access_context(tool.name, arguments):
+                return self._collect_risk_facts(tool, arguments)
+        except AccessDenied as exc:
+            raise ToolPreparationError(str(exc)) from exc
+
     @staticmethod
-    def _risk_facts(tool: Any, arguments: BaseModel) -> ToolRiskFacts:
+    def _collect_risk_facts(tool: Any, arguments: BaseModel) -> ToolRiskFacts:
         collector = getattr(tool, "risk_facts", None)
         if collector is not None:
             facts = collector(arguments)
@@ -331,6 +405,20 @@ class ToolExecutor:
         GitCommitPlan | None,
         GitBranchPlan | None,
         GitRepositoryInitPlan | GitRepositoryInitResult | None,
+    ]:
+        try:
+            with self.access_context(tool.name, arguments):
+                return self._plan_authorized_action(tool, run_id, arguments, action_id=action_id)
+        except AccessDenied as exc:
+            raise ToolPreparationError(str(exc)) from exc
+
+    def _plan_authorized_action(
+        self, tool: Any, run_id: str, arguments: BaseModel, *, action_id: str | None = None
+    ) -> tuple[
+        PlannedFileMutation | None,
+        CommandActionPlan | None,
+        GitCommitPlan | None,
+        GitBranchPlan | None,
     ]:
         planner = getattr(tool, "plan_action", None)
         if planner is None:

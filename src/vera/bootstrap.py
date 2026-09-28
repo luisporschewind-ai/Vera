@@ -8,7 +8,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from uuid import uuid4
 
-from vera.config import ConfigurationError, VeraConfig, load_config, load_provider_environment
+from vera.config import (
+    ConfigurationError,
+    VeraConfig,
+    load_config,
+    load_provider_environment,
+    provider_environment_path,
+)
 from vera.models.base import ModelAdapter
 from vera.models.openai_compatible import OpenAICompatibleAdapter
 from vera.persistence.recovery_snapshot import RecoverySnapshotStore
@@ -22,6 +28,12 @@ from vera.project_instructions import ProjectInstructionService
 from vera.recovery.coordinator import RecoveryCoordinator
 from vera.recovery.probe import workspace_identity
 from vera.runtime.engine import VeraRuntime
+from vera.sandbox.access import AccessSession
+from vera.sandbox.files import PermissionPaths
+from vera.sandbox.settings import load_backend, settings_path
+from vera.sandbox.supervision import SandboxedSupervisor
+from vera.sandbox.tools import RequestFileAccessTool
+from vera.sandbox.writer import PermissionFileWriter
 from vera.tools.bash import BashTool
 from vera.tools.builtin import FindTool, GrepTool, LsTool, ReadTool
 from vera.tools.command_policy import CommandPolicy
@@ -38,7 +50,6 @@ from vera.tools.git import (
     GitStatusTool,
 )
 from vera.tools.registry import ToolRegistry
-from vera.workspace.paths import WorkspacePaths
 
 
 @dataclass(frozen=True)
@@ -101,24 +112,44 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
         raise ConfigurationError("missing_provider_config", "no model provider configured")
     provider = config.providers[profile]
     adapter: ModelAdapter = OpenAICompatibleAdapter(provider)
-    paths = WorkspacePaths(workspace)
+    access_session = AccessSession(
+        workspace,
+        private_roots=(
+            config.state_dir,
+            provider_environment_path(),
+            settings_path().parent,
+            workspace / ".vera",
+            Path.home() / ".ssh",
+            Path.home() / ".aws",
+            Path.home() / ".gnupg",
+            Path.home() / "Library/Keychains",
+            *(
+                Path(os.environ[key])
+                for key in ("VERA_PROVIDER_ENV_FILE", "VERA_USER_CONFIG_FILE")
+                if os.environ.get(key)
+            ),
+        ),
+    )
+    paths = PermissionPaths(access_session)
+    supervisor = SandboxedSupervisor(access_session, load_backend())
     registry = ToolRegistry()
     registry.register(ReadTool(paths, config.limits.max_file_bytes))
-    registry.register(WriteTool(workspace, config.state_dir))
-    registry.register(EditTool(workspace, config.state_dir))
+    registry.register(WriteTool(workspace, config.state_dir, paths=paths))
+    registry.register(EditTool(workspace, config.state_dir, paths=paths))
     registry.register(GrepTool(paths))
     registry.register(FindTool(paths))
     registry.register(LsTool(paths))
-    registry.register(BashTool(workspace))
-    registry.register(GitCommitTool(workspace))
-    registry.register(GitStatusTool(workspace))
-    registry.register(GitDiffTool(workspace))
-    registry.register(GitLogTool(workspace))
-    registry.register(GitShowTool(workspace))
-    registry.register(GitBranchListTool(workspace))
-    registry.register(GitBranchCreateTool(workspace))
-    registry.register(GitBranchSwitchTool(workspace))
+    registry.register(BashTool(workspace, supervisor=supervisor))
+    registry.register(GitCommitTool(workspace, supervisor=supervisor))
+    registry.register(GitStatusTool(workspace, supervisor=supervisor))
+    registry.register(GitDiffTool(workspace, supervisor=supervisor))
+    registry.register(GitLogTool(workspace, supervisor=supervisor))
+    registry.register(GitShowTool(workspace, supervisor=supervisor))
+    registry.register(GitBranchListTool(workspace, supervisor=supervisor))
+    registry.register(GitBranchCreateTool(workspace, supervisor=supervisor))
+    registry.register(GitBranchSwitchTool(workspace, supervisor=supervisor))
     registry.register(GitRepositoryInitTool(workspace))
+    registry.register(RequestFileAccessTool(access_session, registry))
     policy_prefixes = config.user_allowed_command_prefixes
     identity = workspace_identity(workspace, installation_id)
     effective_snapshot = EffectivePolicySnapshotV2(
@@ -159,6 +190,9 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
         policy_engine=engine,
         project_instructions=project_instructions,
         workspace_permissions=workspace_permissions,
+        access_session=access_session,
+        process_supervisor=supervisor,
+        file_writer=PermissionFileWriter(paths),
     )
     return RuntimeDependencies(
         runtime=runtime,

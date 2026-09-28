@@ -28,6 +28,8 @@ class ProcessRequest:
     env: Mapping[str, str]
     timeout_seconds: float
     max_output_bytes: int = 100_000
+    apple_ios_build_services: bool = False
+    effective_argv: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -39,6 +41,8 @@ class ProcessResult:
     stdout_truncated: bool = False
     stderr_truncated: bool = False
     group_managed: bool = False
+    cleanup_error: str | None = None
+    effective_argv: tuple[str, ...] | None = None
 
 
 class ProcessAdapter(Protocol):
@@ -92,10 +96,12 @@ class ProcessSupervisor:
         adapter: ProcessAdapter | None = None,
         *,
         term_grace_seconds: float = _TERM_GRACE_SECONDS,
+        strict_group: bool = False,
     ) -> None:
         self._popen = process_factory
         self._adapter = adapter or default_process_adapter()
         self._term_grace_seconds = term_grace_seconds
+        self._strict_group = strict_group
 
     def run(
         self,
@@ -123,6 +129,8 @@ class ProcessSupervisor:
                 **self._adapter.spawn_kwargs(),
             )
         except TypeError:
+            if self._strict_group:
+                return ProcessResult("error", None, b"", b"process_group_unavailable")
             process = self._popen(
                 list(request.argv),
                 cwd=str(request.cwd),
@@ -144,7 +152,13 @@ class ProcessSupervisor:
         status: ProcessStatus = "exited"
         try:
             status = self._wait(process, request.timeout_seconds, cancel_event)
+        except BaseException:
+            # A terminal interrupt must not leave the supervised command alive.
+            self._reap(process)
+            raise
         finally:
+            if self._strict_group:
+                self._adapter.kill_group(process)
             stdout, stderr, stdout_truncated, stderr_truncated = collectors.finish()
         return ProcessResult(
             status=status,
@@ -188,6 +202,8 @@ class ProcessSupervisor:
         self._adapter.terminate_group(process)
         try:
             process.wait(timeout=self._term_grace_seconds)
+            if self._strict_group:
+                self._adapter.kill_group(process)
             return
         except subprocess.TimeoutExpired:
             pass

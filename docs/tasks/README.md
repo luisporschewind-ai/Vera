@@ -5,13 +5,13 @@
 ## 约定
 
 - 文件按下一个连续编号命名为 `NNNN-<topic>.md`。
-- 实施任务使用 `Planned`、`In progress`、`Blocked`、`Ready for manual acceptance` 或 `Done`；历史已关闭任务的 `Complete` 按 Done 理解，阶段使用 Complete，计划接受状态与执行状态分开记录。
+- 状态只使用 `Planned`、`In progress`、`Blocked` 或 `Done`。
 - 存在上游规格或架构决策时必须链接。
 - 明确记录目标、范围、验收检查和验证证据。
 - 每项任务只分配一个主实现 Agent；除非明确转移所有权，其他 Agent 或工具只负责只读研究与复核。
 - 只有检查通过且文档与实际行为一致后才能关闭任务。
 
-## 任务索引（含已完成记录）
+## 当前任务
 
 - [任务 0001：建立 Vera 仓库](0001-bootstrap-repository.md)
 - [任务 0002：Core 安全编辑垂直切片](0002-core-safe-editing-vertical-slice.md)
@@ -78,40 +78,4 @@
 - [任务 0064：GitCommitPlan 与精确提交](0064-native-git-commit.md)
 - [任务 0065：Git Hooks、恢复与分支](0065-git-hooks-recovery-and-branches.md)
 - [任务 0066：阶段八验收与真实 dogfood](0066-phase-8-tooling-git-acceptance.md)
-- [阶段九执行顺序](phase-9-execution-order.md)
-- [任务 0072：阶段九自动验收与人工验收准备](0072-phase-9-skills-acceptance.md)
-- [任务 0073：CLI Logo V4](0073-cli-logo-v4.md)
-- [任务 0074：Skill 交互浮层](0074-phase-9-skill-picker-plan.md)
-- [任务 0075：CLI 窗口缩放闪动修正](0075-cli-resize-flicker.md)
-- [任务 0076：CLI Light 主题](0076-cli-light-theme.md)
-- [任务 0077：CLI 奶油风主题](0077-cli-cream-theme.md)
-- [任务 0078：CLI 状态动效与回答逐行呈现](0078-cli-activity-and-paced-replies.md)
-- [任务 0079：清除 Apple Terminal 启动前的 `p`](0079-apple-terminal-startup-probe.md)
-- [任务 0080：CLI 主题回答与用户消息可读性修正](0080-cli-theme-readability.md)
-- [任务 0081：Logo 右侧四行信息与视觉层级](0081-cli-header-four-line-facts.md)
-- [任务 0082：模型把工具调用写进正文（DSML 标记泄漏）](0082-leaked-tool-call-markup.md)
-- [任务 0083：底栏"已选择 Skill"不随消费或清除更新](0083-skill-footer-stale-selection.md)
-- [任务 0084：BYOK 多厂商模型配置实施计划](0084-byok-model-configuration.md)
-- [任务 0085：Provider 上下文缓存用量实施计划](0085-provider-cache-usage.md)
-- [任务 0086：Core Trace 与运行可观测性（阶段十；In progress）](0086-core-trace-observability.md)
-- [三档权限与自动审核实施计划（Accepted；沙盒完成后复核）](approval-permission-profiles-implementation-plan.md)
-
-## 补充索引（2026-09-26 对齐）
-
-- [任务 0045：走查发现 43（无效工具参数不得杀死 Run）](0045-cli-dogfood-invalid-tool-arguments.md)
-- [任务 0046：走查发现 46（高对比度残影）](0046-cli-dogfood-high-contrast-remnant.md)
-- [任务 0047：走查发现 44–45（`-r` 选择器与清屏）](0047-cli-dogfood-resume-picker-and-clear.md)
-- [任务 0048：走查发现 47（上下文占用要显示真实字节）](0048-cli-dogfood-context-occupancy.md)
-- [任务 0049：走查发现 48（Esc 取消无效）](0049-cli-dogfood-escape-cancel.md)
-- [任务 0050：走查发现 49（取消后 Error 与 Worker 失败）](0050-cli-dogfood-cancel-worker.md)
-- [任务 0051：走查发现 42（折行）与回答署名 Vera](0051-cli-dogfood-path-wrap.md)
-- [任务 0052：走查发现 50（工具调查后空响应失败）](0052-cli-dogfood-empty-after-tools.md)
-- [任务 0053：状态带 K 单位、状态左置与审批卡边距](0053-cli-dogfood-footer-k-and-approval-margin.md)
-- [任务 0067：Skill Manifest、Discovery、Registry 与公共契约](0067-skill-discovery-contracts.md)
-- [任务 0068：SkillSnapshotStore、原子冻结与安全清理](0068-skill-snapshots.md)
-- [任务 0069：Session Selection、Run 绑定与 Context 装配](0069-skill-runtime-context.md)
-- [任务 0070：CLI 命令与三客户端结构化投影](0070-skill-cli-projection.md)
-- [任务 0071：NoSkill、兼容迁移与安装态整合](0071-skill-compatibility.md)
-- [阶段八大单体拆分（隔离分支已完成，未合入）](../superpowers/plans/2026-09-21-monolith-refactor.md)
-- [Core Trace 与运行可观测性实施计划（阶段十；依用户授权与阶段八/九并行逐任务执行）](../superpowers/plans/2026-09-26-core-trace-observability.md)
-- [2026-09-26 非沙盒任务与文档对齐记录](../evals/2026-09-26-task-document-alignment.md)
+- [任务 0089：工作区权限沙盒实施](0089-workspace-permission-sandbox.md)

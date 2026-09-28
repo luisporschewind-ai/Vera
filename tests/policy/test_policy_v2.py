@@ -118,6 +118,21 @@ def test_forbidden_never_relaxes_by_mode(mode: PolicyMode) -> None:
     assert decision.reason_code == "risk_forbidden"
 
 
+def test_apple_build_service_approval_does_not_override_forbidden_facts() -> None:
+    decision = decide_v2(
+        _action(
+            ToolEffect.APPLE_IOS_BUILD_SERVICES,
+            risk_facts=ToolRiskFacts(policy_forbidden=True, facts_complete=True),
+        ),
+        _snapshot(trusted=True),
+        mode=PolicyMode.AUTONOMOUS,
+        goal_authorized=True,
+    )
+
+    assert decision.decision is PolicyDecisionKind.DENY
+    assert decision.reason_code == "risk_forbidden"
+
+
 @pytest.mark.parametrize(
     ("mode", "effect", "trusted", "goal_authorized", "expected"),
     [

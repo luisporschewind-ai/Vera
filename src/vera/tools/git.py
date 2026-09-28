@@ -30,6 +30,7 @@ from vera.git.models import (
 from vera.git.service import GitService, GitServiceError
 from vera.persistence.errors import PersistenceFault, StateVersionError
 from vera.persistence.operation_receipt import OperationReceipt, OperationReceiptStore, receipt_key
+from vera.process.supervisor import ProcessSupervisor
 from vera.tools.definitions import ToolDefinitionV2, ToolResult
 
 
@@ -229,13 +230,14 @@ class _GitReadTool:
     service_method: str
     service: GitService | None
 
-    def __init__(self, workspace: Path) -> None:
+    def __init__(self, workspace: Path, *, supervisor: ProcessSupervisor | None = None) -> None:
         self.workspace = Path(workspace)
+        self.supervisor = supervisor
         self.service = None
 
     def _service(self) -> GitService:
         if self.service is None:
-            self.service = GitService(self.workspace)
+            self.service = GitService(self.workspace, supervisor=self.supervisor)
         return self.service
 
     def risk_facts(self, arguments: ContractModel) -> ToolRiskFacts:
@@ -389,8 +391,15 @@ class GitCommitTool:
         max_output_bytes=100_000,
     )
 
-    def __init__(self, workspace: Path, *, environment: Mapping[str, str] | None = None) -> None:
+    def __init__(
+        self,
+        workspace: Path,
+        *,
+        environment: Mapping[str, str] | None = None,
+        supervisor: ProcessSupervisor | None = None,
+    ) -> None:
         self.workspace = Path(workspace)
+        self.supervisor = supervisor
         self.environment = dict(environment) if environment is not None else os.environ.copy()
         self.service: GitService | None = None
         self.state_dir: Path | None = None
@@ -408,7 +417,9 @@ class GitCommitTool:
 
     def _service(self) -> GitService:
         if self.service is None:
-            self.service = GitService(self.workspace, environment=self.environment)
+            self.service = GitService(
+                self.workspace, environment=self.environment, supervisor=self.supervisor
+            )
         return self.service
 
     def risk_facts(self, arguments: GitCommitInput) -> ToolRiskFacts:
@@ -488,8 +499,15 @@ class _GitBranchTool:
     input_model = GitBranchInput
     definition: ToolDefinitionV2
 
-    def __init__(self, workspace: Path, *, environment: Mapping[str, str] | None = None) -> None:
+    def __init__(
+        self,
+        workspace: Path,
+        *,
+        environment: Mapping[str, str] | None = None,
+        supervisor: ProcessSupervisor | None = None,
+    ) -> None:
         self.workspace = Path(workspace)
+        self.supervisor = supervisor
         self.environment = dict(environment) if environment is not None else os.environ.copy()
         self.service: GitService | None = None
         self.state_dir: Path | None = None
@@ -518,7 +536,9 @@ class _GitBranchTool:
 
     def _service(self) -> GitService:
         if self.service is None:
-            self.service = GitService(self.workspace, environment=self.environment)
+            self.service = GitService(
+                self.workspace, environment=self.environment, supervisor=self.supervisor
+            )
         return self.service
 
     def risk_facts(self, arguments: GitBranchInput) -> ToolRiskFacts:

@@ -1,0 +1,18 @@
+[
+  {
+    "name": "confstr_baseline",
+    "status": "exited",
+    "exit_code": 0,
+    "cleanup_error": null,
+    "stdout": "/var/folders/gk/04q44v9x7fz055zd0n06ntgm0000gn/T/\n",
+    "stderr": ""
+  },
+  {
+    "name": "confstr_deny_shared_metadata",
+    "status": "exited",
+    "exit_code": 0,
+    "cleanup_error": null,
+    "stdout": "/var/folders/gk/04q44v9x7fz055zd0n06ntgm0000gn/T/\n",
+    "stderr": ""
+  }
+]

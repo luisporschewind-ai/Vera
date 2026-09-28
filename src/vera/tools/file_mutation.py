@@ -5,6 +5,8 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 
 from vera.contracts.tool_actions import ToolEffect, ToolRiskFacts
+from vera.sandbox.files import PermissionPaths
+from vera.sandbox.writer import PermissionFileWriter
 from vera.tools.definitions import ToolDefinitionV2, ToolResult
 from vera.workspace.mutation import (
     FileMutationApplier,
@@ -28,8 +30,8 @@ class EditInput(BaseModel):
 
 
 class _FileMutationTool:
-    def __init__(self, root: Path) -> None:
-        self.paths = WorkspacePaths(root)
+    def __init__(self, root: Path, *, paths: WorkspacePaths | None = None) -> None:
+        self.paths = paths or WorkspacePaths(root)
         self.planner = FileMutationPlanner(self.paths)
 
     def risk_facts(self, arguments: BaseModel) -> ToolRiskFacts:
@@ -65,14 +67,19 @@ class WriteTool(_FileMutationTool):
         max_output_bytes=16_384,
     )
 
-    def __init__(self, root: Path, state_dir: Path | None = None) -> None:
-        super().__init__(root)
+    def __init__(
+        self, root: Path, state_dir: Path | None = None, *, paths: WorkspacePaths | None = None
+    ) -> None:
+        super().__init__(root, paths=paths)
         self.state_dir = state_dir
         self.applier: FileMutationApplier | None = None
 
     def bind_state(self, state_dir: Path) -> None:
         self.state_dir = state_dir
-        self.applier = FileMutationApplier(self.paths, state_dir)
+        writer = (
+            PermissionFileWriter(self.paths) if isinstance(self.paths, PermissionPaths) else None
+        )
+        self.applier = FileMutationApplier(self.paths, state_dir, writer=writer)
 
     def plan_action(
         self, run_id: str, arguments: BaseModel, *, action_id: str | None = None
@@ -101,14 +108,19 @@ class EditTool(_FileMutationTool):
         max_output_bytes=16_384,
     )
 
-    def __init__(self, root: Path, state_dir: Path | None = None) -> None:
-        super().__init__(root)
+    def __init__(
+        self, root: Path, state_dir: Path | None = None, *, paths: WorkspacePaths | None = None
+    ) -> None:
+        super().__init__(root, paths=paths)
         self.state_dir = state_dir
         self.applier: FileMutationApplier | None = None
 
     def bind_state(self, state_dir: Path) -> None:
         self.state_dir = state_dir
-        self.applier = FileMutationApplier(self.paths, state_dir)
+        writer = (
+            PermissionFileWriter(self.paths) if isinstance(self.paths, PermissionPaths) else None
+        )
+        self.applier = FileMutationApplier(self.paths, state_dir, writer=writer)
 
     def plan_action(
         self, run_id: str, arguments: BaseModel, *, action_id: str | None = None

@@ -19,6 +19,7 @@ _REASON_TEXT: dict[str, str] = {
     "permission_denied": "没有写入权限",
     "invalid_compaction_response": "模型返回的压缩结果不可用",
     "repeated_tool_call": "模型重复了同一次工具调用",
+    "read_loop_no_progress": "多次读取未获得新信息，已停止重复调查",
     "missing_changeset": "模型没有给出可应用的 Change Set",
     "no_changes_proposed": "模型没有提出任何改动",
     "missing_recovery_plan": "缺少可用的恢复计划",

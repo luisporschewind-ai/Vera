@@ -20,6 +20,7 @@ from vera.recovery.resume import RunResumer
 from vera.runtime.context import RunContext, tool_result_message
 from vera.runtime.flow_protocols import ToolFlowHost
 from vera.runtime.intake import tool_call_target
+from vera.runtime.read_progress import observe_read
 from vera.tools.definitions import ToolResult
 from vera.tools.executor import PreparedToolAction, ToolExecutor
 from vera.workspace.changeset import sha256_bytes
@@ -110,6 +111,10 @@ def available_tool_scopes(
     prepared: PreparedToolAction,
 ) -> tuple[Literal["once", "run", "workspace"], ...]:
     action = prepared.action
+    if ToolEffect.APPLE_IOS_BUILD_SERVICES in action.effects:
+        return ("once",)
+    if ToolEffect.FILE_ACCESS_GRANT in action.effects:
+        return ("once",)
     if action.risk_facts.external_target is not None:
         return ("once", "run")
     if {
@@ -309,6 +314,12 @@ def emit_tool_result(
             source_kind = source_kind_for_path(relative)
     if result.content is None:
         text = ""
+    elif (
+        call.name in {"read", "read_file"}
+        and isinstance(result.content, dict)
+        and isinstance(result.content.get("text"), str)
+    ):
+        text = result.content["text"]
     else:
         text = json.dumps(result.content, ensure_ascii=False, sort_keys=True)
     envelope, rendered, events = host._prepare_content(
@@ -331,6 +342,12 @@ def emit_tool_result(
     }
     if target:
         payload["target"] = target
+    if call.name == "request_file_access" and result.ok and isinstance(result.content, dict):
+        payload["file_access"] = {
+            key: result.content[key]
+            for key in ("grant_id", "path", "mode", "scope", "recursive")
+            if key in result.content
+        }
     mutation_payload = result.content if call.name in {"write", "edit"} else None
     if isinstance(mutation_payload, dict) and mutation_payload.get("action_id"):
         yield host._event(
@@ -364,8 +381,20 @@ def emit_tool_result(
                 "cumulative_diff": list(context.applied_file_mutations),
             },
         )
-    tool_text = tool_result_message(call, result, rendered)
+    tool_text = tool_result_message(
+        call, result, rendered, approval=context.tool_approval_outcomes.pop(call.call_id, None)
+    )
     context.messages.append(ModelMessage(role="tool", content=tool_text, tool_call_id=call.call_id))
+    if observe_read(context, call, envelope.content_hash, result.ok):
+        context.read_warning_pending = True
+        yield host._event(
+            context,
+            "tool.repetition_detected",
+            {
+                "reason": "unchanged_read_results",
+                "count": context.unchanged_read_streak,
+            },
+        )
     context.context_bytes = sum(
         len(message.content.encode("utf-8")) for message in context.messages
     )

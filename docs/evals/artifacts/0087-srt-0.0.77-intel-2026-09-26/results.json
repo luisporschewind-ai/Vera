@@ -1,0 +1,16 @@
+[
+  {
+    "id": "native-tools",
+    "pid": 14987,
+    "code": 1,
+    "signal": null,
+    "timedOut": false,
+    "stdout": "shell-ok\n",
+    "stderr": "xcode-select: error: unable to read data link at '/var/select/developer_dir', expected symbolic link (Operation not permitted)\nxcode-select: error: No developer tools were found and no install could be requested (possibly because there is no active GUI session).\nIf developer tools are located at a non-default location on disk, use `sudo xcode-select --switch path/to/Xcode.app` to specify the Xcode that you wish to use for command line developer tools.\nUse `xcode-select --install` to install the standalone command line developer tools, or visit http://adc.apple.com to download Xcode or the standalone command line tools installation package.\nSee `man xcode-select` for more details.\n"
+  },
+  {
+    "id": "minimum-probe",
+    "status": "stopped",
+    "error": "Error: gate failed: native-tools"
+  }
+]

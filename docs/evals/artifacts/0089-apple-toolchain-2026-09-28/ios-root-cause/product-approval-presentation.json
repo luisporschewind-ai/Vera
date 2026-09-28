@@ -1,0 +1,11 @@
+{
+  "command": "pytest -q tests/sandbox/test_approval_presentation.py",
+  "result": "7 passed",
+  "covers": [
+    "once-only six-service disclosure",
+    "temporary APFS storage disclosure",
+    "descendant and simulator-state risk disclosure",
+    "approved execution receives ephemeral capability"
+  ],
+  "presenter": "HumanPresenter event rendering; no live CLI session or model API"
+}

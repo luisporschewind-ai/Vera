@@ -120,7 +120,7 @@ DEFAULT_COMMANDS: tuple[CommandDescriptor, ...] = (
     CommandDescriptor("/context", "/context", "显示上下文统计", "会话", "context"),
     CommandDescriptor(
         "/permissions",
-        "/permissions [trust|revoke]",
+        "/permissions [trust|revoke|revoke-file <grant_id>]",
         "显示、信任或撤销当前工作区权限",
         "安全",
         "permissions",

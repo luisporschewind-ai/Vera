@@ -26,6 +26,15 @@ class ConversationStats(BaseModel):
     last_error_code: str | None = None
 
 
+class FilePermissionSummary(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    grant_id: str
+    path: str
+    mode: Literal["read", "read_write"]
+    scope: Literal["once", "session"]
+    recursive: bool
+
+
 class PermissionStatus(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -41,6 +50,9 @@ class PermissionStatus(BaseModel):
     policy_mode: Literal["review", "balanced", "autonomous"] = "balanced"
     trusted: bool = False
     approval_scopes: tuple[str, ...] = ("once", "run", "workspace")
+    file_grants: tuple[FilePermissionSummary, ...] = ()
+    network: Literal["deny"] | None = None
+    sandbox_state: Literal["none", "setup_required", "configured", "required"] = "none"
 
 
 class GitStatus(BaseModel):

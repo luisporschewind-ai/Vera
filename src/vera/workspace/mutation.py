@@ -138,12 +138,11 @@ class FileMutationPlanner:
         if not target.parent.is_dir():
             raise FileMutationPlanningError("parent_missing")
 
-    @staticmethod
-    def _read_text_bytes(target: Path, fact: PathFact) -> bytes:
+    def _read_text_bytes(self, target: Path, fact: PathFact) -> bytes:
         if not fact.exists:
             return b""
         try:
-            data = target.read_bytes()
+            data = self.paths.read_bytes(fact.relative_path)
             data.decode("utf-8")
             return data
         except UnicodeDecodeError as exc:
@@ -302,7 +301,7 @@ class FileMutationApplier:
         fact = self.paths.inspect_mutation(path)
         if not fact.exists:
             return None
-        return Path(fact.canonical_path).read_bytes()
+        return self.paths.read_bytes(fact.relative_path)
 
 
 def _sha256(value: bytes) -> str:

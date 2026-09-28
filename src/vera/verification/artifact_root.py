@@ -32,8 +32,11 @@ def environment_for_plan(plan: VerificationArtifactPlan) -> dict[str, str]:
             "PYTEST_ADDOPTS": "-p no:cacheprovider",
             "COVERAGE_FILE": f"{root}/.coverage",
         }
-    if plan.profile == "xcode":
-        return {"CLANG_MODULE_CACHE_PATH": f"{root}/ModuleCache"}
+    if plan.profile in {"xcode", "swiftpm"}:
+        return {
+            "CLANG_MODULE_CACHE_PATH": f"{root}/ModuleCache",
+            "SWIFTPM_MODULECACHE_OVERRIDE": f"{root}/SwiftModuleCache",
+        }
     if plan.profile == "git_readonly":
         return {"GIT_OPTIONAL_LOCKS": "0"}
     return {}

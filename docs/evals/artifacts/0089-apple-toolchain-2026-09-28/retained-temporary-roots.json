@@ -1,0 +1,15 @@
+{
+  "reason": "After removing only each recorded Core-owned home/cache entries, macOS still returns EPERM entering TemporaryItems and ENOTEMPTY removing its parent. No host security changes attempted.",
+  "remaining_children": ["TemporaryItems"],
+  "cleanup_attempted_at": "2026-09-28",
+  "roots": [
+    "/private/var/folders/gk/04q44v9x7fz055zd0n06ntgm0000gn/T/vera-command-0aj1xm1_",
+    "/private/var/folders/gk/04q44v9x7fz055zd0n06ntgm0000gn/T/vera-command-4rdv7nw4",
+    "/private/var/folders/gk/04q44v9x7fz055zd0n06ntgm0000gn/T/vera-command-8i76uakj",
+    "/private/var/folders/gk/04q44v9x7fz055zd0n06ntgm0000gn/T/vera-command-apy7o4im",
+    "/private/var/folders/gk/04q44v9x7fz055zd0n06ntgm0000gn/T/vera-command-dohm9e1_",
+    "/private/var/folders/gk/04q44v9x7fz055zd0n06ntgm0000gn/T/vera-command-e1e0avuo",
+    "/private/var/folders/gk/04q44v9x7fz055zd0n06ntgm0000gn/T/vera-command-rtqhnmcn",
+    "/private/var/folders/gk/04q44v9x7fz055zd0n06ntgm0000gn/T/vera-command-x8vkq9yi"
+  ]
+}

@@ -11,12 +11,13 @@ from uuid import uuid4
 from vera.contracts.events import EventEnvelope
 from vera.contracts.recovery import RecoveryStage
 from vera.contracts.streaming import RuntimeOutput, StreamFrame, StreamFrameType
+from vera.contracts.tool_actions import ToolEffect
 from vera.models.base import ModelMessage, ModelRequest, ModelToolCall, ModelTurn
 from vera.models.errors import ModelErrorCode, ModelProviderError, safe_error_payload
 from vera.models.streaming import ModelStreamCompleted, ModelTextDelta
 from vera.recovery.models import PersistedToolAction
 from vera.runtime.approval import ApprovalKind
-from vera.runtime.context import RunContext, compact_run_messages
+from vera.runtime.context import RunContext, compact_run_messages, message_bytes
 from vera.runtime.flow_protocols import LoopFlowHost
 from vera.runtime.intake import (
     _CLAIMED_CHANGESET_NUDGE,
@@ -26,6 +27,7 @@ from vera.runtime.intake import (
     claims_unissued_changeset,
     tool_call_target,
 )
+from vera.runtime.read_progress import READ_ONLY_TOOLS
 from vera.runtime.state import RunState
 from vera.tools.executor import ToolPreparationError
 
@@ -39,7 +41,7 @@ def execute_tool(
     else:
         context.last_tool_signature = signature
         context.repeated_tool_streak = 1
-    if context.repeated_tool_streak >= 3:
+    if context.repeated_tool_streak >= 3 and call.name not in READ_ONLY_TOOLS:
         yield from host._fail(context, "repeated_tool_call")
         return
     started: dict[str, Any] = {"name": call.name, "call_id": call.call_id}
@@ -102,12 +104,17 @@ def execute_tool(
             ApprovalKind.TOOL,
             prepared.action.action_id,
             prepared.action.input_hash,
-            f"execute tool {prepared.action.tool_name}",
+            executor.approval_description(prepared),
             "high",
             workspace_identity=prepared.action.workspace_identity,
             policy_hash=prepared.policy_decision.policy_hash,
             fact_hash=prepared.target_facts_hash,
             available_scopes=host._available_tool_scopes(prepared),
+            required_capabilities=(
+                ("apple_ios_build_services",)
+                if ToolEffect.APPLE_IOS_BUILD_SERVICES in prepared.action.effects
+                else ()
+            ),
             **host._security_approval_kwargs(context),
         )
         yield host._stable_event(
@@ -119,6 +126,8 @@ def execute_tool(
         return
     _result, tool_events = host._execute_prepared_tool(context, call, executor, prepared)
     yield from tool_events
+    if context.unchanged_read_streak >= 8:
+        yield from host._fail(context, "read_loop_no_progress")
 
 
 def complete_with_retry(
@@ -223,14 +232,13 @@ def drive(host: LoopFlowHost, context: RunContext) -> Iterator[RuntimeOutput]:
         if context.model_turns >= host.limits.max_model_turns:
             yield from host._fail(context, "max_model_turns")
             return
+        context.context_bytes = message_bytes(context.messages)
         if context.context_bytes >= host.limits.max_context_bytes:
             context.messages = compact_run_messages(
                 context.messages,
                 max_bytes=host.limits.max_context_bytes,
             )
-            context.context_bytes = sum(
-                len(message.content.encode("utf-8")) for message in context.messages
-            )
+            context.context_bytes = message_bytes(context.messages)
         if context.context_bytes >= host.limits.max_context_bytes:
             yield from host._fail(context, "max_context_bytes")
             return
@@ -274,7 +282,12 @@ def drive(host: LoopFlowHost, context: RunContext) -> Iterator[RuntimeOutput]:
                     continue
                 yield from host._fail(context, "empty_model_response")
                 return
-            if claims_unissued_changeset(text) and not context.claimed_changeset_nudge:
+            has_approval = any(e.type == "approval.required" for e in context.journal.read_all())
+            if (
+                claims_unissued_changeset(text)
+                and not context.claimed_changeset_nudge
+                and not has_approval
+            ):
                 context.claimed_changeset_nudge = True
                 context.messages.append(ModelMessage(role="assistant", content=text))
                 context.messages.append(ModelMessage(role="user", content=_CLAIMED_CHANGESET_NUDGE))
@@ -332,13 +345,21 @@ def drive(host: LoopFlowHost, context: RunContext) -> Iterator[RuntimeOutput]:
                 RunState.CANCELLED,
             }:
                 return
+        if context.read_warning_pending:
+            context.read_warning_pending = False
+            context.messages.append(
+                ModelMessage(
+                    role="user",
+                    content='{"core_notice":"Repeated reads produced no new evidence. Summarize '
+                    "existing evidence or choose a different scope. Further unchanged reads will "
+                    'stop this run. This is not an authorization."}',
+                )
+            )
         context.messages = compact_run_messages(
             context.messages,
             max_bytes=host.limits.max_context_bytes,
         )
-        context.context_bytes = sum(
-            len(message.content.encode("utf-8")) for message in context.messages
-        )
+        context.context_bytes = message_bytes(context.messages)
         context.machine.transition(RunState.DISCOVERING)
 
 

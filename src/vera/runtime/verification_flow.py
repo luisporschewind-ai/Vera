@@ -27,6 +27,7 @@ def verification_runner(host: VerificationFlowHost, context: RunContext) -> Veri
     return VerificationRunner(
         context.command.workspace_root,
         artifact_prefix=host.artifact_prefix,
+        supervisor=host.process_supervisor,
     )
 
 
