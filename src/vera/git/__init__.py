@@ -11,6 +11,12 @@ from vera.git.commit import GitCommitResult, GitCommitter, GitCommitTransactionE
 from vera.git.commit_plan import GitCommitPlan, GitCommitPlanBuilder, GitCommitPlanError
 from vera.git.discovery import GitDiscovery, GitDiscoveryError
 from vera.git.hooks import GitHookEntry, GitHookFacts, GitHookInspector, GitSigningFacts
+from vera.git.initialize import (
+    GitRepositoryInitError,
+    GitRepositoryInitPlan,
+    GitRepositoryInitResult,
+    GitRepositoryInitService,
+)
 from vera.git.models import (
     GitBranchSummary,
     GitCommitSummary,
@@ -42,6 +48,10 @@ __all__ = [
     "GitHookEntry",
     "GitHookFacts",
     "GitHookInspector",
+    "GitRepositoryInitError",
+    "GitRepositoryInitPlan",
+    "GitRepositoryInitResult",
+    "GitRepositoryInitService",
     "GitSigningFacts",
     "GitDiffRequest",
     "GitDiffResult",

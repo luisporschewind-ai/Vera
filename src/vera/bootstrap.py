@@ -44,6 +44,7 @@ from vera.tools.git import (
     GitCommitTool,
     GitDiffTool,
     GitLogTool,
+    GitRepositoryInitTool,
     GitShowTool,
     GitStatusTool,
 )
@@ -166,6 +167,7 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
     registry.register(GitBranchListTool(workspace))
     registry.register(GitBranchCreateTool(workspace))
     registry.register(GitBranchSwitchTool(workspace))
+    registry.register(GitRepositoryInitTool(workspace))
     policy_prefixes = config.user_allowed_command_prefixes
     identity = workspace_identity(workspace, installation_id)
     effective_snapshot = EffectivePolicySnapshotV2(

@@ -85,7 +85,14 @@ _RISK_ORDER = {
     RiskLevel.FORBIDDEN: 3,
 }
 _NATIVE_GIT_READ_TOOLS = frozenset(
-    {"git_status", "git_diff", "git_log", "git_show", "git_branch_list"}
+    {
+        "git_status",
+        "git_diff",
+        "git_log",
+        "git_show",
+        "git_branch_list",
+        "git_repository_init",
+    }
 )
 
 
@@ -173,6 +180,14 @@ def decide_v2(
             PolicyDecisionKind.DENY,
             "risk_forbidden",
             "the action crosses a forbidden policy boundary",
+            "risk_v2",
+            policy_digest,
+        )
+    elif action.tool_name == "git_repository_init" and ToolEffect.WORKSPACE_WRITE in action.effects:
+        base = _decision(
+            PolicyDecisionKind.APPROVAL_REQUIRED,
+            "high_risk_approval_required",
+            "Git repository initialization always requires explicit approval",
             "risk_v2",
             policy_digest,
         )

@@ -93,3 +93,4 @@
 - [任务 0083：底栏"已选择 Skill"不随消费或清除更新](0083-skill-footer-stale-selection.md)
 - [任务 0084：BYOK 多厂商模型配置实施计划](0084-byok-model-configuration.md)
 - [任务 0085：Provider 上下文缓存用量实施计划](0085-provider-cache-usage.md)
+- [任务 0090：Core 受控 Git 仓库初始化](0090-core-owned-git-repository-initialization.md)

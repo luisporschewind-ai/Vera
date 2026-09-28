@@ -55,6 +55,7 @@ class OperationReceipt(BaseModel):
         "process",
         "git_commit",
         "git_branch",
+        "git_repository_init",
     ]
     run_id: str
     input_hash: str
