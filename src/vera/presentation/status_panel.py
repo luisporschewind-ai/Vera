@@ -2,12 +2,22 @@
 
 from __future__ import annotations
 
-from vera.session.models import SessionStatus
+from vera.session.models import PermissionStatus, SessionStatus
+
+
+def format_sandbox_status(status: PermissionStatus) -> str:
+    if status.sandbox_state == "setup_required":
+        return "未配置 · 项目命令禁用"
+    if status.sandbox_state == "configured":
+        return "已配置 · 项目命令必须使用 OS 沙盒，执行前检查"
+    if status.sandbox_state == "required":
+        return "项目命令要求沙盒 · 后端状态未确认"
+    return "OS sandbox" if status.os_sandbox else "no OS sandbox"
 
 
 def format_status_panel(status: SessionStatus) -> str:
     git = _git_line(status)
-    sandbox = "OS sandbox" if status.permissions.os_sandbox else "no OS sandbox"
+    sandbox = format_sandbox_status(status.permissions)
     session = status.context
     return "\n".join(
         (

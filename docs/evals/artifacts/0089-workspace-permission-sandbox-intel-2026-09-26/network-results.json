@@ -1,0 +1,14 @@
+[
+  {
+    "case": "ipv4",
+    "baseline_exit": 0,
+    "sandbox_exit": 1,
+    "stderr": "nc: connectx to 127.0.0.1 port 56182 (tcp) failed: Operation not permitted\n"
+  },
+  {
+    "case": "ipv6",
+    "baseline_exit": 0,
+    "sandbox_exit": 1,
+    "stderr": "nc: connectx to ::1 port 56184 (tcp) failed: Operation not permitted\n"
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "name": "alias_baseline",
+    "status": "exited",
+    "exit_code": 0,
+    "cleanup_error": null,
+    "stdout": "pid=61346\nicu_open=1 errno=1\ndate_formatter=1\nwrite_direct=1 error=none\nwrite_atomic=1 error=none\ndictionary=1 error=none\n",
+    "stderr": ""
+  },
+  {
+    "name": "alias_link_read",
+    "status": "exited",
+    "exit_code": 0,
+    "cleanup_error": null,
+    "stdout": "pid=61353\nicu_open=1 errno=1\ndate_formatter=1\nwrite_direct=1 error=none\nwrite_atomic=1 error=none\ndictionary=1 error=none\n",
+    "stderr": ""
+  }
+]

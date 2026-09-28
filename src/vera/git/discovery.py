@@ -40,7 +40,7 @@ class GitDiscovery:
         if bare_check.status != "exited":
             raise GitDiscoveryError(self._status_code(bare_check), "git discovery did not finish")
         if bare_check.exit_code != 0:
-            raise GitDiscoveryError("git_not_repository", "workspace is not a Git repository")
+            raise GitDiscoveryError(self._failure_code(bare_check))
         if bare_check.stdout.decode("utf-8", errors="strict").strip() == "true":
             raise GitDiscoveryError("git_unsupported_state", "bare repositories are unsupported")
         result = self._run(
@@ -54,7 +54,7 @@ class GitDiscovery:
         if result.status != "exited":
             raise GitDiscoveryError(self._status_code(result), "git discovery did not finish")
         if result.exit_code != 0:
-            raise GitDiscoveryError("git_not_repository", "workspace is not a Git repository")
+            raise GitDiscoveryError(self._failure_code(result))
         lines = result.stdout.decode("utf-8", errors="strict").splitlines()
         if len(lines) != 3 or lines[2] not in {"true", "false"}:
             raise GitDiscoveryError("git_invalid_output", "Git discovery output was invalid")
@@ -116,6 +116,19 @@ class GitDiscovery:
             purpose="git",
             source=self.environment,
         ).values
+
+    @staticmethod
+    def _failure_code(result: ProcessResult) -> str:
+        # LC_ALL=C is set for discovery. Do not mistake launcher or access errors
+        # for repository absence, and never use stderr as an instruction to retry.
+        error = result.stderr.lower()
+        if b"operation not permitted" in error or b"permission denied" in error:
+            return "git_permission_denied"
+        if b"xcode-select:" in error or b"xcrun:" in error:
+            return "git_toolchain_unavailable"
+        if error.startswith(b"fatal: not a git repository"):
+            return "git_not_repository"
+        return "git_process_error"
 
     @staticmethod
     def _status_code(result: ProcessResult) -> str:

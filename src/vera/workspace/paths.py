@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import os
 import stat
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Literal
 
@@ -342,5 +343,15 @@ class WorkspacePaths:
     def resolve_read(self, raw_path: str) -> Path:
         return Path(self.inspect_read(raw_path).canonical_path)
 
+    def read_bytes(self, raw_path: str, limit: int | None = None) -> bytes:
+        with self.resolve_read(raw_path).open("rb") as stream:
+            return stream.read() if limit is None else stream.read(limit)
+
     def resolve_mutation(self, raw_path: str) -> Path:
         return Path(self.inspect_mutation(raw_path).canonical_path)
+
+    def list_names(self, raw_path: str) -> list[str]:
+        return [item.name for item in self.resolve_read(raw_path).iterdir()]
+
+    def iter_files(self, raw_path: str, pattern: str = "*") -> Iterator[Path]:
+        yield from self.resolve_read(raw_path).rglob(pattern)

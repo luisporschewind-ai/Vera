@@ -1,0 +1,3 @@
+CompileStoryboard /tmp/vera-0089-acceptance.psEsZR/ios-volume-13rmxsnl/workspace/VeraTestDemo/Base.lproj/Main.storyboard (in target 'VeraTestDemo' from project 'VeraTestDemo')
+CompileStoryboard /tmp/vera-0089-acceptance.psEsZR/ios-volume-13rmxsnl/workspace/VeraTestDemo/Base.lproj/LaunchScreen.storyboard (in target 'VeraTestDemo' from project 'VeraTestDemo')
+** BUILD SUCCEEDED **

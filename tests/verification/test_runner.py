@@ -49,6 +49,26 @@ def _artifact_prefix(tmp_path: Path) -> Path:
     return tmp_path.parent / f"{tmp_path.name}-vera-verification"
 
 
+@pytest.mark.parametrize("failure", [KeyboardInterrupt, RuntimeError])
+def test_interrupted_verification_cleans_owned_artifacts(tmp_path: Path, failure) -> None:
+    command, prefix = _planned(tmp_path, ("pytest", "-q"))
+    root = Path(command.artifact_plan.root)
+    sentinel = tmp_path / "keep.txt"
+    sentinel.write_text("unchanged")
+
+    def interrupt(request):
+        (root / "partial-report.txt").write_text("temporary")
+        raise failure()
+
+    runner = VerificationRunner(
+        tmp_path, supervisor=FakeSupervisor(side_effect=interrupt), artifact_prefix=prefix
+    )
+    with pytest.raises(failure):
+        runner.run(command)
+    assert not root.exists()
+    assert sentinel.read_text() == "unchanged"
+
+
 def _planned(
     tmp_path: Path,
     argv: tuple[str, ...],
@@ -248,3 +268,27 @@ def test_runner_times_out_and_reaps_child(tmp_path: Path) -> None:
     assert result.status == "timed_out"
     assert result.exit_code is None
     assert result.artifact_cleanup_status == "cleaned"
+
+
+def test_runner_honors_approved_build_timeout(tmp_path: Path) -> None:
+    command, prefix = _planned(tmp_path, ("swift", "test"), profile="swiftpm", timeout_seconds=300)
+    supervisor = FakeSupervisor()
+    VerificationRunner(tmp_path, supervisor=supervisor, artifact_prefix=prefix).run(command)
+    assert supervisor.requests[-1].timeout_seconds == 300
+
+
+def test_cleanup_error_retains_observed_exit_and_output(tmp_path: Path) -> None:
+    command, prefix = _planned(tmp_path, ("swift", "test"), profile="swiftpm")
+    supervisor = FakeSupervisor(
+        status="error",
+        exit_code=0,
+        stdout=b"Tests passed",
+        stderr=b"sandbox_cleanup_failed: owned-directory",
+    )
+    result = VerificationRunner(tmp_path, supervisor=supervisor, artifact_prefix=prefix).run(
+        command
+    )
+    assert result.status == "error"
+    assert result.exit_code == 0
+    assert result.stdout == "Tests passed"
+    assert "sandbox_cleanup_failed" in result.stderr

@@ -1,0 +1,14 @@
+{
+  "exit_code": 0,
+  "status": "exited",
+  "cleanup_error": null,
+  "elapsed": 29.572386026382446,
+  "markers": {
+    "BUILD SUCCEEDED": 1,
+    "BUILD FAILED": 0,
+    "supported platforms": 1,
+    "Operation not permitted": 0,
+    "Malformed bundle": 928,
+    "Platform Not Installed": 0
+  }
+}

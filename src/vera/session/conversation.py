@@ -106,13 +106,19 @@ class ConversationContext:
             )
         )
 
-    def replace_with_summary(self, summary: str) -> None:
+    def summary_with_facts(self, summary: str) -> str:
         text = summary.strip()
         if not text:
             raise ValueError("summary must not be empty")
         facts = _fact_lines(self._messages)
-        if facts and "[facts]" not in text:
-            text = text + "\n" + "\n".join(facts[-8:])
+        # A model-written marker is not evidence that the actual facts survived.
+        missing = [fact for fact in facts[-8:] if fact not in text.splitlines()]
+        if missing:
+            text = text + "\n" + "\n".join(missing)
+        return text
+
+    def replace_with_summary(self, summary: str) -> None:
+        text = self.summary_with_facts(summary)
         self._commit((ConversationMessage(role="summary", content=text),))
         self._compaction_count += 1
 

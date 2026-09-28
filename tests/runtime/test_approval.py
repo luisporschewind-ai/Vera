@@ -1,8 +1,10 @@
 import pytest
+from pydantic import ValidationError
 
 from vera.contracts.approvals import ApprovalRequest
 from vera.contracts.commands import ResolveApproval
 from vera.runtime.approval import ApprovalGate, ApprovalKind, ApprovalMismatch
+from vera.sandbox.apple_services import APPLE_IOS_BUILD_SERVICES
 
 
 def test_approval_rejects_changed_target_hash() -> None:
@@ -131,3 +133,22 @@ def test_require_stores_security_context() -> None:
         )
         == "approve"
     )
+
+
+def test_apple_service_approval_binds_only_the_core_service_set() -> None:
+    gate = ApprovalGate(run_id="run_1")
+    request = gate.require(
+        ApprovalKind.TOOL,
+        "action_1",
+        "hash",
+        "Apple build",
+        "high",
+        required_capabilities=("apple_ios_build_services",),
+        available_scopes=("once",),
+    )
+    assert request.system_service_names == APPLE_IOS_BUILD_SERVICES
+
+    payload = request.model_dump(mode="json")
+    payload["system_service_names"] = ["com.apple.*"]
+    with pytest.raises(ValidationError):
+        ApprovalRequest.model_validate(payload)

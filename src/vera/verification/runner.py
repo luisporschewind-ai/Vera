@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import os
-import subprocess
 import threading
 import time
 from datetime import UTC, datetime
@@ -13,15 +12,18 @@ from pathlib import Path
 from vera.contracts.verification import VerificationCommand, VerificationResult
 from vera.process.environment import build_child_environment
 from vera.process.supervisor import ProcessRequest, ProcessResult, ProcessSupervisor
+from vera.sandbox.files import PermissionPaths
+from vera.sandbox.supervision import SandboxedSupervisor
 from vera.verification.artifacts import (
     VerificationArtifactError,
     VerificationArtifactRoot,
     environment_for_plan,
     with_workspace_runtime_path,
 )
+from vera.workspace.paths import WorkspaceBoundaryError, WorkspacePaths
 
 
-def workspace_file_fingerprint(root: Path) -> dict[str, str]:
+def workspace_file_fingerprint(root: Path, paths: WorkspacePaths | None = None) -> dict[str, str]:
     files: dict[str, str] = {}
     for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
         dirnames[:] = sorted(name for name in dirnames if name != ".git")
@@ -31,29 +33,25 @@ def workspace_file_fingerprint(root: Path) -> dict[str, str]:
                 continue
             relative = path.relative_to(root).as_posix()
             try:
-                digest = hashlib.sha256(path.read_bytes()).hexdigest()
-            except OSError:
+                data = path.read_bytes() if paths is None else paths.read_bytes(relative)
+                digest = hashlib.sha256(data).hexdigest()
+            except (OSError, WorkspaceBoundaryError):
                 digest = "unreadable"
             files[relative] = digest
     return files
 
 
-def git_porcelain(root: Path) -> str:
+def git_porcelain(root: Path, supervisor: ProcessSupervisor | None = None) -> str:
     if not (root / ".git").exists():
         return ""
     environment = build_child_environment(
         purpose="verification",
         overrides={"GIT_OPTIONAL_LOCKS": "0"},
     ).values
-    completed = subprocess.run(
-        ["git", "status", "--porcelain"],
-        cwd=root,
-        capture_output=True,
-        text=True,
-        check=False,
-        env=environment,
+    completed = (supervisor or ProcessSupervisor()).run(
+        ProcessRequest(("git", "status", "--porcelain"), root, environment, 10),
     )
-    return completed.stdout
+    return completed.stdout.decode("utf-8", errors="replace")
 
 
 class VerificationRunner:
@@ -71,6 +69,11 @@ class VerificationRunner:
         self.max_output_bytes = max_output_bytes
         self.allowed_environment = allowed_environment
         self._supervisor = supervisor or ProcessSupervisor()
+        self._paths = (
+            PermissionPaths(supervisor.session)
+            if isinstance(supervisor, SandboxedSupervisor)
+            else None
+        )
         self._roots = artifact_roots or VerificationArtifactRoot(prefix=artifact_prefix)
 
     def _cwd(self, command: VerificationCommand) -> Path:
@@ -162,38 +165,44 @@ class VerificationRunner:
                     reason_code="verification_artifact_root_unsafe",
                     artifact_cleanup_status="skipped",
                 )
-        before = workspace_file_fingerprint(self.workspace_root)
-        before_git = git_porcelain(self.workspace_root)
-        environment = with_workspace_runtime_path(
-            build_child_environment(
-                purpose="verification",
-                overrides=environment_for_plan(plan),
-                extra_allow_names=self.allowed_environment,
-            ).values,
-            self.workspace_root,
-        )
-        completed = self._supervisor.run(
-            ProcessRequest(
+        cleanup_status = "skipped"
+        cleanup_code: str | None = None
+        try:
+            before = workspace_file_fingerprint(self.workspace_root, self._paths)
+            before_git = git_porcelain(self.workspace_root, self._supervisor)
+            environment = with_workspace_runtime_path(
+                build_child_environment(
+                    purpose="verification",
+                    overrides=environment_for_plan(plan),
+                    extra_allow_names=self.allowed_environment,
+                ).values,
+                self.workspace_root,
+            )
+            request = ProcessRequest(
                 argv=command.argv,
                 cwd=cwd,
                 env=environment,
-                timeout_seconds=min(command.timeout_seconds, 120),
+                timeout_seconds=command.timeout_seconds,
                 max_output_bytes=self.max_output_bytes,
-            ),
-            cancel_event=cancel_event,
-        )
-        mutations = _mutations(
-            before,
-            workspace_file_fingerprint(self.workspace_root),
-            before_git,
-            git_porcelain(self.workspace_root),
-        )
-        cleanup_status = "skipped"
-        cleanup_code: str | None = None
-        if plan.root:
-            cleanup = self._roots.cleanup(plan.root, workspace_root=self.workspace_root)
-            cleanup_status = cleanup.status
-            cleanup_code = cleanup.code
+            )
+            if isinstance(self._supervisor, SandboxedSupervisor) and plan.root:
+                completed = self._supervisor.run_artifact(
+                    request, Path(plan.root), cancel_event=cancel_event
+                )
+            else:
+                completed = self._supervisor.run(request, cancel_event=cancel_event)
+            mutations = _mutations(
+                before,
+                workspace_file_fingerprint(self.workspace_root, self._paths),
+                before_git,
+                git_porcelain(self.workspace_root, self._supervisor),
+            )
+        finally:
+            # The owned output root must also be cleaned on Ctrl+C or adapter errors.
+            if plan.root:
+                cleanup = self._roots.cleanup(plan.root, workspace_root=self.workspace_root)
+                cleanup_status = cleanup.status
+                cleanup_code = cleanup.code
         return self._finish(
             command,
             started,
@@ -216,8 +225,8 @@ class VerificationRunner:
         mutations: tuple[str, ...],
     ) -> VerificationResult:
         status = _process_status(completed)
-        exit_code = completed.exit_code if completed.status == "exited" else None
-        reason_code: str | None = None
+        exit_code = completed.exit_code if completed.status in {"exited", "error"} else None
+        reason_code: str | None = completed.cleanup_error
         if mutations:
             status = "workspace_polluted"
             reason_code = "workspace_polluted"

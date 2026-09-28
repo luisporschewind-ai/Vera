@@ -180,6 +180,8 @@ def cancel(host: SessionController, run_id: str) -> Iterator[RuntimeOutput]:
 
 
 def close(host: SessionController) -> Iterator[RuntimeOutput]:
+    if host.dependencies.runtime.access_session is not None:
+        host.dependencies.runtime.access_session.close()
     host.queued_prompt = None
     if host._pending_approval is not None and host._active_run_id is not None:
         approval_id = str(host._pending_approval.payload.get("approval_id", ""))

@@ -32,3 +32,5 @@
 - [阶段八：Vera 原生 Git 能力（Accepted）](2026-09-17-native-git-capability.md)
 - [阶段九：Core 原生 Skills 系统（Accepted）](2026-09-15-core-native-skills-system.md)
 - [阶段十：桌面 Agent 工作台与 UI（Draft）](2026-09-12-desktop-agent-workbench-ui.md)
+- [工作区权限沙盒（Accepted）](2026-09-26-workspace-permission-sandbox.md)
+- [Apple iOS 构建系统服务授权边界（Accepted；实施验证中）](2026-09-28-apple-ios-build-service-boundary.md)

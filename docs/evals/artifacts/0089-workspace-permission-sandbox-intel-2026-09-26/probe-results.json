@@ -1,0 +1,76 @@
+[
+  {
+    "name": "inside read write",
+    "status": "exited",
+    "exit": 0,
+    "stdout": "inside fake data\nok\n",
+    "stderr": "Error opening /private/var/select/sh: Operation not permitted\n"
+  },
+  {
+    "name": "outside read",
+    "status": "exited",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "cat: /private/tmp/vera-sandbox-0089-2ne3gahh/outside/a.txt: Operation not permitted\n"
+  },
+  {
+    "name": "outside write",
+    "status": "exited",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "Error opening /private/var/select/sh: Operation not permitted\n/bin/sh: /private/tmp/vera-sandbox-0089-2ne3gahh/outside/new.txt: Operation not permitted\n"
+  },
+  {
+    "name": "symlink escape",
+    "status": "exited",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "cat: escape: Operation not permitted\n"
+  },
+  {
+    "name": "descendant escape",
+    "status": "exited",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "Error opening /private/var/select/sh: Operation not permitted\nError opening /private/var/select/sh: Operation not permitted\ncat: /private/tmp/vera-sandbox-0089-2ne3gahh/outside/a.txt: Operation not permitted\n"
+  },
+  {
+    "name": "grant A read",
+    "status": "exited",
+    "exit": 0,
+    "stdout": "outside fake A\n",
+    "stderr": ""
+  },
+  {
+    "name": "grant A cannot read B",
+    "status": "exited",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "cat: /private/tmp/vera-sandbox-0089-2ne3gahh/outside/b.txt: Operation not permitted\n"
+  },
+  {
+    "name": "grant A cannot write A",
+    "status": "exited",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "Error opening /private/var/select/sh: Operation not permitted\n/bin/sh: /private/tmp/vera-sandbox-0089-2ne3gahh/outside/a.txt: Operation not permitted\n"
+  },
+  {
+    "name": "grant A write",
+    "status": "exited",
+    "exit": 0,
+    "stdout": "",
+    "stderr": "Error opening /private/var/select/sh: Operation not permitted\n"
+  },
+  {
+    "name": "loopback baseline",
+    "exit": 0
+  },
+  {
+    "name": "network blocked",
+    "status": "exited",
+    "exit": 1,
+    "stdout": "",
+    "stderr": ""
+  }
+]

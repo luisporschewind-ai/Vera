@@ -304,6 +304,7 @@ class SessionController:
             permissions=permission_status(
                 self.dependencies.runtime.command_policy,
                 workspace_permissions=self.dependencies.runtime.workspace_permissions,
+                process_supervisor=self.dependencies.runtime.process_supervisor,
             ),
             reasoning=self._reasoning_status(),
         )

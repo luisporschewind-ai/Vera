@@ -107,15 +107,19 @@ _PROVIDER_ENV_KEYS = frozenset(
 )
 
 
-def load_provider_environment(path: Path | None = None) -> None:
-    """Load known provider values from a private key-value file without a shell."""
-
-    source = path or Path(
+def provider_environment_path() -> Path:
+    """Single source of truth for both loading and protecting Provider credentials."""
+    return Path(
         os.environ.get(
             "VERA_PROVIDER_ENV_FILE",
             str(Path.home() / ".config" / "vera" / "deepseek.env"),
         )
     )
+
+
+def load_provider_environment(path: Path | None = None) -> None:
+    """Load known provider values from a private key-value file without a shell."""
+    source = path or provider_environment_path()
     if not source.exists():
         return
     if not source.is_file():

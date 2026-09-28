@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-import subprocess
 from collections.abc import Callable
 from pathlib import Path
 from subprocess import CompletedProcess
 from typing import Protocol
 
+from vera.process.supervisor import ProcessRequest
+from vera.sandbox.access import AccessSession
+from vera.sandbox.settings import load_backend, settings_path
+from vera.sandbox.supervision import SandboxedSupervisor
 from vera.session.models import (
     ConversationStats,
     GitStatus,
@@ -26,14 +29,16 @@ class SubprocessGitRunner:
     """Run only the fixed read-only Git argv tuples used by status probes."""
 
     def run(self, argv: tuple[str, ...], *, cwd: Path, timeout: float) -> CompletedProcess[str]:
-        return subprocess.run(
+        session = AccessSession(cwd, private_roots=(settings_path().parent, cwd / ".vera"))
+        result = SandboxedSupervisor(session, load_backend()).run(
+            ProcessRequest(argv, cwd, {}, timeout)
+        )
+        session.close()
+        return CompletedProcess(
             list(argv),
-            cwd=cwd,
-            shell=False,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            check=False,
+            result.exit_code if result.exit_code is not None else 1,
+            result.stdout.decode(errors="replace"),
+            result.stderr.decode(errors="replace"),
         )
 
 

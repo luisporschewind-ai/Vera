@@ -1,0 +1,46 @@
+{
+  "date": "2026-09-28",
+  "host": "Intel macOS",
+  "scope": "Disposable fake workspace and empty device set; no signing, device boot, or network request",
+  "host_control_same_isolated_environment": {
+    "operation": "simctl --set <empty fake device set> list runtimes",
+    "exit_code": 0,
+    "device_set_children": 0
+  },
+  "srt_read_only_probe": [
+    {
+      "exact_mach_services": 5,
+      "exit_code": -11,
+      "stdout_bytes": 0,
+      "stderr_bytes": 0,
+      "device_set_children": 0,
+      "cleanup_error": null
+    },
+    {
+      "exact_mach_services": 7,
+      "additional_services": [
+        "com.apple.cfprefsd.agent",
+        "com.apple.cfprefsd.daemon"
+      ],
+      "exit_code": -11,
+      "stdout_bytes": 0,
+      "stderr_bytes": 0,
+      "device_set_children": 0,
+      "cleanup_error": null
+    }
+  ],
+  "srt_fake_ios_build_five_services": {
+    "invocation": "xcodebuild -project VeraTestDemo.xcodeproj -scheme VeraTestDemo -sdk iphoneos -destination generic/platform=iOS; signing off",
+    "exit_code": 65,
+    "build_succeeded": false,
+    "platform_resolution": "supported platforms empty",
+    "derived_data_info_write": "EPERM",
+    "cleanup_error": null
+  },
+  "workspace_write_control": {
+    "private_tmp_path_exit_code": 0,
+    "tmp_alias_path_exit_code": 0
+  },
+  "host_side_effect_observed": "macOS generated a simctl crash report for the sandboxed probe; its contents were not read",
+  "interpretation": "Additional exact Mach lookups alone do not make the current SRT profile support iOS building. The crash cause and Xcode coordinated-write denial remain undetermined. No product service profile was changed."
+}

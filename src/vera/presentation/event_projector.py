@@ -27,6 +27,7 @@ from vera.presentation.session_event_handlers import (
     session_status,
 )
 from vera.presentation.timeline import BlockKind, BlockStatus
+from vera.presentation.tool_activity import READ_LABELS, ToolActivity
 
 if TYPE_CHECKING:
     from vera.presentation.projector import TimelineProjector
@@ -43,6 +44,18 @@ _SIDE_EFFECT_EVENTS = frozenset(
 
 
 def apply_event(host: TimelineProjector, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
+    if event.type == "tool.action_prepared":
+        return ()
+    if event.type == "tool.policy_decided" and event.payload.get("decision") != "deny":
+        return ()
+    if (
+        event.type in {"tool.started", "tool.completed"}
+        and event.payload.get("name") in READ_LABELS
+    ):
+        return grouped_read(host, event)
+    if event.type not in {"model.requested", "model.completed", "model.retrying"}:
+        host._read_activity = None
+        host._read_group = None
     handlers = {
         "run.started": host._status_event,
         "assistant.message": host._assistant_message,
@@ -127,6 +140,52 @@ def assistant_message(
         body=content,
         status=BlockStatus.SUCCEEDED,
     )
+
+
+def grouped_read(host: TimelineProjector, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
+    if host._read_activity is None or host._read_run != event.run_id:
+        host._read_activity = ToolActivity()
+        host._read_group = f"{event.run_id}:{event.sequence}:reads"
+        host._read_run = event.run_id
+    activity = host._read_activity
+    activity.apply(event)
+    status = (
+        BlockStatus.FAILED
+        if activity.failed
+        else BlockStatus.RUNNING
+        if activity.pending
+        else BlockStatus.SUCCEEDED
+    )
+    block_id = host._read_group or f"{event.run_id}:{event.sequence}:reads"
+    prior = host._blocks.get(block_id)
+    if prior is None:
+        result = host._append(
+            block_id=block_id,
+            run_id=event.run_id,
+            kind=BlockKind.TOOL,
+            title=activity.summary,
+            body=activity.body,
+            status=status,
+            occurred_at=event.timestamp,
+        )
+    else:
+        body, truncated = host._truncate_body(activity.body)
+        block = prior.model_copy(
+            update={
+                "title": activity.summary,
+                "body": body,
+                "status": status,
+                "truncated": truncated,
+                "expanded": prior.expanded or (activity.failed and not prior.user_overridden),
+            }
+        )
+        host._blocks[block_id] = block
+        result = (UpdateBlock(block=block),)
+    if event.type == "tool.completed" and not event.payload.get("ok", True):
+        result += host._error_event(event)
+        host._read_activity = None
+        host._read_group = None
+    return result
 
 
 def tool_started(host: TimelineProjector, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
@@ -276,6 +335,18 @@ def approval_required(
     effect = str(
         event.payload.get("effect") or event.payload.get("description") or "批准后才会执行该动作"
     )
+    service_grant = event.payload.get("system_service_grant")
+    if isinstance(service_grant, dict):
+        services = service_grant.get("services", [])
+        service_lines = [str(item) for item in services] if isinstance(services, list) else []
+        effect = "\n".join(
+            [
+                effect,
+                "系统服务范围：仅本次；命令及全部后代继承",
+                *service_lines,
+                "风险：服务可能访问当前用户的模拟器状态",
+            ]
+        )
     argv = event.payload.get("argv", [])
     command = shlex.join(str(part) for part in argv) if isinstance(argv, list) and argv else ""
     profile = event.payload.get("artifact_profile") if kind == "command" else None

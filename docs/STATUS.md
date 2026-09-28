@@ -1,8 +1,31 @@
 # Vera 状态
 
-**更新日期：** 2026-09-20
+**更新日期：** 2026-09-28
 **当前阶段：** 阶段 8——Core 工具集、Policy v2 与原生 Git（In progress）
 **仓库状态：** `main` 文档基线，阶段八实施使用隔离工作树；阶段五停在 Ready for manual acceptance，阶段六与阶段七已 Complete。用户于 2026-09-17 原文确认「CLI 版本达到预期，可以封存」，并于 2026-09-18 选择 Inline Execution，授权阶段八按 0059–0066 串行实施和创建计划内本地提交。
+
+## 当前独立实施
+
+- 2026-09-28 Apple iOS 阻塞已定位并在最终生产 SRT backend 假工程路径通过：真实 Xcode unsigned generic iOS build exit 0，Storyboard 成功，Core APFS 产物卷卸载/删除、`cleanup_error=null`，外部读取仍被拒。审批展示回归 7 passed（Intel 六个服务、once、临时卷/容量/销毁、后代及模拟器风险）；FakeModel 拒绝审批时执行调用数 0。Ruff、diff-check 通过。未跑全量、取消/超时或 CLI 人工交互；VerificationRunner Apple 服务路径未接通，故 0089 仍 In progress。ARM 实机延期，iOS/Swift 产品目标保留。证据见[任务记录](tasks/0089-apple-toolchain-repair.md)。
+
+- 2026-09-28 正式验证执行链最小验收通过：生产 Planner→Runner→真实 SRT 使用临时工作区内 Ruff，成功、预期失败、越界读取拒绝均符合预期；报告真实生成后清理，工作区指纹不变。同时修复 Ctrl+C/异常出口跳过产物清理，两项回归先失败后通过，验证器 16 passed。完整 Runtime/CLI 验证交互及 Xcode/SwiftPM 仍未据此通过，见 [正式验证记录](tasks/0089-formal-verification-acceptance.md)。
+
+- 0089 限时收尾：plain 显式 /paste 整段收集、Ctrl+C 清理监督进程并取消当前任务、/tools 空分隔符修正已实施，用户已完成多行一次提交、/tools 与运行中 Ctrl+C 后继续查询权限的人工验收。三项验证/回滚旧失败在补齐现有 Ruff PATH 后通过；两项安装 smoke 受离线 openai 缓存缺失阻塞，无联网安装。运行中键入撤权、Apple 服务能力经正式 VerificationRunner 的覆盖仍未收口；常规 SRT VerificationRunner 已通过成功/失败/越界拒绝闭环。见 [收尾及手动步骤](tasks/0089-cli-final-acceptance.md)。
+
+- 0089 真实项目验收暴露的重复读取与 CLI 刷屏已修复：默认取消固定 8 条工具结果淘汰、保留有界执行事实与正文省略标记、检测跨轮无进展；plain 活动汇总及 /tools 详情、交互时间线读取分组已实施。修正旧审批提示冲突。用户真实 parentSectionIOS 复验已显示紧凑汇总；日志为 27 次只读调用、12 次模型请求，无相同工具/input_hash 重复；/tools 详情入口随后经用户单次读取及查看详情补验通过。用户要求停止扩大测试，不宣称全量测试或任务整体通过。详见 [调查及修复记录](tasks/0089-read-loop-cli-investigation.md)。
+
+- 已形成 [0089 工具链依赖调查与跨语言验收计划](tasks/0089-toolchain-acceptance-plan.md)：Vera 保持通用 Coding Agent 产品范围，覆盖 Python、JS/TS、C/C++、Go、Rust、Java、Swift。Apple 静态候选 96 个二进制/68 个 framework，尚有 8 类未确定名称及动态加载不确定性，不据此申请全目录权限或宣称依赖已完整。各语言入口存在不等于验收通过，普通配置与系统设置未改。
+- xcrun 精确 Developer 目录节点读取获用户批准后，临时 literal 规则实测使 R_OK 成功，未授权子文件仍 EPERM；未递归开放 Developer。后续 xcrun 遇缓存目录与 xcodebuild 依赖限制；同范围显式 xcrun_db 后缓存错误消失，仍缺 DVTSystemPrerequisites 读取。SwiftPM 全流程未通过；诊断后端规则尚未纳入产品，普通配置未改变。
+- xcrun 定位调查已确认宿主工作正常，系统入口调用 libxcselect；Xcode 提供实际 libxcrun.dylib。用户已批准该库与两份元数据三文件临时只读，复验推进到 Developer 目录访问检查，但 xcrun exit 74 / EPERM，SwiftPM 测试仍未开始；产物清理正常且工作区无变更。未开放 Developer 整目录，具体目录访问需求仍待定位，不将其猜测为仅需元数据权限。
+- 2026-09-27 验证流程集成验收仍受阻：用户批准 SwiftBuild 组件后库加载成功，SwiftPM 转而在 xcrun 开发工具选择阶段 exit 1；同范围显式 DEVELOPER_DIR 诊断报 Developer/usr/bin/xcrun 不存在，宿主检查确认也不存在，不能据此猜测授权；已查到实际安装的 Developer/usr/lib/libxcrun.dylib，定位机制待进一步核对。Runner 均正确报告 failed、清理产物根、工作区无变更；未更改系统开发工具选择。SwiftPM 测试未开始，不能写为全流程通过。
+- 2026-09-27 Swift 最小构建验收通过：用户补充批准 llbuild 精确库文件只读后，swift-build-h8kot57j 下真实 Core/SRT 编译 exit 0、两项断言通过、预期失败 exit 7、产物越界读写均 EPERM；专用模块缓存生成 26 个文件。临时工具链/SDK/库权限未保存到普通配置；Xcode 工程、VerificationRunner 和 CLI 全流程仍未据此验收，证据见任务 0089。
+- 2026-09-27 Git 生命周期修正后通过：初始化被拒来自 SRT 对 Git 配置/Hook 祖先的保护，git init 不属于现有原生 Git 工具范围；采用已有假仓库元数据准备夹具，所有提交和分支命令仍在真实 SRT 内执行。修复 Core 提交消息读取私有状态目录的问题，改为校验后单独 argv 传递。最终夹具 git-lifecycle-8puvp3rk 验证提交、重复计划幂等、分支创建/切换、log/show 及外部/私有状态/Git 配置/Hook 拒绝通过；59 项回归通过。未扩权或修改普通配置，不代表支持 git init 或所有 Git 场景，详见原生 Git 验收记录。
+- 2026-09-27 原生 Git 最小复验通过：经用户批准，仅临时开放 Xcode 内实际 Git 文件的读取，真实 Core/SRT 状态、工作区 Diff、版本查询成功，外部读取仍 EPERM。已修复发现错误分类及子 Git 的固定 PATH 选择，相关回归 58 passed；普通配置未保存新授权，未改宿主设置。详见 [0089 原生 Git 验收](tasks/0089-native-git-acceptance.md)。不外推完整 Git 生命周期或用户 CLI 验收。
+- 2026-09-27：任务 0089 在隔离工作树 `/Users/admin/.codex/worktrees/workspace-permission-sandbox/Vera` 实施，采用 Accepted 工作区权限规格。当前代码覆盖 Core 文件读写授权、会话/单次 Grant、禁网 SRT 命令树、Bash/Git/验证统一受限执行、显式 CLI 沙盒设置和失败关闭。该任务未合并，不改变阶段八状态。
+- Intel macOS 假数据边界及后续人工验收已通过工作区/单文件读写、目录只读/读写含子目录、Bash 单次参数/工具绑定与消费、授权撤销、审批展示及模型事实修复。IPv4/IPv6 loopback 网络被拒；工作区假 AF_UNIX stream 连接拒绝补验通过，前后对照均成功且服务未收到沙盒连接；不外推所有 IPC。具体证据及唯一活动验收清单见任务 0089 的“当前验收对齐”，不再沿用历史待验措辞。
+- 后端 runtime 缺失/版本错误、真实 SRT 正常结束/超时/超时后继续执行、同进程组父子超时清理实际验收通过，其他初始化异常及逃离进程组不据此外推。独立 Core+SRT 主动取消、运行中撤销及父子清理通过（不代表 CLI 取消/运行中撤销交互通过）。基础 Core/SRT Git 生命周期已通过，仍待 Xcode/Swift 构建/测试及最终回归；CLI/特殊 Git 场景不据此外推。Apple Silicon 已由用户延期封存，不阻塞本轮 Intel 收口；Linux/Windows、联网授权不在本轮范围。
+- 本机共享 Python 可执行文件检查为 0 字节，尚未修复；验收临时使用同版本完整 Python.app 解释器加载原虚拟环境。该环境问题与沙盒验收分开记录；没有重装/升级共享 Python。已执行的后端故障测试使用独立临时配置，正常沙盒配置保持不变。
+- 相关聚焦回归、Ruff、格式检查和 Mypy 结果见 [任务 0089](tasks/0089-workspace-permission-sandbox.md)。该实现留在独立工作树，尚未合并。
 
 ## 已完成
 
@@ -117,7 +140,7 @@
 
 ## 下一检查点
 
-1. 完成 0066 的真实 Terminal.app 人工验收，并重新提供可用 TypeScript runner/compiler 后复验 Node/TypeScript；用户明确确认阶段八后，才可把阶段八标为 Complete。
+1. 收口任务 0089：复验 Xcode C 工程新清理路径，完成 Apple 构建的真实 CLI 审批/运行及 APFS 卷取消/超时清理检查，并决定 C++/Go/Rust/Java 代表样例是否属于本轮验收必需项。Intel iOS 假工程生产后端已通过。Apple Silicon 实机按用户决定延期封存，保留支持目标，不阻塞 Intel 验收。0089 不代替 0066 的真实 Terminal.app/TypeScript 验收；用户明确确认阶段八后，才可把阶段八标为 Complete。
 2. 不自动删除、取消暂存或忽略 `VeraTestDemo` 索引里残留的 `AD build/`；未改 `.gitignore`。
 3. 阶段五仍缺 20 次真实 dogfood 与三类真实工程走查，不得把阶段五标为 Complete。
 4. 用户已确认「CLI 版本达到预期，可以封存」；该确认不自动授权下一阶段或 Electron 实施。

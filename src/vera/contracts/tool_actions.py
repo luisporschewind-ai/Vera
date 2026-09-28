@@ -20,6 +20,8 @@ class ToolEffect(StrEnum):
     NETWORK_ACCESS = "network_access"
     EXTERNAL_SERVICE = "external_service"
     SECRET_ACCESS = "secret_access"
+    FILE_ACCESS_GRANT = "file_access_grant"
+    APPLE_IOS_BUILD_SERVICES = "apple_ios_build_services"
 
 
 class FrozenJsonDict(dict[str, JsonValue]):

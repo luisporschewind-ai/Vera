@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import os
-import tempfile
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -84,13 +83,12 @@ class GitCommitter:
         before_entries = self.service.status().entries
         self._require_identity()
         repository_paths = self._repository_paths(plan.paths)
-        message_path = self._write_message(message)
         index_backup = self._backup_index(plan)
         try:
             self.service._run(("add", "-A", "--", *repository_paths))
-            self.service._run(
-                ("commit", "--only", "-F", str(message_path), "--", *repository_paths)
-            )
+            # A validated message is one argv value, never shell source. Keep
+            # private Core state inaccessible to the sandboxed Git process.
+            self.service._run(("commit", "--only", "-m", message, "--", *repository_paths))
         except GitServiceError as exc:
             try:
                 self._restore_index(index_backup)
@@ -106,8 +104,6 @@ class GitCommitter:
             raise GitCommitTransactionError(
                 "git_commit_failed" if exc.code == "git_command_failed" else exc.code
             ) from exc
-        finally:
-            message_path.unlink(missing_ok=True)
         index_backup.path.unlink(missing_ok=True)
         result = self._verify_result(plan, before_entries)
         self._save_receipt(plan, result, terminal_result="git.commit.completed")
@@ -265,23 +261,6 @@ class GitCommitter:
         prefix = self.service.repository.workspace_prefix
         return tuple(path if prefix == "." else f"{prefix}/{path}" for path in paths)
 
-    def _write_message(self, message: str) -> Path:
-        directory = self.state_dir / "git-commit"
-        directory.mkdir(parents=True, exist_ok=True)
-        os.chmod(directory, 0o700)
-        fd, raw_path = tempfile.mkstemp(prefix="message-", suffix=".txt", dir=directory)
-        path = Path(raw_path)
-        os.chmod(path, 0o600)
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as handle:
-                handle.write(message)
-                handle.flush()
-                os.fsync(handle.fileno())
-        except Exception:
-            path.unlink(missing_ok=True)
-            raise
-        return path
-
     def _backup_index(self, plan: GitCommitPlan) -> _IndexBackup:
         try:
             index_path = self._index_path()
@@ -290,7 +269,7 @@ class GitCommitter:
             directory.mkdir(parents=True, exist_ok=True)
             os.chmod(directory, 0o700)
             backup_path = directory / f"index-{plan.plan_id}.bak"
-            backup_path.write_bytes(index_path.read_bytes())
+            backup_path.write_bytes(self.service.read_file(index_path))
             os.chmod(backup_path, 0o600)
             return _IndexBackup(path=backup_path, index_path=index_path, mode=mode)
         except (OSError, GitServiceError) as exc:

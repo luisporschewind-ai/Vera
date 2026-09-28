@@ -32,6 +32,7 @@ from vera.runtime.approval import ApprovalGate, ApprovalKind
 from vera.runtime.context import RunContext
 from vera.runtime.flow_protocols import RecoveryFlowHost
 from vera.runtime.state import RunState, RunStateMachine
+from vera.sandbox.files import PermissionPaths
 from vera.workspace.apply import ChangeApplier, RollbackStatus
 from vera.workspace.checkpoint import CheckpointStore
 from vera.workspace.paths import WorkspacePaths
@@ -60,7 +61,11 @@ def rollback(host: RecoveryFlowHost, command: RollbackRun) -> Iterator[EventEnve
         journal = EventJournal(host.state_dir, run_id, Redactor([]))
     else:
         return
-    paths = WorkspacePaths(manifest.workspace_root)
+    paths = (
+        PermissionPaths(host.access_session)
+        if host.access_session is not None
+        else WorkspacePaths(manifest.workspace_root)
+    )
     result = ChangeApplier(paths, CheckpointStore(host.state_dir, paths)).rollback(manifest)
     if result.status is RollbackStatus.ROLLED_BACK:
         yield journal.append("rollback.completed", {"paths": list(result.paths)})
@@ -410,7 +415,11 @@ def apply_recovery_plan(
             RecoveryStage.CHECKPOINT_READY,
         )
         return
-    paths = WorkspacePaths(context.command.workspace_root)
+    paths = (
+        PermissionPaths(host.access_session)
+        if host.access_session is not None
+        else WorkspacePaths(context.command.workspace_root)
+    )
     result = ChangeApplier(
         paths,
         CheckpointStore(host.state_dir, paths),

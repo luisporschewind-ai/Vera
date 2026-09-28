@@ -1,0 +1,16 @@
+{
+  "scope": [
+    "once"
+  ],
+  "service_count": 6,
+  "denied": true,
+  "execution_requests": 0,
+  "resolved_events": [
+    "approval.resolved",
+    "tool.completed",
+    "tool.action_resolved",
+    "model.requested",
+    "model.failed",
+    "run.failed"
+  ]
+}

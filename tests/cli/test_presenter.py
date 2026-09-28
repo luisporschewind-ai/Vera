@@ -75,7 +75,8 @@ def test_presenter_displays_command_boundary_without_shell_execution() -> None:
     text = "\n".join(output)
     assert "python -m pytest 'tests/test app.py'" in text
     assert "工作目录：." in text
-    assert "当前系统用户权限" in text
+    assert "执行边界由 Core 检查" in text
+    assert "不提供 OS 沙箱" not in text
     assert presenter.approval_prompt(approval).startswith("批准这条验证命令")
 
 
@@ -130,7 +131,7 @@ def test_presenter_keeps_tool_output_compact_and_shows_terminal_state() -> None:
     )
 
     text = "\n".join(output)
-    assert "read_file：成功" in text
+    assert "读取 1 次" in text
     assert "must-not-be-rendered" not in text
     assert "任务完成：run-1（completed）" in text
 
@@ -154,7 +155,7 @@ def test_presenter_hides_silent_model_round_trips() -> None:
             event("tool.started", {"name": "list_directory", "target": "."}, sequence=3),
         )
     )
-    assert output == ["list_directory：执行中 · ."]
+    assert output == ["正在检查项目…"]
     assert "model.requested" not in "\n".join(output)
     assert "model.completed" not in "\n".join(output)
 

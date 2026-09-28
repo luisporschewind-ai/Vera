@@ -23,6 +23,8 @@ from vera.git.models import (
 from vera.git.parsers import parse_status_porcelain_v2
 from vera.process.environment import build_child_environment
 from vera.process.supervisor import ProcessRequest, ProcessResult, ProcessSupervisor
+from vera.sandbox.files import PermissionPaths
+from vera.sandbox.supervision import SandboxedSupervisor
 from vera.workspace.paths import ProtectedPathPolicy
 
 
@@ -60,6 +62,11 @@ class GitService:
         except GitDiscoveryError as exc:
             raise GitServiceError(exc.code, str(exc)) from exc
         self.protected = ProtectedPathPolicy()
+
+    def read_file(self, path: Path) -> bytes:
+        if isinstance(self.supervisor, SandboxedSupervisor):
+            return PermissionPaths(self.supervisor.session).read_bytes(str(path))
+        return path.read_bytes()
 
     def status(self) -> GitRepositorySnapshot:
         result = self._run(

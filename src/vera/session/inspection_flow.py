@@ -37,6 +37,15 @@ def context(host: SessionController, _args: tuple[str, ...]) -> Iterator[Runtime
 
 
 def permissions(host: SessionController, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+    access = host.dependencies.runtime.access_session
+    if access is not None and args and args[0] == "revoke-file":
+        if len(args) != 2:
+            yield host._session_event(
+                "session.message", {"text": "用法：/permissions revoke-file <grant_id>"}
+            )
+            return
+        access.revoke(args[1])
+        args = ()
     if args:
         requested = args[0].casefold()
         current = host.dependencies.runtime.workspace_permissions
@@ -52,7 +61,7 @@ def permissions(host: SessionController, args: tuple[str, ...]) -> Iterator[Runt
         if requested not in {"trust", "revoke"}:
             yield host._session_event(
                 "session.message",
-                {"text": "用法：/permissions [trust|revoke]"},
+                {"text": "用法：/permissions [trust|revoke|revoke-file <grant_id>]"},
             )
             return
         snapshot = host.dependencies.runtime.policy_engine.snapshot
@@ -91,11 +100,36 @@ def permissions(host: SessionController, args: tuple[str, ...]) -> Iterator[Runt
             )
             return
         host.dependencies.runtime.workspace_permissions = updated
+        if requested == "revoke" and access is not None:
+            access.reset()
     status = permission_status(
         host.dependencies.runtime.command_policy,
         workspace_permissions=host.dependencies.runtime.workspace_permissions,
+        process_supervisor=host.dependencies.runtime.process_supervisor,
     )
-    yield host._session_event("session.permissions", status.model_dump(mode="json"))
+    payload = status.model_dump(mode="json")
+    if access is not None:
+        grants = [
+            {
+                "grant_id": grant.grant_id,
+                "path": str(grant.request.path),
+                "mode": grant.request.mode,
+                "scope": grant.request.scope,
+                "recursive": grant.request.recursive,
+            }
+            for grant in access.grants()
+        ]
+        payload["file_grants"] = grants
+        payload["network"] = "deny"
+        text = "项目命令默认禁网。额外文件权限：\n" + (
+            "\n".join(
+                f"{item['grant_id']}  {item['mode']}  {item['scope']}  {item['path']}"
+                for item in grants
+            )
+            or "无"
+        )
+        yield host._session_event("session.message", {"text": text})
+    yield host._session_event("session.permissions", payload)
 
 
 def instructions(host: SessionController, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
@@ -172,6 +206,8 @@ def clear(host: SessionController, _args: tuple[str, ...]) -> Iterator[RuntimeOu
 
 
 def begin_fresh_session(host: SessionController, message: str) -> Iterator[RuntimeOutput]:
+    if host.dependencies.runtime.access_session is not None:
+        host.dependencies.runtime.access_session.reset()
     session_id = host._open_new_persistent_session()
     host.clear_display_requested = True
     yield host._session_event(

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from vera.presentation.status_panel import format_status_panel
+from vera.presentation.status_panel import format_sandbox_status, format_status_panel
 from vera.session.models import ConversationStats, PermissionStatus, SessionStatus
 
 
@@ -48,5 +48,5 @@ class SessionPresenter:
         else:
             self._write("Allowed prefix    (none)")
         self._write(f"Execution         {status.execution_boundary}")
-        sandbox = "OS sandbox" if status.os_sandbox else "no OS sandbox"
+        sandbox = format_sandbox_status(status)
         self._write(f"Sandbox           {sandbox}")

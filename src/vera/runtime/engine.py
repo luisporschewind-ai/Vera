@@ -40,6 +40,7 @@ from vera.persistence.recovery_snapshot import RecoverySnapshotStore
 from vera.policy.engine import PolicyEngine
 from vera.policy.permissions import WorkspacePermissionSnapshot
 from vera.policy.snapshot import EffectivePolicySnapshotV2
+from vera.process.supervisor import ProcessSupervisor
 from vera.project_instructions import ProjectInstructionService
 from vera.recovery.coordinator import RecoveryCoordinator
 from vera.recovery.models import RecoverySnapshot
@@ -94,6 +95,7 @@ from vera.runtime.tool_flow import (
     with_receipt as with_receipt_flow,
 )
 from vera.runtime.verification_flow import VerificationFlow
+from vera.sandbox.access import AccessSession
 from vera.tools.command_policy import CommandPolicy
 from vera.tools.definitions import ToolDefinitionV2, ToolResult
 from vera.tools.executor import PreparedToolAction, ToolExecutor
@@ -125,6 +127,8 @@ class VeraRuntime:
         content_detector: ContentDetector | None = None,
         project_instructions: ProjectInstructionService | None = None,
         workspace_permissions: WorkspacePermissionSnapshot | None = None,
+        access_session: AccessSession | None = None,
+        process_supervisor: ProcessSupervisor | None = None,
     ) -> None:
         self.adapter = adapter
         self.registry = registry
@@ -153,6 +157,8 @@ class VeraRuntime:
             workspace_identity=self.policy_engine.snapshot.workspace_identity,
         )
         self.workspace_permissions = workspace_permissions
+        self.access_session = access_session
+        self.process_supervisor = process_supervisor
         self.runs: dict[str, RunContext] = {}
         self.snapshot_store = snapshot_store or RecoverySnapshotStore(state_dir)
         self.receipts = OperationReceiptStore(state_dir)
@@ -219,6 +225,7 @@ class VeraRuntime:
             permissions,
             goal_authorized=bool(context.command.goal.strip()),
             state_dir=self.state_dir,
+            access_session=self.access_session,
         )
 
     def _security_approval_kwargs(self, context: RunContext) -> dict[str, Any]:

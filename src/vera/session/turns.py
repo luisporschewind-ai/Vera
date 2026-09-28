@@ -2,10 +2,65 @@
 
 from __future__ import annotations
 
+import json
+from collections import deque
 from collections.abc import Sequence
 
 from vera.contracts.events import EventEnvelope
 from vera.contracts.sessions import ConversationTurn, TerminalState
+from vera.redaction import Redactor
+
+
+def _execution_facts(events: Sequence[EventEnvelope]) -> str:
+    """Bounded historical evidence, never permission or executable instructions."""
+    fields = {
+        "approval.required": ("approval_id", "kind", "tool_name", "action_id"),
+        "approval.resolved": ("approval_id", "kind", "decision"),
+        "tool.completed": ("call_id", "name", "ok", "error_code", "target", "content_hash"),
+    }
+    rows: deque[str] = deque(maxlen=16)
+    for event in events:
+        keys = fields.get(event.type)
+        if keys is None:
+            continue
+        fact: dict[str, object] = {
+            "source": "core_event_history",
+            "historical_only": True,
+            "run_id": event.run_id,
+            "event_id": event.event_id,
+            "type": event.type,
+        }
+        for key in keys:
+            value = event.payload.get(key)
+            if isinstance(value, str):
+                fact[key] = value[:256]
+                if len(value) > 256:
+                    fact["fields_truncated"] = True
+            elif isinstance(value, bool):
+                fact[key] = value
+        grant = event.payload.get("file_access")
+        if event.type == "tool.completed" and isinstance(grant, dict):
+            for key in ("grant_id", "path", "mode", "scope", "recursive"):
+                value = grant.get(key)
+                if isinstance(value, str):
+                    fact[key] = value[:256]
+                    if len(value) > 256:
+                        fact["fields_truncated"] = True
+                elif isinstance(value, bool):
+                    fact[key] = value
+        rows.append(
+            "[facts] "
+            + json.dumps(
+                Redactor().redact(fact),
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            )
+        )
+    while rows and len("\n".join(rows).encode("utf-8")) > 8000:
+        rows.popleft()
+    return "\n".join(rows)
+
 
 _RECOVERY_TYPES = frozenset(
     {
@@ -37,6 +92,9 @@ class ConversationTurnProjector:
                 body = f"{assistant_text}\n{summary}"
         if not body.strip():
             body = summary or "run 已结束。"
+        execution_facts = _execution_facts(events)
+        if execution_facts:
+            body = f"{body}\n{execution_facts}"
         return ConversationTurn(
             user_text=user_text,
             assistant_text=body,

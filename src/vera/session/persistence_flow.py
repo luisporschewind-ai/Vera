@@ -21,6 +21,8 @@ if TYPE_CHECKING:
 def apply_loaded_session(
     host: SessionController, loaded: LoadedConversationSession, *, restore_history: bool
 ) -> None:
+    if host.dependencies.runtime.access_session is not None:
+        host.dependencies.runtime.access_session.reset()
     host.conversation = ConversationContext.restore(
         host.dependencies.config.limits.max_conversation_bytes,
         session_id=loaded.session_id,
@@ -90,6 +92,7 @@ def persist_turn(
 
 
 def persist_compaction(host: SessionController, summary: str) -> Iterator[RuntimeOutput]:
+    summary = host.conversation.summary_with_facts(summary)
     session_id = host.conversation.stats().session_id
     through = host._last_saved_sequence or 1
     try:

@@ -1,0 +1,72 @@
+{
+  "date": "2026-09-28",
+  "host": "Intel macOS",
+  "authorization": {
+    "crash_report": "single approved report; faulting thread and related framework frames only",
+    "bundle_reads": "one approved temporary fake-project diagnostic; recursive read of exactly two bundles"
+  },
+  "simctl_crash": {
+    "exception": "EXC_BAD_ACCESS / SIGSEGV, KERN_INVALID_ADDRESS at 0x8",
+    "faulting_thread": 1,
+    "frames": [
+      "CoreFoundation _CFGetNonObjCTypeID",
+      "CoreFoundation CFDateFormatterSetFormat",
+      "CoreFoundation CFDateFormatterCreateISO8601Formatter",
+      "Foundation -[NSISO8601DateFormatter init]",
+      "CoreSimulatorUtilities / CoreSimulator caller frames"
+    ],
+    "interpretation": "The report shows a CoreFoundation date-formatter crash on a CoreSimulator utility thread, not a direct mach-lookup denial frame. The crash trigger remains unproven."
+  },
+  "fake_ios_build_with_five_services_and_bundle_reads": {
+    "invocation": "xcodebuild -project VeraTestDemo.xcodeproj -scheme VeraTestDemo -sdk iphoneos -destination generic/platform=iOS; signing off",
+    "recursive_read_bundles": [
+      "/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone 16e.simdevicetype",
+      "/Library/Developer/CoreSimulator/Volumes/iOS_23A343/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 26.0.simruntime"
+    ],
+    "exact_mach_services": [
+      "com.apple.CoreSimulator.CoreSimulatorService",
+      "com.apple.CoreSimulator.simdiskimaged",
+      "com.apple.FileCoordination",
+      "com.apple.FSEvents",
+      "com.apple.CoreServices.coreservicesd"
+    ],
+    "exit_code": 65,
+    "cleanup_error": null,
+    "artifact_status": "temporary fixture cleaned",
+    "markers": {
+      "Malformed bundle": 0,
+      "CoreSimulatorService": 0,
+      "simdiskimaged": 0,
+      "Platform Not Installed": 0,
+      "supported platforms empty": 1,
+      "Operation not permitted text markers": 10,
+      "BUILD SUCCEEDED": 0,
+      "BUILD FAILED": 1
+    },
+    "interpretation": "Recursive bundle reads remove the earlier Malformed bundle and CoreSimulator connection markers, but the scheme still resolves an empty supported-platform set and Xcode still cannot write DerivedData log manifests. The iOS build is not successful."
+  },
+  "nested_workspace_write_controls": {
+    "sandboxed_touch_in_precreated_DerivedData_Logs_Launch": {
+      "exit_code": 0,
+      "target_created": true,
+      "cleanup_error": null
+    },
+    "sandboxed_atomic_rename_in_same_directory": {
+      "exit_code": 0,
+      "source_removed": true,
+      "target_created": true,
+      "cleanup_error": null
+    },
+    "interpretation": "Ordinary nested file creation and rename work under the same SRT version and workspace write boundary. The Xcode EPERM therefore is not explained by a general inability to write nested workspace paths; the exact Xcode operation or coordination path remains undetermined."
+  },
+  "product_implementation": {
+    "status": "implemented; focused policy, approval, executor, and SRT profile checks pass",
+    "capability": "apple_ios_build_services",
+    "approval_scope": "once",
+    "srt_version": "0.0.77",
+    "profile_api": "allowMachLookup parameter; five exact global-name entries; no wildcard or prefix rule",
+    "default_profile": "no Apple build services",
+    "followup_scratch_alias_rule": "Added exact file-write permission for the per-command T/<suffix> symlink after this diagnostic; not rerun",
+    "build_acceptance": "not passed"
+  }
+}

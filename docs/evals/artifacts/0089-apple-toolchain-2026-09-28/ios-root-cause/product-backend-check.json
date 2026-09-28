@@ -1,0 +1,30 @@
+{
+  "build_status": "exited",
+  "exit_code": 0,
+  "cleanup_error": null,
+  "build_succeeded_marker": true,
+  "build_failed_marker": false,
+  "effective_argv": [
+    "/Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild",
+    "-project",
+    "VeraTestDemo.xcodeproj",
+    "-scheme",
+    "VeraTestDemo",
+    "-configuration",
+    "Debug",
+    "-sdk",
+    "iphoneos",
+    "-destination",
+    "generic/platform=iOS",
+    "CODE_SIGNING_ALLOWED=NO",
+    "CODE_SIGNING_REQUIRED=NO",
+    "CODE_SIGN_IDENTITY=",
+    "-derivedDataPath",
+    "/private/tmp/vera-0089-acceptance.psEsZR/ios-product-check-dgxelzha/vera-apple-build-7tdlp39z/volume/DerivedData",
+    "build"
+  ],
+  "remaining_product_volumes": [],
+  "interesting_output": [
+    "** BUILD SUCCEEDED **"
+  ]
+}

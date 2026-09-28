@@ -259,3 +259,32 @@ def test_commit_recovery_after_receipt_write_failure_does_not_duplicate_commit(
 
     assert recovered.new_head_oid == run_git(repository, "rev-parse", "HEAD", env=env).strip()
     assert run_git(repository, "rev-list", "--count", "HEAD", env=env).strip() == "2"
+
+
+def test_commit_does_not_require_reading_private_state_message(
+    git_repo: tuple[Path, dict[str, str]], tmp_path: Path
+) -> None:
+    from vera.process.supervisor import ProcessRequest, ProcessResult, ProcessSupervisor
+
+    class PrivateStateDenied(ProcessSupervisor):
+        def run(self, request: ProcessRequest, **kwargs: object) -> ProcessResult:
+            if "commit" in request.argv and "-F" in request.argv:
+                return ProcessResult("exited", 128, b"", b"private state: Operation not permitted")
+            return super().run(request)
+
+    repository, env = git_repo
+    (repository / "app.py").write_text("changed\n")
+    message = "--literal 'quoted' $(not-a-command) `literal`\n\nSecond paragraph 中文"
+    service = GitService(repository, environment=env, supervisor=PrivateStateDenied())
+    plan = GitCommitPlanBuilder(service).build(
+        run_id="private-message",
+        action_ids=("edit",),
+        workspace_identity="fake",
+        paths=("app.py",),
+        message=message,
+        verification_status="passed",
+        policy_hash="fake",
+    )
+    result = GitCommitter(service, state_dir=tmp_path / "private-state").execute(plan, message)
+    assert result.committed_paths == ("app.py",)
+    assert run_git(repository, "log", "-1", "--format=%B", env=env).rstrip() == message

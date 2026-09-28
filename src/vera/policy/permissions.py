@@ -176,6 +176,22 @@ def decide_v2(
             "risk_v2",
             policy_digest,
         )
+    elif ToolEffect.APPLE_IOS_BUILD_SERVICES in action.effects:
+        base = _decision(
+            PolicyDecisionKind.APPROVAL_REQUIRED,
+            "apple_build_service_approval_required",
+            "Apple build system services require approval for this command",
+            "apple_ios_build_services",
+            policy_digest,
+        )
+    elif ToolEffect.FILE_ACCESS_GRANT in action.effects:
+        base = _decision(
+            PolicyDecisionKind.APPROVAL_REQUIRED,
+            "file_access_approval_required",
+            "each file access grant requires explicit user approval",
+            "file_access",
+            policy_digest,
+        )
     elif assessment.level is RiskLevel.HIGH:
         if grant is not None and (
             grant.scope in {"once", "run"}

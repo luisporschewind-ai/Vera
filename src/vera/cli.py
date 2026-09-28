@@ -3,7 +3,7 @@
 import json
 import sys
 from pathlib import Path
-from typing import Annotated, Any, Literal, NoReturn, cast
+from typing import Annotated, Any, Literal, NoReturn
 
 import typer
 from typer.core import TyperGroup
@@ -26,6 +26,7 @@ from vera.cli_plain_session import PlainSessionDriver
 from vera.cli_presenter import HumanPresenter
 from vera.cli_recovery import drive_recovery as _drive_recovery_impl
 from vera.cli_recovery import inspect_recovery as _inspect_recovery_impl
+from vera.cli_sandbox import sandbox_app
 from vera.config import ConfigurationError, load_config
 from vera.contracts.commands import (
     AbandonRun,
@@ -75,6 +76,7 @@ app.add_typer(config_app, name="config")
 app.add_typer(recover_app, name="recover")
 app.add_typer(state_app, name="state")
 app.add_typer(eval_app, name="eval")
+app.add_typer(sandbox_app, name="sandbox")
 app.add_typer(sessions_app, name="sessions")
 
 
@@ -88,7 +90,8 @@ def _fail_runtime_setup(exc: Exception) -> NoReturn:
 
 class _ConsoleSessionIO:
     def read(self, prompt: str) -> str:
-        return cast(str, typer.prompt(prompt, prompt_suffix=""))
+        # Preserve blank lines and EOF/interrupt semantics for the plain driver.
+        return input(prompt)
 
     def write(self, text: str) -> None:
         typer.echo(text)

@@ -21,7 +21,12 @@ _SAFE_COMMANDS = {
 def risk_level_for_effect(effect: ToolEffect, *, trusted: bool) -> RiskLevel:
     if effect is ToolEffect.SECRET_ACCESS:
         return RiskLevel.FORBIDDEN
-    if effect in {ToolEffect.NETWORK_ACCESS, ToolEffect.EXTERNAL_SERVICE}:
+    if effect in {
+        ToolEffect.NETWORK_ACCESS,
+        ToolEffect.EXTERNAL_SERVICE,
+        ToolEffect.FILE_ACCESS_GRANT,
+        ToolEffect.APPLE_IOS_BUILD_SERVICES,
+    }:
         return RiskLevel.HIGH
     if effect is ToolEffect.PROCESS_EXECUTE:
         return RiskLevel.MODERATE

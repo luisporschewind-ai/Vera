@@ -1,0 +1,17 @@
+{
+  "fixture_root": "/private/tmp/vera-srt-probe._mev9a5n",
+  "removed": true,
+  "remaining_processes": [],
+  "proxy_ports": [
+    {
+      "port": 56334,
+      "connect_errno": 61
+    },
+    {
+      "port": 56849,
+      "connect_errno": 61
+    }
+  ],
+  "size_before_cleanup_bytes": 37430087,
+  "note": "Only this fixture removed; earlier static source review directory retained."
+}

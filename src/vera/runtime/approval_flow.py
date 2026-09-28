@@ -19,6 +19,7 @@ from vera.runtime.context import RunContext
 from vera.runtime.flow_protocols import ApprovalFlowHost
 from vera.runtime.intake import ProposalInput
 from vera.runtime.state import RunState
+from vera.sandbox.files import PermissionPaths
 from vera.tools.definitions import ToolResult
 from vera.tools.executor import PreparedToolAction
 from vera.verification.artifacts import VerificationArtifactError
@@ -47,6 +48,17 @@ def approval_payload(
         "risk_sources": [item.model_dump(mode="json") for item in request.risk_sources],
         "available_scopes": list(request.available_scopes),
     }
+    if "apple_ios_build_services" in request.required_capabilities:
+        from vera.sandbox.apple_volume import APPLE_BUILD_STORAGE
+
+        payload["build_storage"] = dict(APPLE_BUILD_STORAGE)
+        payload["system_service_grant"] = {
+            "capability": "apple_ios_build_services",
+            "scope": "once",
+            "services": list(request.system_service_names),
+            "inherited_by_descendants": True,
+            "may_access_current_user_simulator_state": True,
+        }
     if (
         context is not None
         and request.kind == ApprovalKind.COMMAND.value
@@ -68,6 +80,13 @@ def approval_payload(
         payload["action_id"] = pending.action.action_id
         payload["input_hash"] = pending.action.input_hash
         payload["target_facts_hash"] = pending.target_facts_hash
+        if pending.action.tool_name == "request_file_access":
+            payload["file_access"] = dict(pending.action.normalized_arguments)
+        elif pending.action.tool_name == "bash":
+            arguments = pending.action.model_dump(mode="json")["normalized_arguments"]
+            payload["argv"] = arguments.get("argv", [])
+            payload["cwd"] = arguments.get("cwd", ".")
+            payload["timeout_seconds"] = arguments.get("timeout_seconds")
     return payload
 
 
@@ -86,7 +105,12 @@ def propose(
             yield from host._fail(context, "project_init_scope_violation")
             return
         planned = host._plan_verification(context, proposal.verification)
-        built = ChangeSetBuilder(WorkspacePaths(context.command.workspace_root)).build(
+        paths = (
+            PermissionPaths(host.access_session)
+            if host.access_session is not None
+            else WorkspacePaths(context.command.workspace_root)
+        )
+        built = ChangeSetBuilder(paths).build(
             context.run_id,
             proposal.summary,
             proposal.changes,
@@ -262,7 +286,11 @@ def resolve_approval(host: ApprovalFlowHost, command: ResolveApproval) -> Iterat
         built = context.built_change_set
         expired = built is None or built.facts_digest() != request.fact_hash
         if not expired and built is not None:
-            paths = WorkspacePaths(context.command.workspace_root)
+            paths = (
+                PermissionPaths(host.access_session)
+                if host.access_session is not None
+                else WorkspacePaths(context.command.workspace_root)
+            )
             try:
                 for fact in built.path_facts.values():
                     paths.revalidate(fact)
@@ -361,6 +389,12 @@ def resolve_approval(host: ApprovalFlowHost, command: ResolveApproval) -> Iterat
             name=pending_tool.action.tool_name,
             arguments=dict(pending_tool.action.normalized_arguments),
         )
+        context.tool_approval_outcomes[call.call_id] = {
+            "approval_id": request.approval_id,
+            "action_id": pending_tool.action.action_id,
+            "decision": decision,
+            "source": "core_approval_gate",
+        }
         if decision == "reject":
             yield from host._emit_tool_result(
                 context,
@@ -470,7 +504,11 @@ def resolve_approval(host: ApprovalFlowHost, command: ResolveApproval) -> Iterat
     if built is None:
         yield from host._fail(context, "missing_changeset")
         return
-    paths = WorkspacePaths(context.command.workspace_root)
+    paths = (
+        PermissionPaths(host.access_session)
+        if host.access_session is not None
+        else WorkspacePaths(context.command.workspace_root)
+    )
     store = CheckpointStore(host.state_dir, paths)
     applier = ChangeApplier(paths, store, writer=host.file_writer)
     try:

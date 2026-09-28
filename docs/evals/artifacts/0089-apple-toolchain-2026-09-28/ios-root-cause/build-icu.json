@@ -1,0 +1,15 @@
+{
+  "exit_code": 65,
+  "status": "exited",
+  "cleanup_error": null,
+  "elapsed": 3.7118031978607178,
+  "workspace": "/private/tmp/vera-0089-acceptance.psEsZR/ios-icu-3k8erbex/workspace",
+  "markers": {
+    "BUILD SUCCEEDED": 0,
+    "BUILD FAILED": 1,
+    "supported platforms": 0,
+    "Operation not permitted": 10,
+    "Malformed bundle": 0,
+    "Platform Not Installed": 0
+  }
+}

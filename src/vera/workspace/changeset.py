@@ -4,7 +4,6 @@ import difflib
 import hashlib
 import json
 from collections.abc import Sequence
-from pathlib import Path
 from typing import Literal
 from uuid import uuid4
 
@@ -75,7 +74,6 @@ class ChangeSetBuilder:
                 fact = self.paths.inspect_mutation(proposal.path)
             except WorkspaceBoundaryError:
                 raise
-            target = Path(fact.canonical_path)
             exists = fact.exists
             if proposal.operation == "create":
                 if exists or proposal.after_content is None:
@@ -85,13 +83,13 @@ class ChangeSetBuilder:
             elif proposal.operation == "update":
                 if not exists or fact.kind != "regular" or proposal.after_content is None:
                     raise ValueError("update requires an existing text file and content")
-                before = target.read_bytes()
+                before = self.paths.read_bytes(proposal.path)
                 before.decode("utf-8")
                 after = proposal.after_content.encode("utf-8")
             else:
                 if not exists or fact.kind != "regular" or proposal.after_content is not None:
                     raise ValueError("delete requires an existing file and no content")
-                before = target.read_bytes()
+                before = self.paths.read_bytes(proposal.path)
                 before.decode("utf-8")
                 after = b""
             before_hash = ABSENT_HASH if proposal.operation == "create" else sha256_bytes(before)

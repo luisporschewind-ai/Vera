@@ -7,6 +7,7 @@ from uuid import uuid4
 from vera.content.envelope import ContentEnvelope
 from vera.contracts.approvals import ApprovalRequest
 from vera.contracts.commands import ResolveApproval
+from vera.sandbox.apple_services import APPLE_IOS_BUILD_SERVICES
 
 
 class ApprovalKind(StrEnum):
@@ -41,6 +42,7 @@ class ApprovalGate:
         policy_hash: str | None = None,
         fact_hash: str | None = None,
         security_context_hash: str | None = None,
+        required_capabilities: tuple[Literal["apple_ios_build_services"], ...] = (),
         risk_labels: tuple[str, ...] = (),
         risk_sources: tuple[ContentEnvelope, ...] = (),
         available_scopes: tuple[Literal["once", "run", "workspace"], ...] = (
@@ -63,6 +65,8 @@ class ApprovalGate:
             policy_hash=policy_hash,
             fact_hash=fact_hash,
             security_context_hash=security_context_hash,
+            required_capabilities=required_capabilities,
+            system_service_names=(APPLE_IOS_BUILD_SERVICES if required_capabilities else ()),
             risk_labels=risk_labels,
             risk_sources=risk_sources,
             available_scopes=available_scopes,

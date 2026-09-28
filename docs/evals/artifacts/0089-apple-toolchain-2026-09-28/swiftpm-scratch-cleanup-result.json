@@ -1,0 +1,53 @@
+{
+  "diagnostic_developer_dir": false,
+  "fixture": "/private/tmp/vera-0089-acceptance.psEsZR/verification-swift-xm1sw83t",
+  "command": {
+    "argv": [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift",
+      "test",
+      "--disable-sandbox",
+      "--sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+      "--scratch-path",
+      "/private/tmp/vera-0089-acceptance.psEsZR/verification-swift-xm1sw83t/artifacts/c0bb21c17037/swift-test/000/swiftpm"
+    ],
+    "cwd": ".",
+    "timeout_seconds": 300,
+    "required": true,
+    "artifact_plan": {
+      "schema_version": 1,
+      "profile": "swiftpm",
+      "root": "/private/tmp/vera-0089-acceptance.psEsZR/verification-swift-xm1sw83t/artifacts/c0bb21c17037/swift-test/000",
+      "cleanup": "always"
+    }
+  },
+  "result": {
+    "schema_version": 1,
+    "argv": [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift",
+      "test",
+      "--disable-sandbox",
+      "--sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+      "--scratch-path",
+      "/private/tmp/vera-0089-acceptance.psEsZR/verification-swift-xm1sw83t/artifacts/c0bb21c17037/swift-test/000/swiftpm"
+    ],
+    "cwd": ".",
+    "started_at": "2026-09-28T02:52:58.262879Z",
+    "completed_at": "2026-09-28T02:53:40.882998Z",
+    "duration_seconds": 42.61857919199974,
+    "exit_code": 0,
+    "stdout": "Test Suite 'All tests' started at (null).\nTest Suite 'ProbePackageTests.xctest' started at (null).\nTest Suite 'ProbeTests' started at (null).\nTest Case '-[ProbeTests.ProbeTests testAdd]' started.\nTest Case '-[ProbeTests.ProbeTests testAdd]' passed (0.003 seconds).\nTest Suite 'ProbeTests' passed at (null).\n\t Executed 1 test, with 0 failures (0 unexpected) in 0.003 (0.003) seconds\nTest Suite 'ProbePackageTests.xctest' passed at (null).\n\t Executed 1 test, with 0 failures (0 unexpected) in 0.003 (0.003) seconds\nTest Suite 'All tests' passed at (null).\n\t Executed 1 test, with 0 failures (0 unexpected) in 0.003 (0.005) seconds\n\u25c7 Test run started.\n\u21b3 Testing Library Version: 1085\n\u21b3 Target Platform: x86_64-apple-macos14.0\n\u2714 Test run with 0 tests in 0 suites passed after 0.001 seconds.\n",
+    "stderr": "Building for debugging...\n[0/7] /private/tmp/vera-0089-acceptance.psEsZR/verification-swift-xm1sw83t/artifacts/c0bb21c17037/swift-test/000/swiftpm/x86_64-apple-macosx/debug/ProbePackageTests.derived/runner.swift\n[1/7] Write sources\n[4/7] Write swift-version--58304C5D6DBC2206.txt\n[6/9] Emitting module Probe\n[7/9] Compiling Probe Probe.swift\n[8/11] Emitting module ProbeTests\n[9/11] Compiling ProbeTests ProbeTests.swift\n[10/13] Emitting module ProbePackageTests\n[11/13] Compiling ProbePackageTests runner.swift\n[11/13] Write Objects.LinkFileList\n[12/13] Linking ProbePackageTests\nBuild complete! (29.15s)\n",
+    "stdout_truncated": false,
+    "stderr_truncated": false,
+    "status": "passed",
+    "artifact_profile": "swiftpm",
+    "artifact_root": "/private/tmp/vera-0089-acceptance.psEsZR/verification-swift-xm1sw83t/artifacts/c0bb21c17037/swift-test/000",
+    "artifact_cleanup_status": "cleaned",
+    "workspace_mutations": [],
+    "reason_code": null
+  },
+  "artifact_removed": true,
+  "workspace_build_absent": true
+}

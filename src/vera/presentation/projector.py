@@ -14,6 +14,7 @@ from vera.presentation.prompt_block import project_user_prompt
 from vera.presentation.stream_projector import StreamProjector
 from vera.presentation.timeline import BlockKind, BlockStatus, TimelineBlock
 from vera.presentation.timeline_state import TimelineState
+from vera.presentation.tool_activity import ToolActivity
 from vera.redaction import Redactor
 
 
@@ -36,9 +37,15 @@ class TimelineProjector:
         self._max_blocks = max_blocks
         self._side_effect_runs: set[str] = set()
         self._model_failures: dict[str, dict[str, object]] = {}
+        self._read_activity: ToolActivity | None = None
+        self._read_group: str | None = None
+        self._read_run = ""
         self._tool_started_at: dict[tuple[str, str], datetime] = {}
 
     def reset(self) -> None:
+        self._read_activity = None
+        self._read_group = None
+        self._read_run = ""
         self._blocks.clear()
         self._streams.clear()
         self._tool_blocks.clear()

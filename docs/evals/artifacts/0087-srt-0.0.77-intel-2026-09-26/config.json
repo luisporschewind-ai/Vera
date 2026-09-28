@@ -1,0 +1,51 @@
+{
+  "network": {
+    "allowedDomains": [],
+    "deniedDomains": [],
+    "strictAllowlist": true,
+    "allowUnixSockets": [],
+    "allowAllUnixSockets": false,
+    "allowLocalBinding": false
+  },
+  "filesystem": {
+    "denyRead": [
+      "/"
+    ],
+    "allowRead": [
+      "/System",
+      "/usr/bin",
+      "/usr/lib",
+      "/usr/libexec",
+      "/usr/share",
+      "/bin",
+      "/sbin",
+      "/Applications/Xcode.app",
+      "/Library/Developer",
+      "/Library/Apple",
+      "/private/var/db/xcode_select_link",
+      "/dev/null",
+      "/dev/urandom",
+      "/dev/random",
+      "/private/tmp/vera-srt-probe._mev9a5n/workspace",
+      "/private/tmp/vera-srt-probe._mev9a5n/artifacts",
+      "/private/tmp/vera-srt-probe._mev9a5n/tmp",
+      "/private/tmp/vera-srt-probe._mev9a5n/home"
+    ],
+    "allowWrite": [
+      "/private/tmp/vera-srt-probe._mev9a5n/workspace",
+      "/private/tmp/vera-srt-probe._mev9a5n/artifacts",
+      "/private/tmp/vera-srt-probe._mev9a5n/tmp",
+      "/private/tmp/vera-srt-probe._mev9a5n/home"
+    ],
+    "denyWrite": [
+      "/tmp/claude",
+      "/private/tmp/claude"
+    ]
+  },
+  "allowPty": false,
+  "allowAppleEvents": false,
+  "enableWeakerNetworkIsolation": false,
+  "ripgrep": {
+    "command": "/usr/local/bin/rg"
+  }
+}

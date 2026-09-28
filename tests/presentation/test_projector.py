@@ -135,6 +135,36 @@ def test_tool_approval_shows_only_core_provided_permission_scopes() -> None:
     assert "workspace" not in block.body
 
 
+def test_apple_service_approval_shows_exact_scope_inheritance_and_risk() -> None:
+    projector = TimelineProjector()
+    block = only_appended_block(
+        projector.apply(
+            event(
+                "approval.required",
+                payload={
+                    "approval_id": "a-apple",
+                    "kind": "tool",
+                    "risk": "high",
+                    "available_scopes": ["once"],
+                    "description": "Apple 构建系统服务已请求。",
+                    "system_service_grant": {
+                        "capability": "apple_ios_build_services",
+                        "scope": "once",
+                        "services": ["com.apple.CoreSimulator.CoreSimulatorService"],
+                        "inherited_by_descendants": True,
+                        "may_access_current_user_simulator_state": True,
+                    },
+                },
+            )
+        )
+    )
+
+    assert "仅本次" in block.body
+    assert "后代继承" in block.body
+    assert "com.apple.CoreSimulator.CoreSimulatorService" in block.body
+    assert "当前用户的模拟器状态" in block.body
+
+
 def test_session_diff_is_a_diff_block() -> None:
     projector = TimelineProjector()
     filled = only_appended_block(
@@ -210,8 +240,8 @@ def test_list_directory_summary_has_target_and_body() -> None:
         )
     )
     assert started.kind is BlockKind.TOOL
-    assert "列出目录" in started.title
-    assert "目标：." in started.body
+    assert "列目录 1 次" in started.title
+    assert "正在处理：." in started.body
     assert started.body != ""
     completed = projector.apply(
         event(
@@ -228,15 +258,14 @@ def test_list_directory_summary_has_target_and_body() -> None:
     )
     assert isinstance(completed[0], UpdateBlock)
     block = completed[0].block
-    assert "列出目录" in block.title
-    assert "目标：." in block.body
-    assert "状态：完成" in block.body
+    assert "列目录 1 次" in block.title
+    assert " · . · " in block.body
+    assert "成功" in block.body
     assert block.body != ""
     assert "list_directory" not in block.title
     assert "tool.completed" not in block.title
     assert "tool.completed" not in block.body
-    assert "列出目录  ." in started.title
-    assert " · 进行中" in started.title
+    assert started.status is BlockStatus.RUNNING
 
 
 def test_empty_user_prompt_is_omitted() -> None:

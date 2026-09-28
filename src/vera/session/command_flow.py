@@ -60,6 +60,11 @@ def slash(host: SessionController, raw: str) -> Iterator[RuntimeOutput]:
         and descriptor.args == "optional"
         and parsed.handler not in {"compact"}
         and len(parsed.args) > 1
+        and not (
+            parsed.handler == "permissions"
+            and len(parsed.args) == 2
+            and parsed.args[0] == "revoke-file"
+        )
     ):
         yield host._session_event("session.message", {"text": f"用法：{descriptor.usage}"})
         return
@@ -135,6 +140,8 @@ def switch_model(host: SessionController, requested_profile: str | None) -> Iter
             {"text": f"模型切换失败，已保留当前配置：{exc}"},
         )
         return
+    if host.dependencies.runtime.access_session is not None:
+        host.dependencies.runtime.access_session.close()
     host.dependencies = candidate
     host.model_profile = requested_profile
     host.store = RunStore(candidate.config.state_dir)

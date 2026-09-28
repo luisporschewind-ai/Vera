@@ -12,6 +12,7 @@ from vera.contracts.tool_actions import ToolEffect, ToolRiskFacts
 from vera.policy.models import RiskLevel
 from vera.process.environment import build_child_environment
 from vera.process.supervisor import ProcessRequest, ProcessSupervisor
+from vera.sandbox.apple_services import APPLE_IOS_BUILD_SERVICES, requests_approved_ios_build
 from vera.tools.definitions import ToolDefinitionV2, ToolResult
 from vera.workspace.paths import WorkspaceBoundaryError, WorkspacePaths
 
@@ -173,6 +174,20 @@ def _forbidden_reason(facts: dict[str, Any]) -> str | None:
     return None
 
 
+def _apple_build_service_facts_hash(argv: tuple[str, ...]) -> str:
+    from vera.sandbox.apple_volume import APPLE_BUILD_STORAGE
+
+    payload = {
+        "capability": "apple_ios_build_services",
+        "services": list(APPLE_IOS_BUILD_SERVICES),
+        "build_storage": APPLE_BUILD_STORAGE,
+        "xcodebuild": str(Path(argv[0]).resolve()),
+    }
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+
+
 class BashTool:
     name = "bash"
     input_model = BashInput
@@ -218,10 +233,17 @@ class BashTool:
             effects.append(ToolEffect.WORKSPACE_WRITE)
         if facts["network"]:
             effects.append(ToolEffect.NETWORK_ACCESS)
+        if requests_approved_ios_build(arguments.argv):
+            effects.append(ToolEffect.APPLE_IOS_BUILD_SERVICES)
         return tuple(effects)
 
     def risk_facts(self, arguments: BashInput) -> ToolRiskFacts:
         facts = classify_argv(arguments.argv)
+        service_facts_hash = (
+            _apple_build_service_facts_hash(arguments.argv)
+            if requests_approved_ios_build(arguments.argv)
+            else None
+        )
         try:
             cwd = self.normalized_cwd(arguments)
         except ValueError as exc:
@@ -247,6 +269,7 @@ class BashTool:
             policy_forbidden=bool(facts["forbidden"]),
             policy_reason_code=_forbidden_reason(facts),
             facts_complete=True,
+            target_facts_hash=service_facts_hash,
         )
 
     def plan_action(
@@ -276,6 +299,16 @@ class BashTool:
         )
 
     def execute(self, arguments: BashInput) -> ToolResult:
+        return self._execute(arguments, apple_ios_build_services=False)
+
+    def execute_approved(
+        self, arguments: BashInput, *, apple_ios_build_services: bool = False
+    ) -> ToolResult:
+        if apple_ios_build_services and not requests_approved_ios_build(arguments.argv):
+            return ToolResult(ok=False, error_code="sandbox_apple_build_service_unsupported")
+        return self._execute(arguments, apple_ios_build_services=apple_ios_build_services)
+
+    def _execute(self, arguments: BashInput, *, apple_ios_build_services: bool) -> ToolResult:
         try:
             cwd = self.normalized_cwd(arguments)
         except ValueError as exc:
@@ -288,6 +321,7 @@ class BashTool:
                 env=environment.values,
                 timeout_seconds=arguments.timeout_seconds,
                 max_output_bytes=self.max_output_bytes,
+                apple_ios_build_services=apple_ios_build_services,
             )
         )
         stdout = result.stdout.decode("utf-8", errors="replace")
@@ -302,16 +336,25 @@ class BashTool:
             error_code = "process_error"
         elif result.status == "exited" and result.exit_code != 0:
             error_code = "process_exit"
+        if result.cleanup_error is not None:
+            error_code = result.cleanup_error
+        content = {
+            "status": result.status,
+            "exit_code": result.exit_code,
+            "stdout": stdout,
+            "stderr": stderr,
+            "cwd": str(cwd.relative_to(self.workspace).as_posix() or "."),
+            "argv": list(result.effective_argv or arguments.argv),
+        }
+        if apple_ios_build_services:
+            content["system_service_side_effects_possible"] = True
+            content["requested_argv"] = list(arguments.argv)
+            content["build_artifacts"] = (
+                "discarded" if result.cleanup_error is None else "cleanup_failed"
+            )
         return ToolResult(
             ok=ok,
             truncated=result.stdout_truncated or result.stderr_truncated,
             error_code=error_code,
-            content={
-                "status": result.status,
-                "exit_code": result.exit_code,
-                "stdout": stdout,
-                "stderr": stderr,
-                "cwd": str(cwd.relative_to(self.workspace).as_posix() or "."),
-                "argv": list(arguments.argv),
-            },
+            content=content,
         )
