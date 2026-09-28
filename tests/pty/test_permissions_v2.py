@@ -37,10 +37,10 @@ def test_tui_plain_and_json_share_core_approval_facts() -> None:
     mutations = TimelineProjector().apply(event)
     assert isinstance(mutations[0], AppendBlock)
     body = mutations[0].block.body
-    assert "风险 high" in body
-    assert "授权范围 once, run" in body
-    assert "工作目录 /workspace" in body
-    assert "授权范围 once, run, workspace" not in body
+    assert "风险：高" in body
+    assert "授权范围：once, run" in body
+    assert "工作目录：/workspace" in body
+    assert "授权范围：once, run, workspace" not in body
     assert "执行命令" in body
 
     payload = json.loads(SessionRecordCodec.encode(SessionRecordCodec.from_output(event)))

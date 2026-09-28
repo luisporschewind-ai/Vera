@@ -131,7 +131,7 @@ def test_tool_approval_shows_only_core_provided_permission_scopes() -> None:
         )
     )
 
-    assert "授权范围 once, run" in block.body
+    assert "授权范围：once, run" in block.body
     assert "workspace" not in block.body
 
 
