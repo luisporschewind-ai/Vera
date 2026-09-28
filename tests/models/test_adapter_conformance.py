@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import pytest
 
 from vera.config import ProviderConfig
-from vera.models.base import ModelMessage, ModelRequest
+from vera.models.base import FakeModelAdapter, ModelMessage, ModelRequest
 from vera.models.openai_compatible import OpenAICompatibleAdapter
 from vera.tools.definitions import ToolDefinition
 
@@ -53,3 +53,26 @@ def test_fixture_tool_call_conforms(provider: str) -> None:
     )
     assert turn.tool_calls[0].name == "read_file"
     assert turn.usage is not None
+
+
+def test_openai_compatible_adapter_exposes_only_public_model_identity() -> None:
+    adapter = OpenAICompatibleAdapter(
+        _provider("deepseek"),
+        client=_FixtureClient({}),
+        api_key="private-provider-key",
+        profile_name="deepseek-prod",
+        provider_type="deepseek",
+    )
+
+    assert adapter.identity is not None
+    assert adapter.identity.model_dump(mode="json") == {
+        "provider_type": "deepseek",
+        "profile_name": "deepseek-prod",
+        "model_name": "deepseek-model",
+    }
+    assert "private-provider-key" not in str(adapter.identity.model_dump())
+    assert "example.test" not in str(adapter.identity.model_dump())
+
+
+def test_fake_adapter_identity_is_unknown_by_default() -> None:
+    assert FakeModelAdapter().identity is None

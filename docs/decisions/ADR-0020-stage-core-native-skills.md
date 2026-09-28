@@ -4,7 +4,7 @@
 **日期：** 2026-09-15
 **接受：** 2026-09-17 用户确认阶段顺序与完整 Skills 设计
 
-> 后续关系：2026-09-18 [ADR-0021](ADR-0021-core-tools-before-desktop.md) 在 Skills 前插入阶段八 Core 工具集、Policy v2 与原生 Git，将本 ADR 接受的 Skills 阶段顺延为阶段九、桌面顺延为阶段十、私有预览顺延为阶段十一。本 ADR 下文阶段编号保留接受时的历史事实；“Skills 先于桌面”的边界继续有效。
+> 后续关系：2026-09-18 [ADR-0021](ADR-0021-core-tools-before-desktop.md) 在 Skills 前插入阶段八 Core 工具集、Policy v2 与原生 Git，将本 ADR 接受的 Skills 阶段顺延为阶段九；2026-09-26 [ADR-0023](ADR-0023-insert-core-observability-before-desktop.md) 再将 Core Trace 设为阶段十，桌面顺延为阶段十一、私有预览顺延为阶段十二。本 ADR 下文阶段编号保留接受时的历史事实；“Skills 先于桌面”的边界继续有效。
 
 ## 背景
 

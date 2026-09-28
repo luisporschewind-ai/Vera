@@ -3,7 +3,7 @@
 **状态：** Accepted
 **日期：** 2026-09-12
 
-> 后续关系：[ADR-0017](ADR-0017-insert-cli-experience-stage.md) 在阶段六与桌面之间新增阶段七 CLI 体验收口；[ADR-0020](ADR-0020-stage-core-native-skills.md) 与 [ADR-0021](ADR-0021-core-tools-before-desktop.md) 又依次在桌面之前插入 Skills 及工具/Policy/Git。当前桌面为阶段十。本 ADR 的 Core-first、CLI-first 和桌面延后原则继续有效；下文中的旧阶段编号保留当时决策背景。
+> 后续关系：[ADR-0017](ADR-0017-insert-cli-experience-stage.md) 在阶段六与桌面之间新增阶段七 CLI 体验收口；[ADR-0020](ADR-0020-stage-core-native-skills.md) 与 [ADR-0021](ADR-0021-core-tools-before-desktop.md) 又依次在桌面之前插入 Skills 及工具/Policy/Git；[ADR-0023](ADR-0023-insert-core-observability-before-desktop.md) 再插入 Core Trace。当前桌面为阶段十一。本 ADR 的 Core-first、CLI-first 和桌面延后原则继续有效；下文中的旧阶段编号保留当时决策背景。
 
 ## 背景
 

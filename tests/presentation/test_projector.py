@@ -167,6 +167,23 @@ def test_session_diff_is_a_diff_block() -> None:
     assert empty.body == "没有 Diff。"
 
 
+def test_session_trace_is_projected_from_safe_summary_text() -> None:
+    block = only_appended_block(
+        TimelineProjector().apply(
+            event(
+                "session.trace",
+                payload={
+                    "trace": {"run_id": "run_1"},
+                    "text": "Run ID: run_1\n状态: 已完成",
+                },
+            )
+        )
+    )
+    assert block.kind is BlockKind.STATUS
+    assert block.title == "Run ID: run_1"
+    assert block.body == "Run ID: run_1\n状态: 已完成"
+
+
 def test_duplicate_delta_is_ignored() -> None:
     projector = TimelineProjector()
     frame = assistant_delta(stream_id="s1", index=0, text="你")

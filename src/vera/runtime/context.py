@@ -21,6 +21,7 @@ from vera.runtime.approval import ApprovalGate
 from vera.runtime.state import RunStateMachine
 from vera.skills.context import SkillContextPart
 from vera.tools.definitions import ToolResult
+from vera.trace.recorder import TraceRecorder
 from vera.workspace.changeset import BuiltChangeSet
 
 
@@ -237,6 +238,8 @@ class RunContext:
     journal: EventJournal
     messages: list[ModelMessage]
     approval_gate: ApprovalGate
+    trace_recorder: TraceRecorder = field(init=False)
+    request_index: int = 0
     model_turns: int = 0
     tool_calls: int = 0
     context_bytes: int = 0
@@ -264,3 +267,17 @@ class RunContext:
     leaked_markup_nudge: bool = False
     skill_snapshot: SkillSnapshot | None = None
     skill_context: tuple[SkillContextPart, ...] = ()
+
+    def __post_init__(self) -> None:
+        # Hydrated Runs bind a fresh recorder to their existing Journal; open spans
+        # are intentionally never restored across process boundaries.
+        self.trace_recorder = TraceRecorder(self.journal)
+        for event in self.journal.read_all():
+            if event.type != "trace.context.snapshot":
+                continue
+            snapshot = event.payload.get("snapshot")
+            if not isinstance(snapshot, dict):
+                continue
+            request_index = snapshot.get("request_index")
+            if type(request_index) is int and request_index > self.request_index:
+                self.request_index = request_index

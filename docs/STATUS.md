@@ -2,11 +2,28 @@
 
 **更新日期：** 2026-09-26
 **当前阶段：** 阶段 8——Core 工具集、Policy v2 与原生 Git（In progress）
-**仓库状态：** `main` 文档基线，阶段八实施使用隔离工作树；阶段五停在 Ready for manual acceptance，阶段六与阶段七已 Complete。用户于 2026-09-17 原文确认「CLI 版本达到预期，可以封存」，并于 2026-09-18 选择 Inline Execution，授权阶段八按 0059–0066 串行实施和创建计划内本地提交。用户于 2026-09-21 明确授权阶段九在阶段八完全收口前并行实施；阶段九自动实现现为 Ready for manual acceptance，仍不等于 Complete。
+**仓库状态：** `main` 已包含阶段九 Skills、CLI 后续修正、BYOK 与缓存用量（核对时 HEAD `9354bb3`）；阶段八工具/Policy/Git 及大单体拆分仍在独立分支（`5b6d789`），尚未合入。相对本地 `origin/main` 引用领先 7 个提交；本轮未 fetch/push，不将该引用视为远端实时核验。阶段五停在 Ready for manual acceptance，阶段六与阶段七已 Complete。用户于 2026-09-17 原文确认「CLI 版本达到预期，可以封存」，并于 2026-09-18 选择 Inline Execution，授权阶段八按 0059–0066 串行实施和创建计划内本地提交。用户于 2026-09-21 明确授权阶段九在阶段八完全收口前并行实施；阶段九自动实现现为 Ready for manual acceptance，仍不等于 Complete。
 
-## 已完成
+## 当前工作汇总（2026-09-26）
 
-- 阶段一、阶段二、阶段三、阶段四全部任务
+详细核对与缺口见[非沙盒任务与文档对齐记录](evals/2026-09-26-task-document-alignment.md)。沙盒由另一会话维护，本次只保留既有依赖，不改其文档和实施状态。
+
+| 工作 | 当前结论 | 剩余事项 |
+| --- | --- | --- |
+| 阶段五 | Ready for manual acceptance | 20 次真实 dogfood、三类工程人工矩阵 |
+| 阶段六、七 | Complete；CLI 已封存 | 不因此自动启动桌面 |
+| 阶段八 0059–0066 | 隔离分支实现完成；阶段 In progress | Node/TS、Terminal.app、最新分支安装态、遗留问题复核、用户确认与代码集成 |
+| 阶段九 0067–0072、0074 | 已合入；Ready for manual acceptance | 两类工程完整流程、负例/恢复矩阵、隔离 wheel 与用户确认 |
+| CLI 0073、0075–0083 | Done；含 0078 人工复验闭环 | 后续发现另建问题，不重开已确认视觉项 |
+| BYOK / 缓存 0084、0085 | 已合入、用户手工验收通过；In progress | 4 个打包/安装 smoke 环境阻断 |
+| 联网检索 | 方向 Accepted，未实施 | 服务选型、审批细则、排序和实施授权 |
+| 三档权限 / 自动审核 | 设计与计划 Accepted，未实施 | 沙盒前置、冲突规格/ADR 修订和独立实施授权 |
+| 阶段十 Core Trace | In progress；规格 Accepted、任务 0086 自动门禁通过 | 全量离线测试 1360 passed、2 skipped；两项 wheel smoke 仍受缺少 `openai>=2,<3` 缓存阻断；原生终端人工可读性验收待用户执行；阶段八、九由用户自行验证，状态不代改 |
+| 阶段十一 Electron | Not started；UI 规格 Draft | 阶段八、九、十 Complete 后再进入 |
+
+## 已完成与历史交付
+
+- 阶段一至四在路线图中已记录 Complete；其中阶段一任务 0002 / 原始验收记录仍有人工链路证据差异，见对齐记录，不代填通过。
 - 阶段六：任务 0025–0029、0031–0033、0042
 - 阶段七：任务 0034–0041、0043–0058；用户已确认封存
 - [任务 0029：阶段六产品验收](tasks/0029-phase-6-product-acceptance.md)
@@ -35,38 +52,45 @@
 - [任务 0018：评测 CLI 与 14 个冻结任务](tasks/0018-eval-cli-and-corpus.md)
 - [任务 0019：阶段四完整验收](tasks/0019-eval-phase-4-acceptance.md)
 
-## 活动任务
+## 任务与规格入口
 
 - [BYOK 多厂商模型配置](specs/2026-09-25-byok-model-configuration.md)、[Provider 上下文缓存用量](specs/2026-09-25-provider-context-cache-usage.md)与 [ADR-0022](decisions/ADR-0022-user-owned-byok-provider-configuration.md)：用户于 2026-09-25 确认 Accepted；[任务 0084](tasks/0084-byok-model-configuration.md) 和 [任务 0085](tasks/0085-provider-cache-usage.md) 已在隔离 worktree `codex/provider-cache-usage` 实施并合入 `main`。全量可运行非 live 套件 `1297 passed, 2 deselected`；4 个打包/安装 smoke 用例因网络无法获取 `hatchling` 未能启动。Ruff、Mypy 与差异空白检查通过。用户确认本轮手工测试步骤通过，并提供 GLM 与 DeepSeek 真实请求及 `/usage` 结果；阶段八/九与阶段十门禁不变。
+- [Core Trace 与运行可观测性](specs/2026-09-26-core-trace-observability.md)：规格 Accepted，阶段十及桌面/预览顺延关系见[ADR-0023](decisions/ADR-0023-insert-core-observability-before-desktop.md)；[任务 0086](tasks/0086-core-trace-observability.md)由当前主 Agent 逐任务实施。用户于 2026-09-26 明确授权阶段十与阶段八/九并行，并由用户自行验证阶段八、九；阶段八/九状态不变，阶段十一桌面仍等待阶段八、九、十全部 Complete。
 - [阶段七执行顺序](tasks/phase-7-execution-order.md)：任务 0034–0041、0043–0058 Done；阶段七 Complete。剩余量化 dogfood 样本转入后续 Bug 收敛阶段规划；封存确认不自动授权下一阶段实施。
 - [阶段五执行顺序](tasks/phase-5-execution-order.md)：0024 自动门禁已完成；人工 dogfood 不足，阶段五保持 Ready for manual acceptance。
 - [ADR-0017：插入 CLI 体验阶段并顺延桌面路线](decisions/ADR-0017-insert-cli-experience-stage.md)：Accepted；阶段七用于 CLI 体验与个人主力化。其接受时的后续编号已由 ADR-0020 再次校准。
 - [验证产物隔离与工作区无污染](specs/2026-09-14-verification-artifact-isolation.md)与 [ADR-0018](decisions/ADR-0018-isolate-verification-artifacts.md)：Accepted；最终验证计划必须在审批前形成，构建/缓存产物写到 workspace 外。
 - [阶段七：CLI 体验收口与个人主力化](specs/2026-09-13-cli-experience-and-personal-dogfood.md)：Accepted；[任务级实施计划](tasks/phase-7-execution-order.md)已完成。
 - [持久化对话会话与个人主力 CLI](specs/2026-09-13-persistent-conversation-sessions.md)：Accepted；实施归入阶段七。
-- [项目指令发现与 `VERA.md` 初始化](specs/2026-09-14-project-instructions-and-vera-init.md)与 [ADR-0019](decisions/ADR-0019-native-vera-project-instructions.md)：Accepted；任务 0043 计划在会话恢复后、视觉原型前实施，普通启动不得静默写工程。
+- [项目指令发现与 `VERA.md` 初始化](specs/2026-09-14-project-instructions-and-vera-init.md)与 [ADR-0019](decisions/ADR-0019-native-vera-project-instructions.md)：Accepted；任务 0043 已 Done，普通启动不得静默写工程。
 - [阶段八：Core 工具集与风险分级 Policy v2](specs/2026-09-17-core-tooling-and-risk-tiered-policy.md)与 [Vera 原生 Git 能力](specs/2026-09-17-native-git-capability.md)：Accepted；[ADR-0021](decisions/ADR-0021-core-tools-before-desktop.md)已 Accepted，阶段八 In progress。
 - [阶段八执行顺序](tasks/phase-8-execution-order.md)：Accepted；实现在隔离分支 `codex/phase-8-tooling-policy-git`，0059–0065 Done，0066 Ready for manual acceptance；尚未合入 `main`。
 - [阶段九执行顺序](tasks/phase-9-execution-order.md)：任务 0067–0071 自动实现完成；0072 Ready for manual acceptance；0074 Skill 浮层 Done（主路径用户复验）；会话持久化 `37b1c30` 已合入。
 - [任务 0075：缩放闪动](tasks/0075-cli-resize-flicker.md)：Done；用户确认 Terminal.app 闪烁已解决。
 - [任务 0076：Light 主题](tasks/0076-cli-light-theme.md)：Done；行内代码可读性修正已复验。
 - [任务 0077：奶油风主题](tasks/0077-cli-cream-theme.md)：Done；正文与行内代码可读性修正已复验。
-- [任务 0078：CLI 状态动效与回答逐行呈现](tasks/0078-cli-activity-and-paced-replies.md)：Ready for manual acceptance；含审批卡小调整、状态组初次展开。
+- [任务 0078：CLI 状态动效与回答逐行呈现](tasks/0078-cli-activity-and-paced-replies.md)：Done；2026-09-25 四项人工复验闭环，第四项经 0080 修正后通过。
 - [任务 0079：Apple Terminal 启动字符](tasks/0079-apple-terminal-startup-probe.md)：Done；用户确认启动时不再出现 `p`。
 - [任务 0080：主题回答与用户消息可读性](tasks/0080-cli-theme-readability.md)：Done；用户已在 Terminal.app 确认修改后无问题。
 - [任务 0081：Logo 右侧四行信息与视觉层级](tasks/0081-cli-header-four-line-facts.md)：Done；用户已在 Terminal.app 视觉验收通过。
 - [任务 0082：DSML 工具调用标记泄漏](tasks/0082-leaked-tool-call-markup.md)：Done；用户已在 Terminal.app 复验确认。
 - [任务 0083：底栏 Skill 提示过时](tasks/0083-skill-footer-stale-selection.md)：Done；用户已在 Terminal.app 复验确认。
-- [阶段九自动验收记录](evals/phase-9-core-native-skills.md)：自动门禁与新增矩阵已记录；隔离 wheel 安装曾因 offline 缓存缺少 `openai` 阻断，须复核；Python/`VeraTestDemo` 真实 Provider 主路径已由用户 dogfood，Swift/Xcode 与封存确认仍待。
+- [阶段九自动验收记录](evals/phase-9-core-native-skills.md)：自动门禁与新增矩阵已记录；隔离 wheel 安装曾因 offline 缓存缺少 `openai` 阻断，须复核；Terminal.app/`VeraTestDemo` 真实 Provider Skill 主路径已由用户 dogfood；Python、Swift/Xcode 副本完整修改/验证、负例/恢复矩阵和封存确认仍待。
 - [阶段九：Core-native Skills](specs/2026-09-15-core-native-skills-system.md)与 [ADR-0020](decisions/ADR-0020-stage-core-native-skills.md)：Accepted；范围与安全边界不变。通常入口仍为阶段八 Complete；本次按用户明确授权并行实施，不改变阶段八状态。
-- [三档权限与自动审核机制](specs/2026-09-25-approval-permission-profiles-and-auto-review.md)及[实施计划](tasks/approval-permission-profiles-implementation-plan.md)：Draft；用户确认“完全访问”对齐 OpenAI 的无沙盒、无审批边界，仅当前会话生效，新会话恢复默认。用户授权先写规格和计划；产品实施须等完整 Core/Runner 沙盒完成、冲突的 Accepted 文档修订并接受，以及另行实施授权。沙盒规格当前仍在独立工作树，尚未合入 `main`。
+- [阶段顺序更新](decisions/ADR-0023-insert-core-observability-before-desktop.md)：阶段十为 Core Trace 与运行可观测性，阶段十一桌面，阶段十二私有预览；ADR-0021 仅其编号顺序由本 ADR 取代。
+- [三档权限与自动审核机制](specs/2026-09-25-approval-permission-profiles-and-auto-review.md)及[实施计划](tasks/approval-permission-profiles-implementation-plan.md)：Accepted；用户确认“完全访问”对齐 OpenAI 的无沙盒、无审批边界，仅当前会话生效，新会话恢复默认。产品实施须等完整 Core/Runner 沙盒完成、冲突的 Accepted 文档修订并接受，以及另行实施授权。沙盒规格当前仍在独立工作树，尚未合入 `main`。
 - [Skill 交互列表](specs/2026-09-24-skills-interactive-picker.md)：Accepted 且已实施；浮层框线与斜杠互斥经用户确认。
 - [视觉 Token](specs/2026-09-13-vera-cli-visual-tokens.md)：Accepted；2026-09-24 增补 Light 与奶油，内置主题为深海 / Light / 奶油 / 高对比 / 无色五套。
-- [ADR-0013：首个桌面底版采用 Electron](decisions/ADR-0013-electron-desktop-baseline.md)：Accepted；当前实施编号由 ADR-0021 调整为阶段十，只固定未来方向，当前不引入 Electron 代码或依赖。
-- [阶段十：桌面 Agent 工作台与 UI](specs/2026-09-12-desktop-agent-workbench-ui.md)：Draft；不启动阶段十。
+- [ADR-0013：首个桌面底版采用 Electron](decisions/ADR-0013-electron-desktop-baseline.md)：Accepted；当前实施编号由 ADR-0023 调整为阶段十一，只固定未来方向，当前不引入 Electron 代码或依赖。
+- [阶段十一：桌面 Agent 工作台与 UI](specs/2026-09-12-desktop-agent-workbench-ui.md)：Draft；不启动阶段十一。
 - [不可信内容、提示词投毒与内容安全](specs/2026-09-12-untrusted-content-and-prompt-injection-defense.md)：Accepted；由任务 0030 与 ADR-0015 实施。
 
 ## 最近验证
+
+以下为按日期保留的历史证据，较早的“待复验”由后续确认覆盖；不同分支、不同提交的通过结果不能互相替代。
+
+- 2026-09-26 文档对齐：同步阶段八 0059–0066、验收与重构记录（只同步文档，代码未合入），补齐索引；0078 依已有人工证据转 Done，0084/0085 修正为手工已过、安装态仍阻断。阶段五、八、九及桌面门禁未放宽。校验记录见本次对齐报告。
+- 2026-09-26 BYOK / 缓存交付：`d616283` 经 `9354bb3` 合入 main；用户 GLM/DeepSeek 与 `/usage` 手工检查通过。可运行非 live `1297 passed, 2 deselected`，4 个打包/安装 smoke 因 `hatchling` 获取失败未启动；不是全部测试通过。
 
 - 2026-09-25 原生 Terminal.app：用户按验收步骤检查 0081 四行信息对齐、层级、五套主题、窄窗裁切与未改动区域，原文确认「0081 通过」，任务转 Done。
 
@@ -149,9 +173,10 @@
 
 ## 下一检查点
 
-1. 按此前约定，由用户执行全量回归；0078 的四项人工验收与 0080 主题可读性复验均已通过。
-2. 阶段九：补齐 Swift/Xcode 副本与负例矩阵 dogfood，复核隔离 wheel；用户确认后才可标 Complete。
-3. 阶段八隔离分支完成 Node/TS 与 Terminal.app 人工验收后，用户确认再合入 `main`。
-4. 不自动删除、取消暂存或忽略 `VeraTestDemo` 索引里残留的 `AD build/`；未改 `.gitignore`。
-5. 阶段五仍缺 20 次真实 dogfood 与三类真实工程走查，不得把阶段五标为 Complete。
-6. 用户已确认「CLI 版本达到预期，可以封存」；该确认不自动授权 Electron 或阶段十。市场、远程安装、自动更新、Plugin、Hook 与可执行 Skill 继续不进入 v1。
+1. 复核当前 main 的打包/隔离安装 smoke：0084/0085 仍有 4 个用例受 `hatchling` 获取失败阻断；阶段九旧 `openai` 缓存阻断也须在相应安装流程中关闭。
+2. 阶段八：在隔离分支复核重构记录中的 Bash classifier、Git 全局配置读取、branch receipt recovery 问题及安装态，补齐可用 Node/TS runner/compiler 与 Terminal.app 全流程。经用户确认并单独授权集成后再合入 main；本轮不合并代码。
+3. 阶段九：补齐 Python、Swift/Xcode 安全副本完整 Skill 流程及人工负例/恢复矩阵，用户确认后才可标 Complete。
+4. 阶段五：补齐 20 次真实 dogfood 与三类工程人工矩阵；阶段七已接受的量化样本转移不自动关闭阶段五。
+5. 核对阶段一 0002 的历史验收证据差异。未取得证据前不将原人工批准/验证/回滚写成已执行。
+6. 已确认的 0078、0080–0083 人工项无需继续列为待验收；后续回归应按当前提交记录。`VeraTestDemo` 历史 `AD build/` 记录不在本轮复核/清理范围。
+7. 联网检索与三档权限/自动审核继续保留各自前置门禁；Trace 已按用户明确例外授权，在阶段八/九仍待用户验证期间并行实施。阶段十自动回归已通过，仍待原生终端人工可读性验收；阶段十一桌面和阶段十二私有预览继续遵循新的前置门禁；沙盒任务由另一会话继续。

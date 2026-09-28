@@ -178,6 +178,7 @@ class InteractiveSession:
             "session.doctor",
             "session.config",
             "session.usage",
+            "session.trace",
             "session.shortcuts",
             "session.theme",
             "session.listed",

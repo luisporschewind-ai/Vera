@@ -18,6 +18,7 @@ from openai import (
 
 from vera.config import ProviderConfig
 from vera.models.base import (
+    ModelIdentity,
     ModelRequest,
     ModelToolCall,
     ModelTurn,
@@ -101,13 +102,24 @@ def coerce_assistant_text(value: object) -> str | None:
 
 class OpenAICompatibleAdapter:
     def __init__(
-        self, provider: ProviderConfig, client: Any | None = None, *, api_key: str | None = None
+        self,
+        provider: ProviderConfig,
+        client: Any | None = None,
+        *,
+        api_key: str | None = None,
+        profile_name: str | None = None,
+        provider_type: str = "openai-compatible",
     ) -> None:
         self.provider = provider
         caps = provider.capabilities
         if caps.reasoning == "unavailable":
             caps = caps.model_copy(update={"reasoning": "provider_default"})
         self._capabilities = caps
+        self._identity = ModelIdentity(
+            provider_type=provider_type,
+            profile_name=profile_name,
+            model_name=provider.model,
+        )
         self.client: Any = client or OpenAI(
             api_key=api_key if api_key is not None else os.environ.get(provider.api_key_env),
             base_url=str(provider.base_url),
@@ -118,6 +130,10 @@ class OpenAICompatibleAdapter:
     @property
     def capabilities(self) -> ModelCapabilities:
         return self._capabilities
+
+    @property
+    def identity(self) -> ModelIdentity:
+        return self._identity
 
     @staticmethod
     def _tools(request: ModelRequest) -> list[dict[str, object]]:
