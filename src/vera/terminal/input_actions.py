@@ -21,6 +21,7 @@ from vera.session.actions import (
 from vera.terminal.widgets.approval import ApprovalBlockWidget, ApprovalSelected
 from vera.terminal.widgets.completions import CompletionList
 from vera.terminal.widgets.composer import PromptComposer, PromptSubmitted
+from vera.terminal.widgets.skill_picker import SkillPicker
 from vera.terminal.widgets.status_line import VeraStatusLine
 from vera.terminal.widgets.timeline import ConversationTimeline
 from vera.terminal.widgets.user_sticky import UserStickyBar
@@ -58,6 +59,10 @@ def on_text_area_changed(host: VeraTerminalApp, event: Any) -> None:
 
 def refresh_completions(host: VeraTerminalApp, text: str) -> None:
     completions = host.query_one(CompletionList)
+    if host.query_one(SkillPicker).display:
+        # Skill 浮层是模态选择；打开时不与斜杠/路径补全叠层。
+        completions.hide()
+        return
     snapshot = host.controller.snapshot()
     if completions.update_for_input(text, snapshot):
         if completions.needs_restore and completions.last_query and "@" not in text:
@@ -79,12 +84,18 @@ def refresh_completions(host: VeraTerminalApp, text: str) -> None:
 
 def on_prompt_submitted(host: VeraTerminalApp, message: PromptSubmitted) -> None:
     host.query_one(CompletionList).hide()
+    picker = host.query_one(SkillPicker)
+    text = message.text
+    # 新的斜杠/提问开始时收起未确认的 Skill 浮层，避免与命令补全抢层。
+    if picker.display and picker.pending_skill_id is None and text != "/skills":
+        picker.close()
     host.query_one(ConversationTimeline).return_to_tail()
     host._focus_composer_unless_approval()
-    text = message.text
     host.submitted.append(text)
     if text.startswith("/"):
-        host.bridge.submit(ExecuteSlashCommand(raw=text))
+        request_id = host.bridge.submit(ExecuteSlashCommand(raw=text))
+        if text.startswith("/skills"):
+            host._skill_list_request_id = request_id if text == "/skills" else None
         return
     composer = host.query_one(PromptComposer)
     if host.controller.pending_approval_id is not None:
@@ -113,6 +124,13 @@ def on_approval_selected(host: VeraTerminalApp, message: ApprovalSelected) -> No
 
 
 def action_escape(host: VeraTerminalApp) -> None:
+    picker = host.query_one(SkillPicker)
+    if picker.display:
+        if picker.pending_skill_id is None:
+            picker.close()
+            host.query_one(CompletionList).hide()
+            host.query_one(PromptComposer).focus()
+        return
     if host.controller.active_run_id is not None:
         host.action_cancel_or_clear()
         return
@@ -122,6 +140,8 @@ def action_escape(host: VeraTerminalApp) -> None:
         return
     if completions.display:
         completions.hide()
+        host.query_one(PromptComposer).focus()
+        return
 
 
 def action_cancel_or_clear(host: VeraTerminalApp) -> None:
@@ -184,6 +204,7 @@ def action_copy_text(host: VeraTerminalApp) -> None:
 
 
 def last_copyable_text(host: VeraTerminalApp) -> str:
+    timeline = host.query_one(ConversationTimeline)
     preferred = {
         BlockKind.ERROR,
         BlockKind.DIFF,
@@ -191,7 +212,7 @@ def last_copyable_text(host: VeraTerminalApp) -> str:
         BlockKind.STATUS,
     }
     for block in reversed(list(host.projector.blocks())):
-        if block.kind in preferred and block.body.strip():
+        if timeline.has_block(block.block_id) and block.kind in preferred and block.body.strip():
             return block.body
     return ""
 
@@ -201,6 +222,8 @@ def action_return_to_tail(host: VeraTerminalApp) -> None:
 
 
 def on_key(host: VeraTerminalApp, event: Any) -> None:
+    if host.query_one(SkillPicker).display:
+        return
     if event.key in {"tab", "shift+tab"} and host._cycle_approval_focus(
         reverse=event.key == "shift+tab"
     ):
@@ -253,6 +276,10 @@ def clear_timeline_display(host: VeraTerminalApp) -> None:
 
 
 def focus_composer_unless_approval(host: VeraTerminalApp) -> None:
+    picker = host.query_one(SkillPicker)
+    if picker.display:
+        picker.query_one("#skill-picker-options").focus()
+        return
     widget = host._active_approval_widget()
     if widget is not None:
         widget.focus_default_action()

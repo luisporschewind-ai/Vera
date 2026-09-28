@@ -25,6 +25,7 @@ from vera.presentation.session_event_handlers import (
     session_loaded,
     session_message,
     session_status,
+    skill_event,
 )
 from vera.presentation.timeline import BlockKind, BlockStatus
 from vera.presentation.tool_activity import READ_LABELS, ToolActivity
@@ -91,10 +92,10 @@ def apply_event(host: TimelineProjector, event: EventEnvelope) -> tuple[Timeline
         "session.config": host._session_config,
         "session.usage": host._session_message,
         "session.trace": host._session_message,
-        "skill.listed": host._session_message,
-        "skill.shown": host._session_message,
-        "skill.selection.changed": host._session_message,
-        "skill.snapshot.bound": host._session_message,
+        "skill.listed": host._skill_event,
+        "skill.shown": host._skill_event,
+        "skill.selection.changed": host._skill_event,
+        "skill.snapshot.bound": host._skill_event,
         "session.permissions": host._session_message,
         "session.review": host._session_message,
         "session.diff": host._session_diff,
@@ -622,6 +623,7 @@ class EventProjector:
     session_message = staticmethod(session_message)
     persistence_warning = staticmethod(persistence_warning)
     instruction_status = staticmethod(instruction_status)
+    skill_event = staticmethod(skill_event)
     session_loaded = staticmethod(session_loaded)
     status_event = staticmethod(status_event)
     unknown_event = staticmethod(unknown_event)

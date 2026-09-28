@@ -191,6 +191,9 @@ class TimelineProjector:
     def _instruction_status(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
         return EventProjector.instruction_status(self, event)
 
+    def _skill_event(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
+        return EventProjector.skill_event(self, event)
+
     def _session_loaded(self, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
         return EventProjector.session_loaded(self, event)
 

@@ -10,6 +10,8 @@ from pathlib import Path
 from rich.control import Control
 from textual.app import App, ComposeResult
 from textual.binding import Binding
+from textual.driver import Driver
+from textual.drivers.linux_driver import LinuxDriver
 from textual.events import Resize
 from textual.geometry import Size
 from textual.timer import Timer
@@ -32,6 +34,7 @@ from vera.terminal.widgets.blocks import TimelineBlockWidget
 from vera.terminal.widgets.completions import CompletionList
 from vera.terminal.widgets.composer import ComposerBar, PromptComposer, PromptSubmitted
 from vera.terminal.widgets.header import VeraHeader
+from vera.terminal.widgets.skill_picker import SkillPicker
 from vera.terminal.widgets.status_line import VeraStatusLine
 from vera.terminal.widgets.timeline import ConversationTimeline
 from vera.terminal.widgets.user_sticky import UserStickyBar
@@ -41,7 +44,19 @@ from vera.terminal.widgets.work_rail import VeraWorkRail
 install_alt_enter_mapping()
 
 _RESIZE_CLEAR = Control.clear().segment.text + Control.home().segment.text
-_RESIZE_REPAIR_DELAY = 0.4
+# Debounce Terminal.app remnant repair so drag frames never blank the screen.
+_RESIZE_REPAIR_DELAY = 0.45
+# Synchronized-update brackets hide the clear+repaint pair as one frame when supported.
+_RESIZE_SYNC_BEGIN = "\x1b[?2026h"
+_RESIZE_SYNC_END = "\x1b[?2026l"
+
+
+class _AppleTerminalDriver(LinuxDriver):
+    """Skip a Textual probe that Terminal.app renders as a stray ``p``."""
+
+    def _query_in_band_window_resize(self) -> None:
+        # Textual still receives window changes through SIGWINCH.
+        pass
 
 
 class VeraTerminalApp(App[int]):
@@ -60,6 +75,12 @@ class VeraTerminalApp(App[int]):
         ("cmd+c", "copy_text", "Copy"),
         ("end", "return_to_tail", "End"),
     ]
+
+    def get_driver_class(self) -> type[Driver]:
+        driver_class = super().get_driver_class()
+        if os.environ.get("TERM_PROGRAM") == "Apple_Terminal" and driver_class is LinuxDriver:
+            return _AppleTerminalDriver
+        return driver_class
 
     def __init__(
         self,
@@ -95,7 +116,11 @@ class VeraTerminalApp(App[int]):
         self._editor_preview_pending = False
         self._welcome_expanded = True
         self._session_status: SessionStatus | None = None
+        self._skill_list_request_id: str | None = None
+        self._open_skill_list_request_id: str | None = None
+        self._skill_use_request_id: str | None = None
         self._resize_repair_timer: Timer | None = None
+        self._last_terminal_size: Size | None = None
         self._too_small = Static(
             "终端太小：请调整到至少 60×16",
             id="terminal-too-small",
@@ -109,8 +134,9 @@ class VeraTerminalApp(App[int]):
         )
         yield VeraWelcome(id="welcome")
         yield UserStickyBar(id="user-sticky")
-        yield ConversationTimeline(id="timeline")
+        yield ConversationTimeline(id="timeline", paced=self.animations, unicode=self._unicode())
         yield CompletionList(id="completions")
+        yield SkillPicker(id="skill-picker")
         yield VeraWorkRail(id="work-rail")
         yield ComposerBar(id="composer-bar")
         yield VeraStatusLine(id="status-line")
@@ -119,6 +145,7 @@ class VeraTerminalApp(App[int]):
     def on_mount(self) -> None:
         self.query_one(PromptComposer).focus()
         self.query_one(PromptComposer).sync_multiline_layout()
+        self._last_terminal_size = self.size
         self._apply_size(self.size)
         if not self.display_capabilities.color:
             self._apply_theme("no-color")
@@ -132,7 +159,15 @@ class VeraTerminalApp(App[int]):
         layout_flow.present_bootstrap(self)
 
     def on_resize(self, event: Resize) -> None:
+        previous = self._last_terminal_size
+        self._last_terminal_size = event.size
         layout_flow.on_resize(self, event)
+        # Growing never leaves Terminal.app border remnants; skip clear entirely.
+        shrunk = previous is not None and (
+            event.size.width < previous.width or event.size.height < previous.height
+        )
+        if not shrunk:
+            return
         if self._resize_repair_timer is not None:
             self._resize_repair_timer.stop()
         self._resize_repair_timer = self.set_timer(
@@ -155,12 +190,13 @@ class VeraTerminalApp(App[int]):
         self._resize_repair_timer = None
         if not self.is_running or self._driver is None:
             return
-        # Terminal.app can retain old border cells after a shrink. Repair only
-        # once the drag settles, and send the clear with its replacement frame.
+        # Terminal.app can retain old border cells after a shrink. Clear only once
+        # the drag settles, and hide clear+frame as one synchronized update.
         frame = self.screen._compositor.render_full_update()
         cursor = self.screen.outer_size.clamp_offset(self.cursor_position)
-        output = _RESIZE_CLEAR + frame.render_segments(self.console)
-        output += Control.move_to(*cursor).segment.text
+        body = _RESIZE_CLEAR + frame.render_segments(self.console)
+        body += Control.move_to(*cursor).segment.text
+        output = f"{_RESIZE_SYNC_BEGIN}{body}{_RESIZE_SYNC_END}"
         self._begin_update()
         try:
             self._driver.write(output)
@@ -206,6 +242,9 @@ class VeraTerminalApp(App[int]):
 
     def on_worker_stopped(self, message: WorkerStopped) -> None:
         output_flow.on_worker_stopped(self, message)
+
+    def on_skill_picker_chosen(self, message: SkillPicker.Chosen) -> None:
+        output_flow.on_skill_picker_chosen(self, message)
 
     def action_escape(self) -> None:
         input_actions.action_escape(self)

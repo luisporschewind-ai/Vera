@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from vera.contracts.events import EventEnvelope
 from vera.presentation.diagnostics_copy import format_config_body, format_doctor_body
-from vera.presentation.event_copy import event_summary, event_title
+from vera.presentation.event_copy import event_summary, event_title, format_skill_event
 from vera.presentation.mutations import TimelineMutation
 from vera.presentation.sanitize import sanitize_terminal_text
 from vera.presentation.status_panel import format_status_panel
@@ -99,6 +99,17 @@ def persistence_warning(
         title=event_title(event.type),
         body=sanitize_terminal_text(body),
         status=BlockStatus.FAILED,
+    )
+
+
+def skill_event(host: TimelineProjector, event: EventEnvelope) -> tuple[TimelineMutation, ...]:
+    return host._append(
+        block_id=f"{event.run_id}:{event.sequence}:skill",
+        run_id=event.run_id,
+        kind=BlockKind.STATUS,
+        title=event_title(event.type),
+        body=sanitize_terminal_text(format_skill_event(event.payload)),
+        status=BlockStatus.SUCCEEDED,
     )
 
 

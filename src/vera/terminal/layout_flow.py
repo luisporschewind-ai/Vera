@@ -4,17 +4,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from rich.control import Control
 from textual.css.query import NoMatches
 from textual.events import Resize
 from textual.geometry import Size
 from textual.widgets import Static
 
+from vera.presentation.activity import ActivityState
 from vera.presentation.timeline import BlockKind
 from vera.terminal.bridge import RuntimeOutputReceived
 from vera.terminal.widgets.blocks import TimelineBlockWidget
 from vera.terminal.widgets.composer import ComposerBar, PromptComposer, select_composer_prompt
 from vera.terminal.widgets.header import VeraHeader
+from vera.terminal.widgets.skill_picker import SkillPicker
 from vera.terminal.widgets.status_line import VeraStatusLine
 from vera.terminal.widgets.timeline import ConversationTimeline
 from vera.terminal.widgets.user_sticky import UserStickyBar
@@ -23,8 +24,6 @@ from vera.terminal.widgets.work_rail import VeraWorkRail
 
 if TYPE_CHECKING:
     from vera.terminal.app import VeraTerminalApp
-
-_RESIZE_CLEAR = Control.clear().segment.text + Control.home().segment.text
 
 
 def present_bootstrap(host: VeraTerminalApp) -> None:
@@ -37,6 +36,9 @@ def on_resize(host: VeraTerminalApp, event: Resize) -> None:
 
 
 def on_unmount(host: VeraTerminalApp) -> None:
+    if host._resize_repair_timer is not None:
+        host._resize_repair_timer.stop()
+        host._resize_repair_timer = None
     host.bridge.cancel_workers()
 
 
@@ -71,7 +73,11 @@ def apply_size(host: VeraTerminalApp, size: Size) -> None:
         except NoMatches:
             composer = None
         if composer is not None:
-            composer.focus()
+            picker = host.query_one(SkillPicker)
+            if picker.display:
+                picker.query_one("#skill-picker-options").focus()
+            else:
+                composer.focus()
     host.refresh(repaint=True, layout=True)
     host.call_after_refresh(host._repaint_after_resize)
 
@@ -103,9 +109,7 @@ def repaint_after_resize(host: VeraTerminalApp) -> None:
                 widget.refresh(repaint=True)
     except NoMatches:
         pass
-    if host._driver is not None:
-        host._driver.write(_RESIZE_CLEAR)
-        host._driver.flush()
+    # Never blank the screen on every drag frame; remnant repair is debounced.
     host.screen.refresh(repaint=True)
 
 
@@ -140,7 +144,17 @@ def work_rail(host: VeraTerminalApp) -> VeraWorkRail | None:
 def sync_activity(host: VeraTerminalApp) -> None:
     rail = host._work_rail()
     if rail is not None:
-        rail.set_activity(host.activity.current, host.animation.frame())
+        state = host.activity.current
+        if state.phase == "done":
+            try:
+                pending = host.query_one(ConversationTimeline).has_pending_reveal
+            except NoMatches:
+                pending = False
+            if pending:
+                state = ActivityState(
+                    "正在回复", "replying", True, target=state.target, steps=state.steps
+                )
+        rail.set_activity(state, host.animation.frame(state.phase))
 
 
 def apply_theme(host: VeraTerminalApp, name: str) -> None:
@@ -157,6 +171,9 @@ def apply_theme(host: VeraTerminalApp, name: str) -> None:
         host.set_class(active, theme_class(item))
         host.screen.set_class(active, theme_class(item))
     host.refresh_css(animate=False)
+    for widget in host.query(TimelineBlockWidget):
+        if widget.block.kind is BlockKind.ASSISTANT:
+            widget._render_body()
     host.refresh()
     host._sync_sticky_offset()
 
@@ -214,6 +231,8 @@ def tick_status(host: VeraTerminalApp) -> None:
             host._sync_activity()
         return
     if not host.activity.current.active:
+        if host.activity.current.phase == "done":
+            host._sync_activity()
         return
     host._sync_activity()
 
