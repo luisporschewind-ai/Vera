@@ -49,6 +49,10 @@ from vera.tools.git import (
     GitStatusTool,
 )
 from vera.tools.registry import ToolRegistry
+from vera.web_research.provider import TavilyProvider
+from vera.web_research.service import WebResearchService
+from vera.web_research.store import ResearchStore
+from vera.web_research.tools import WebReadResultTool, WebSearchTool
 from vera.workspace.paths import WorkspacePaths
 
 
@@ -101,6 +105,7 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
     preliminary = load_config(workspace, {})
     profiles = ProviderConfigurationService()
     trusted_names = {provider.api_key_env for provider in preliminary.providers.values()}
+    trusted_names.add("TAVILY_API_KEY")
     trusted_names.update(item.api_key_env for item in MODEL_CATALOG)
     trusted_names.update(item.api_key_env for item in profiles.list_profiles())
     for name in trusted_names:
@@ -174,6 +179,13 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
     registry.register(GitBranchCreateTool(workspace))
     registry.register(GitBranchSwitchTool(workspace))
     registry.register(GitRepositoryInitTool(workspace))
+    if os.environ.get("VERA_WEB_RESEARCH") == "1":
+        research = WebResearchService(
+            TavilyProvider(os.environ.get("TAVILY_API_KEY") or values.get("TAVILY_API_KEY")),
+            ResearchStore(config.state_dir),
+        )
+        registry.register(WebSearchTool(research))
+        registry.register(WebReadResultTool(research))
     policy_prefixes = config.user_allowed_command_prefixes
     identity = workspace_identity(workspace, installation_id)
     effective_snapshot = EffectivePolicySnapshotV2(

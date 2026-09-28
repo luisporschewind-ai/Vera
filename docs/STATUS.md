@@ -54,6 +54,8 @@
 
 ## 任务与规格入口
 
+- [Core 联网资料检索](specs/2026-09-24-core-web-research.md)：用户于 2026-09-28 授权阶段十一里程碑前完成规格实现，并自行在 `main` 做回归与真实服务验收。隔离工作树首版选 Tavily、默认关闭，每次联网独立审批；[实施记录](tasks/core-web-research-implementation.md)为 Ready for manual acceptance。Ruff、Mypy、编译与差异空白检查通过，未运行回归或真实服务，不据此宣称产品可用。
+
 - [BYOK 多厂商模型配置](specs/2026-09-25-byok-model-configuration.md)、[Provider 上下文缓存用量](specs/2026-09-25-provider-context-cache-usage.md)与 [ADR-0022](decisions/ADR-0022-user-owned-byok-provider-configuration.md)：用户于 2026-09-25 确认 Accepted；[任务 0084](tasks/0084-byok-model-configuration.md) 和 [任务 0085](tasks/0085-provider-cache-usage.md) 已在隔离 worktree `codex/provider-cache-usage` 实施并合入 `main`。全量可运行非 live 套件 `1297 passed, 2 deselected`；4 个打包/安装 smoke 用例因网络无法获取 `hatchling` 未能启动。Ruff、Mypy 与差异空白检查通过。用户确认本轮手工测试步骤通过，并提供 GLM 与 DeepSeek 真实请求及 `/usage` 结果；阶段八/九与阶段十门禁不变。
 - [Core Trace 与运行可观测性](specs/2026-09-26-core-trace-observability.md)：规格 Accepted，阶段十及桌面/预览顺延关系见[ADR-0023](decisions/ADR-0023-insert-core-observability-before-desktop.md)；[任务 0086](tasks/0086-core-trace-observability.md)由当前主 Agent 逐任务实施。用户于 2026-09-26 明确授权阶段十与阶段八/九并行，并由用户自行验证阶段八、九；阶段八/九状态不变，阶段十一桌面仍等待阶段八、九、十全部 Complete。
 - [阶段七执行顺序](tasks/phase-7-execution-order.md)：任务 0034–0041、0043–0058 Done；阶段七 Complete。剩余量化 dogfood 样本转入后续 Bug 收敛阶段规划；封存确认不自动授权下一阶段实施。

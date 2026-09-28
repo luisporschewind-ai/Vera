@@ -191,6 +191,14 @@ def decide_v2(
             "risk_v2",
             policy_digest,
         )
+    elif action.tool_name in {"web_search", "web_read_result"}:
+        base = _decision(
+            PolicyDecisionKind.APPROVAL_REQUIRED,
+            "web_research_approval_required",
+            "each web research request needs explicit approval",
+            "risk_v2",
+            policy_digest,
+        )
     elif assessment.level is RiskLevel.HIGH:
         if grant is not None and (
             grant.scope in {"once", "run"}

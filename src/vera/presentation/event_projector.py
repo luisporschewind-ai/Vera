@@ -177,6 +177,21 @@ def tool_completed(host: TimelineProjector, event: EventEnvelope) -> tuple[Timel
         error_code=error_code,
         truncated=truncated,
     )
+    if name == "web_search" and ok:
+        count = event.payload.get("source_count")
+        sources = event.payload.get("sources")
+        lines = [f"来源数量：{count}"] if isinstance(count, int) else []
+        if isinstance(sources, list):
+            lines.extend(
+                f"{item.get('source_id')}：{item.get('canonical_url')}"
+                for item in sources
+                if isinstance(item, dict)
+            )
+        body = "\n".join(part for part in (body, *lines) if part)
+    elif name == "web_read_result" and ok:
+        source_url = event.payload.get("canonical_url")
+        if isinstance(source_url, str):
+            body = "\n".join(part for part in (body, f"来源：{source_url}") if part)
     title = format_tool_title(name, target=target, status=status_key, duration_ms=duration_ms)
     block_id = host._tool_blocks.get((event.run_id, call_id)) or host._tool_blocks.get(
         (event.run_id, name)
@@ -286,6 +301,10 @@ def approval_required(
     profile = event.payload.get("artifact_profile") if kind == "command" else None
     root = event.payload.get("artifact_root") if kind == "command" else None
     cwd = event.payload.get("cwd")
+    service = event.payload.get("service")
+    query = event.payload.get("query")
+    source_url = event.payload.get("source_url")
+    max_results = event.payload.get("max_results")
     available_scopes = event.payload.get("available_scopes", [])
     scopes = (
         ", ".join(str(scope) for scope in available_scopes)
@@ -300,6 +319,10 @@ def approval_required(
             f"Profile {profile}" if profile else "",
             f"产物根 {root}" if root else "",
             f"工作目录 {cwd}" if cwd else "",
+            f"服务 {service}" if service else "",
+            f"实际查询 {query}" if query else "",
+            f"来源 {source_url}" if source_url else "",
+            f"结果上限 {max_results}" if max_results else "",
             f"目标 {target}" if target and not command else "",
             f"风险 {risk}",
             f"授权范围 {scopes}" if scopes else "",

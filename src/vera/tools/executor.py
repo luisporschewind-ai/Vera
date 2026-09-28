@@ -73,11 +73,18 @@ class ToolExecutor:
     def prepare(self, *, run_id: str, name: str, arguments: dict[str, Any]) -> PreparedToolAction:
         tool = self.registry.implementation(name)
         if tool is None:
+            if name in {"web_search", "web_read_result"}:
+                raise ToolPreparationError("web_research_disabled")
             raise ToolPreparationError("unknown_tool")
         try:
             parsed = tool.input_model.model_validate(arguments)
         except ValidationError as exc:
-            raise ToolPreparationError("invalid_tool_arguments") from exc
+            code = "invalid_tool_arguments"
+            if name == "web_search" and any(
+                error.get("loc") == ("query",) for error in exc.errors()
+            ):
+                code = "query_blocked"
+            raise ToolPreparationError(code) from exc
         definition = next(
             (item for item in self.registry.definitions() if item.name == name),
             None,
@@ -88,7 +95,9 @@ class ToolExecutor:
         mutation, process_plan, git_commit_plan, git_branch_plan, git_init_plan = self._plan_action(
             tool, run_id, parsed, action_id=action_id
         )
-        facts = self._risk_facts(tool, parsed)
+        facts = self._risk_facts(tool, parsed, run_id=run_id)
+        if name == "web_read_result" and facts.policy_reason_code == "source_unavailable":
+            raise ToolPreparationError("source_unavailable")
         if mutation is not None:
             facts = facts.model_copy(update={"target_facts_hash": mutation.plan.target_facts_hash})
         normalized = parsed.model_dump(mode="json")
@@ -174,7 +183,7 @@ class ToolExecutor:
         mutation, process_plan, git_commit_plan, git_branch_plan, git_init_plan = self._plan_action(
             tool, prepared.action.run_id, parsed, action_id=prepared.action.action_id
         )
-        facts = self._risk_facts(tool, parsed)
+        facts = self._risk_facts(tool, parsed, run_id=prepared.action.run_id)
         if mutation is not None:
             facts = facts.model_copy(update={"target_facts_hash": mutation.plan.target_facts_hash})
         if _facts_hash(facts) != prepared.target_facts_hash:
@@ -270,7 +279,12 @@ class ToolExecutor:
                     return ToolResult(ok=False, error_code="stale_tool_action")
                 result = tool.execute(parsed)
             else:
-                result = tool.execute(parsed)
+                run_executor = getattr(tool, "execute_for_run", None)
+                result = (
+                    run_executor(prepared.action.run_id, parsed)
+                    if run_executor is not None
+                    else tool.execute(parsed)
+                )
         normalized = result if isinstance(result, ToolResult) else ToolResult.model_validate(result)
         if normalized.content is not None:
             rendered = json.dumps(
@@ -281,9 +295,12 @@ class ToolExecutor:
         return normalized
 
     @staticmethod
-    def _risk_facts(tool: Any, arguments: BaseModel) -> ToolRiskFacts:
+    def _risk_facts(tool: Any, arguments: BaseModel, *, run_id: str | None = None) -> ToolRiskFacts:
+        run_collector = getattr(tool, "risk_facts_for_run", None)
         collector = getattr(tool, "risk_facts", None)
-        if collector is not None:
+        if run_id is not None and run_collector is not None:
+            facts = run_collector(run_id, arguments)
+        elif collector is not None:
             facts = collector(arguments)
         elif hasattr(tool, "paths") and hasattr(arguments, "path"):
             raw_path = str(arguments.path)

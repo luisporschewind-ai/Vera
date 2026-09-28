@@ -73,6 +73,21 @@ def approval_payload(
         payload["action_id"] = pending.action.action_id
         payload["input_hash"] = pending.action.input_hash
         payload["target_facts_hash"] = pending.target_facts_hash
+        if pending.action.tool_name == "web_search":
+            payload["service"] = pending.action.risk_facts.external_target
+            payload["query"] = pending.action.normalized_arguments.get("query")
+            payload["max_results"] = pending.action.normalized_arguments.get("max_results")
+            payload["description"] = "向联网检索服务发送所示查询；可能产生服务费用。"
+        elif pending.action.tool_name == "web_read_result":
+            payload["service"] = pending.action.risk_facts.external_target
+            implementation = host._tool_executor(context).registry.implementation("web_read_result")
+            source = getattr(implementation, "approval_source", None)
+            if implementation is not None and source is not None:
+                parsed = implementation.input_model.model_validate(
+                    dict(pending.action.normalized_arguments)
+                )
+                payload["source_url"] = source(context.run_id, parsed)
+            payload["description"] = "由联网检索服务提取所示搜索结果的页面片段；可能产生服务费用。"
         if pending.action.tool_name == "git_repository_init":
             workspace = str(context.command.workspace_root)
             branch = str(pending.action.normalized_arguments.get("initial_branch") or "main")
@@ -436,7 +451,7 @@ def resolve_approval(host: ApprovalFlowHost, command: ResolveApproval) -> Iterat
                 parsed,
                 action_id=pending_tool.action.action_id,
             )
-            current_facts = executor._risk_facts(implementation, parsed)
+            current_facts = executor._risk_facts(implementation, parsed, run_id=context.run_id)
             if mutation is not None:
                 current_facts = current_facts.model_copy(
                     update={"target_facts_hash": mutation.plan.target_facts_hash}
