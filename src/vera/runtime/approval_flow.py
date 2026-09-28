@@ -68,6 +68,15 @@ def approval_payload(
         payload["action_id"] = pending.action.action_id
         payload["input_hash"] = pending.action.input_hash
         payload["target_facts_hash"] = pending.target_facts_hash
+        if pending.action.tool_name == "git_repository_init":
+            workspace = str(context.command.workspace_root)
+            branch = str(pending.action.normalized_arguments.get("initial_branch") or "main")
+            payload["workspace"] = workspace
+            payload["target"] = f"{workspace}/.git"
+            payload["description"] = (
+                f"在 {workspace} 初始化本地 Git 仓库（初始分支 {branch}）；"
+                "只创建 .git 元数据，不创建提交、远程、身份或 Hook。"
+            )
     return payload
 
 
@@ -392,7 +401,13 @@ def resolve_approval(host: ApprovalFlowHost, command: ResolveApproval) -> Iterat
             parsed = implementation.input_model.model_validate(
                 dict(pending_tool.action.normalized_arguments)
             )
-            mutation, process_plan, git_commit_plan, git_branch_plan = executor._plan_action(
+            (
+                mutation,
+                process_plan,
+                git_commit_plan,
+                git_branch_plan,
+                git_init_plan,
+            ) = executor._plan_action(
                 implementation,
                 context.run_id,
                 parsed,
@@ -429,6 +444,7 @@ def resolve_approval(host: ApprovalFlowHost, command: ResolveApproval) -> Iterat
             process_plan=process_plan,
             git_commit_plan=git_commit_plan,
             git_branch_plan=git_branch_plan,
+            git_init_plan=git_init_plan,
         )
         if executor.facts_hash(current_facts) != pending_tool.target_facts_hash:
             yield from host._expire_approval(

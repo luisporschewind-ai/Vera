@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 from collections.abc import Mapping
+from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from typing import Any, Literal
 
@@ -13,12 +15,21 @@ from vera.git.branches import GitBrancher, GitBranchError, GitBranchPlan, GitBra
 from vera.git.commit import GitCommitter, GitCommitTransactionError
 from vera.git.commit_plan import GitCommitPlan, GitCommitPlanBuilder, GitCommitPlanError
 from vera.git.hooks import GitHookInspector
+from vera.git.initialize import (
+    GitRepositoryInitError,
+    GitRepositoryInitPlan,
+    GitRepositoryInitResult,
+    GitRepositoryInitRunner,
+    GitRepositoryInitService,
+)
 from vera.git.models import (
     GitDiffRequest,
     GitLogRequest,
     GitShowRequest,
 )
 from vera.git.service import GitService, GitServiceError
+from vera.persistence.errors import PersistenceFault, StateVersionError
+from vera.persistence.operation_receipt import OperationReceipt, OperationReceiptStore, receipt_key
 from vera.tools.definitions import ToolDefinitionV2, ToolResult
 
 
@@ -35,6 +46,181 @@ class GitCommitInput(ContractModel):
 
 class GitBranchInput(ContractModel):
     branch_name: str
+
+
+class GitRepositoryInitInput(ContractModel):
+    initial_branch: str | None = None
+
+
+class GitRepositoryInitTool:
+    name = "git_repository_init"
+    description = "Initialize a local Git repository in the selected workspace."
+    input_model = GitRepositoryInitInput
+    definition = ToolDefinitionV2(
+        name=name,
+        description=description,
+        input_schema=GitRepositoryInitInput.model_json_schema(),
+        tool_version=1,
+        effects=(ToolEffect.WORKSPACE_WRITE, ToolEffect.PROCESS_EXECUTE),
+        supports_cancellation=False,
+        supports_recovery=True,
+        max_output_bytes=100_000,
+    )
+
+    def __init__(
+        self,
+        workspace: Path,
+        *,
+        environment: Mapping[str, str] | None = None,
+        runner: GitRepositoryInitRunner | None = None,
+    ) -> None:
+        self.workspace = Path(workspace)
+        self.environment = dict(environment) if environment is not None else os.environ.copy()
+        self.runner = runner
+        self.service: GitRepositoryInitService | None = None
+        self.state_dir: Path | None = None
+        self._workspace_identity: str | None = None
+        self._policy_hash: str | None = None
+
+    def bind_state(self, state_dir: Path) -> None:
+        self.state_dir = Path(state_dir)
+
+    def bind_policy(
+        self, workspace_identity: str, policy_hash: str, _trusted: bool = False
+    ) -> None:
+        self._workspace_identity = workspace_identity
+        self._policy_hash = policy_hash
+
+    def _service(self) -> GitRepositoryInitService:
+        if self.service is None:
+            self.service = GitRepositoryInitService(
+                self.workspace,
+                environment=self.environment,
+                runner=self.runner,
+            )
+        return self.service
+
+    def effects(self, _arguments: GitRepositoryInitInput) -> tuple[ToolEffect, ...]:
+        try:
+            self._service().discover(workspace_identity=self._workspace_identity or "unbound")
+        except GitRepositoryInitError:
+            # risk_facts() converts unsafe or unverifiable targets into a policy
+            # denial; effects must not leak discovery exceptions from prepare().
+            return (ToolEffect.WORKSPACE_WRITE, ToolEffect.PROCESS_EXECUTE)
+        return (ToolEffect.WORKSPACE_READ, ToolEffect.PROCESS_EXECUTE)
+
+    def risk_facts(self, arguments: GitRepositoryInitInput) -> ToolRiskFacts:
+        try:
+            self._service().discover(workspace_identity=self._workspace_identity or "unbound")
+        except GitRepositoryInitError as exc:
+            if exc.code != "git_not_repository":
+                return ToolRiskFacts(
+                    normalized_paths=(".git",),
+                    argv=("git", "init"),
+                    cwd=".",
+                    policy_forbidden=True,
+                    policy_reason_code=exc.code,
+                    facts_complete=False,
+                )
+            service = self._service()
+            try:
+                digest = hashlib.sha256(
+                    f"{service._listing_hash()}:{arguments.initial_branch or 'main'}".encode()
+                ).hexdigest()
+            except GitRepositoryInitError as target_error:
+                return ToolRiskFacts(
+                    normalized_paths=(".git",),
+                    argv=("git", "init"),
+                    cwd=".",
+                    outside_workspace=target_error.code == "git_init_target_outside_workspace",
+                    policy_forbidden=True,
+                    policy_reason_code=target_error.code,
+                    facts_complete=False,
+                )
+            return ToolRiskFacts(
+                normalized_paths=(".git",),
+                argv=("git", "init", "--initial-branch", arguments.initial_branch or "main"),
+                cwd=".",
+                destructive=True,
+                facts_complete=True,
+                target_facts_hash=digest,
+            )
+        return ToolRiskFacts(
+            argv=("git", "status"),
+            cwd=".",
+            policy_reason_code="git_init_already_initialized",
+            facts_complete=True,
+        )
+
+    def plan_action(
+        self,
+        run_id: str,
+        arguments: GitRepositoryInitInput,
+        *,
+        action_id: str | None = None,
+    ) -> GitRepositoryInitPlan | GitRepositoryInitResult:
+        if self._workspace_identity is None or self._policy_hash is None or action_id is None:
+            raise GitRepositoryInitError("git_init_policy_unbound")
+        return self._service().plan(
+            run_id=run_id,
+            action_id=action_id,
+            workspace_identity=self._workspace_identity,
+            initial_branch=arguments.initial_branch,
+            policy_hash=self._policy_hash,
+        )
+
+    def execute_plan(
+        self,
+        plan: GitRepositoryInitPlan | GitRepositoryInitResult,
+        _arguments: GitRepositoryInitInput,
+    ) -> ToolResult:
+        if isinstance(plan, GitRepositoryInitResult):
+            return ToolResult(ok=True, content=plan.model_dump(mode="json"))
+        if self.state_dir is None:
+            return ToolResult(ok=False, error_code="git_init_state_unbound")
+        try:
+            result = self._service().execute(plan, approved=True)
+            operation_id, input_hash = receipt_key(
+                "git_repository_init",
+                {
+                    "action_id": plan.action_id,
+                    "plan_id": plan.plan_id,
+                    "workspace_identity": plan.workspace_identity,
+                    "target_listing_hash": plan.target_listing_hash,
+                },
+            )
+            OperationReceiptStore(self.state_dir).save(
+                OperationReceipt(
+                    operation_id=operation_id,
+                    operation="git_repository_init",
+                    run_id=plan.run_id,
+                    input_hash=input_hash,
+                    terminal_result="git.repository.initialized",
+                    effect_refs=(f"git:repository:{plan.repository_root}",),
+                    facts={"branch": plan.initial_branch},
+                    created_at=datetime.now(UTC),
+                )
+            )
+            return ToolResult(
+                ok=True,
+                content=result.model_copy(update={"receipt_id": operation_id}).model_dump(
+                    mode="json"
+                ),
+            )
+        except (PersistenceFault, StateVersionError):
+            # Keep initialized metadata for inspection; never retry or clean it up.
+            return ToolResult(ok=False, error_code="git_init_receipt_failed")
+        except GitRepositoryInitError as exc:
+            return ToolResult(ok=False, error_code=exc.code)
+
+    def execute(self, arguments: GitRepositoryInitInput) -> ToolResult:
+        try:
+            plan = self.plan_action("direct", arguments, action_id="direct")
+        except GitRepositoryInitError as exc:
+            return ToolResult(ok=False, error_code=exc.code)
+        if isinstance(plan, GitRepositoryInitResult):
+            return ToolResult(ok=True, content=plan.model_dump(mode="json"))
+        return ToolResult(ok=False, error_code="git_init_approval_required")
 
 
 class _GitReadTool:
