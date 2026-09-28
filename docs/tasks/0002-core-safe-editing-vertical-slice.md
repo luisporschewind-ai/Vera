@@ -2,7 +2,9 @@
 
 > **供执行 Agent 使用：** 必须使用 `superpowers:subagent-driven-development`（推荐）或 `superpowers:executing-plans`，按任务逐项实施本计划。每个步骤使用复选框跟踪；未经用户明确选择，不得自行派发子 Agent。
 
-**状态：** In progress
+**状态：** In progress（历史验收记录未闭合；阶段一在后续路线图中已标 Complete，证据差异见下）
+
+**2026-09-26 对齐说明：** 阶段二收口计划要求将阶段一标 Complete，但 [阶段一验收记录](../evals/phase-1-safe-editing.md) 仍记载真实副本人工批准/验证/回滚未执行。本轮未找到补齐该原始验收链的记录，保留证据缺口；不代填验收，不改变后续已接受阶段状态。
 
 **当前执行分支：** `main`
 

@@ -2,7 +2,7 @@
 
 Vera is a local desktop Coding Agent in development. It is intended to help people inspect, change, verify, and recover work in a local codebase through a transparent, approval-aware workflow.
 
-This repository is Vera's formal product workspace. The first Python Core safe-editing slice and an internal CLI are implemented on the active development branch; real-provider and human acceptance remain explicit gates.
+This repository is Vera's formal product workspace. `main` contains the Core, internal CLI, persistent sessions, Skills, BYOK model configuration, and cache-usage reporting. Phase 8 tooling/Policy v2/native Git remains on its isolated branch awaiting acceptance and integration. Real-provider, installation, and human acceptance are tracked separately in [Current status](docs/STATUS.md).
 
 ## Direction
 
@@ -15,7 +15,7 @@ The accepted delivery order is:
 5. Connect the desktop application to the same Core through a structured protocol.
 6. Validate privately, then prepare a stable public GitHub release.
 
-The CLI is an internal development surface, not Vera's final product identity. The desktop framework will be selected later using working prototypes and measured trade-offs.
+The CLI is an internal development surface, not Vera's final product identity. Electron is the accepted first desktop baseline, with Tauri as a fallback if measured gates fail. Desktop implementation remains gated on the preceding acceptance milestones; see [ADR-0013](docs/decisions/ADR-0013-electron-desktop-baseline.md) and the [roadmap](docs/ROADMAP.md).
 
 ## Documentation
 

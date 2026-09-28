@@ -31,4 +31,14 @@
 - [阶段八：Core 工具集与风险分级 Policy v2（Accepted）](2026-09-17-core-tooling-and-risk-tiered-policy.md)
 - [阶段八：Vera 原生 Git 能力（Accepted）](2026-09-17-native-git-capability.md)
 - [阶段九：Core 原生 Skills 系统（Accepted）](2026-09-15-core-native-skills-system.md)
+- [三档权限与自动审核机制（Accepted；沙盒完成后实施）](2026-09-25-approval-permission-profiles-and-auto-review.md)
 - [阶段十：桌面 Agent 工作台与 UI（Draft）](2026-09-12-desktop-agent-workbench-ui.md)
+
+## 补充索引（2026-09-26 对齐）
+
+- [Vera CLI 活动状态与回答呈现](2026-09-24-cli-activity-and-paced-replies.md)
+- [Core 联网技术资料检索方案](2026-09-24-core-web-research.md)
+- [Vera CLI Skill 列表与交互选择](2026-09-24-skills-interactive-picker.md)
+- [BYOK 多厂商模型配置](2026-09-25-byok-model-configuration.md)
+- [Provider 上下文缓存用量与稳定前缀](2026-09-25-provider-context-cache-usage.md)
+- [Core Trace 与运行可观测性（Accepted）](2026-09-26-core-trace-observability.md)

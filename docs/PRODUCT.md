@@ -1,7 +1,7 @@
 # Vera Product Definition
 
 **Status:** Accepted baseline
-**Updated:** 2026-09-18
+**Updated:** 2026-09-26
 
 ## Purpose
 
@@ -69,12 +69,14 @@ Vera is also a long-term learning and portfolio product. It should become mainta
 - The accepted Phase 4 design fixes 14 bundled offline Fake Model cases and scores only Core facts and file hashes.
 - The 14-case offline evaluation suite is an accepted first-stage capability, shipped with `vera eval` and the installable wheel.
 - Verification commands are planned before hashing and approval; supported build/cache outputs use Vera-owned external temporary roots, and unknown write-capable verification fails closed.
+- 阶段七 CLI 已于 2026-09-17 封存；后续 Logo V4、四行信息与五套主题已定向验收（0073、0076–0081）。桌面 Logo 适配仍属开放决策。
+- 用户于 2026-09-21 单独授权阶段九与阶段八剩余验收并行；不放宽阶段十门禁。
+- BYOK 配置遵循 [ADR-0022](decisions/ADR-0022-user-owned-byok-provider-configuration.md)：Provider、endpoint、默认模型与 Key 引用由可信用户配置控制，工程配置不能覆盖。
 
 ## Open decisions
 
 - 阶段五结束时公共 Command/Event、错误、审批与恢复契约的兼容承诺
 - 阶段六声明支持的终端：macOS Terminal.app 已走查；iTerm2/Warp/Linux/Windows Terminal 保持 `Not run`
-- 阶段七 CLI 的最终 Logo、首屏、信息密度与深海主题细节
 - 阶段十桌面端是否接受“Agent 工作台”产品形态与四区信息架构
 - Vera Logo 从阶段七 CLI 到阶段十桌面图标、菜单栏和小尺寸形态的统一识别系统
 - Electron baseline packaging, resource budgets, updater, signing, and distribution details

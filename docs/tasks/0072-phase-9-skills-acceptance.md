@@ -24,14 +24,14 @@ Blocked：
 
 Not run / 仍待：
 
-- Swift/Xcode 工程安全副本上的 Skill dogfood；
+- Python 与 Swift/Xcode 工程安全副本上的完整 Skill 修改/验证流程（已有主路径观察见下）；
 - 冲突 / 非法包 / clear / NoSkill 等人工负例全矩阵；
 - 仓库外隔离 offline wheel smoke（缓存缺 `openai` 的历史阻断仍须复核）；
 - 用户明确确认「阶段九可以封存」。
 
 ## 人工验收清单
 
-待在独立安全副本和隔离状态目录中完成（部分已部分完成，见下方 2026-09-24 记录）：
+待在独立安全副本和隔离状态目录中完成（主路径已部分完成，见下方 2026-09-24 记录）：
 
 1. Terminal.app 运行 `/skills`、浮层选择、`/skills show`、`/skills use`、`/skills clear`、`/status`；确认成功/失败原因可读，正文、私有绝对路径和 ANSI 不泄漏。
 2. 分别验证 builtin/user/workspace 来源、同名冲突、完整 `skill_id` 消歧、非法包和源包修改/删除后的失败关闭。

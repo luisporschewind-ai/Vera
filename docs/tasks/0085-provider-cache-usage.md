@@ -2,11 +2,17 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**状态：** In progress（离线自动门禁通过；原生终端手工验收待执行）
+**状态：** In progress（实现及用户手工验收已完成并合入 `main`；打包/安装 smoke 环境阻断待复核）
 **Goal:** 在多厂商 BYOK 主路径中如实记录 Provider 返回的缓存命中/未命中输入 token，并在单个 Run 的 `/usage` 中安全汇总。
 **Architecture:** 适配器将厂商用量字段归一化为可选 `ModelUsage` 字段，Runtime 现有 `model.completed` 传播结构化事实，Session 聚合已完成调用，CLI 呈现同一结构；稳定前缀用回归测试约束，不改变消息顺序。
-**Tech Stack:** Python 3.13、Pydantic、OpenAI Python Client、pytest、Ruff、Mypy。
+**Tech Stack:** Python 3.12（以 `pyproject.toml` 声明为准）、Pydantic、OpenAI Python Client、pytest、Ruff、Mypy。
 **Spec:** [Provider 上下文缓存用量](../specs/2026-09-25-provider-context-cache-usage.md)；前置 [0084](0084-byok-model-configuration.md)。
+
+## 当前交付与证据口径（2026-09-26）
+
+实现提交 `d616283` 已通过 `9354bb3` 合入 `main`，原隔离 worktree 已不在当前注册列表。用户 GLM/DeepSeek 请求与手工验收已通过。可运行非 live 套件记录为 `1297 passed, 2 deselected`；4 个打包/安装 smoke 用例因无法获取 `hatchling` 未启动，因此不写成全量门禁全部通过。
+
+下列分步清单保留原实施计划；未勾选项不等于代码未实现，也不证明每个 Red 步骤已执行。完成事实以文末实施记录为准。原 worktree、离线测试和 Git 授权约束描述的是实施时边界；后续用户亲自真实调用及已授权合并的事实见本节，不构成本轮提交或推送授权。
 
 ## Global Constraints
 

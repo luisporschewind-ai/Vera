@@ -5,13 +5,13 @@
 ## 约定
 
 - 文件按下一个连续编号命名为 `NNNN-<topic>.md`。
-- 状态只使用 `Planned`、`In progress`、`Blocked` 或 `Done`。
+- 实施任务使用 `Planned`、`In progress`、`Blocked`、`Ready for manual acceptance` 或 `Done`；历史已关闭任务的 `Complete` 按 Done 理解，阶段使用 Complete，计划接受状态与执行状态分开记录。
 - 存在上游规格或架构决策时必须链接。
 - 明确记录目标、范围、验收检查和验证证据。
 - 每项任务只分配一个主实现 Agent；除非明确转移所有权，其他 Agent 或工具只负责只读研究与复核。
 - 只有检查通过且文档与实际行为一致后才能关闭任务。
 
-## 当前任务
+## 任务索引（含已完成记录）
 
 - [任务 0001：建立 Vera 仓库](0001-bootstrap-repository.md)
 - [任务 0002：Core 安全编辑垂直切片](0002-core-safe-editing-vertical-slice.md)
@@ -93,3 +93,25 @@
 - [任务 0083：底栏"已选择 Skill"不随消费或清除更新](0083-skill-footer-stale-selection.md)
 - [任务 0084：BYOK 多厂商模型配置实施计划](0084-byok-model-configuration.md)
 - [任务 0085：Provider 上下文缓存用量实施计划](0085-provider-cache-usage.md)
+- [任务 0086：Core Trace 与运行可观测性（阶段十；In progress）](0086-core-trace-observability.md)
+- [三档权限与自动审核实施计划（Accepted；沙盒完成后复核）](approval-permission-profiles-implementation-plan.md)
+
+## 补充索引（2026-09-26 对齐）
+
+- [任务 0045：走查发现 43（无效工具参数不得杀死 Run）](0045-cli-dogfood-invalid-tool-arguments.md)
+- [任务 0046：走查发现 46（高对比度残影）](0046-cli-dogfood-high-contrast-remnant.md)
+- [任务 0047：走查发现 44–45（`-r` 选择器与清屏）](0047-cli-dogfood-resume-picker-and-clear.md)
+- [任务 0048：走查发现 47（上下文占用要显示真实字节）](0048-cli-dogfood-context-occupancy.md)
+- [任务 0049：走查发现 48（Esc 取消无效）](0049-cli-dogfood-escape-cancel.md)
+- [任务 0050：走查发现 49（取消后 Error 与 Worker 失败）](0050-cli-dogfood-cancel-worker.md)
+- [任务 0051：走查发现 42（折行）与回答署名 Vera](0051-cli-dogfood-path-wrap.md)
+- [任务 0052：走查发现 50（工具调查后空响应失败）](0052-cli-dogfood-empty-after-tools.md)
+- [任务 0053：状态带 K 单位、状态左置与审批卡边距](0053-cli-dogfood-footer-k-and-approval-margin.md)
+- [任务 0067：Skill Manifest、Discovery、Registry 与公共契约](0067-skill-discovery-contracts.md)
+- [任务 0068：SkillSnapshotStore、原子冻结与安全清理](0068-skill-snapshots.md)
+- [任务 0069：Session Selection、Run 绑定与 Context 装配](0069-skill-runtime-context.md)
+- [任务 0070：CLI 命令与三客户端结构化投影](0070-skill-cli-projection.md)
+- [任务 0071：NoSkill、兼容迁移与安装态整合](0071-skill-compatibility.md)
+- [阶段八大单体拆分（隔离分支已完成，未合入）](../superpowers/plans/2026-09-21-monolith-refactor.md)
+- [Core Trace 与运行可观测性实施计划（阶段十；依用户授权与阶段八/九并行逐任务执行）](../superpowers/plans/2026-09-26-core-trace-observability.md)
+- [2026-09-26 非沙盒任务与文档对齐记录](../evals/2026-09-26-task-document-alignment.md)

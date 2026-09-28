@@ -2,11 +2,17 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**状态：** In progress（离线自动门禁通过；原生终端手工验收待执行）
+**状态：** In progress（实现及用户手工验收已完成并合入 `main`；打包/安装 smoke 环境阻断待复核）
 **Goal:** 用户在 CLI 中查看、启用、排序和选择 DeepSeek、GLM、OpenAI 及自定义模型，并通过隐藏输入把自己的 Key 安全写入私有文件，Core 为未来 GUI 提供相同配置动作。
 **Architecture:** `ProviderConfigurationService` 管理用户拥有的模型目录状态和 Key 引用；`load_config` 只从可信用户配置装配 Provider，`build_runtime` 按显式默认或选择建模。CLI 只调用服务，不直接解析或编辑配置文件。缓存用量在 [0085](0085-provider-cache-usage.md) 接续实施。
-**Tech Stack:** Python 3.13、Pydantic、Typer、OpenAI Python Client、platformdirs、pytest、Ruff、Mypy。
+**Tech Stack:** Python 3.12（以 `pyproject.toml` 声明为准）、Pydantic、Typer、OpenAI Python Client、platformdirs、pytest、Ruff、Mypy。
 **Spec:** [BYOK 多厂商模型配置](../specs/2026-09-25-byok-model-configuration.md)、[ADR-0022](../decisions/ADR-0022-user-owned-byok-provider-configuration.md)。
+
+## 当前交付与证据口径（2026-09-26）
+
+实现提交 `d616283` 已通过 `9354bb3` 合入 `main`，原隔离 worktree 已不在当前注册列表。用户 GLM/DeepSeek 请求与手工验收已通过。可运行非 live 套件记录为 `1297 passed, 2 deselected`；4 个打包/安装 smoke 用例因无法获取 `hatchling` 未启动，因此不写成全量门禁全部通过。
+
+下列分步清单保留原实施计划；未勾选项不等于代码未实现，也不证明每个 Red 步骤已执行。完成事实以文末实施记录为准。原 worktree、离线测试和 Git 授权约束描述的是实施时边界；后续用户亲自真实调用及已授权合并的事实见本节，不构成本轮提交或推送授权。
 
 ## Global Constraints
 

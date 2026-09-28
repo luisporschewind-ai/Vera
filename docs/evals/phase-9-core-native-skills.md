@@ -2,8 +2,14 @@
 
 **记录状态：** Ready for manual acceptance
 **记录日期：** 2026-09-21
-**实现工作树：** `/Users/admin/.codex/worktrees/phase-9-skills/Vera`
+**原实现工作树（历史）：** `/Users/admin/.codex/worktrees/phase-9-skills/Vera`
 **实现分支：** `codex/phase-9-skills`
+
+## 当前进展（2026-09-26 文档核对）
+
+阶段九实现已于 `4665ab2` 合入 main。2026-09-24 用户在 Terminal.app / `VeraTestDemo` / `deepseek-flash` 验证 Skill 主路径、Snapshot 绑定、一次性消费与浮层；后续持久化修正及聚焦结果见 [0072](../tasks/0072-phase-9-skills-acceptance.md)。该主路径不能替代 Python/Swift 工程修改验证、恢复与人工负例全矩阵。
+
+当前仍为 Ready for manual acceptance。原 wheel 安装阻断没有关闭；最新 main 的 0084/0085 记录还存在 `hatchling` 获取失败，不能拿阶段八较早的 wheel 成功覆盖本分支安装态。
 
 ## 矩阵结果
 
@@ -15,13 +21,13 @@
 | Snapshot 内容寻址、原子发布、权限和清理 | 0068 测试 | Verified |
 | Run 前绑定、Context 顺序、workspace `untrusted` | 0069、untrusted context、阶段九矩阵 | Verified |
 | 源包修改/删除后的恢复 | Skill recovery 与安装态解包检查 | Verified（安装 venv 受缓存阻断） |
-| `/skills`、`show`、`use`、`clear`、`status` | Session、projection、parity、PTY 测试 | Verified（人工 Terminal.app 待执行） |
+| `/skills`、`show`、`use`、`clear`、`status` | Session、projection、parity、PTY 测试 | Verified（人工主路径已通过，负例/恢复矩阵仍待） |
 | NoSkill 默认路径 | 0069、0071、阶段九 NoSkill 测试 | Verified |
 | 旧 Session/Journal/Recovery 兼容 | 0071 fixture 与全量回归 | Verified |
 | wheel/sdist 构建 | `uv build --wheel --sdist` | Verified |
 | 仓库外隔离 wheel 安装 | `smoke_installed_wheel.py` | Blocked：offline 缓存缺 `openai` |
-| 真实 Terminal.app | 用户当前无电脑 | Not run |
-| Python 与 Swift/Xcode 工程副本 dogfood | 用户当前无电脑 | Not run |
+| 真实 Terminal.app | 2026-09-24 用户主路径与浮层复验 | Partial；负例、尺寸与恢复全矩阵仍待 |
+| Python 与 Swift/Xcode 工程副本 dogfood | 已有 `VeraTestDemo` 的 Skill 主路径观察，未形成两类工程完整修改/验证记录 | Partial；完整副本流程仍待 |
 
 ## 自动门禁
 
@@ -48,7 +54,7 @@ Because openai was not found in the cache and vera-agent==0.1.0 depends on opena
 
 ## 待人工验收
 
-待用户有电脑后，使用独立状态目录和工程安全副本完成：
+使用独立状态目录和工程安全副本补齐下列矩阵；已确认的主路径无需重新标为未执行：
 
 - Terminal.app 60×16 与 80×24 的 `/skills` 全路径、冲突、失败、状态和恢复；
 - Python 工程副本一次显式 Skill dogfood；

@@ -8,6 +8,14 @@
 **Tech Stack：** Python 3.12、Pydantic 2、Typer、Textual 8、系统 Git CLI、现有 ProcessSupervisor/Workspace/Policy/Approval/Checkpoint/Recovery、pytest、PTY、Ruff、Mypy、uv/hatchling。
 **Spec：** [Core 工具集与风险分级 Policy v2](../specs/2026-09-17-core-tooling-and-risk-tiered-policy.md)、[Vera 原生 Git 能力](../specs/2026-09-17-native-git-capability.md)、[ADR-0021](../decisions/ADR-0021-core-tools-before-desktop.md)
 
+## 当前执行快照（2026-09-26）
+
+- `codex/phase-8-tooling-policy-git` 核对时 HEAD 为 `5b6d789`；0059–0065 在该分支 Done，0066 为 Ready for manual acceptance。主目录的任务与[验收证据](../evals/phase-8-tooling-policy-git.md)已同步，产品代码尚未合入 `main`。
+- 0066 历史门禁 `1307 passed, 2 deselected`，当轮 wheel smoke 通过；Python 与 Swift/Xcode 副本有证据，Node/TS runner/compiler 与 Terminal.app 全流程仍待。
+- 后续[大单体拆分](../superpowers/plans/2026-09-21-monolith-refactor.md)已提交 `dd201e7`；该轮 `1315 passed, 2 deselected`，另有 wheel 安装 1 failed / 1 error（缓存缺 `openai`）。旧 wheel 成功不能覆盖较新分支的安装态缺口。
+- 重构计划明确保留 Bash classifier、Git 全局配置读取、branch receipt recovery 三项问题；尚无关闭证据，需专项复核并明确严重级别，不能以重构测试通过将其关闭。
+- 阶段八维持 In progress；剩余安装态、工程/终端验收、问题复核和用户确认未完成。阶段九已按 2026-09-21 单独授权并行实施，这不代表阶段八门禁通过。
+
 ## Global Constraints
 
 - 阶段八从最新干净 `main` 开始；每项任务只有一个主实现 Agent，前一任务合并后下一任务才开始。
@@ -96,4 +104,4 @@ git diff --check
 - 工作区外写入、提权、秘密外传、未知 Hook、Git 绕过和历史破坏失败关闭。
 - 旧 Run/Journal/Change Set 可读取和恢复；新动作崩溃后不会重复写入、命令或 Commit。
 - Python、Node/TypeScript、Swift/Xcode 三类真实工程无未关闭 Critical/High。
-- 用户明确接受阶段八验收结果后，才能把阶段八标为 Complete 并进入阶段九 Skills。
+- 用户明确接受阶段八验收结果后，才能把阶段八标为 Complete。阶段九已按 2026-09-21 单独授权并行实施，不能反推阶段八已完成。

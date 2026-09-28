@@ -1,7 +1,7 @@
 # Vera 路线图
 
 **状态：** Active
-**更新日期：** 2026-09-17
+**更新日期：** 2026-09-26
 
 路线图规定阶段顺序和退出条件，不提前锁定尚未完成决策的技术方案。
 
@@ -23,6 +23,8 @@
 - 让 Runtime 状态、审批、工作区边界、Diff、验证证据和私有日志由同一个 Core 权威统一管理。
 
 **退出条件：** 内部 CLI 通过面向未来桌面客户端的同一套公共 Core 契约，完成一个有界安全编辑任务，并具备确定性离线测试和可审阅的审批证据。
+
+> 2026-09-26 证据核对：阶段一沿用后续阶段二收口时的 Complete 记录；[任务 0002](tasks/0002-core-safe-editing-vertical-slice.md) 与原始验收记录仍缺人工批准/验证/回滚补录，列为历史证据缺口，不据此伪造已验收事实。
 
 ## 阶段 2——恢复、兼容性与策略扩展
 
@@ -93,7 +95,7 @@
 - 建立 Vera CLI 的 Logo、Unicode/ASCII 回退、低饱和深海主题和一致设计 token。
 - 收口启动首屏、状态区、对话、工具、Diff、审批、验证、失败、恢复和 Composer 的视觉层级。
 - 让最近用户消息在阅读后续回答时成为顶部滚动锚点并保留原始时间；输入区提供独立提示箭头，审批卡消除中断性空白。
-- 进场无框欢迎卡（三行点阵 `VERA`）；任务后一行 `VERA  ~/path`；工作状态在 Composer 上方；底栏为分支、审批、会话上下文占用，右侧模型与推理。
+- CLI 封存后已接受 Logo V4 四行字标与右侧品牌/项目/路径/模型四行信息（0073、0081）；深海、Light、奶油、高对比、无色五套主题与回答渐进显示已定向验收（0076–0080）。历史三行首屏设计保留于原任务记录。
 - 在小终端、CJK、无色、低速、Resize 和长时间线中保持清晰、稳定、可操作。
 - 使用真实 Terminal.app 与真实工程持续 dogfood，修复影响个人主力使用的高频摩擦。
 - 用户接受[阶段七实施计划](tasks/phase-7-execution-order.md)后，按 0034 → 0035 → 0036 → 0037 → 0043 → 0038 → 0039 → 0040 → 0041 完成实施。0041 自动矩阵、仓库外 wheel smoke、真实 Provider 与原生 Terminal.app 代测通过；走查修正 0044–0058 已关闭，无未关闭 Critical/High。用户接受把 16/20 后的剩余量化样本转入后续 Bug 收敛阶段规划，并于 2026-09-17 原文确认「CLI 版本达到预期，可以封存」。
@@ -103,9 +105,9 @@
 ## 阶段 8——Core 工具集、Policy v2 与原生 Git
 
 **状态：** In progress
-**入口条件：** 阶段七 Complete，用户已确认「CLI 版本达到预期，可以封存」，[ADR-0021](decisions/ADR-0021-core-tools-before-desktop.md)为 Accepted，且 [Core 工具集与风险分级 Policy v2](specs/2026-09-17-core-tooling-and-risk-tiered-policy.md)与 [Vera 原生 Git 能力](specs/2026-09-17-native-git-capability.md)均转为 Accepted。规格接受和独立实施授权前不建立实施任务、不修改产品代码。
+**入口条件：** 阶段七 Complete，用户已确认「CLI 版本达到预期，可以封存」，[ADR-0021](decisions/ADR-0021-core-tools-before-desktop.md) 的 Core 工具/Policy/Git 决策与 [ADR-0023](decisions/ADR-0023-insert-core-observability-before-desktop.md) 的当前顺序均 Accepted，且 [Core 工具集与风险分级 Policy v2](specs/2026-09-17-core-tooling-and-risk-tiered-policy.md)与 [Vera 原生 Git 能力](specs/2026-09-17-native-git-capability.md)均为 Accepted。规格接受和独立实施授权前不建立实施任务、不修改产品代码。
 
-**实施计划：** [阶段八执行顺序](tasks/phase-8-execution-order.md)拆分任务 0059–0066；用户于 2026-09-18 选择 Inline Execution，当前从任务 0059 串行实施。
+**实施计划：** [阶段八执行顺序](tasks/phase-8-execution-order.md)拆分任务 0059–0066；用户于 2026-09-18 选择 Inline Execution，0059–0065 已在 `codex/phase-8-tooling-policy-git` 完成，0066 Ready for manual acceptance，代码尚未合入 `main`；后续大单体拆分已提交，安装态阻断及遗留问题复核见执行计划。
 
 - 默认模型工具对齐 `read/write/edit/bash`，保留 `grep/find/ls` 辅助只读能力；所有动作统一经过 Core ToolExecutor。
 - `bash` v1 只接受结构化 argv、受限 cwd、超时和输出预算，不解释原生 Shell 字符串。
@@ -130,28 +132,48 @@
 - Run 开始前冻结内容寻址 Snapshot；原始包后续修改或删除不影响活动 Run 与恢复。
 - Skill 只接入 Run 启动和 Context 装配，不改变 Tool、Workspace、Policy、Approval、Verification、Checkpoint 或 Recovery 权威。
 - CLI 提供 `/skills`、`/skills show`、`/skills use`、`/skills clear` 与 `/status`，并验证完整 `NoSkill` 兼容路径。
-- 通过离线安全矩阵、真实 Terminal.app、一个 Python 工程和一个 Swift/Xcode 工程副本完成 dogfood。当前离线矩阵已通过，后三项人工证据待用户有电脑后补齐；隔离 wheel smoke 受 `openai` 离线缓存缺失阻断。
+- 通过离线安全矩阵、真实 Terminal.app、一个 Python 工程和一个 Swift/Xcode 工程副本完成 dogfood。当前离线矩阵已通过，Terminal.app/`VeraTestDemo` 上的 Skill 主路径与浮层已获用户确认；完整 Python、Swift/Xcode 安全副本流程、人工负例和恢复矩阵仍按 0072 补齐。隔离 wheel smoke 历史受 `openai` 缓存缺失阻断；最新 main 打包/安装 smoke 另受 `hatchling` 获取失败阻断。
 - 远程安装、市场、评分、支付、自动更新、多 Skill、Multi-Agent、Plugin、Hook 和脚本执行不属于 v1。
 
 **退出条件：** 单 Skill 在 CLI 中可发现、可审阅、可显式选择、可固定、可恢复且不能扩大权限；`NoSkill`、离线安全矩阵和两个真实工程 dogfood 没有未关闭的 Critical/High 问题。当前只达到 Ready for manual acceptance，未满足 Complete。
 
-## 阶段 10——桌面集成
+## 独立补充增量（不改变阶段门禁）
+
+- [BYOK 配置](tasks/0084-byok-model-configuration.md)与[缓存用量](tasks/0085-provider-cache-usage.md)：已实现、合入 `main` 并经用户手工验收；打包/安装 smoke 仍有环境阻断。
+- [联网技术资料检索](specs/2026-09-24-core-web-research.md)：方向 Accepted；未实施。服务选型、审批细则与实施授权待定，安排在阶段八/九收口后的候选序列，与桌面的先后另定。
+- [三档权限与自动审核](specs/2026-09-25-approval-permission-profiles-and-auto-review.md)：设计与计划 Accepted；依赖完整沙盒验收、冲突规格/ADR 修订接受和独立实施授权。沙盒由另一会话维护，本轮不变更其方案或状态。
+
+## 阶段 10——Core Trace 与运行可观测性
+
+**状态：** In progress（用户于 2026-09-26 明确授权与阶段八/九并行；阶段八/九验收由用户自行负责）
+**入口条件：** 通常要求阶段八与阶段九均 Complete；本次依[ADR-0023](decisions/ADR-0023-insert-core-observability-before-desktop.md)记录的明确并行例外启动。Trace 规格与计划 Accepted。
+
+**实施计划：** [任务 0086](tasks/0086-core-trace-observability.md) 链接七项逐任务计划；由 Core Journal 提供可重放 Trace，CLI 作为首个消费端，不依赖桌面。
+
+- 为 Run、LLM attempt、Tool、Verification 和 Context Snapshot 建立有界 Trace 事实与稳定结构化契约。
+- 从新旧 Run Journal 生成确定性 `RunTrace`，缺失/损坏事实明确标注，不伪造结束时间、耗时或用量。
+- 提供只读 `/trace [run-id]`，Plain/TUI/JSON 使用相同 Core 投影。
+- 保持隐私、Journal/Recovery、Policy、Approval、Workspace、Verification 与 `/usage` 现有边界和语义。
+
+**退出条件：** 任务 0086 的聚焦回归、静态检查和本地人工可读性验收通过；Trace 不含规格禁止的正文/凭据，旧 Journal 可读，且无未关闭 Critical/High 正确性、可靠性或隐私问题。
+
+## 阶段 11——桌面集成
 
 **状态：** Not started
-**入口条件：** 阶段八与阶段九 Complete。工具/Policy/Git 与 Skills 门禁均满足前，不得引入 Wails、Tauri、Electron 或任何桌面端代码。
+**入口条件：** 阶段八、九、十 Complete。工具/Policy/Git、Skills 与 Core Trace 门禁均满足前，不得引入 Wails、Tauri、Electron 或任何桌面端代码。
 
-**预先校准：** [阶段十：桌面 Agent 工作台与 UI](specs/2026-09-12-desktop-agent-workbench-ui.md) 当前为 Draft，只收束产品体验、信息架构与后续增量，不代表阶段十已经启动。“Agent 工作台”四区布局仍待用户确认。
+**预先校准：** [桌面 Agent 工作台与 UI](specs/2026-09-12-desktop-agent-workbench-ui.md) 当前为 Draft，只收束产品体验、信息架构与后续增量，不代表阶段十一已经启动。“Agent 工作台”四区布局仍待用户确认。
 
 - 基于已加固且包含 Tools、Policy v2、Git 与 Skills 的 Core 契约制作桌面壳原型。
 - 按 [ADR-0013](decisions/ADR-0013-electron-desktop-baseline.md) 使用 Electron 建立首个桌面底版，保持 Python Core 独立并通过结构化 Command/Event 接入。
 - 复用 Core 的来源、风险、审批、策略、Git 与 Skill Snapshot 事实，不在 Renderer 复制控制面。
 - 测量安全边界、打包、进程控制、性能、体积和维护成本；Electron 未达到接受门禁时再以 Tauri 进行同契约对照。
 - 通过独立决策确定前端框架、进程传输和发布打包细节后实现桌面工作流。
-- 阶段十按“安全桌面壳 → 工作台骨架 → 证据闭环 → 产品体验 → 私有交付”拆分为五个可独立验收的增量。
+- 阶段十一按“安全桌面壳 → 工作台骨架 → 证据闭环 → 产品体验 → 私有交付”拆分为五个可独立验收的增量。
 
 **退出条件：** 桌面客户端完成 Core 工作流，不复制 Runtime、Tool/Policy、Git 或 Skills 控制面，也不解析 CLI 输出。
 
-## 阶段 11——私有预览与公开准备
+## 阶段 12——私有预览与公开准备
 
 **状态：** Not started
 

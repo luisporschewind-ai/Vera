@@ -10,7 +10,9 @@
 
 本规格的第一版只处理观测与已存在前缀的稳定性。是否进一步重排 Context，必须由实际命中数据和语义回归证明，不能为了命中率改变指令信任级别、审批或恢复语义。
 
-## 当前事实
+> 2026-09-26 状态对齐：本规格已在 `d616283` 实施，并通过 `9354bb3` 合入 `main`；用户手工验收已通过，安装态阻断见任务 0084/0085。下节保留规格接受时的基线问题，不代表当前代码仍存在这些缺口。
+
+## 接受时事实
 
 - `Runtime._seed_context` 依次放入固定 system、项目说明、所选 Skill、会话历史和本轮目标；同一 Run 的后续 ModelRequest 携带先前消息及新增工具回合。
 - `VeraConfig.providers` 已支持多个 Profile，每项使用 `base_url`、`model` 和 `api_key_env`；`/model` 可以在 Run 之间切换 Profile。私有环境文件的允许字段目前仅覆盖 DeepSeek/GLM；本次先按[BYOK 多厂商配置](2026-09-25-byok-model-configuration.md)建立用户可配置的 Profile、Key 入口和 OpenAI 主路径，再接入缓存用量。
