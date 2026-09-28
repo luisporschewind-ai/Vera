@@ -1,0 +1,23 @@
+{
+  "/var/select/developer_dir": {
+    "is_symlink": false,
+    "target": null,
+    "resolved": "/private/var/select/developer_dir",
+    "exists": false
+  },
+  "/private/var/select/developer_dir": {
+    "is_symlink": false,
+    "target": null,
+    "resolved": "/private/var/select/developer_dir",
+    "exists": false
+  },
+  "/private/var/db/xcode_select_link": {
+    "is_symlink": false,
+    "target": null,
+    "resolved": "/private/var/db/xcode_select_link",
+    "exists": false
+  },
+  "profile_allows_var_select": false,
+  "bytes": 37399132,
+  "lock_sha256": "7004395779ffd73d4fb42a9d71b094bf4dd90ff55b1bec608a77270045e5fc33"
+}
