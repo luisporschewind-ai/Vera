@@ -2,7 +2,7 @@
 
 **更新日期：** 2026-09-28
 **当前阶段：** 阶段 8——Core 工具集、Policy v2 与原生 Git（In progress）
-**仓库状态：** 2026-09-28 所有工作树与分支代码已汇入 `main`：阶段八工具/Policy/Git 与大文件拆分（`d7e75c1`）、Git 仓库初始化（`8db4c6e`）、0089 工作区权限沙盒、Trace（经 `codex/trace-on-main` 适配拆分后的 Core，并恢复阶段九 Skills 的 Runtime/Session 接线与 BYOK 启动入口）、Skill 浮层、CLI 活动/审批卡与 Logo/缩放修正。阶段五停在 Ready for manual acceptance，阶段六与阶段七已 Complete；阶段八、九、十均不因代码合入自动变成 Complete。用户确认 CLI 封存的历史授权保持有效。2026-09-28 用户要求以阶段十一为里程碑，之前的任务与规格须对齐并落实，dogfood 统一在 `main` 由用户执行。
+**仓库状态：** 2026-09-28 所有工作树与分支代码已汇入 `main`：阶段八工具/Policy/Git 与大文件拆分（`d7e75c1`）、Git 仓库初始化（`8db4c6e`）、0089 工作区权限沙盒、Trace（经 `codex/trace-on-main` 适配拆分后的 Core，并恢复阶段九 Skills 的 Runtime/Session 接线与 BYOK 启动入口）、Core 联网检索首版（默认关闭）、Skill 浮层、CLI 活动/审批卡与 Logo/缩放修正。阶段五停在 Ready for manual acceptance，阶段六与阶段七已 Complete；阶段八、九、十均不因代码合入自动变成 Complete。用户确认 CLI 封存的历史授权保持有效。2026-09-28 用户要求以阶段十一为里程碑，之前的任务与规格须对齐并落实，dogfood 统一在 `main` 由用户执行。
 
 ## 当前独立实施
 
@@ -16,7 +16,7 @@
 | 阶段九 0067–0072、0074 | 代码与拆分后的接线已合入 `main`；Ready for manual acceptance | 用户在 `main` 验收两类工程完整流程、负例/恢复矩阵、隔离 wheel 与状态确认 |
 | CLI 0073、0075–0083 | Done；含 0078 人工复验闭环 | 后续发现另建问题，不重开已确认视觉项 |
 | BYOK / 缓存 0084、0085 | 原版已获用户手工验收；阶段八合并后的启动入口已恢复并合入 `main`；In progress | 用户在 `main` 复验，4 个打包/安装 smoke 环境阻断 |
-| 联网检索 | 方向 Accepted，未实施 | 服务选型、审批细则、排序和实施授权 |
+| 联网检索 | 用户 2026-09-28 授权实施；首版（Tavily、默认关闭、单次审批）已合入 `main`；Ready for manual acceptance | 用户在 `main` 回归与真实服务验收 |
 | 三档权限 / 自动审核 | 设计与计划 Accepted，未实施 | 沙盒前置、冲突规格/ADR 修订和独立实施授权 |
 | 0089 工作区权限沙盒 | 代码已合入 `main`；In progress | Apple 服务经 VerificationRunner、CLI 取消/运行中撤权收口 |
 | 阶段十 Core Trace | In progress；规格 Accepted、任务 0086 已适配拆分后的 Core 并合入 `main` | 用户在 `main` 验收；历史测试结果不能代替本次集成验证 |
@@ -75,6 +75,10 @@
 ## 活动任务
 
 - [任务 0075：CLI 窗口缩放闪动修正](tasks/0075-cli-resize-flicker.md)：自动与 PTY 输出验证完成，Ready for manual acceptance；原生 Terminal.app 拖拽观感待复验。
+- [Core 联网资料检索](specs/2026-09-24-core-web-research.md)：用户于 2026-09-28 确认授权实施并合入 `main`，自行在 `main` 做回归与真实服务验收。首版选 Tavily、默认关闭（`VERA_WEB_RESEARCH=1` 与 `TAVILY_API_KEY` 开启），每次联网独立单次审批；审批卡以中文字段显示服务、实际查询、来源与结果上限。[实施记录](tasks/core-web-research-implementation.md)为 Ready for manual acceptance；未调用真实服务，不据此宣称产品可用。
+
+- [BYOK 多厂商模型配置](specs/2026-09-25-byok-model-configuration.md)、[Provider 上下文缓存用量](specs/2026-09-25-provider-context-cache-usage.md)与 [ADR-0022](decisions/ADR-0022-user-owned-byok-provider-configuration.md)：用户于 2026-09-25 确认 Accepted；[任务 0084](tasks/0084-byok-model-configuration.md) 和 [任务 0085](tasks/0085-provider-cache-usage.md) 已在隔离 worktree `codex/provider-cache-usage` 实施并合入 `main`。全量可运行非 live 套件 `1297 passed, 2 deselected`；4 个打包/安装 smoke 用例因网络无法获取 `hatchling` 未能启动。Ruff、Mypy 与差异空白检查通过。用户确认本轮手工测试步骤通过，并提供 GLM 与 DeepSeek 真实请求及 `/usage` 结果；阶段八/九与阶段十门禁不变。
+- [Core Trace 与运行可观测性](specs/2026-09-26-core-trace-observability.md)：规格 Accepted，阶段十及桌面/预览顺延关系见[ADR-0023](decisions/ADR-0023-insert-core-observability-before-desktop.md)；[任务 0086](tasks/0086-core-trace-observability.md)由当前主 Agent 逐任务实施。用户于 2026-09-26 明确授权阶段十与阶段八/九并行，并由用户自行验证阶段八、九；阶段八/九状态不变，阶段十一桌面仍等待阶段八、九、十全部 Complete。
 - [阶段七执行顺序](tasks/phase-7-execution-order.md)：任务 0034–0041、0043–0058 Done；阶段七 Complete。剩余量化 dogfood 样本转入后续 Bug 收敛阶段规划；封存确认不自动授权下一阶段实施。
 - [阶段五执行顺序](tasks/phase-5-execution-order.md)：0024 自动门禁已完成；人工 dogfood 不足，阶段五保持 Ready for manual acceptance。
 - [ADR-0017：插入 CLI 体验阶段并顺延桌面路线](decisions/ADR-0017-insert-cli-experience-stage.md)：Accepted；阶段七用于 CLI 体验与个人主力化。其接受时的后续编号已由 ADR-0020 再次校准。

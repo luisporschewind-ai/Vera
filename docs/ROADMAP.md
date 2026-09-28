@@ -140,7 +140,7 @@
 ## 独立补充增量（不改变阶段门禁）
 
 - [BYOK 配置](tasks/0084-byok-model-configuration.md)与[缓存用量](tasks/0085-provider-cache-usage.md)：已实现、合入 `main` 并经用户手工验收；打包/安装 smoke 仍有环境阻断。
-- [联网技术资料检索](specs/2026-09-24-core-web-research.md)：方向 Accepted；未实施。服务选型、审批细则与实施授权待定，安排在阶段八/九收口后的候选序列，与桌面的先后另定。
+- [联网技术资料检索](specs/2026-09-24-core-web-research.md)：Accepted；2026-09-28 用户要求阶段十一里程碑前落地并自行在 `main` 验收。首版选 Tavily，当前实施状态见[任务记录](tasks/core-web-research-implementation.md)。
 - [三档权限与自动审核](specs/2026-09-25-approval-permission-profiles-and-auto-review.md)：设计与计划 Accepted；依赖完整沙盒验收、冲突规格/ADR 修订接受和独立实施授权。沙盒由另一会话维护，本轮不变更其方案或状态。
 
 ## 阶段 10——Core Trace 与运行可观测性

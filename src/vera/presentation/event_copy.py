@@ -110,6 +110,8 @@ _TOOL_ACTIONS = {
     "read_file": "读取文件",
     "list_directory": "列出目录",
     "search_text": "搜索文本",
+    "web_search": "联网检索",
+    "web_read_result": "读取网页来源",
     "propose_changeset": "提出变更",
 }
 

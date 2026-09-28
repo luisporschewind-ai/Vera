@@ -115,6 +115,8 @@ def available_tool_scopes(
         return ("once",)
     if ToolEffect.FILE_ACCESS_GRANT in action.effects:
         return ("once",)
+    if action.tool_name in {"web_search", "web_read_result"}:
+        return ("once",)
     if action.risk_facts.external_target is not None:
         return ("once", "run")
     if {
@@ -307,6 +309,8 @@ def emit_tool_result(
     target = tool_call_target(call)
     origin = call.name
     source_kind = "tool_output"
+    if call.name in {"web_search", "web_read_result"}:
+        source_kind = "external_web_page"
     if isinstance(call.arguments, dict) and call.arguments.get("path") is not None:
         relative = str(call.arguments.get("path"))
         origin = f"{call.name}:{relative}"
@@ -350,6 +354,24 @@ def emit_tool_result(
             for key in ("grant_id", "path", "mode", "scope", "recursive")
             if key in result.content
         }
+    if call.name in {"web_search", "web_read_result"} and isinstance(result.content, dict):
+        payload["provider_id"] = result.content.get("provider_id")
+        payload["query_id"] = result.content.get("query_id")
+        if call.name == "web_search":
+            results = result.content.get("results")
+            if isinstance(results, list):
+                payload["source_count"] = len(results)
+                payload["sources"] = [
+                    {
+                        "source_id": item.get("source_id"),
+                        "canonical_url": item.get("canonical_url"),
+                    }
+                    for item in results
+                    if isinstance(item, dict)
+                ]
+        else:
+            payload["source_id"] = result.content.get("source_id")
+            payload["canonical_url"] = result.content.get("canonical_url")
     mutation_payload = result.content if call.name in {"write", "edit"} else None
     if isinstance(mutation_payload, dict) and mutation_payload.get("action_id"):
         yield host._event(

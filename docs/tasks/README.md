@@ -96,6 +96,7 @@
 - [任务 0085：Provider 上下文缓存用量实施计划](0085-provider-cache-usage.md)
 - [任务 0086：Core Trace 与运行可观测性（阶段十；In progress）](0086-core-trace-observability.md)
 - [任务 0090：Core 受控 Git 仓库初始化（In progress）](0090-core-owned-git-repository-initialization.md)
+- [Core 联网资料检索（Ready for manual acceptance；编号待并行任务对齐）](core-web-research-implementation.md)
 - [三档权限与自动审核实施计划（Accepted；沙盒完成后复核）](approval-permission-profiles-implementation-plan.md)
 
 ## 补充索引（2026-09-26 对齐）
