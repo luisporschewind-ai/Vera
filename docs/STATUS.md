@@ -60,6 +60,7 @@
 
 ## 活动任务
 
+- [任务 0075：CLI 窗口缩放闪动修正](tasks/0075-cli-resize-flicker.md)：自动与 PTY 输出验证完成，Ready for manual acceptance；原生 Terminal.app 拖拽观感待复验。
 - [阶段七执行顺序](tasks/phase-7-execution-order.md)：任务 0034–0041、0043–0058 Done；阶段七 Complete。剩余量化 dogfood 样本转入后续 Bug 收敛阶段规划；封存确认不自动授权下一阶段实施。
 - [阶段五执行顺序](tasks/phase-5-execution-order.md)：0024 自动门禁已完成；人工 dogfood 不足，阶段五保持 Ready for manual acceptance。
 - [ADR-0017：插入 CLI 体验阶段并顺延桌面路线](decisions/ADR-0017-insert-cli-experience-stage.md)：Accepted；阶段七用于 CLI 体验与个人主力化。其接受时的后续编号已由 ADR-0020 再次校准。
@@ -76,6 +77,7 @@
 
 ## 最近验证
 
+- 2026-09-24 任务 0075 CLI 缩放闪动修正：回归先复现三次缩放六次整屏清除；调整为拖动中不清屏、停止 0.4 秒后清屏和全画面同次输出。终端相关 `166 passed`；真实 PTY 缩放输出确认拖动中 0 次、稳定后 1 次清屏。完整非 live `1172 passed, 2 deselected, 8 warnings`，两项离线 wheel 安装因缓存缺少 `openai` 失败，补齐测试缓存后单独重跑 `2 passed`；Ruff、格式、Mypy、diff 检查通过。原生 Terminal.app 拖拽观感仍待人工复验；阶段七保持 Complete。
 - 2026-09-18 实施授权：用户选择方案 2（Inline Execution），授权阶段八按已接受计划串行实施并创建计划内本地提交；不包含 push、merge 或远程变更。
 - 2026-09-18 任务 0059：ToolAction/Policy v2/workspace permission 基座完成；双轮安全审查关闭所有 Critical/Important，聚焦 `59 passed`、完整非 live `1176 passed, 2 deselected`，Ruff、格式、Mypy、wheel/sdist、diff 检查通过。下一项为 0060。
 - 2026-09-19 任务 0060（已完成）：canonical `read/grep/find/ls` 与 ToolExecutor 已接入；Runtime 普通只读路径不再调用 `ToolRegistry.execute`，高风险 ToolAction 的审批、快照恢复、批准后复验及 action resolved 持久化已接入；本轮审查修复补齐 `find` glob 越界、外部 symlink、执行阶段 action binding stale、显式 V2 policy identity 保护，以及 `approved=True` 不得绕过 `DENY`；相关 Core 分组 `386 passed`，CLI/Presentation `213 passed`；共同 non-live `1208 passed, 2 deselected, 6 warnings`，Ruff、格式、Mypy、wheel/sdist、diff 检查全部通过。
