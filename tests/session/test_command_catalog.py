@@ -29,6 +29,7 @@ def test_context_full_still_lists_compact_and_new() -> None:
     assert "/instructions" in names
     assert "/init" in names
     assert "/skills" in names
+    assert "/trace" in names
 
 
 def test_help_is_grouped_and_unknown_command_suggests() -> None:
@@ -47,3 +48,6 @@ def test_help_is_grouped_and_unknown_command_suggests() -> None:
     skills = catalog.parse(["/skills", "use", "python-review"])
     assert skills.handler == "skills"
     assert skills.args == ("use", "python-review")
+    trace = catalog.parse(["/trace", "run_123"])
+    assert trace.handler == "trace"
+    assert trace.args == ("run_123",)

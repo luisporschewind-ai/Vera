@@ -100,6 +100,78 @@ def test_controller_submits_prompt_through_runtime(tmp_path: Path) -> None:
     assert status.payload["context"]["max_bytes"] == stats.max_bytes
 
 
+def test_trace_command_projects_active_run_as_structured_trace(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    controller = make_controller(
+        workspace,
+        [ModelTurn(assistant_text="完成", finish_reason="stop")],
+    )
+    tuple(controller.dispatch(SubmitPrompt(text="trace this run")))
+
+    output = next(
+        item
+        for item in controller.dispatch(ExecuteSlashCommand(raw="/trace"))
+        if isinstance(item, EventEnvelope) and item.type == "session.trace"
+    )
+
+    assert output.payload["trace"]["run_id"]
+    assert output.payload["trace"]["session_id"] == controller.snapshot().session_id
+    assert output.payload["trace"]["status"] == "completed"
+    assert output.payload["trace"]["spans"]
+    assert "trace this run" not in str(output.payload)
+    assert "Run ID" in output.payload["text"]
+
+
+def test_trace_command_rejects_run_from_another_workspace(tmp_path: Path) -> None:
+    from vera.persistence.journal import EventJournal
+    from vera.redaction import Redactor
+
+    workspace = tmp_path / "workspace"
+    other_workspace = tmp_path / "other-workspace"
+    workspace.mkdir()
+    other_workspace.mkdir()
+    controller = make_controller(workspace, [])
+    journal = EventJournal(tmp_path / "state", "other_run", Redactor([]))
+    journal.append("run.started", {"workspace_root": str(other_workspace)})
+    journal.append("run.completed", {"state": "completed"})
+
+    outputs = tuple(controller.dispatch(ExecuteSlashCommand(raw="/trace other_run")))
+
+    assert len(outputs) == 1
+    assert outputs[0].type == "session.message"
+    assert "当前工作区" in outputs[0].payload["text"]
+    assert str(other_workspace) not in outputs[0].payload["text"]
+
+
+def test_trace_command_prefers_explicit_id_then_active_run(tmp_path: Path) -> None:
+    from vera.persistence.journal import EventJournal
+    from vera.redaction import Redactor
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    controller = make_controller(workspace, [])
+    for run_id in ("run_active", "run_explicit"):
+        journal = EventJournal(tmp_path / "state", run_id, Redactor([]))
+        journal.append("run.started", {"workspace_root": str(workspace)})
+        journal.append("run.completed", {"state": "completed"})
+    controller.mark_active("run_active")
+
+    explicit = next(
+        item
+        for item in controller.dispatch(ExecuteSlashCommand(raw="/trace run_explicit"))
+        if isinstance(item, EventEnvelope) and item.type == "session.trace"
+    )
+    active = next(
+        item
+        for item in controller.dispatch(ExecuteSlashCommand(raw="/trace"))
+        if isinstance(item, EventEnvelope) and item.type == "session.trace"
+    )
+
+    assert explicit.payload["trace"]["run_id"] == "run_explicit"
+    assert active.payload["trace"]["run_id"] == "run_active"
+
+
 def test_model_command_lists_configured_profile_without_secret(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()

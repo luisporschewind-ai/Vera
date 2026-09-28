@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
@@ -18,6 +18,7 @@ from vera.contracts.commands import (
 )
 from vera.contracts.events import EventEnvelope
 from vera.contracts.recovery import RecoveryClassification
+from vera.contracts.skills import SkillSelection, SkillSnapshot
 from vera.contracts.streaming import RuntimeOutput
 from vera.persistence.run_store import RunStore
 from vera.persistence.session_store import ConversationSessionStore, LoadedConversationSession
@@ -35,6 +36,9 @@ from vera.session.persistence_flow import SessionPersistenceFlow
 from vera.session.run_flow import SessionRunFlow
 from vera.session.status import SessionStatusService
 from vera.session.turns import ConversationTurnProjector
+from vera.skills.discovery import SkillDiscovery
+from vera.skills.registry import SkillRegistry
+from vera.skills.selection import SkillSelectionService
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,6 +48,7 @@ class SessionSnapshot:
     pending_approval_id: str | None
     model_profile: str
     closed: bool
+    skill_selection: SkillSelection = field(default_factory=SkillSelection)
 
 
 class SessionController:
@@ -123,7 +128,18 @@ class SessionController:
             pending_approval_id=self.pending_approval_id,
             model_profile=self.model_profile,
             closed=self._closed,
+            skill_selection=self._skill_selection(),
         )
+
+    def _skill_selection(self) -> SkillSelection:
+        service = getattr(self.dependencies.runtime, "skill_selection_service", None)
+        return service.pending if service is not None else SkillSelection()
+
+    def _active_skill_snapshot(self) -> SkillSnapshot | None:
+        if self._active_run_id is None:
+            return None
+        context = self.dependencies.runtime.runs.get(self._active_run_id)
+        return context.skill_snapshot if context is not None else None
 
     @property
     def session_source(self) -> Literal["new", "continued", "resumed"]:
@@ -133,6 +149,19 @@ class SessionController:
         self, loaded: LoadedConversationSession, *, restore_history: bool
     ) -> None:
         SessionPersistenceFlow.apply_loaded_session(self, loaded, restore_history=restore_history)
+        self._skill_service().restore(loaded.skill_selection)
+
+    def _persist_skill_selection(self, selection: SkillSelection) -> Iterator[RuntimeOutput]:
+        try:
+            record = self.session_store.append_skill_selection(
+                self.conversation.stats().session_id, selection
+            )
+        except Exception as exc:
+            yield self._mark_unsaved(self._persistence_code(exc))
+            return
+        if self._persistence_state != "unsaved":
+            self._last_saved_sequence = record.sequence
+            self._last_error_code = None
 
     def _bind_persistence(
         self, loaded: LoadedConversationSession, *, restore_history: bool
@@ -306,6 +335,8 @@ class SessionController:
                 workspace_permissions=self.dependencies.runtime.workspace_permissions,
             ),
             reasoning=self._reasoning_status(),
+            skill_selection=self._skill_selection(),
+            active_skill_snapshot=self._active_skill_snapshot(),
         )
 
     def _status_event(self) -> EventEnvelope:
@@ -348,6 +379,110 @@ class SessionController:
 
     def _cmd_status(self, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
         yield from SessionInspectionFlow.status(self, args)
+
+    def _skill_service(self) -> SkillSelectionService:
+        service = getattr(self.dependencies.runtime, "skill_selection_service", None)
+        if service is None:
+            service = SkillSelectionService(SkillRegistry(SkillDiscovery()))
+            self.dependencies.runtime.skill_selection_service = service
+        return service
+
+    @staticmethod
+    def _skill_summary_text(summaries: list[dict[str, object]]) -> str:
+        if not summaries:
+            return "没有发现 Skill。"
+        lines = ["Skills："]
+        for item in summaries:
+            name = item.get("name") or item.get("skill_id") or "未命名"
+            source = item.get("source_kind", "unknown")
+            availability = item.get("availability", "unknown")
+            version = item.get("version") or "-"
+            lines.append(f"- {name} [{source}] {version} · {availability}")
+        return "\n".join(lines)
+
+    def _cmd_skills(self, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        service = self._skill_service()
+        operation = args[0] if args else "list"
+        selector = args[1] if len(args) > 1 else None
+        if operation == "list":
+            summaries = [
+                item.model_dump(mode="json") for item in service.registry.summaries(self.workspace)
+            ]
+            yield self._session_event(
+                "skill.listed",
+                {"items": summaries, "text": self._skill_summary_text(summaries)},
+            )
+            return
+        if operation == "clear" and len(args) == 1:
+            selection = service.clear()
+            yield from self._persist_skill_selection(selection)
+            yield self._session_event(
+                "skill.selection.changed",
+                {
+                    "selection": selection.model_dump(mode="json"),
+                    "text": "已清除下一次 Run 的 Skill 选择。",
+                },
+            )
+            return
+        if operation not in {"show", "use"} or selector is None or len(args) != 2:
+            yield self._session_event(
+                "session.action_rejected",
+                {
+                    "reason_code": "invalid_skill_command",
+                    "message": (
+                        "用法：/skills、/skills show <name|skill_id>、/skills use "
+                        "<name|skill_id> 或 /skills clear"
+                    ),
+                },
+            )
+            return
+        if operation == "use":
+            selection = service.select(selector, self.workspace)
+            yield from self._persist_skill_selection(selection)
+            text = (
+                f"已选择 {selection.skill_id}，只对下一次 Run 生效。"
+                if selection.status == "selected" and selection.skill_id
+                else (
+                    "Skill 选择失败："
+                    f"{selection.reason_codes[0] if selection.reason_codes else 'unknown'}"
+                )
+            )
+            yield self._session_event(
+                "skill.selection.changed",
+                {"selection": selection.model_dump(mode="json"), "text": text},
+            )
+            return
+        selection = service.registry.resolve(selector, self.workspace)
+        matches = [
+            item
+            for item in service.registry.summaries(self.workspace)
+            if item.skill_id == selector or item.name == selector
+        ]
+        dumped = [item.model_dump(mode="json") for item in matches]
+        payload: dict[str, object] = {
+            "items": dumped,
+            "text": self._skill_summary_text(dumped),
+        }
+        if selection.status == "selected":
+            candidate = service.package_for(selection, self.workspace)
+            if candidate is not None and candidate.package is not None:
+                package = candidate.package
+                payload["manifest"] = {
+                    "name": package.manifest.name,
+                    "version": package.manifest.version,
+                    "description": package.manifest.description,
+                    "compatibility": package.manifest.compatibility.model_dump(mode="json"),
+                }
+                payload["resources"] = [
+                    {
+                        "path": item.relative_path,
+                        "kind": item.kind,
+                        "byte_count": len(item.content),
+                        "content_hash": item.content_hash,
+                    }
+                    for item in package.files
+                ]
+        yield self._session_event("skill.shown", payload)
 
     def _cmd_context(self, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
         yield from SessionInspectionFlow.context(self, args)
@@ -405,6 +540,9 @@ class SessionController:
 
     def _cmd_review(self, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
         yield from SessionInspectionFlow.review(self, args)
+
+    def _cmd_trace(self, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        yield from SessionInspectionFlow.trace(self, args)
 
     def _cmd_doctor(self, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
         yield from SessionInspectionFlow.doctor(self, args)

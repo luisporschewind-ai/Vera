@@ -9,6 +9,7 @@ from typing import Any, Literal, Protocol
 from vera.config import Limits
 from vera.content.detector import SafeContentDetector
 from vera.content.envelope import ContentEnvelope
+from vera.content.trust import ContentTrustLevel
 from vera.contracts.approvals import ApprovalRequest
 from vera.contracts.commands import ResolveApproval
 from vera.contracts.events import EventEnvelope
@@ -36,6 +37,8 @@ class ContentFlowHost(Protocol):
 
     content_detector: SafeContentDetector
     project_instructions: ProjectInstructionService
+
+    def _seed_skill_context(self, context: RunContext) -> Iterator[EventEnvelope]: ...
 
     def _event(
         self, context: RunContext, event_type: str, payload: dict[str, Any]
@@ -70,6 +73,7 @@ class ToolFlowHost(Protocol):
         source_kind: str | None,
         origin: str,
         truncated: bool = False,
+        trust_level: ContentTrustLevel | None = None,
     ) -> tuple[ContentEnvelope, str, list[EventEnvelope]]: ...
 
 
@@ -296,6 +300,10 @@ class CommandFlowHost(Protocol):
     coordinator: RecoveryCoordinator
     receipts: OperationReceiptStore
 
+    def _ephemeral_event(
+        self, run_id: str, event_type: str, payload: dict[str, Any], sequence: int = 1
+    ) -> EventEnvelope: ...
+
     def _with_receipt(
         self,
         operation: Literal["resume", "resolve_approval", "cancel", "rollback"],
@@ -345,6 +353,8 @@ class CommandFlowHost(Protocol):
 
     def _bind_default_policy_to_workspace(self, root: Path) -> None: ...
 
+    def _bind_skill_snapshot(self, context: RunContext) -> bool: ...
+
     def _stable_event(
         self,
         context: RunContext,
@@ -369,6 +379,8 @@ class RecoveryFlowHost(Protocol):
     coordinator: RecoveryCoordinator
     file_writer: FileWriter | None
     policy_engine: PolicyEngine
+
+    def _restore_skill_snapshot(self, context: RunContext, snapshot: Any) -> RunContext: ...
 
     def _event(
         self, context: RunContext, event_type: str, payload: dict[str, Any]

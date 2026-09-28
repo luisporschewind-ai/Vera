@@ -329,6 +329,8 @@ def emit_tool_result(
         "trust_level": envelope.trust_level.value,
         "content_hash": envelope.content_hash,
     }
+    if context.active_tool_span_id is not None:
+        payload["span_id"] = context.active_tool_span_id
     if target:
         payload["target"] = target
     mutation_payload = result.content if call.name in {"write", "edit"} else None

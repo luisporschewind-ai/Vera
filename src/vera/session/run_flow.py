@@ -243,7 +243,19 @@ def drive(
                 return
             if output.type in _TERMINAL_TYPES:
                 produced_terminal = True
-        yield output
+        if isinstance(output, EventEnvelope) and output.type == "skill.snapshot.bound":
+            selection = host._skill_selection()
+            yield from host._persist_skill_selection(selection)
+            yield output
+            yield host._session_event(
+                "skill.selection.changed",
+                {
+                    "selection": selection.model_dump(mode="json"),
+                    "text": "Skill 已绑定当前 Run，下一次 Run 未选择 Skill。",
+                },
+            )
+        else:
+            yield output
     if host._drive_epoch != epoch:
         return
     if produced_terminal or host._pending_approval is None:

@@ -94,6 +94,7 @@
 - [任务 0084：BYOK 多厂商模型配置实施计划](0084-byok-model-configuration.md)
 - [任务 0085：Provider 上下文缓存用量实施计划](0085-provider-cache-usage.md)
 - [任务 0086：Core Trace 与运行可观测性（阶段十；In progress）](0086-core-trace-observability.md)
+- [任务 0090：Core 受控 Git 仓库初始化（In progress）](0090-core-owned-git-repository-initialization.md)
 - [三档权限与自动审核实施计划（Accepted；沙盒完成后复核）](approval-permission-profiles-implementation-plan.md)
 
 ## 补充索引（2026-09-26 对齐）
@@ -112,6 +113,6 @@
 - [任务 0069：Session Selection、Run 绑定与 Context 装配](0069-skill-runtime-context.md)
 - [任务 0070：CLI 命令与三客户端结构化投影](0070-skill-cli-projection.md)
 - [任务 0071：NoSkill、兼容迁移与安装态整合](0071-skill-compatibility.md)
-- [阶段八大单体拆分（隔离分支已完成，未合入）](../superpowers/plans/2026-09-21-monolith-refactor.md)
+- [阶段八大单体拆分（代码已合入；与 Skills、BYOK、Trace 的接线按各任务记录继续校准）](../superpowers/plans/2026-09-21-monolith-refactor.md)
 - [Core Trace 与运行可观测性实施计划（阶段十；依用户授权与阶段八/九并行逐任务执行）](../superpowers/plans/2026-09-26-core-trace-observability.md)
 - [2026-09-26 非沙盒任务与文档对齐记录](../evals/2026-09-26-task-document-alignment.md)

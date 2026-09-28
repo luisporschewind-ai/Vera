@@ -309,9 +309,17 @@ def config(host: SessionController, _args: tuple[str, ...]) -> Iterator[RuntimeO
 def usage(host: SessionController, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
     from vera.session.queries import usage_snapshot
 
-    events = tuple(host._events_for_active)
-    for summary in host.store.list_runs():
-        events = events + tuple(host.store.read_events(summary.run_id))
+    selected = host.active_run_id
+    if selected is None:
+        selected = next(
+            (
+                summary.run_id
+                for summary in host.store.list_runs()
+                if summary.workspace_root.resolve() == host.workspace.resolve()
+            ),
+            None,
+        )
+    events = host._events_for_run(selected)
     yield host._session_event("session.usage", usage_snapshot(events))
 
 
@@ -363,6 +371,42 @@ def help_text(host: SessionController) -> str:
     return CommandCatalog().help_text(host.snapshot())
 
 
+def trace(host: SessionController, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+    from vera.trace.formatting import format_run_trace
+    from vera.trace.projector import trace_snapshot
+
+    requested_id = args[0] if args else None
+    runs = tuple(
+        summary
+        for summary in host.store.list_runs()
+        if summary.workspace_root.expanduser().resolve() == host.workspace
+    )
+    if requested_id is not None:
+        selected = next((item for item in runs if item.run_id == requested_id), None)
+    elif host.active_run_id is not None:
+        selected = next((item for item in runs if item.run_id == host.active_run_id), None)
+    else:
+        selected = runs[0] if runs else None
+    if selected is None:
+        message = (
+            "未找到属于当前工作区的 Run。"
+            if requested_id is None and host.active_run_id is None
+            else "未找到属于当前工作区的指定 Run。"
+        )
+        yield host._session_event("session.message", {"text": message})
+        return
+    snapshot = trace_snapshot(
+        host.store,
+        selected.run_id,
+        session_id=host.conversation.stats().session_id,
+        installation_id=host.dependencies.installation_id,
+    )
+    yield host._session_event(
+        "session.trace",
+        {"trace": snapshot.model_dump(mode="json"), "text": format_run_trace(snapshot)},
+    )
+
+
 class SessionInspectionFlow:
     """Stable façade for command handlers and inspection projections."""
 
@@ -387,6 +431,7 @@ class SessionInspectionFlow:
     exit = staticmethod(exit)
     diff = staticmethod(diff)
     review = staticmethod(review)
+    trace = staticmethod(trace)
     doctor = staticmethod(doctor)
     config = staticmethod(config)
     usage = staticmethod(usage)

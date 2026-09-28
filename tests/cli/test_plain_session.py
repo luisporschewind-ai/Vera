@@ -1,9 +1,11 @@
+from datetime import UTC, datetime
 from pathlib import Path
 
 from vera.bootstrap import RuntimeDependencies
 from vera.cli_plain_session import PlainSessionDriver
 from vera.cli_session import InteractiveSession, _structured_plain
 from vera.config import Limits, VeraConfig
+from vera.contracts.events import EventEnvelope
 from vera.models.base import FakeModelAdapter
 from vera.runtime.engine import VeraRuntime
 from vera.session.controller import SessionController
@@ -44,6 +46,30 @@ def test_plain_usage_shows_cache_facts_without_changing_existing_totals() -> Non
     assert "calls 1\tinput 20\toutput 2\ttotal 22" in line
     assert "cache_hit_input_tokens 10" in line
     assert "cache_hit_percent 50.0" in line
+
+
+def test_plain_session_displays_trace_text_without_projecting_cli_json(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    state_dir = tmp_path / "state"
+    deps = RuntimeDependencies(
+        runtime=VeraRuntime(FakeModelAdapter([]), ToolRegistry(), state_dir),
+        config=VeraConfig(state_dir=state_dir, limits=Limits(), providers={}),
+    )
+    io = ScriptedIO([])
+    session = InteractiveSession(deps, workspace, "fake", io)
+    event = EventEnvelope(
+        event_id="event_trace",
+        run_id="session_run",
+        sequence=1,
+        timestamp=datetime.now(UTC),
+        type="session.trace",
+        payload={"trace": {"run_id": "run_1"}, "text": "Run ID: run_1\n状态: 已完成"},
+    )
+
+    session._present_session_event(event)
+
+    assert io.output == ["Run ID: run_1\n状态: 已完成"]
 
 
 def test_plain_driver_uses_session_controller(tmp_path: Path) -> None:

@@ -1,8 +1,8 @@
 # Vera 状态
 
-**更新日期：** 2026-09-26
+**更新日期：** 2026-09-28
 **当前阶段：** 阶段 8——Core 工具集、Policy v2 与原生 Git（In progress）
-**仓库状态：** `main` 已包含阶段九 Skills、CLI 后续修正、BYOK 与缓存用量（核对时 HEAD `9354bb3`）；阶段八工具/Policy/Git 及大单体拆分仍在独立分支（`5b6d789`），尚未合入。相对本地 `origin/main` 引用领先 7 个提交；本轮未 fetch/push，不将该引用视为远端实时核验。阶段五停在 Ready for manual acceptance，阶段六与阶段七已 Complete。用户于 2026-09-17 原文确认「CLI 版本达到预期，可以封存」，并于 2026-09-18 选择 Inline Execution，授权阶段八按 0059–0066 串行实施和创建计划内本地提交。用户于 2026-09-21 明确授权阶段九在阶段八完全收口前并行实施；阶段九自动实现现为 Ready for manual acceptance，仍不等于 Complete。
+**仓库状态：** `main` 已合入阶段八工具/Policy/Git 与大文件拆分（`d7e75c1`），随后合入 Git 仓库初始化切片（`8db4c6e`）；截至本次记录，后续合并仍存在未解决冲突，不能视为完成。阶段十 Trace 正在隔离分支适配拆分后的 Core，尚未合入。对齐时还发现阶段八合并使阶段九 Skills 的 Runtime/Session 接线和 BYOK 启动入口失效，隔离分支同步恢复这些入口。阶段五停在 Ready for manual acceptance，阶段六与阶段七已 Complete；阶段八、九、十均不因代码合入自动变成 Complete。用户确认 CLI 封存的历史授权保持有效。2026-09-28 用户要求以阶段十一为里程碑，之前的任务与规格须对齐并落实，dogfood 统一在 `main` 由用户执行；本轮不运行回归测试。
 
 ## 当前工作汇总（2026-09-26）
 
@@ -12,13 +12,13 @@
 | --- | --- | --- |
 | 阶段五 | Ready for manual acceptance | 20 次真实 dogfood、三类工程人工矩阵 |
 | 阶段六、七 | Complete；CLI 已封存 | 不因此自动启动桌面 |
-| 阶段八 0059–0066 | 隔离分支实现完成；阶段 In progress | Node/TS、Terminal.app、最新分支安装态、遗留问题复核、用户确认与代码集成 |
-| 阶段九 0067–0072、0074 | 已合入；Ready for manual acceptance | 两类工程完整流程、负例/恢复矩阵、隔离 wheel 与用户确认 |
+| 阶段八 0059–0066 | 代码已合入 `main`；阶段 In progress | 用户在 `main` 验收、遗留问题复核与状态确认 |
+| 阶段九 0067–0072、0074 | 代码已合入；拆分后的接线在隔离分支修复中；Ready for manual acceptance | 用户在 `main` 验收两类工程完整流程、负例/恢复矩阵、隔离 wheel 与状态确认 |
 | CLI 0073、0075–0083 | Done；含 0078 人工复验闭环 | 后续发现另建问题，不重开已确认视觉项 |
-| BYOK / 缓存 0084、0085 | 已合入、用户手工验收通过；In progress | 4 个打包/安装 smoke 环境阻断 |
+| BYOK / 缓存 0084、0085 | 原版已合入并获用户手工验收；阶段八合并后的启动入口在隔离分支修复中；In progress | 用户在 `main` 复验，4 个打包/安装 smoke 环境阻断 |
 | 联网检索 | 方向 Accepted，未实施 | 服务选型、审批细则、排序和实施授权 |
 | 三档权限 / 自动审核 | 设计与计划 Accepted，未实施 | 沙盒前置、冲突规格/ADR 修订和独立实施授权 |
-| 阶段十 Core Trace | In progress；规格 Accepted、任务 0086 In progress | 用户明确授权并行实施；阶段八、九由用户自行验证，状态不代改 |
+| 阶段十 Core Trace | In progress；规格 Accepted、任务 0086 集成中 | 拆分后的 Core 适配提交、用户在 `main` 验收；历史测试结果不能代替本次集成验证 |
 | 阶段十一 Electron | Not started；UI 规格 Draft | 阶段八、九、十 Complete 后再进入 |
 
 ## 已完成与历史交付

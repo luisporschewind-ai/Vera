@@ -12,6 +12,7 @@ from vera.content.envelope import (
     render_content_for_model,
     render_project_guidance_for_model,
 )
+from vera.content.trust import ContentTrustLevel
 from vera.contracts.conversation import ConversationMessage
 from vera.contracts.events import EventEnvelope
 from vera.models.base import ModelMessage
@@ -59,6 +60,7 @@ def prepare_content(
     source_kind: str | None,
     origin: str,
     truncated: bool = False,
+    trust_level: ContentTrustLevel | None = None,
 ) -> tuple[ContentEnvelope, str, list[EventEnvelope]]:
     envelope = build_content_envelope(
         text,
@@ -66,6 +68,8 @@ def prepare_content(
         origin=origin,
         truncated=truncated,
     )
+    if trust_level is not None:
+        envelope = envelope.model_copy(update={"trust_level": trust_level})
     detection = host.content_detector.assess(envelope, text)
     envelope = envelope.model_copy(update={"risk_labels": detection.risk_labels})
     events: list[EventEnvelope] = []
@@ -80,6 +84,7 @@ def seed_context(host: ContentFlowHost, context: RunContext) -> Iterator[EventEn
     context.messages.append(ModelMessage(role="system", content=system))
     if command.mode != "compact":
         yield from seed_project_instructions(host, context)
+        yield from host._seed_skill_context(context)
     for message in command.conversation:
         yield from append_conversation_message(host, context, message)
     envelope, rendered, events = prepare_content(

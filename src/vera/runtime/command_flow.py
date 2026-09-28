@@ -31,6 +31,8 @@ from vera.runtime.approval import ApprovalGate, ApprovalKind
 from vera.runtime.context import RunContext
 from vera.runtime.flow_protocols import CommandFlowHost
 from vera.runtime.state import RunState, RunStateMachine
+from vera.skills.context import SkillContextError
+from vera.skills.snapshot_store import SkillSnapshotError
 
 
 def dispatch(host: CommandFlowHost, command: CoreCommand) -> Iterator[RuntimeOutput]:
@@ -140,6 +142,15 @@ def dispatch(host: CommandFlowHost, command: CoreCommand) -> Iterator[RuntimeOut
         approval_gate=ApprovalGate(run_id),
         security_context_hash=EMPTY_SECURITY_CONTEXT_HASH,
     )
+    try:
+        skill_bound = command.mode != "compact" and host._bind_skill_snapshot(context)
+    except (SkillSnapshotError, SkillContextError) as exc:
+        yield host._ephemeral_event(
+            run_id,
+            "run.failed",
+            {"reason": getattr(exc, "code", "skill_snapshot_failed")},
+        )
+        return
     host.runs[run_id] = context
     context.machine.transition(RunState.DISCOVERING)
     yield host._stable_event(
@@ -155,6 +166,20 @@ def dispatch(host: CommandFlowHost, command: CoreCommand) -> Iterator[RuntimeOut
         },
         RecoveryStage.STARTED,
     )
+    if skill_bound and context.skill_snapshot is not None:
+        yield host._stable_event(
+            context,
+            "skill.snapshot.bound",
+            {
+                "snapshot_id": context.skill_snapshot.snapshot_id,
+                "skill_id": context.skill_snapshot.skill_id,
+                "source_kind": context.skill_snapshot.source_kind,
+                "version": context.skill_snapshot.version,
+                "manifest_hash": context.skill_snapshot.manifest_hash,
+                "resource_hash": context.skill_snapshot.resource_hash,
+            },
+            RecoveryStage.STARTED,
+        )
     yield from host._seed_context(context)
     if command.mode == "compact":
         yield from host._compact(context)

@@ -38,7 +38,11 @@ class RecoveryHydrator:
             raise RecoveryHydrationError("rollback_in_flight")
         events = journal.read_all()
         last_sequence = events[-1].sequence if events else 0
-        if snapshot.last_event_sequence != last_sequence:
+        trailing_recovery_events = any(
+            event.sequence > snapshot.last_event_sequence and not event.type.startswith("trace.")
+            for event in events
+        )
+        if snapshot.last_event_sequence > last_sequence or trailing_recovery_events:
             raise RecoveryHydrationError("journal_sequence_mismatch")
         if snapshot.stage in _APPROVAL_STAGES:
             state = RunState.AWAITING_APPROVAL

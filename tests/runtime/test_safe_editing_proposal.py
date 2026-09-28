@@ -155,6 +155,11 @@ def test_rejected_verification_command_keeps_change_and_finishes_failed(
     assert command_events[-1].payload["state"] == "verification_failed"
     assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "new\n"
     assert not (tmp_path / "verified.txt").exists()
+    journal = runtime.runs[start_events[0].run_id].journal.read_all()
+    assert not any(
+        event.type == "trace.span.started" and event.payload.get("kind") == "verification"
+        for event in journal
+    )
 
 
 def test_run_started_records_workspace_and_model_profile(tmp_path: Path) -> None:
