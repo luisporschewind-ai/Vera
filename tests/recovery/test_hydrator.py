@@ -91,6 +91,42 @@ def test_hydrate_refuses_sequence_mismatch(tmp_path: Path) -> None:
         RecoveryHydrator().hydrate(snapshot, journal)
 
 
+def test_hydrate_allows_additive_trace_events_after_recovery_snapshot(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    snapshot = make_snapshot(workspace)
+    journal = _journal(tmp_path)
+    journal.append(
+        "trace.span.finished",
+        {"trace_id": "run_1", "span_id": "span_1", "status": "ok"},
+    )
+    journal.append(
+        "trace.context.snapshot",
+        {
+            "trace_id": "run_1",
+            "span_id": "span_1",
+            "snapshot": {"request_index": 7},
+        },
+    )
+
+    context = RecoveryHydrator().hydrate(snapshot, journal)
+
+    assert context.machine.state is RunState.AWAITING_APPROVAL
+    assert context.trace_recorder is not None
+    assert context.request_index == 7
+
+
+def test_hydrate_still_refuses_non_trace_event_after_recovery_snapshot(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    snapshot = make_snapshot(workspace)
+    journal = _journal(tmp_path)
+    journal.append("tool.completed", {"call_id": "late"})
+
+    with pytest.raises(RecoveryHydrationError, match="journal_sequence_mismatch"):
+        RecoveryHydrator().hydrate(snapshot, journal)
+
+
 def test_hydrate_refuses_missing_checkpoint(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()

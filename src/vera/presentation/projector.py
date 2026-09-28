@@ -188,6 +188,7 @@ class TimelineProjector:
             "session.shortcuts": self._session_message,
             "session.config": self._session_config,
             "session.usage": self._session_message,
+            "session.trace": self._session_message,
             "session.permissions": self._session_message,
             "session.review": self._session_message,
             "session.diff": self._session_diff,

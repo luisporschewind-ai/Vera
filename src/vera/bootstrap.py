@@ -15,7 +15,7 @@ from vera.persistence.recovery_snapshot import RecoverySnapshotStore
 from vera.policy.engine import PolicyEngine
 from vera.policy.snapshot import EffectivePolicySnapshot
 from vera.project_instructions import ProjectInstructionService
-from vera.provider_catalog import MODEL_CATALOG
+from vera.provider_catalog import CATALOG_BY_ID, MODEL_CATALOG
 from vera.provider_configuration import ProviderConfigurationService
 from vera.provider_credentials import (
     provider_env_path,
@@ -132,7 +132,13 @@ def build_runtime(workspace: Path, model_profile: str | None = None) -> RuntimeD
             "state_unwritable",
             f"private state directory is not writable: {config.state_dir}",
         ) from exc
-    adapter: ModelAdapter = OpenAICompatibleAdapter(provider, api_key=api_key)
+    catalog_entry = CATALOG_BY_ID.get(profile)
+    adapter: ModelAdapter = OpenAICompatibleAdapter(
+        provider,
+        api_key=api_key,
+        profile_name=profile,
+        provider_type=catalog_entry.provider_id if catalog_entry else "custom",
+    )
     paths = WorkspacePaths(workspace)
     registry = ToolRegistry()
     registry.register(ReadFileTool(paths, config.limits.max_file_bytes))

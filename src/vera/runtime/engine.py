@@ -1,5 +1,6 @@
 """Bounded discovery loop that stops before any filesystem mutation."""
 
+import hashlib
 import json
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import suppress
@@ -44,6 +45,7 @@ from vera.contracts.conversation import ConversationMessage
 from vera.contracts.events import EventEnvelope
 from vera.contracts.recovery import RecoveryClassification, RecoveryReport, RecoveryStage
 from vera.contracts.streaming import RuntimeOutput, StreamFrame, StreamFrameType
+from vera.contracts.trace import TraceSpanStatus
 from vera.contracts.verification import VerificationCommand, VerificationResult
 from vera.models.base import ModelAdapter, ModelMessage, ModelRequest, ModelToolCall, ModelTurn
 from vera.models.errors import ModelErrorCode, ModelProviderError, safe_error_payload
@@ -87,6 +89,8 @@ from vera.skills.snapshot_store import SkillSnapshotError, SkillSnapshotStore
 from vera.tools.command_policy import CommandDecisionKind, CommandPolicy
 from vera.tools.definitions import ToolResult
 from vera.tools.registry import ToolRegistry
+from vera.trace.context_inventory import ContextInventory
+from vera.trace.recorder import SpanHandle
 from vera.verification.artifacts import (
     VerificationArtifactError,
     VerificationArtifactPlanner,
@@ -660,6 +664,53 @@ class VeraRuntime:
             artifact_prefix=self.artifact_prefix,
         )
 
+    def _start_verification_span(
+        self, context: RunContext, index: int, command: VerificationCommand
+    ) -> SpanHandle:
+        profile = command.artifact_plan.profile if command.artifact_plan is not None else None
+        return context.trace_recorder.start_span(
+            "verification",
+            "verification command",
+            attributes={"index": index, "artifact_profile": profile},
+        )
+
+    def _finish_verification_span(
+        self, context: RunContext, span: SpanHandle, result: VerificationResult
+    ) -> None:
+        status: TraceSpanStatus
+        if result.status == "passed":
+            status = "ok"
+        elif result.status == "cancelled":
+            status = "cancelled"
+        elif result.status == "rejected":
+            status = "rejected"
+        else:
+            status = "error"
+        attributes: dict[str, Any] = {
+            "status": result.status,
+            "reported_duration_ms": result.duration_seconds * 1000,
+            "exit_code": result.exit_code,
+            "stdout_byte_count": len(result.stdout.encode("utf-8")),
+            "stderr_byte_count": len(result.stderr.encode("utf-8")),
+            "stdout_truncated": result.stdout_truncated,
+            "stderr_truncated": result.stderr_truncated,
+            "artifact_cleanup_status": result.artifact_cleanup_status,
+            "workspace_mutation_count": len(result.workspace_mutations),
+        }
+        if result.reason_code is not None:
+            attributes["reason_code"] = result.reason_code[:128]
+        context.trace_recorder.finish_span(
+            span,
+            status,
+            attributes=attributes,
+            duration_ms=result.duration_seconds * 1000,
+        )
+
+    def _verification_span_error(self, context: RunContext, span: SpanHandle) -> None:
+        context.trace_recorder.finish_span(
+            span, "error", attributes={"error_code": "verification_runner_error"}
+        )
+
     def _plan_verification(
         self,
         context: RunContext,
@@ -730,9 +781,16 @@ class VeraRuntime:
         return payload
 
     def _reject_tool(
-        self, context: RunContext, call: ModelToolCall, payload: dict[str, Any]
+        self,
+        context: RunContext,
+        call: ModelToolCall,
+        payload: dict[str, Any],
+        *,
+        span_id: str | None = None,
     ) -> Iterator[EventEnvelope]:
         failed = {"name": call.name, "call_id": call.call_id, "ok": False, **payload}
+        if span_id is not None:
+            failed["span_id"] = span_id
         target = tool_call_target(call)
         if target:
             failed["target"] = target
@@ -749,7 +807,9 @@ class VeraRuntime:
             len(message.content.encode("utf-8")) for message in context.messages
         )
 
-    def _propose(self, context: RunContext, call: ModelToolCall) -> Iterator[EventEnvelope]:
+    def _propose(
+        self, context: RunContext, call: ModelToolCall, *, span_id: str | None = None
+    ) -> Iterator[EventEnvelope]:
         try:
             proposal = ProposalInput.model_validate(call.arguments)
             invalid_init = context.command.mode == "project_init" and (
@@ -778,13 +838,14 @@ class VeraRuntime:
                     "basename": exc.basename,
                     "suggestion": exc.suggestion,
                 },
+                span_id=span_id,
             )
             return
         except Exception as exc:
             if context.command.mode == "project_init":
                 yield from self._fail(context, "project_init_scope_violation")
                 return
-            yield from self._reject_tool(context, call, {"error": str(exc)})
+            yield from self._reject_tool(context, call, {"error": str(exc)}, span_id=span_id)
             return
         change_set = built.change_set
         if context.command.mode == "project_init":
@@ -905,19 +966,29 @@ class VeraRuntime:
                     RecoveryStage.AWAITING_VERIFICATION_APPROVAL,
                 )
                 return
+            span = self._start_verification_span(context, index, command)
+            started_payload = self._verification_event_payload(index, command)
+            started_payload["span_id"] = span.span_id
             yield self._stable_event(
                 context,
                 "verification.started",
-                self._verification_event_payload(index, command),
+                started_payload,
                 RecoveryStage.VERIFYING,
             )
-            result = runner.run(command)
+            try:
+                result = runner.run(command)
+            except Exception:
+                self._verification_span_error(context, span)
+                raise
+            self._finish_verification_span(context, span, result)
             context.verification_failed = context.verification_failed or result.status != "passed"
             context.verification_index += 1
+            completed_payload = self._verification_event_payload(index, command, result)
+            completed_payload["span_id"] = span.span_id
             yield self._stable_event(
                 context,
                 "verification.completed",
-                self._verification_event_payload(index, command, result),
+                completed_payload,
                 RecoveryStage.VERIFYING,
             )
         terminal = (
@@ -1080,16 +1151,24 @@ class VeraRuntime:
             elif context.pending_command is not None:
                 pending = context.pending_command
                 index = context.verification_index
-                result = self._verification_runner(context).run(pending)
+                span = self._start_verification_span(context, index, pending)
+                try:
+                    result = self._verification_runner(context).run(pending)
+                except Exception:
+                    self._verification_span_error(context, span)
+                    raise
+                self._finish_verification_span(context, span, result)
                 context.verification_failed = (
                     context.verification_failed or result.status != "passed"
                 )
                 context.pending_command = None
                 context.verification_index += 1
+                completed_payload = self._verification_event_payload(index, pending, result)
+                completed_payload["span_id"] = span.span_id
                 yield self._stable_event(
                     context,
                     "verification.completed",
-                    self._verification_event_payload(index, pending, result),
+                    completed_payload,
                     RecoveryStage.VERIFYING,
                 )
             yield from self._verify(context)
@@ -1201,74 +1280,144 @@ class VeraRuntime:
             )
 
     def _execute_tool(self, context: RunContext, call: ModelToolCall) -> Iterator[EventEnvelope]:
-        signature = f"{call.name}:{call.arguments}"
-        if context.last_tool_signature == signature:
-            context.repeated_tool_streak += 1
-        else:
-            context.last_tool_signature = signature
-            context.repeated_tool_streak = 1
-        if context.repeated_tool_streak >= 3:
-            yield from self._fail(context, "repeated_tool_call")
-            return
-        started: dict[str, Any] = {"name": call.name, "call_id": call.call_id}
-        target = tool_call_target(call)
-        if target:
-            started["target"] = target
-        yield self._event(context, "tool.started", started)
-        if call.parse_error:
-            yield from self._reject_tool(
-                context,
-                call,
-                {
-                    "error": call.parse_error,
-                    "reason_code": call.parse_error,
-                    "suggestion": "resend the tool call as a single complete JSON object",
-                },
-            )
-            return
-        if call.name == "propose_changeset":
-            yield from self._propose(context, call)
-            return
-        result = self.registry.execute(call.name, call.arguments)
-        origin = call.name
-        source_kind = "tool_output"
-        if isinstance(call.arguments, dict) and call.arguments.get("path") is not None:
-            relative = str(call.arguments.get("path"))
-            origin = f"{call.name}:{relative}"
-            if call.name == "read_file":
-                source_kind = source_kind_for_path(relative)
-        if result.content is None:
-            text = ""
-        else:
-            text = json.dumps(result.content, ensure_ascii=False, sort_keys=True)
-        envelope, rendered, events = self._prepare_content(
-            context,
-            text,
-            source_kind=source_kind,
-            origin=origin,
-            truncated=bool(result.truncated),
-        )
-        yield from events
-        payload = {
-            "name": call.name,
-            "call_id": call.call_id,
-            "ok": result.ok,
-            "truncated": result.truncated,
-            "error_code": result.error_code,
-            "source_kind": envelope.source_kind,
-            "trust_level": envelope.trust_level.value,
-            "content_hash": envelope.content_hash,
+        input_body = json.dumps(
+            call.arguments,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+        span_attributes: dict[str, Any] = {
+            "tool_name": call.name[:128],
+            "tool_call_id": call.call_id[:128],
+            "input_byte_count": len(input_body),
+            "input_content_hash": hashlib.sha256(input_body).hexdigest(),
         }
-        if target:
-            payload["target"] = target
-        yield self._event(context, "tool.completed", payload)
-        tool_text = tool_result_message(call, result, rendered)
-        context.messages.append(
-            ModelMessage(role="tool", content=tool_text, tool_call_id=call.call_id)
+        span = context.trace_recorder.start_span(
+            "tool", call.name[:128], attributes=span_attributes
         )
-        context.context_bytes = sum(
-            len(message.content.encode("utf-8")) for message in context.messages
-        )
+        message_count_before = len(context.messages)
+        status: TraceSpanStatus = "ok"
+        error_code: str | None = None
+        truncated = False
+        completed_normally = False
+        try:
+            signature = f"{call.name}:{call.arguments}"
+            if context.last_tool_signature == signature:
+                context.repeated_tool_streak += 1
+            else:
+                context.last_tool_signature = signature
+                context.repeated_tool_streak = 1
+            if context.repeated_tool_streak >= 3:
+                status = "rejected"
+                error_code = "repeated_tool_call"
+                yield from self._fail(context, "repeated_tool_call")
+                completed_normally = True
+                return
+            started: dict[str, Any] = {
+                "name": call.name,
+                "call_id": call.call_id,
+                "span_id": span.span_id,
+            }
+            target = tool_call_target(call)
+            if target:
+                started["target"] = target
+            yield self._event(context, "tool.started", started)
+            if call.parse_error:
+                status = "rejected"
+                error_code = call.parse_error[:128]
+                yield from self._reject_tool(
+                    context,
+                    call,
+                    {
+                        "error": call.parse_error,
+                        "reason_code": call.parse_error,
+                        "suggestion": "resend the tool call as a single complete JSON object",
+                    },
+                    span_id=span.span_id,
+                )
+                completed_normally = True
+                return
+            if call.name == "propose_changeset":
+                for event in self._propose(context, call, span_id=span.span_id):
+                    if event.type == "tool.completed" and not event.payload.get("ok", False):
+                        status = "rejected"
+                        raw_error = event.payload.get("reason_code") or event.payload.get("error")
+                        error_code = str(raw_error)[:128] if raw_error else "proposal_rejected"
+                    yield event
+                completed_normally = True
+                return
+            result = self.registry.execute(call.name, call.arguments)
+            truncated = result.truncated
+            if not result.ok:
+                status = "error"
+                error_code = result.error_code
+            origin = call.name
+            source_kind = "tool_output"
+            if isinstance(call.arguments, dict) and call.arguments.get("path") is not None:
+                relative = str(call.arguments.get("path"))
+                origin = f"{call.name}:{relative}"
+                if call.name == "read_file":
+                    source_kind = source_kind_for_path(relative)
+            if result.content is None:
+                text = ""
+            else:
+                text = json.dumps(result.content, ensure_ascii=False, sort_keys=True)
+            envelope, rendered, events = self._prepare_content(
+                context,
+                text,
+                source_kind=source_kind,
+                origin=origin,
+                truncated=bool(result.truncated),
+            )
+            yield from events
+            payload = {
+                "name": call.name,
+                "call_id": call.call_id,
+                "span_id": span.span_id,
+                "ok": result.ok,
+                "truncated": result.truncated,
+                "error_code": result.error_code,
+                "source_kind": envelope.source_kind,
+                "trust_level": envelope.trust_level.value,
+                "content_hash": envelope.content_hash,
+            }
+            if target:
+                payload["target"] = target
+            yield self._event(context, "tool.completed", payload)
+            tool_text = tool_result_message(call, result, rendered)
+            context.messages.append(
+                ModelMessage(role="tool", content=tool_text, tool_call_id=call.call_id)
+            )
+            context.context_bytes = sum(
+                len(message.content.encode("utf-8")) for message in context.messages
+            )
+            completed_normally = True
+        except GeneratorExit:
+            status = "interrupted"
+            raise
+        except Exception:
+            status = "error"
+            error_code = "tool_execution_error"
+            raise
+        finally:
+            if not completed_normally and status == "ok":
+                status = "interrupted"
+            tool_messages = [
+                message
+                for message in context.messages[message_count_before:]
+                if message.role == "tool" and message.tool_call_id == call.call_id
+            ]
+            tool_output = tool_messages[-1].content.encode("utf-8") if tool_messages else b""
+            finish_attributes = {
+                **span_attributes,
+                "output_byte_count": len(tool_output),
+                "output_content_hash": hashlib.sha256(tool_output).hexdigest(),
+                "truncated": truncated,
+            }
+            if error_code is not None:
+                finish_attributes["error_code"] = error_code
+            context.trace_recorder.finish_span(span, status, attributes=finish_attributes)
 
     def _complete_with_retry(
         self, context: RunContext, request: ModelRequest
@@ -1283,11 +1432,34 @@ class VeraRuntime:
             yield None
             return
         stream_id = f"stream_{uuid4().hex}"
+        previous_span_id: str | None = None
         for attempt in range(1, self.retry_policy.max_attempts + 1):
+            context.request_index += 1
+            snapshot = ContextInventory.build(
+                request,
+                context,
+                request_index=context.request_index,
+                context_budget_bytes=self.limits.max_context_bytes,
+            )
+            identity = getattr(self.adapter, "identity", None)
+            span_attributes: dict[str, Any] = {"attempt": attempt}
+            if identity is not None:
+                span_attributes.update(identity.model_dump(mode="json", exclude_none=True))
+            if previous_span_id is not None:
+                span_attributes["retry_of_span_id"] = previous_span_id
+            span = context.trace_recorder.start_span(
+                "llm", "provider attempt", attributes=span_attributes
+            )
+            context.trace_recorder.record_context(span, snapshot)
             yield self._event(
                 context,
                 "model.requested",
-                {"turn": context.model_turns, "attempt": attempt},
+                {
+                    "turn": context.model_turns,
+                    "attempt": attempt,
+                    "span_id": span.span_id,
+                    "snapshot_id": snapshot.snapshot_id,
+                },
             )
             started = datetime.now(UTC)
             frame_index = 0
@@ -1311,9 +1483,20 @@ class VeraRuntime:
                         "provider stream missing completion",
                     )
             except ModelProviderError as provider_error:
+                context.trace_recorder.finish_span(
+                    span,
+                    "error",
+                    attributes={"error_code": provider_error.code.value},
+                )
+                previous_span_id = span.span_id
                 if not self.retry_policy.should_retry(provider_error, attempt):
                     yield self._event(
-                        context, "model.failed", safe_error_payload(provider_error, attempt)
+                        context,
+                        "model.failed",
+                        {
+                            **safe_error_payload(provider_error, attempt),
+                            "span_id": span.span_id,
+                        },
                     )
                     yield None
                     return
@@ -1325,19 +1508,43 @@ class VeraRuntime:
                         "attempt": attempt,
                         "delay": delay,
                         "code": provider_error.code.value,
+                        "span_id": span.span_id,
                     },
                 )
                 self.sleep(delay)
                 continue
             except Exception:
                 mapped = ModelProviderError(ModelErrorCode.SERVICE, "provider request failed")
-                yield self._event(context, "model.failed", safe_error_payload(mapped, attempt))
+                context.trace_recorder.finish_span(
+                    span, "error", attributes={"error_code": mapped.code.value}
+                )
+                yield self._event(
+                    context,
+                    "model.failed",
+                    {**safe_error_payload(mapped, attempt), "span_id": span.span_id},
+                )
                 yield None
                 return
+            except GeneratorExit:
+                context.trace_recorder.finish_span(span, "interrupted")
+                raise
             duration_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
             usage = None
             if turn.usage is not None:
                 usage = turn.usage.model_dump(mode="json")
+            span_usage = (
+                {key: value for key, value in usage.items() if value is not None}
+                if usage is not None
+                else {}
+            )
+            completed_attributes: dict[str, Any] = {
+                "finish_reason": turn.finish_reason[:200],
+                "tool_call_count": len(turn.tool_calls),
+                **span_usage,
+            }
+            if turn.provider_request_id:
+                completed_attributes["request_id"] = turn.provider_request_id[:200]
+            context.trace_recorder.finish_span(span, "ok", attributes=completed_attributes)
             yield self._event(
                 context,
                 "model.completed",
@@ -1349,6 +1556,8 @@ class VeraRuntime:
                     "request_id": turn.provider_request_id,
                     "duration_ms": duration_ms,
                     "stream_id": stream_id,
+                    "span_id": span.span_id,
+                    "snapshot_id": snapshot.snapshot_id,
                 },
             )
             yield turn

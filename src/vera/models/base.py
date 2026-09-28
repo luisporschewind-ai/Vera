@@ -49,6 +49,16 @@ class ModelUsage(BaseModel):
     cache_miss_input_tokens: int | None = Field(default=None, strict=True, ge=0)
 
 
+class ModelIdentity(BaseModel):
+    """Non-secret identity of the selected model configuration."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    provider_type: str | None = None
+    profile_name: str | None = None
+    model_name: str | None = None
+
+
 class ModelTurn(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -64,6 +74,9 @@ class ModelTurn(BaseModel):
 class ModelAdapter(Protocol):
     @property
     def capabilities(self) -> ModelCapabilities: ...
+
+    @property
+    def identity(self) -> ModelIdentity | None: ...
 
     def complete(self, request: ModelRequest) -> ModelTurn: ...
 
@@ -86,6 +99,10 @@ class FakeModelAdapter:
     @property
     def capabilities(self) -> ModelCapabilities:
         return self._capabilities
+
+    @property
+    def identity(self) -> ModelIdentity | None:
+        return None
 
     def complete(self, request: ModelRequest) -> ModelTurn:
         self.requests.append(request)

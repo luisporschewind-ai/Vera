@@ -171,6 +171,14 @@ DEFAULT_COMMANDS: tuple[CommandDescriptor, ...] = (
         args="optional",
     ),
     CommandDescriptor(
+        "/trace",
+        "/trace [run-id]",
+        "查看 Run 执行轨迹",
+        "代码与证据",
+        "trace",
+        args="optional",
+    ),
+    CommandDescriptor(
         "/rollback",
         "/rollback <run-id>",
         "安全回滚任务修改",

@@ -574,18 +574,22 @@ class SessionController:
             yield from self._persist_turn(goal, events)
 
     def _slash(self, raw: str) -> Iterator[RuntimeOutput]:
-        if self._active_run_id is not None and self._pending_approval is None:
-            yield self._session_event(
-                "session.action_rejected",
-                {"reason_code": "run_active", "message": "当前有运行中的任务。"},
-            )
-            return
         try:
             parts = shlex.split(raw)
         except ValueError as exc:
             yield self._session_event("session.message", {"text": f"命令格式错误：{exc}"})
             return
         if not parts:
+            return
+        if (
+            self._active_run_id is not None
+            and self._pending_approval is None
+            and parts[0] != "/trace"
+        ):
+            yield self._session_event(
+                "session.action_rejected",
+                {"reason_code": "run_active", "message": "当前有运行中的任务。"},
+            )
             return
         from vera.session.command_catalog import CommandCatalog
 
@@ -1164,6 +1168,46 @@ class SessionController:
         review = project_review(events)
         review["run_id"] = run_id
         yield self._session_event("session.review", review)
+
+    def _cmd_trace(self, args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
+        from vera.trace.formatting import format_run_trace
+        from vera.trace.projector import trace_snapshot
+
+        requested_id = args[0] if args else None
+        runs = tuple(
+            summary
+            for summary in self.store.list_runs()
+            if summary.workspace_root.expanduser().resolve() == self.workspace
+        )
+        if requested_id is not None:
+            selected = next((item for item in runs if item.run_id == requested_id), None)
+        elif self.active_run_id is not None:
+            selected = next((item for item in runs if item.run_id == self.active_run_id), None)
+        else:
+            selected = runs[0] if runs else None
+
+        if selected is None:
+            message = (
+                "未找到属于当前工作区的 Run。"
+                if requested_id is None and self.active_run_id is None
+                else "未找到属于当前工作区的指定 Run。"
+            )
+            yield self._session_event("session.message", {"text": message})
+            return
+
+        trace = trace_snapshot(
+            self.store,
+            selected.run_id,
+            session_id=self.conversation.stats().session_id,
+            installation_id=self.dependencies.installation_id,
+        )
+        yield self._session_event(
+            "session.trace",
+            {
+                "trace": trace.model_dump(mode="json"),
+                "text": format_run_trace(trace),
+            },
+        )
 
     def _cmd_doctor(self, _args: tuple[str, ...]) -> Iterator[RuntimeOutput]:
         import os

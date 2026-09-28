@@ -3,7 +3,7 @@
 **状态：** Accepted
 **日期：** 2026-09-12
 
-> 后续关系：[ADR-0020](ADR-0020-stage-core-native-skills.md) 曾将 Core-native Skills 插入桌面之前；[ADR-0021](ADR-0021-core-tools-before-desktop.md) 又在 Skills 前插入 Core 工具集、Policy v2 与原生 Git。当前 Electron 桌面实施为阶段十。本 ADR 的标题及下文“阶段八”保留接受时的历史编号；Electron、Python Core、结构化 Command/Event 和 CLI 封存门禁不变。
+> 后续关系：[ADR-0020](ADR-0020-stage-core-native-skills.md) 曾将 Core-native Skills 插入桌面之前；[ADR-0021](ADR-0021-core-tools-before-desktop.md) 又在 Skills 前插入 Core 工具集、Policy v2 与原生 Git；[ADR-0023](ADR-0023-insert-core-observability-before-desktop.md) 再将 Core Trace 插入桌面之前。当前 Electron 桌面实施为阶段十一。本 ADR 的标题及下文“阶段八”保留接受时的历史编号；Electron、Python Core、结构化 Command/Event 和 CLI 封存门禁不变。
 
 ## 背景
 
