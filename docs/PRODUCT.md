@@ -64,7 +64,7 @@ Vera is also a long-term learning and portfolio product. It should become mainta
 - Core-native Skills use a Core control plane with external packages. v1 supports only built-in, user-local, and workspace-local read-only packages, explicit single-Skill selection, and immutable Run snapshots.
 - A Skill describes how to work but cannot register permissions, expand Workspace, modify Policy/Approval, read Provider Keys, declare network access, bypass Core file-mutation planning, or execute package scripts in v1.
 - Workspace Skills are always untrusted project content. The Core owns discovery, conflict handling, trust classification, selection, snapshots, recovery, Context assembly, and structured events.
-- Development is private until reliability and release-readiness checks are met.
+- 源码仓库可在用户明确授权后提前公开；仓库可见性不代表产品已正式发布，也不改变可靠性、安全性和发布准备门禁。
 - SDD, small verified changes, and synchronized documentation are required.
 - The accepted Phase 4 design fixes 14 bundled offline Fake Model cases and scores only Core facts and file hashes.
 - The 14-case offline evaluation suite is an accepted first-stage capability, shipped with `vera eval` and the installable wheel.

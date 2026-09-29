@@ -13,6 +13,8 @@
 
 ## 当前任务
 
+- [任务 0092：公开 GitHub 仓库可见性](0092-public-github-visibility.md)
+- [任务 0091：中英双语 README](0091-bilingual-readme.md)
 - [任务 0001：建立 Vera 仓库](0001-bootstrap-repository.md)
 - [任务 0002：Core 安全编辑垂直切片](0002-core-safe-editing-vertical-slice.md)
 - [任务 0003：交互式 CLI 会话](0003-interactive-cli-session.md)
