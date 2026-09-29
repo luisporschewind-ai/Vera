@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -136,4 +137,12 @@ class GitDiscovery:
             return "git_timeout"
         if result.status == "cancelled":
             return "git_cancelled"
-        return "git_process_error"
+        return sandbox_reason_code(result) or "git_process_error"
+
+
+def sandbox_reason_code(result: ProcessResult) -> str | None:
+    """Return the sandbox's stable refusal code; stderr is otherwise never trusted."""
+    if result.status != "error":
+        return None
+    text = result.stderr.decode("ascii", errors="replace").strip()
+    return text if re.fullmatch(r"sandbox_[a-z_]+", text) else None

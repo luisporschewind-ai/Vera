@@ -4,6 +4,40 @@ import pytest
 
 from tests.git.conftest import run_git
 from vera.git.discovery import GitDiscovery, GitDiscoveryError
+from vera.process.supervisor import ProcessRequest, ProcessResult
+from vera.sandbox.access import AccessSession
+from vera.sandbox.settings import UnavailableBackend
+from vera.sandbox.supervision import SandboxedSupervisor
+from vera.tools.git import GitStatusInput, GitStatusTool
+
+
+def test_unconfigured_sandbox_is_reported_instead_of_generic_process_error(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    supervisor = SandboxedSupervisor(AccessSession(workspace), UnavailableBackend())
+
+    result = GitStatusTool(workspace, supervisor=supervisor).execute(GitStatusInput())
+
+    assert result.ok is False
+    assert result.error_code == "sandbox_setup_required"
+
+
+class _ErrorSupervisor:
+    def __init__(self, stderr: bytes) -> None:
+        self.stderr = stderr
+
+    def run(self, request: ProcessRequest, **_kwargs: object) -> ProcessResult:
+        del request
+        return ProcessResult("error", None, b"", self.stderr)
+
+
+def test_only_exact_sandbox_codes_replace_generic_process_error(tmp_path: Path) -> None:
+    for stderr in (b"spawn failed: /usr/bin/git", b"sandbox_cleanup_failed: /tmp/x; boom"):
+        with pytest.raises(GitDiscoveryError) as caught:
+            GitDiscovery(tmp_path, supervisor=_ErrorSupervisor(stderr)).discover()  # type: ignore[arg-type]
+        assert caught.value.code == "git_process_error"
 
 
 def test_discovers_repository_root_and_workspace_prefix(

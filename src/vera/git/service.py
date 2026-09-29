@@ -8,7 +8,7 @@ from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path, PurePosixPath
 
-from vera.git.discovery import GitDiscovery, GitDiscoveryError
+from vera.git.discovery import GitDiscovery, GitDiscoveryError, sandbox_reason_code
 from vera.git.models import (
     GitBranchSummary,
     GitCommitSummary,
@@ -291,7 +291,9 @@ class GitService:
                 {
                     "timed_out": "git_timeout",
                     "cancelled": "git_cancelled",
-                }.get(result.status, "git_process_error")
+                }.get(result.status)
+                or sandbox_reason_code(result)
+                or "git_process_error"
             )
         if result.exit_code not in {0, None}:
             raise GitServiceError("git_command_failed", "Git command failed", stderr=result.stderr)

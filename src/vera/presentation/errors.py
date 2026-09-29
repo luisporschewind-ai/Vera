@@ -17,6 +17,7 @@ _REASON_TEXT: dict[str, str] = {
     "empty_model_response": "模型返回了空响应",
     "leaked_tool_call_markup": "模型把工具调用写进了正文，工具没有执行",
     "permission_denied": "没有写入权限",
+    "sandbox_setup_required": "沙盒尚未配置；运行 vera sandbox setup 后才能执行 Git 与项目命令",
     "invalid_compaction_response": "模型返回的压缩结果不可用",
     "repeated_tool_call": "模型重复了同一次工具调用",
     "read_loop_no_progress": "多次读取未获得新信息，已停止重复调查",
